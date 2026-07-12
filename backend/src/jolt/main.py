@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.database import create_session_factory
-from jolt.schemas import IntakeResponse, ManualIntakeRequest, OpportunitySummary, ReviewRequest, ReviewResponse
+from jolt.schemas import (
+    IntakeResponse,
+    ManualIntakeRequest,
+    OpportunitySummary,
+    ReviewRequest,
+    ReviewResponse,
+)
 from jolt.workflow import ingest_manual, list_opportunities, record_review
 
 
@@ -21,6 +28,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             session.close()
 
+    SessionDependency = Annotated[Session, Depends(get_session)]
+
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "jolt-backend", "version": "0.2.0"}
@@ -28,7 +37,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
         request: ManualIntakeRequest,
-        session: Session = Depends(get_session),
+        session: SessionDependency,
     ) -> IntakeResponse:
         return ingest_manual(session, request)
 
@@ -40,7 +49,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     def create_review(
         posting_id: str,
         request: ReviewRequest,
-        session: Session = Depends(get_session),
+        session: SessionDependency,
     ) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
@@ -48,7 +57,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
-    def opportunities(session: Session = Depends(get_session)) -> list[OpportunitySummary]:
+    def opportunities(session: SessionDependency) -> list[OpportunitySummary]:
         return list_opportunities(session)
 
     return app
