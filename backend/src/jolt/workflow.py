@@ -7,11 +7,23 @@ from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
+from jolt.database import (
+    Evaluation,
+    Posting,
+    ProfileVersion,
+    ReviewDecision,
+    SourceDocument,
+    utc_now,
+)
+from jolt.schemas import (
+    IntakeResponse,
+    ManualIntakeRequest,
+    OpportunitySummary,
+    ReviewRequest,
+    ReviewResponse,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from jolt.database import Evaluation, Posting, ProfileVersion, ReviewDecision, SourceDocument, utc_now
-from jolt.schemas import IntakeResponse, ManualIntakeRequest, OpportunitySummary, ReviewRequest, ReviewResponse
 
 PROFILE_ID = "default-job-search"
 PROFILE_VERSION_ID = "default-job-search:v1"
@@ -70,7 +82,9 @@ def parse_manual_text(raw_text: str) -> ParsedPosting:
         if match:
             location = match.group(1).strip()
             break
-    return ParsedPosting(title=title, company=company, location=location, description=raw_text.strip())
+    return ParsedPosting(
+        title=title, company=company, location=location, description=raw_text.strip()
+    )
 
 
 def ensure_default_profile(session: Session) -> ProfileVersion:
@@ -91,7 +105,9 @@ def ensure_default_profile(session: Session) -> ProfileVersion:
 
 def evaluate_text(text: str) -> tuple[str, str, int, list[str]]:
     lowered = text.lower()
-    blockers = [phrase for phrase in PROFILE_CONFIGURATION["hard_reject_phrases"] if phrase in lowered]
+    blockers = [
+        phrase for phrase in PROFILE_CONFIGURATION["hard_reject_phrases"] if phrase in lowered
+    ]
     matches = [term for term in PROFILE_CONFIGURATION["positive_terms"] if term in lowered]
     reasons: list[str] = []
 
@@ -122,13 +138,17 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
     session.flush()
 
     canonical_url = normalize_url(request.source_url)
-    duplicate_query = select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
+    duplicate_query = (
+        select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
+    )
     if canonical_url:
         duplicate_query = select(Posting).where(Posting.canonical_url == canonical_url)
     duplicate = session.scalar(duplicate_query)
     if duplicate is not None:
         evaluation = session.scalar(
-            select(Evaluation).where(Evaluation.posting_id == duplicate.id).order_by(Evaluation.created_at.desc())
+            select(Evaluation)
+            .where(Evaluation.posting_id == duplicate.id)
+            .order_by(Evaluation.created_at.desc())
         )
         if evaluation is None:
             raise RuntimeError("Duplicate posting exists without an evaluation.")
@@ -227,7 +247,9 @@ def list_opportunities(session: Session) -> list[OpportunitySummary]:
     results: list[OpportunitySummary] = []
     for posting in postings:
         evaluation = session.scalar(
-            select(Evaluation).where(Evaluation.posting_id == posting.id).order_by(Evaluation.created_at.desc())
+            select(Evaluation)
+            .where(Evaluation.posting_id == posting.id)
+            .order_by(Evaluation.created_at.desc())
         )
         if evaluation is None:
             continue
