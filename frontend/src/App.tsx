@@ -9,6 +9,9 @@ export type Opportunity = {
   recommendation: "pursue" | "consider" | "reject";
   ranking_score: number;
   review_decision: ReviewChoice | null;
+  application_id?: string | null;
+  application_status?: ApplicationStatus | null;
+  outcome_type?: string | null;
 };
 
 type IntakeResult = {
@@ -25,6 +28,10 @@ type IntakeResult = {
 };
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
+type ApplicationStatus =
+  | "preparing" | "submitted" | "acknowledged" | "recruiter_screen"
+  | "technical_interview" | "hiring_manager_interview" | "final_interview"
+  | "offer" | "rejected" | "withdrawn" | "no_response" | "closed";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -45,6 +52,24 @@ export function App() {
   useEffect(() => {
     refreshOpportunities().catch(() => setError("The JOLT API is not available."));
   }, [refreshOpportunities]);
+
+  async function apiAction(url: string, body: object) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}${url}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error("The workflow change could not be saved.");
+      await refreshOpportunities();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unexpected workflow error.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitIntake(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,21 +93,10 @@ export function App() {
 
   async function review(decision: ReviewChoice) {
     if (!intake) return;
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(`${API_BASE}/api/opportunities/${intake.posting_id}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ evaluation_id: intake.evaluation_id, decision }),
-      });
-      if (!response.ok) throw new Error("The review decision could not be saved.");
-      await refreshOpportunities();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unexpected review error.");
-    } finally {
-      setBusy(false);
-    }
+    await apiAction(`/api/opportunities/${intake.posting_id}/reviews`, {
+      evaluation_id: intake.evaluation_id,
+      decision,
+    });
   }
 
   return (
@@ -90,7 +104,7 @@ export function App() {
       <header className="hero">
         <p className="eyebrow">Job Opportunity Learning & Tracking</p>
         <h1>JOLT</h1>
-        <p>Turn a job description into an auditable recommendation and a human decision.</p>
+        <p>Turn job evidence into an auditable decision, application workflow, and outcome history.</p>
       </header>
 
       {error && <p className="error" role="alert">{error}</p>}
@@ -107,8 +121,7 @@ export function App() {
             <textarea
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
-              required
-              rows={10}
+              required rows={10}
               placeholder={"Job title\nCompany\nLocation: Remote Spain\nFull description..."}
             />
           </label>
@@ -141,19 +154,40 @@ export function App() {
       )}
 
       <section className="panel" aria-labelledby="queue-heading">
-        <h2 id="queue-heading">Opportunity queue</h2>
-        {opportunities.length === 0 ? (
-          <p>No opportunities saved yet.</p>
-        ) : (
+        <h2 id="queue-heading">Opportunity and application queue</h2>
+        {opportunities.length === 0 ? <p>No opportunities saved yet.</p> : (
           <div className="queue">
             {opportunities.map((opportunity) => (
               <article key={opportunity.posting_id}>
                 <div>
                   <h3>{opportunity.title || "Untitled opportunity"}</h3>
                   <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
+                  {opportunity.review_decision === "pursue" && !opportunity.application_id && (
+                    <button disabled={busy} type="button" onClick={() => apiAction(
+                      `/api/opportunities/${opportunity.posting_id}/applications`, {}
+                    )}>Start application</button>
+                  )}
+                  {opportunity.application_id && !opportunity.outcome_type && (
+                    <div className="review-actions" aria-label={`Update ${opportunity.title}`}>
+                      {opportunity.application_status === "preparing" && (
+                        <button disabled={busy} type="button" onClick={() => apiAction(
+                          `/api/applications/${opportunity.application_id}/transitions`, { status: "submitted" }
+                        )}>Mark submitted</button>
+                      )}
+                      {["submitted", "acknowledged"].includes(opportunity.application_status ?? "") && (
+                        <button disabled={busy} type="button" onClick={() => apiAction(
+                          `/api/applications/${opportunity.application_id}/transitions`, { status: "recruiter_screen" }
+                        )}>Recruiter screen</button>
+                      )}
+                      <button disabled={busy} type="button" onClick={() => apiAction(
+                        `/api/applications/${opportunity.application_id}/outcomes`,
+                        { outcome_type: "rejected_by_employer" }
+                      )}>Record employer rejection</button>
+                    </div>
+                  )}
                 </div>
                 <div className="queue-status">
-                  <strong>{opportunity.review_decision ?? "pending review"}</strong>
+                  <strong>{opportunity.outcome_type ?? opportunity.application_status ?? opportunity.review_decision ?? "pending review"}</strong>
                   <span>{opportunity.recommendation} · {opportunity.ranking_score}</span>
                 </div>
               </article>
