@@ -40,7 +40,21 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
       - name: Pyright
-        run: uv run pyright
+        id: pyright
+        continue-on-error: true
+        run: |
+          mkdir -p ../artifacts
+          uv run pyright 2>&1 | tee ../artifacts/pyright.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload Pyright diagnostics
+        if: steps.pyright.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-pyright-diagnostics
+          path: artifacts/pyright.txt
+      - name: Fail on Pyright errors
+        if: steps.pyright.outcome == 'failure'
+        run: exit 1
       - name: Tests
         run: uv run pytest
 
