@@ -4,8 +4,6 @@ from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session
-
 from jolt.database import create_session_factory
 from jolt.schemas import (
     IntakeResponse,
@@ -15,6 +13,7 @@ from jolt.schemas import (
     ReviewResponse,
 )
 from jolt.workflow import ingest_manual, list_opportunities, record_review
+from sqlalchemy.orm import Session
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
