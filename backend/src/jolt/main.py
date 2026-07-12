@@ -48,14 +48,15 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             session.close()
 
-    SessionDependency = Annotated[Session, Depends(get_session)]
-
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "jolt-backend", "version": "0.4.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
-    def manual_intake(request: ManualIntakeRequest, session: SessionDependency) -> IntakeResponse:
+    def manual_intake(
+        request: ManualIntakeRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> IntakeResponse:
         return ingest_manual(session, request)
 
     @app.post(
@@ -64,7 +65,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         tags=["review"],
     )
     def create_review(
-        posting_id: str, request: ReviewRequest, session: SessionDependency
+        posting_id: str,
+        request: ReviewRequest,
+        session: Annotated[Session, Depends(get_session)],
     ) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
@@ -77,7 +80,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         tags=["applications"],
     )
     def start_application(
-        posting_id: str, request: ApplicationCreateRequest, session: SessionDependency
+        posting_id: str,
+        request: ApplicationCreateRequest,
+        session: Annotated[Session, Depends(get_session)],
     ) -> ApplicationResponse:
         try:
             return create_application(session, posting_id, request)
@@ -91,7 +96,10 @@ def create_app(database_url: str | None = None) -> FastAPI:
         response_model=ApplicationResponse,
         tags=["applications"],
     )
-    def application(application_id: str, session: SessionDependency) -> ApplicationResponse:
+    def application(
+        application_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> ApplicationResponse:
         try:
             return get_application(session, application_id)
         except LookupError as exc:
@@ -105,7 +113,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     def change_application_status(
         application_id: str,
         request: ApplicationTransitionRequest,
-        session: SessionDependency,
+        session: Annotated[Session, Depends(get_session)],
     ) -> ApplicationResponse:
         try:
             return transition_application(session, application_id, request)
@@ -120,7 +128,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         tags=["applications"],
     )
     def save_outcome(
-        application_id: str, request: OutcomeRequest, session: SessionDependency
+        application_id: str,
+        request: OutcomeRequest,
+        session: Annotated[Session, Depends(get_session)],
     ) -> ApplicationResponse:
         try:
             return record_outcome(session, application_id, request)
@@ -130,7 +140,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
-    def opportunities(session: SessionDependency) -> list[OpportunitySummary]:
+    def opportunities(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[OpportunitySummary]:
         return list_opportunities(session)
 
     return app
