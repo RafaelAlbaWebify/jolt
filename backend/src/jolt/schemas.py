@@ -6,6 +6,28 @@ from pydantic import BaseModel, Field
 
 ReviewChoice = Literal["pursue", "consider", "defer", "reject", "needs_more_information"]
 Recommendation = Literal["pursue", "consider", "reject"]
+ApplicationStatus = Literal[
+    "preparing",
+    "submitted",
+    "acknowledged",
+    "recruiter_screen",
+    "technical_interview",
+    "hiring_manager_interview",
+    "final_interview",
+    "offer",
+    "rejected",
+    "withdrawn",
+    "no_response",
+    "closed",
+]
+OutcomeType = Literal[
+    "rejected_by_employer",
+    "withdrawn_by_user",
+    "no_response",
+    "offer_declined",
+    "offer_accepted",
+    "role_closed",
+]
 
 
 class ManualIntakeRequest(BaseModel):
@@ -46,6 +68,43 @@ class ReviewResponse(BaseModel):
     evaluation_overridden: bool
 
 
+class ApplicationCreateRequest(BaseModel):
+    application_url: str = ""
+    resume_used: str = ""
+    notes: str = ""
+
+
+class ApplicationTransitionRequest(BaseModel):
+    status: ApplicationStatus
+    notes: str = ""
+
+
+class OutcomeRequest(BaseModel):
+    outcome_type: OutcomeType
+    reason_code: str = ""
+    notes: str = ""
+
+
+class ApplicationEventResponse(BaseModel):
+    event_id: str
+    event_type: str
+    from_status: str
+    to_status: ApplicationStatus
+    notes: str
+    occurred_at: str
+
+
+class ApplicationResponse(BaseModel):
+    application_id: str
+    posting_id: str
+    status: ApplicationStatus
+    application_url: str
+    resume_used: str
+    notes: str
+    outcome_type: OutcomeType | None = None
+    events: list[ApplicationEventResponse]
+
+
 class OpportunitySummary(BaseModel):
     posting_id: str
     title: str
@@ -54,3 +113,6 @@ class OpportunitySummary(BaseModel):
     recommendation: Recommendation
     ranking_score: int
     review_decision: ReviewChoice | None = None
+    application_id: str | None = None
+    application_status: ApplicationStatus | None = None
+    outcome_type: OutcomeType | None = None
