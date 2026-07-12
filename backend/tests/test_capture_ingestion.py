@@ -46,7 +46,9 @@ def _client(database_path: Path) -> TestClient:
     return TestClient(create_app(f"sqlite:///{database_path.as_posix()}"))
 
 
-def test_fixture_capture_persists_evidence_and_ingests_only_verified_details(tmp_path: Path) -> None:
+def test_fixture_capture_persists_evidence_and_ingests_only_verified_details(
+    tmp_path: Path,
+) -> None:
     database_path = tmp_path / "capture.db"
     client = _client(database_path)
     verified = detail_html(

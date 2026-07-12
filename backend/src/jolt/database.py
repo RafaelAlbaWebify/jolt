@@ -70,7 +70,9 @@ class CaptureItem(Base):
     source_document_id: Mapped[str | None] = mapped_column(
         ForeignKey("source_documents.id"), nullable=True, index=True
     )
-    posting_id: Mapped[str | None] = mapped_column(ForeignKey("postings.id"), nullable=True, index=True)
+    posting_id: Mapped[str | None] = mapped_column(
+        ForeignKey("postings.id"), nullable=True, index=True
+    )
 
 
 class ProfileVersion(Base):

@@ -144,9 +144,7 @@ def get_capture_run(session: Session, capture_run_id: str) -> CaptureRunResponse
     )
 
 
-def _capture_run_response(
-    run: CaptureRun, items: list[CaptureItemResponse]
-) -> CaptureRunResponse:
+def _capture_run_response(run: CaptureRun, items: list[CaptureItemResponse]) -> CaptureRunResponse:
     return CaptureRunResponse(
         capture_run_id=run.id,
         source=run.source,
