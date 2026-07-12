@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
+import { CaptureHistory } from "./CaptureHistory";
+
 export type Opportunity = {
   posting_id: string;
   title: string;
@@ -116,6 +118,8 @@ export function App() {
           Download analysis pack
         </a>
       </section>
+
+      <CaptureHistory apiBase={API_BASE} onError={setError} />
 
       <section className="panel" aria-labelledby="intake-heading">
         <h2 id="intake-heading">Manual opportunity intake</h2>
