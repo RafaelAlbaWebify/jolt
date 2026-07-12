@@ -11,7 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import (
+    Application,
+    ApplicationEvent,
     Evaluation,
+    Outcome,
     Posting,
     ProfileVersion,
     ReviewDecision,
@@ -19,9 +22,14 @@ from jolt.database import (
     utc_now,
 )
 from jolt.schemas import (
+    ApplicationCreateRequest,
+    ApplicationEventResponse,
+    ApplicationResponse,
+    ApplicationTransitionRequest,
     IntakeResponse,
     ManualIntakeRequest,
     OpportunitySummary,
+    OutcomeRequest,
     ReviewRequest,
     ReviewResponse,
 )
@@ -50,6 +58,26 @@ PROFILE_CONFIGURATION = {
         "french is mandatory",
         "must speak french",
     ],
+}
+
+ALLOWED_TRANSITIONS = {
+    "preparing": {"submitted", "withdrawn", "closed"},
+    "submitted": {"acknowledged", "recruiter_screen", "rejected", "withdrawn", "no_response"},
+    "acknowledged": {"recruiter_screen", "rejected", "withdrawn", "no_response"},
+    "recruiter_screen": {
+        "technical_interview",
+        "hiring_manager_interview",
+        "rejected",
+        "withdrawn",
+    },
+    "technical_interview": {"hiring_manager_interview", "final_interview", "rejected", "withdrawn"},
+    "hiring_manager_interview": {"final_interview", "offer", "rejected", "withdrawn"},
+    "final_interview": {"offer", "rejected", "withdrawn"},
+    "offer": {"closed", "withdrawn"},
+    "rejected": {"closed"},
+    "withdrawn": {"closed"},
+    "no_response": {"closed"},
+    "closed": set(),
 }
 
 
@@ -111,11 +139,9 @@ def evaluate_text(text: str) -> tuple[str, str, int, list[str]]:
     ]
     matches = [term for term in PROFILE_CONFIGURATION["positive_terms"] if term in lowered]
     reasons: list[str] = []
-
     if blockers:
         reasons.append(f"Verified blocking phrase(s): {', '.join(blockers)}.")
         return "reject", "high", 0, reasons
-
     if matches:
         reasons.append(f"Relevant signal(s): {', '.join(matches)}.")
     score = min(100, 35 + len(matches) * 12)
@@ -137,7 +163,6 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
     )
     session.add(source)
     session.flush()
-
     canonical_url = normalize_url(request.source_url)
     duplicate_query = (
         select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
@@ -163,14 +188,13 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
             title=duplicate.title,
             company=duplicate.company,
             location=duplicate.location,
-            recommendation=evaluation.recommendation,  # type: ignore[arg-type]
+            recommendation=evaluation.recommendation,
             confidence=evaluation.confidence,
             ranking_score=evaluation.ranking_score,
             reasons=json.loads(evaluation.reasons_json),
             profile_version_id=evaluation.profile_version_id,
             engine_version=evaluation.engine_version,
         )
-
     parsed = parse_manual_text(request.raw_text)
     posting = Posting(
         id=str(uuid4()),
@@ -199,7 +223,6 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
     )
     session.add(evaluation)
     session.commit()
-
     return IntakeResponse(
         source_document_id=source.id,
         posting_id=posting.id,
@@ -208,7 +231,7 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
         title=posting.title,
         company=posting.company,
         location=posting.location,
-        recommendation=recommendation,  # type: ignore[arg-type]
+        recommendation=recommendation,
         confidence=confidence,
         ranking_score=score,
         reasons=reasons,
@@ -243,6 +266,161 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
     )
 
 
+def _application_response(session: Session, application: Application) -> ApplicationResponse:
+    events = session.scalars(
+        select(ApplicationEvent)
+        .where(ApplicationEvent.application_id == application.id)
+        .order_by(ApplicationEvent.occurred_at)
+    ).all()
+    outcome = session.scalar(select(Outcome).where(Outcome.application_id == application.id))
+    return ApplicationResponse(
+        application_id=application.id,
+        posting_id=application.posting_id,
+        status=application.status,
+        application_url=application.application_url,
+        resume_used=application.resume_used,
+        notes=application.notes,
+        outcome_type=outcome.outcome_type if outcome else None,
+        events=[
+            ApplicationEventResponse(
+                event_id=event.id,
+                event_type=event.event_type,
+                from_status=event.from_status,
+                to_status=event.to_status,
+                notes=event.notes,
+                occurred_at=event.occurred_at.isoformat(),
+            )
+            for event in events
+        ],
+    )
+
+
+def create_application(
+    session: Session, posting_id: str, request: ApplicationCreateRequest
+) -> ApplicationResponse:
+    posting = session.get(Posting, posting_id)
+    if posting is None:
+        raise LookupError("Posting was not found.")
+    latest_review = session.scalar(
+        select(ReviewDecision)
+        .where(ReviewDecision.posting_id == posting_id)
+        .order_by(ReviewDecision.reviewed_at.desc())
+    )
+    if latest_review is None or latest_review.decision != "pursue":
+        raise ValueError("An application can only be created after a pursue decision.")
+    existing = session.scalar(select(Application).where(Application.posting_id == posting_id))
+    if existing is not None:
+        return _application_response(session, existing)
+    now = utc_now()
+    application = Application(
+        id=str(uuid4()),
+        posting_id=posting_id,
+        status="preparing",
+        application_url=request.application_url,
+        resume_used=request.resume_used,
+        notes=request.notes,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(application)
+    session.flush()
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="application_created",
+            from_status="",
+            to_status="preparing",
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
+    session.commit()
+    return _application_response(session, application)
+
+
+def transition_application(
+    session: Session, application_id: str, request: ApplicationTransitionRequest
+) -> ApplicationResponse:
+    application = session.get(Application, application_id)
+    if application is None:
+        raise LookupError("Application was not found.")
+    allowed = ALLOWED_TRANSITIONS.get(application.status, set())
+    if request.status not in allowed:
+        raise ValueError(f"Invalid transition from {application.status} to {request.status}.")
+    previous = application.status
+    now = utc_now()
+    application.status = request.status
+    application.updated_at = now
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="status_changed",
+            from_status=previous,
+            to_status=request.status,
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
+    session.commit()
+    return _application_response(session, application)
+
+
+def record_outcome(
+    session: Session, application_id: str, request: OutcomeRequest
+) -> ApplicationResponse:
+    application = session.get(Application, application_id)
+    if application is None:
+        raise LookupError("Application was not found.")
+    existing = session.scalar(select(Outcome).where(Outcome.application_id == application_id))
+    if existing is not None:
+        raise ValueError("This application already has an outcome.")
+    terminal_status = {
+        "rejected_by_employer": "rejected",
+        "withdrawn_by_user": "withdrawn",
+        "no_response": "no_response",
+        "offer_declined": "closed",
+        "offer_accepted": "closed",
+        "role_closed": "closed",
+    }[request.outcome_type]
+    previous = application.status
+    now = utc_now()
+    application.status = terminal_status
+    application.updated_at = now
+    outcome = Outcome(
+        id=str(uuid4()),
+        posting_id=application.posting_id,
+        application_id=application.id,
+        outcome_type=request.outcome_type,
+        stage_reached=previous,
+        reason_code=request.reason_code,
+        notes=request.notes,
+        recorded_at=now,
+    )
+    session.add(outcome)
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="outcome_recorded",
+            from_status=previous,
+            to_status=terminal_status,
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
+    session.commit()
+    return _application_response(session, application)
+
+
+def get_application(session: Session, application_id: str) -> ApplicationResponse:
+    application = session.get(Application, application_id)
+    if application is None:
+        raise LookupError("Application was not found.")
+    return _application_response(session, application)
+
+
 def list_opportunities(session: Session) -> list[OpportunitySummary]:
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     results: list[OpportunitySummary] = []
@@ -259,15 +437,26 @@ def list_opportunities(session: Session) -> list[OpportunitySummary]:
             .where(ReviewDecision.posting_id == posting.id)
             .order_by(ReviewDecision.reviewed_at.desc())
         )
+        application = session.scalar(
+            select(Application).where(Application.posting_id == posting.id)
+        )
+        outcome = (
+            session.scalar(select(Outcome).where(Outcome.application_id == application.id))
+            if application
+            else None
+        )
         results.append(
             OpportunitySummary(
                 posting_id=posting.id,
                 title=posting.title,
                 company=posting.company,
                 location=posting.location,
-                recommendation=evaluation.recommendation,  # type: ignore[arg-type]
+                recommendation=evaluation.recommendation,
                 ranking_score=evaluation.ranking_score,
-                review_decision=review.decision if review else None,  # type: ignore[arg-type]
+                review_decision=review.decision if review else None,
+                application_id=application.id if application else None,
+                application_status=application.status if application else None,
+                outcome_type=outcome.outcome_type if outcome else None,
             )
         )
     return results

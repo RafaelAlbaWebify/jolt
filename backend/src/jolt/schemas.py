@@ -6,6 +6,28 @@ from pydantic import BaseModel, Field
 
 ReviewChoice = Literal["pursue", "consider", "defer", "reject", "needs_more_information"]
 Recommendation = Literal["pursue", "consider", "reject"]
+ApplicationStatus = Literal[
+    "preparing",
+    "submitted",
+    "acknowledged",
+    "recruiter_screen",
+    "technical_interview",
+    "hiring_manager_interview",
+    "final_interview",
+    "offer",
+    "rejected",
+    "withdrawn",
+    "no_response",
+    "closed",
+]
+OutcomeType = Literal[
+    "rejected_by_employer",
+    "withdrawn_by_user",
+    "no_response",
+    "offer_declined",
+    "offer_accepted",
+    "role_closed",
+]
 
 
 class ManualIntakeRequest(BaseModel):
@@ -23,7 +45,7 @@ class IntakeResponse(BaseModel):
     title: str
     company: str
     location: str
-    recommendation: Recommendation
+    recommendation: str
     confidence: str
     ranking_score: int
     reasons: list[str]
@@ -46,11 +68,51 @@ class ReviewResponse(BaseModel):
     evaluation_overridden: bool
 
 
+class ApplicationCreateRequest(BaseModel):
+    application_url: str = ""
+    resume_used: str = ""
+    notes: str = ""
+
+
+class ApplicationTransitionRequest(BaseModel):
+    status: ApplicationStatus
+    notes: str = ""
+
+
+class OutcomeRequest(BaseModel):
+    outcome_type: OutcomeType
+    reason_code: str = ""
+    notes: str = ""
+
+
+class ApplicationEventResponse(BaseModel):
+    event_id: str
+    event_type: str
+    from_status: str
+    to_status: str
+    notes: str
+    occurred_at: str
+
+
+class ApplicationResponse(BaseModel):
+    application_id: str
+    posting_id: str
+    status: str
+    application_url: str
+    resume_used: str
+    notes: str
+    outcome_type: str | None = None
+    events: list[ApplicationEventResponse]
+
+
 class OpportunitySummary(BaseModel):
     posting_id: str
     title: str
     company: str
     location: str
-    recommendation: Recommendation
+    recommendation: str
     ranking_score: int
-    review_decision: ReviewChoice | None = None
+    review_decision: str | None = None
+    application_id: str | None = None
+    application_status: str | None = None
+    outcome_type: str | None = None
