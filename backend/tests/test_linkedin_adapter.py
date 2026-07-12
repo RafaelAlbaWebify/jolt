@@ -35,5 +35,7 @@ def test_stale_detail_panel_is_rejected() -> None:
     stale = adapter.parse_detail_page(html, run.listings[1])
 
     assert stale.identity_verified is False
-    assert any("does not match expected 4435000001" in reason for reason in stale.verification_reasons)
+    assert any(
+        "does not match expected 4435000001" in reason for reason in stale.verification_reasons
+    )
     assert any("does not match listing title" in reason for reason in stale.verification_reasons)

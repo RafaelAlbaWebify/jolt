@@ -96,7 +96,9 @@ class LinkedInFixtureAdapter:
         warnings: list[str] = []
         seen_ids: set[str] = set()
 
-        for position, card in enumerate(root.find_all(class_name="jobs-search-results__list-item"), 1):
+        for position, card in enumerate(
+            root.find_all(class_name="jobs-search-results__list-item"), 1
+        ):
             anchor = card.find_first(tag="a", class_name="job-card-list__title")
             if anchor is None:
                 warnings.append(f"Listing position {position} has no title link.")
@@ -179,7 +181,9 @@ class LinkedInFixtureAdapter:
                 f"Detail job ID {source_job_id or '<missing>'} does not match expected {expected.source_job_id}."
             )
         if title.casefold() != expected.title.casefold():
-            reasons.append(f"Detail title '{title}' does not match listing title '{expected.title}'.")
+            reasons.append(
+                f"Detail title '{title}' does not match listing title '{expected.title}'."
+            )
         if expected.company and company.casefold() != expected.company.casefold():
             reasons.append(
                 f"Detail company '{company}' does not match listing company '{expected.company}'."

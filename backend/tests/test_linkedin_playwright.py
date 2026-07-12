@@ -21,7 +21,5 @@ def test_detail_panel_changes_to_selected_job_identity() -> None:
         expect(detail.locator(".jobs-unified-top-card__job-title")).to_have_text(
             "Production Support Engineer"
         )
-        expect(detail.locator(".jobs-unified-top-card__company-name")).to_have_text(
-            "Factory Cloud"
-        )
+        expect(detail.locator(".jobs-unified-top-card__company-name")).to_have_text("Factory Cloud")
         browser.close()
