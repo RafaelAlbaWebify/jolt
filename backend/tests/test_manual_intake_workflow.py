@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-
 from jolt.main import create_app
 
 
@@ -18,7 +17,8 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
             "Application Support Engineer\n"
             "Example Systems\n"
             "Location: Remote Spain\n"
-            "Provide application support, SQL troubleshooting, incident ownership, and API analysis."
+            "Provide application support, SQL troubleshooting, incident ownership, "
+            "and API analysis."
         ),
     }
 
