@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from fastapi import Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from jolt.database import create_session_factory
 from jolt.schemas import IntakeResponse, ManualIntakeRequest, OpportunitySummary, ReviewRequest, ReviewResponse
@@ -12,7 +14,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app = FastAPI(title="JOLT API", version="0.2.0")
     session_factory = create_session_factory(database_url)
 
-    def get_session() -> Session:
+    def get_session() -> Iterator[Session]:
         session = session_factory()
         try:
             yield session
