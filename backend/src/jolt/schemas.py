@@ -89,7 +89,7 @@ class ApplicationEventResponse(BaseModel):
     event_id: str
     event_type: str
     from_status: str
-    to_status: ApplicationStatus
+    to_status: str
     notes: str
     occurred_at: str
 
@@ -97,11 +97,11 @@ class ApplicationEventResponse(BaseModel):
 class ApplicationResponse(BaseModel):
     application_id: str
     posting_id: str
-    status: ApplicationStatus
+    status: str
     application_url: str
     resume_used: str
     notes: str
-    outcome_type: OutcomeType | None = None
+    outcome_type: str | None = None
     events: list[ApplicationEventResponse]
 
 
@@ -114,5 +114,5 @@ class OpportunitySummary(BaseModel):
     ranking_score: int
     review_decision: ReviewChoice | None = None
     application_id: str | None = None
-    application_status: ApplicationStatus | None = None
-    outcome_type: OutcomeType | None = None
+    application_status: str | None = None
+    outcome_type: str | None = None
