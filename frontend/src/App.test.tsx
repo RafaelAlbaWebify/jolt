@@ -49,7 +49,7 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Evaluate opportunity" }));
 
-    expect(await screen.findByRole("heading", { name: opportunity.title })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: opportunity.title, level: 2 })).toBeInTheDocument();
     expect(screen.getByText("Rule score 83 · medium confidence")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "pursue" }));
