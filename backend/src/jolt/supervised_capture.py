@@ -41,7 +41,9 @@ def utc_stamp() -> str:
 
 def redact_text(value: str) -> str:
     value = re.sub(r"(?i)(authorization\s*:\s*bearer\s+)[^\s\"']+", r"\1[REDACTED]", value)
-    value = re.sub(r"(?i)(csrf|token|session|cookie)([\"'=:\s]+)[^\s\"'<>]+", r"\1\2[REDACTED]", value)
+    value = re.sub(
+        r"(?i)(csrf|token|session|cookie)([\"'=:\s]+)[^\s\"'<>]+", r"\1\2[REDACTED]", value
+    )
     value = re.sub(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", "[REDACTED_EMAIL]", value, flags=re.I)
     value = re.sub(r"(?<!\d)(?:\+?\d[\d .()-]{7,}\d)(?!\d)", "[REDACTED_PHONE]", value)
     return value
@@ -135,7 +137,9 @@ def capture_visible_cards(page: Page, max_jobs: int, evidence_dir: Path) -> list
 
         verified = wait_for_expected_detail(page, source_job_id)
         detail_html = page.content() if verified else ""
-        reason = "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        reason = (
+            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        )
         page.screenshot(path=evidence_dir / f"job_{source_job_id}.png", full_page=False)
         captured.append(
             CapturedCard(
@@ -152,7 +156,9 @@ def capture_visible_cards(page: Page, max_jobs: int, evidence_dir: Path) -> list
     return captured
 
 
-def submit_capture(api_url: str, listing_html: str, cards: list[CapturedCard], search_url: str) -> dict[str, Any]:
+def submit_capture(
+    api_url: str, listing_html: str, cards: list[CapturedCard], search_url: str
+) -> dict[str, Any]:
     detail_map = {
         card.source_job_id: card.detail_html
         for card in cards
@@ -215,7 +221,9 @@ def run_capture(
 
             if pause_for_login:
                 print("LinkedIn is open in a persistent local browser profile.")
-                print("Log in manually if needed, apply the desired search filters, then return here.")
+                print(
+                    "Log in manually if needed, apply the desired search filters, then return here."
+                )
                 input("Press Enter to start the bounded capture: ")
 
             page.wait_for_selector(CARD_SELECTOR, timeout=60_000)

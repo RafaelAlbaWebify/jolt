@@ -29,7 +29,10 @@ def test_redaction_and_job_identity_helpers() -> None:
     assert "+34 600 123 456" not in redacted
     assert "abcdef" not in redacted
     assert extract_job_id(raw) == "4434979232"
-    assert extract_job_id("https://www.linkedin.com/jobs/search/?currentJobId=4435000001") == "4435000001"
+    assert (
+        extract_job_id("https://www.linkedin.com/jobs/search/?currentJobId=4435000001")
+        == "4435000001"
+    )
 
 
 def test_bounded_browser_capture_verifies_fixture_details(tmp_path: Path) -> None:
