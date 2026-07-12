@@ -6,7 +6,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 
 
 class Base(DeclarativeBase):
