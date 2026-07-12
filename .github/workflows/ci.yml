@@ -90,3 +90,37 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+
+  windows-scripts:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse permanent PowerShell commands
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem tools -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              Write-Error "$($_.Name): $($errors | Out-String)"
+            }
+          }
+          if ($failed) { exit 1 }
+      - name: Validate command contracts
+        shell: pwsh
+        run: |
+          $start = Get-Content tools/start-jolt.ps1 -Raw
+          $stop = Get-Content tools/stop-jolt.ps1 -Raw
+          $validate = Get-Content tools/validate-jolt.ps1 -Raw
+          if ($start -notmatch 'alembic upgrade head') { throw 'Startup must apply migrations.' }
+          if ($start -notmatch 'Wait-HttpEndpoint') { throw 'Startup must wait for services.' }
+          if ($start -notmatch 'run-linkedin-capture.ps1') { throw 'Startup must integrate supervised capture.' }
+          if ($stop -notmatch 'services.json') { throw 'Stop command must use recorded state.' }
+          if ($validate -notmatch 'JOLT_WINDOWS_VALIDATION_') { throw 'Validation must create a stable ZIP name.' }
