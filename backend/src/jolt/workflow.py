@@ -64,7 +64,12 @@ ALLOWED_TRANSITIONS = {
     "preparing": {"submitted", "withdrawn", "closed"},
     "submitted": {"acknowledged", "recruiter_screen", "rejected", "withdrawn", "no_response"},
     "acknowledged": {"recruiter_screen", "rejected", "withdrawn", "no_response"},
-    "recruiter_screen": {"technical_interview", "hiring_manager_interview", "rejected", "withdrawn"},
+    "recruiter_screen": {
+        "technical_interview",
+        "hiring_manager_interview",
+        "rejected",
+        "withdrawn",
+    },
     "technical_interview": {"hiring_manager_interview", "final_interview", "rejected", "withdrawn"},
     "hiring_manager_interview": {"final_interview", "offer", "rejected", "withdrawn"},
     "final_interview": {"offer", "rejected", "withdrawn"},
@@ -106,7 +111,9 @@ def parse_manual_text(raw_text: str) -> ParsedPosting:
         if match:
             location = match.group(1).strip()
             break
-    return ParsedPosting(title=title, company=company, location=location, description=raw_text.strip())
+    return ParsedPosting(
+        title=title, company=company, location=location, description=raw_text.strip()
+    )
 
 
 def ensure_default_profile(session: Session) -> ProfileVersion:
@@ -127,7 +134,9 @@ def ensure_default_profile(session: Session) -> ProfileVersion:
 
 def evaluate_text(text: str) -> tuple[str, str, int, list[str]]:
     lowered = text.lower()
-    blockers = [phrase for phrase in PROFILE_CONFIGURATION["hard_reject_phrases"] if phrase in lowered]
+    blockers = [
+        phrase for phrase in PROFILE_CONFIGURATION["hard_reject_phrases"] if phrase in lowered
+    ]
     matches = [term for term in PROFILE_CONFIGURATION["positive_terms"] if term in lowered]
     reasons: list[str] = []
     if blockers:
@@ -145,52 +154,89 @@ def evaluate_text(text: str) -> tuple[str, str, int, list[str]]:
 def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeResponse:
     content_hash = hashlib.sha256(request.raw_text.encode("utf-8")).hexdigest()
     source = SourceDocument(
-        id=str(uuid4()), source_type=request.source_type, source_url=request.source_url,
-        raw_text=request.raw_text, content_hash=content_hash, captured_at=utc_now()
+        id=str(uuid4()),
+        source_type=request.source_type,
+        source_url=request.source_url,
+        raw_text=request.raw_text,
+        content_hash=content_hash,
+        captured_at=utc_now(),
     )
     session.add(source)
     session.flush()
     canonical_url = normalize_url(request.source_url)
-    duplicate_query = select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
+    duplicate_query = (
+        select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
+    )
     if canonical_url:
         duplicate_query = select(Posting).where(Posting.canonical_url == canonical_url)
     duplicate = session.scalar(duplicate_query)
     if duplicate is not None:
         evaluation = session.scalar(
-            select(Evaluation).where(Evaluation.posting_id == duplicate.id).order_by(Evaluation.created_at.desc())
+            select(Evaluation)
+            .where(Evaluation.posting_id == duplicate.id)
+            .order_by(Evaluation.created_at.desc())
         )
         if evaluation is None:
             raise RuntimeError("Duplicate posting exists without an evaluation.")
         session.commit()
         return IntakeResponse(
-            source_document_id=source.id, posting_id=duplicate.id, evaluation_id=evaluation.id,
-            identity_status="confirmed_duplicate", duplicate_of_posting_id=duplicate.id,
-            title=duplicate.title, company=duplicate.company, location=duplicate.location,
-            recommendation=evaluation.recommendation, confidence=evaluation.confidence,
-            ranking_score=evaluation.ranking_score, reasons=json.loads(evaluation.reasons_json),
-            profile_version_id=evaluation.profile_version_id, engine_version=evaluation.engine_version,
+            source_document_id=source.id,
+            posting_id=duplicate.id,
+            evaluation_id=evaluation.id,
+            identity_status="confirmed_duplicate",
+            duplicate_of_posting_id=duplicate.id,
+            title=duplicate.title,
+            company=duplicate.company,
+            location=duplicate.location,
+            recommendation=evaluation.recommendation,
+            confidence=evaluation.confidence,
+            ranking_score=evaluation.ranking_score,
+            reasons=json.loads(evaluation.reasons_json),
+            profile_version_id=evaluation.profile_version_id,
+            engine_version=evaluation.engine_version,
         )
     parsed = parse_manual_text(request.raw_text)
     posting = Posting(
-        id=str(uuid4()), source_document_id=source.id, canonical_url=canonical_url,
-        title=parsed.title, company=parsed.company, location=parsed.location,
-        description=parsed.description, identity_status="new", created_at=utc_now()
+        id=str(uuid4()),
+        source_document_id=source.id,
+        canonical_url=canonical_url,
+        title=parsed.title,
+        company=parsed.company,
+        location=parsed.location,
+        description=parsed.description,
+        identity_status="new",
+        created_at=utc_now(),
     )
     session.add(posting)
     profile = ensure_default_profile(session)
     recommendation, confidence, score, reasons = evaluate_text(parsed.description)
     evaluation = Evaluation(
-        id=str(uuid4()), posting_id=posting.id, profile_version_id=profile.id,
-        engine_version=ENGINE_VERSION, recommendation=recommendation, confidence=confidence,
-        ranking_score=score, reasons_json=json.dumps(reasons), created_at=utc_now()
+        id=str(uuid4()),
+        posting_id=posting.id,
+        profile_version_id=profile.id,
+        engine_version=ENGINE_VERSION,
+        recommendation=recommendation,
+        confidence=confidence,
+        ranking_score=score,
+        reasons_json=json.dumps(reasons),
+        created_at=utc_now(),
     )
     session.add(evaluation)
     session.commit()
     return IntakeResponse(
-        source_document_id=source.id, posting_id=posting.id, evaluation_id=evaluation.id,
-        identity_status="new", title=posting.title, company=posting.company, location=posting.location,
-        recommendation=recommendation, confidence=confidence, ranking_score=score, reasons=reasons,
-        profile_version_id=profile.id, engine_version=ENGINE_VERSION,
+        source_document_id=source.id,
+        posting_id=posting.id,
+        evaluation_id=evaluation.id,
+        identity_status="new",
+        title=posting.title,
+        company=posting.company,
+        location=posting.location,
+        recommendation=recommendation,
+        confidence=confidence,
+        ranking_score=score,
+        reasons=reasons,
+        profile_version_id=profile.id,
+        engine_version=ENGINE_VERSION,
     )
 
 
@@ -200,15 +246,23 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
     if posting is None or evaluation is None or evaluation.posting_id != posting_id:
         raise LookupError("Posting or evaluation was not found.")
     review = ReviewDecision(
-        id=str(uuid4()), posting_id=posting_id, evaluation_id=evaluation.id,
-        decision=request.decision, reason_code=request.reason_code, notes=request.notes,
-        evaluation_overridden=request.decision != evaluation.recommendation, reviewed_at=utc_now()
+        id=str(uuid4()),
+        posting_id=posting_id,
+        evaluation_id=evaluation.id,
+        decision=request.decision,
+        reason_code=request.reason_code,
+        notes=request.notes,
+        evaluation_overridden=request.decision != evaluation.recommendation,
+        reviewed_at=utc_now(),
     )
     session.add(review)
     session.commit()
     return ReviewResponse(
-        review_id=review.id, posting_id=posting_id, evaluation_id=evaluation.id,
-        decision=request.decision, evaluation_overridden=review.evaluation_overridden,
+        review_id=review.id,
+        posting_id=posting_id,
+        evaluation_id=evaluation.id,
+        decision=request.decision,
+        evaluation_overridden=review.evaluation_overridden,
     )
 
 
@@ -259,16 +313,28 @@ def create_application(
         return _application_response(session, existing)
     now = utc_now()
     application = Application(
-        id=str(uuid4()), posting_id=posting_id, status="preparing",
-        application_url=request.application_url, resume_used=request.resume_used,
-        notes=request.notes, created_at=now, updated_at=now,
+        id=str(uuid4()),
+        posting_id=posting_id,
+        status="preparing",
+        application_url=request.application_url,
+        resume_used=request.resume_used,
+        notes=request.notes,
+        created_at=now,
+        updated_at=now,
     )
     session.add(application)
     session.flush()
-    session.add(ApplicationEvent(
-        id=str(uuid4()), application_id=application.id, event_type="application_created",
-        from_status="", to_status="preparing", notes=request.notes, occurred_at=now,
-    ))
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="application_created",
+            from_status="",
+            to_status="preparing",
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
     session.commit()
     return _application_response(session, application)
 
@@ -286,15 +352,24 @@ def transition_application(
     now = utc_now()
     application.status = request.status
     application.updated_at = now
-    session.add(ApplicationEvent(
-        id=str(uuid4()), application_id=application.id, event_type="status_changed",
-        from_status=previous, to_status=request.status, notes=request.notes, occurred_at=now,
-    ))
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="status_changed",
+            from_status=previous,
+            to_status=request.status,
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
     session.commit()
     return _application_response(session, application)
 
 
-def record_outcome(session: Session, application_id: str, request: OutcomeRequest) -> ApplicationResponse:
+def record_outcome(
+    session: Session, application_id: str, request: OutcomeRequest
+) -> ApplicationResponse:
     application = session.get(Application, application_id)
     if application is None:
         raise LookupError("Application was not found.")
@@ -314,15 +389,27 @@ def record_outcome(session: Session, application_id: str, request: OutcomeReques
     application.status = terminal_status
     application.updated_at = now
     outcome = Outcome(
-        id=str(uuid4()), posting_id=application.posting_id, application_id=application.id,
-        outcome_type=request.outcome_type, stage_reached=previous,
-        reason_code=request.reason_code, notes=request.notes, recorded_at=now,
+        id=str(uuid4()),
+        posting_id=application.posting_id,
+        application_id=application.id,
+        outcome_type=request.outcome_type,
+        stage_reached=previous,
+        reason_code=request.reason_code,
+        notes=request.notes,
+        recorded_at=now,
     )
     session.add(outcome)
-    session.add(ApplicationEvent(
-        id=str(uuid4()), application_id=application.id, event_type="outcome_recorded",
-        from_status=previous, to_status=terminal_status, notes=request.notes, occurred_at=now,
-    ))
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="outcome_recorded",
+            from_status=previous,
+            to_status=terminal_status,
+            notes=request.notes,
+            occurred_at=now,
+        )
+    )
     session.commit()
     return _application_response(session, application)
 
@@ -339,25 +426,37 @@ def list_opportunities(session: Session) -> list[OpportunitySummary]:
     results: list[OpportunitySummary] = []
     for posting in postings:
         evaluation = session.scalar(
-            select(Evaluation).where(Evaluation.posting_id == posting.id).order_by(Evaluation.created_at.desc())
+            select(Evaluation)
+            .where(Evaluation.posting_id == posting.id)
+            .order_by(Evaluation.created_at.desc())
         )
         if evaluation is None:
             continue
         review = session.scalar(
-            select(ReviewDecision).where(ReviewDecision.posting_id == posting.id).order_by(ReviewDecision.reviewed_at.desc())
+            select(ReviewDecision)
+            .where(ReviewDecision.posting_id == posting.id)
+            .order_by(ReviewDecision.reviewed_at.desc())
         )
-        application = session.scalar(select(Application).where(Application.posting_id == posting.id))
+        application = session.scalar(
+            select(Application).where(Application.posting_id == posting.id)
+        )
         outcome = (
             session.scalar(select(Outcome).where(Outcome.application_id == application.id))
-            if application else None
+            if application
+            else None
         )
-        results.append(OpportunitySummary(
-            posting_id=posting.id, title=posting.title, company=posting.company,
-            location=posting.location, recommendation=evaluation.recommendation,
-            ranking_score=evaluation.ranking_score,
-            review_decision=review.decision if review else None,
-            application_id=application.id if application else None,
-            application_status=application.status if application else None,
-            outcome_type=outcome.outcome_type if outcome else None,
-        ))
+        results.append(
+            OpportunitySummary(
+                posting_id=posting.id,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                recommendation=evaluation.recommendation,
+                ranking_score=evaluation.ranking_score,
+                review_decision=review.decision if review else None,
+                application_id=application.id if application else None,
+                application_status=application.status if application else None,
+                outcome_type=outcome.outcome_type if outcome else None,
+            )
+        )
     return results

@@ -45,7 +45,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["application_id"], ["applications.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_application_events_application_id", "application_events", ["application_id"])
+    op.create_index(
+        "ix_application_events_application_id", "application_events", ["application_id"]
+    )
 
     op.create_table(
         "outcomes",
