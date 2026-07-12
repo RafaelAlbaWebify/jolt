@@ -64,6 +64,9 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
             "recommendation": "pursue",
             "ranking_score": 83,
             "review_decision": "pursue",
+            "application_id": None,
+            "application_status": None,
+            "outcome_type": None,
         }
     ]
 
