@@ -53,6 +53,35 @@ class IntakeResponse(BaseModel):
     engine_version: str
 
 
+class LinkedInFixtureCaptureRequest(BaseModel):
+    listing_html: str = Field(min_length=1)
+    detail_html_by_job_id: dict[str, str]
+    search_url: str = ""
+    page_number: int = Field(default=1, ge=1)
+
+
+class CaptureItemResponse(BaseModel):
+    capture_item_id: str
+    source_job_id: str
+    detail_status: str
+    verification_reasons: list[str]
+    source_document_id: str | None = None
+    posting_id: str | None = None
+    identity_status: str | None = None
+
+
+class CaptureRunResponse(BaseModel):
+    capture_run_id: str
+    source: str
+    mode: str
+    status: str
+    search_url: str
+    warnings: list[str]
+    started_at: str
+    completed_at: str | None
+    items: list[CaptureItemResponse]
+
+
 class ReviewRequest(BaseModel):
     evaluation_id: str
     decision: ReviewChoice
