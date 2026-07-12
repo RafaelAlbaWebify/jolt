@@ -43,6 +43,13 @@ describe("App", () => {
 
     render(<App />);
 
+    const exportLink = screen.getByRole("link", { name: "Download analysis pack" });
+    expect(exportLink).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/api/exports/analysis-pack",
+    );
+    expect(exportLink).toHaveAttribute("download", "JOLT_ANALYSIS_PACK.zip");
+
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText("Job text"), {
       target: { value: "Application Support Engineer\nExample Systems\nLocation: Remote Spain" },

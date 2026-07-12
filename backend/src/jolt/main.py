@@ -1,10 +1,13 @@
 from collections.abc import Iterator
+from io import BytesIO
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.analysis_pack import build_analysis_pack
 from jolt.database import create_session_factory
 from jolt.schemas import (
     ApplicationCreateRequest,
@@ -31,7 +34,7 @@ LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    app = FastAPI(title="JOLT API", version="0.4.0")
+    app = FastAPI(title="JOLT API", version="0.5.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=LOCAL_FRONTEND_ORIGINS,
@@ -50,7 +53,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "jolt-backend", "version": "0.4.0"}
+        return {"status": "ok", "service": "jolt-backend", "version": "0.5.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
@@ -144,6 +147,17 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> list[OpportunitySummary]:
         return list_opportunities(session)
+
+    @app.get("/api/exports/analysis-pack", tags=["exports"])
+    def analysis_pack(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        content = build_analysis_pack(session)
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=JOLT_ANALYSIS_PACK.zip"},
+        )
 
     return app
 
