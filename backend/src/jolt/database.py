@@ -6,14 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    Session,
-    mapped_column,
-    relationship,
-    sessionmaker,
-)
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 
 class Base(DeclarativeBase):
@@ -82,6 +75,46 @@ class ReviewDecision(Base):
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     evaluation_overridden: Mapped[bool] = mapped_column(default=False, nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    posting_id: Mapped[str] = mapped_column(ForeignKey("postings.id"), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    application_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    resume_used: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ApplicationEvent(Base):
+    __tablename__ = "application_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    application_id: Mapped[str] = mapped_column(ForeignKey("applications.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    from_status: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    to_status: Mapped[str] = mapped_column(String(40), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Outcome(Base):
+    __tablename__ = "outcomes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    posting_id: Mapped[str] = mapped_column(ForeignKey("postings.id"), index=True)
+    application_id: Mapped[str | None] = mapped_column(
+        ForeignKey("applications.id"), unique=True, nullable=True, index=True
+    )
+    outcome_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    stage_reached: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(80), default="", nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 def default_database_url() -> str:
