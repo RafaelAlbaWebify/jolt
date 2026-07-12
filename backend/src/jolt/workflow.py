@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from jolt.database import (
     Evaluation,
     Posting,
@@ -22,8 +25,6 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 PROFILE_ID = "default-job-search"
 PROFILE_VERSION_ID = "default-job-search:v1"
