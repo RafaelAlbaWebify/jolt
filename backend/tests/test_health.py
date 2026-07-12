@@ -3,8 +3,9 @@ from fastapi.testclient import TestClient
 from jolt.main import create_app
 
 
-def test_health_endpoint() -> None:
-    client = TestClient(create_app())
+def test_health_endpoint(tmp_path) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'health.db').as_posix()}"
+    client = TestClient(create_app(database_url))
 
     response = client.get("/api/health")
 
@@ -12,5 +13,5 @@ def test_health_endpoint() -> None:
     assert response.json() == {
         "status": "ok",
         "service": "jolt-backend",
-        "version": "0.1.0",
+        "version": "0.2.0",
     }
