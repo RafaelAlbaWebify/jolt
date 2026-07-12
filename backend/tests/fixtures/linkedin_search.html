@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>LinkedIn fixture</title></head>
+<body>
+  <main>
+    <ul id="results">
+      <li class="jobs-search-results__list-item" data-job-id="4434979232">
+        <a class="job-card-list__title" href="https://www.linkedin.com/jobs/view/4434979232/?currentJobId=4434979232&trk=test">Application Support Engineer</a>
+        <div class="job-card-container__primary-description">Example Systems</div>
+        <span class="job-card-container__metadata-item">Remote · Spain</span>
+        <span class="job-card-container__footer-item">Promoted</span>
+      </li>
+      <li class="jobs-search-results__list-item" data-job-id="4435000001">
+        <a class="job-card-list__title" href="https://www.linkedin.com/jobs/view/4435000001/">Production Support Engineer</a>
+        <div class="job-card-container__primary-description">Factory Cloud</div>
+        <span class="job-card-container__metadata-item">European Union · Remote</span>
+      </li>
+    </ul>
+    <section id="detail" class="jobs-search__job-details--container" data-job-id="4434979232">
+      <a class="jobs-unified-top-card__job-title-link" href="https://www.linkedin.com/jobs/view/4434979232/">Application Support Engineer</a>
+      <h1 class="jobs-unified-top-card__job-title">Application Support Engineer</h1>
+      <div class="jobs-unified-top-card__company-name">Example Systems</div>
+      <span class="jobs-unified-top-card__bullet">Remote · Spain</span>
+      <div class="jobs-description-content__text">Own SQL-backed application incidents, logs, API troubleshooting, and escalation evidence.</div>
+    </section>
+    <button class="artdeco-pagination__button--next" type="button">Next</button>
+  </main>
+  <script>
+    const jobs = {
+      "4434979232": {
+        title: "Application Support Engineer",
+        company: "Example Systems",
+        location: "Remote · Spain",
+        description: "Own SQL-backed application incidents, logs, API troubleshooting, and escalation evidence."
+      },
+      "4435000001": {
+        title: "Production Support Engineer",
+        company: "Factory Cloud",
+        location: "European Union · Remote",
+        description: "Support production services, investigate incidents, and coordinate technical recovery."
+      }
+    };
+    document.querySelectorAll(".jobs-search-results__list-item").forEach((card) => {
+      card.querySelector("a").addEventListener("click", (event) => {
+        event.preventDefault();
+        const id = card.dataset.jobId;
+        const job = jobs[id];
+        setTimeout(() => {
+          const panel = document.querySelector("#detail");
+          panel.dataset.jobId = id;
+          panel.querySelector(".jobs-unified-top-card__job-title-link").href = `https://www.linkedin.com/jobs/view/${id}/`;
+          panel.querySelector(".jobs-unified-top-card__job-title-link").textContent = job.title;
+          panel.querySelector(".jobs-unified-top-card__job-title").textContent = job.title;
+          panel.querySelector(".jobs-unified-top-card__company-name").textContent = job.company;
+          panel.querySelector(".jobs-unified-top-card__bullet").textContent = job.location;
+          panel.querySelector(".jobs-description-content__text").textContent = job.description;
+        }, 75);
+      });
+    });
+  </script>
+</body>
+</html>
