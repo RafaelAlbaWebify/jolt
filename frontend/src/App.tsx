@@ -1,4 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 
 export type Opportunity = {
   posting_id: string;
