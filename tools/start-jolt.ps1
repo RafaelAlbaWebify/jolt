@@ -16,8 +16,10 @@ $FrontendRoot = Join-Path $RepoRoot "frontend"
 $RuntimeRoot = Join-Path $RepoRoot ".jolt"
 $LogRoot = Join-Path $RuntimeRoot "logs"
 $StatePath = Join-Path $RuntimeRoot "services.json"
-$BackendLog = Join-Path $LogRoot "backend.log"
-$FrontendLog = Join-Path $LogRoot "frontend.log"
+$BackendOutLog = Join-Path $LogRoot "backend.out.log"
+$BackendErrLog = Join-Path $LogRoot "backend.err.log"
+$FrontendOutLog = Join-Path $LogRoot "frontend.out.log"
+$FrontendErrLog = Join-Path $LogRoot "frontend.err.log"
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
 
@@ -63,7 +65,7 @@ Assert-Command -Name "node"
 Assert-Command -Name "npm"
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot | Out-Null
-Remove-Item $BackendLog, $FrontendLog -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
 
 if (Test-Path $StatePath) {
     & (Join-Path $PSScriptRoot "stop-jolt.ps1")
@@ -96,8 +98,8 @@ try {
     $backendProcess = Start-Process -FilePath "uv" `
         -ArgumentList @("run", "uvicorn", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
         -WorkingDirectory $BackendRoot `
-        -RedirectStandardOutput $BackendLog `
-        -RedirectStandardError $BackendLog `
+        -RedirectStandardOutput $BackendOutLog `
+        -RedirectStandardError $BackendErrLog `
         -PassThru `
         -WindowStyle Hidden
 
@@ -105,8 +107,8 @@ try {
     $frontendProcess = Start-Process -FilePath "npm.cmd" `
         -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", "5173") `
         -WorkingDirectory $FrontendRoot `
-        -RedirectStandardOutput $FrontendLog `
-        -RedirectStandardError $FrontendLog `
+        -RedirectStandardOutput $FrontendOutLog `
+        -RedirectStandardError $FrontendErrLog `
         -PassThru `
         -WindowStyle Hidden
 
