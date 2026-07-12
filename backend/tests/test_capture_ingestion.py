@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -78,7 +80,10 @@ def test_fixture_capture_persists_evidence_and_ingests_only_verified_details(tmp
     assert verified_item["identity_status"] == "new"
     assert rejected_item["detail_status"] == "rejected_unverified"
     assert rejected_item["posting_id"] is None
-    assert any("does not match expected 4435000001" in reason for reason in rejected_item["verification_reasons"])
+    assert any(
+        "does not match expected 4435000001" in reason
+        for reason in rejected_item["verification_reasons"]
+    )
 
     opportunities = client.get("/api/opportunities").json()
     assert len(opportunities) == 1
