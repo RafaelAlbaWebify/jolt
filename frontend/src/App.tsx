@@ -109,6 +109,14 @@ export function App() {
 
       {error && <p className="error" role="alert">{error}</p>}
 
+      <section className="panel" aria-labelledby="export-heading">
+        <h2 id="export-heading">Analysis and feedback</h2>
+        <p>Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.</p>
+        <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
+          Download analysis pack
+        </a>
+      </section>
+
       <section className="panel" aria-labelledby="intake-heading">
         <h2 id="intake-heading">Manual opportunity intake</h2>
         <form onSubmit={submitIntake}>
