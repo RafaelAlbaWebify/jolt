@@ -1,0 +1,123 @@
+name: Temporary capture history patch
+
+on:
+  push:
+    branches: [feature/capture-history-diagnostics]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/capture-history-diagnostics
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.14"
+      - name: Patch analysis pack and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/src/jolt/analysis_pack.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '    ApplicationEvent,\n    Evaluation,',
+              '    ApplicationEvent,\n    CaptureItem,\n    CapturePage,\n    CaptureRun,\n    Evaluation,'
+          )
+          text = text.replace(
+              '    outcomes = session.scalars(select(Outcome).order_by(Outcome.recorded_at)).all()\n\n    return {',
+              '    outcomes = session.scalars(select(Outcome).order_by(Outcome.recorded_at)).all()\n'
+              '    capture_runs = session.scalars(select(CaptureRun).order_by(CaptureRun.started_at)).all()\n'
+              '    capture_pages = session.scalars(select(CapturePage).order_by(CapturePage.page_number)).all()\n'
+              '    capture_items = session.scalars(select(CaptureItem).order_by(CaptureItem.source_job_id)).all()\n\n'
+              '    return {'
+          )
+          marker = '        "source_documents": ['
+          addition = '''        "capture_runs": [
+            {
+                "id": item.id,
+                "source": item.source,
+                "mode": item.mode,
+                "status": item.status,
+                "search_url": item.search_url,
+                "warnings": json.loads(item.warnings_json),
+                "started_at": _iso(item.started_at),
+                "completed_at": _iso(item.completed_at) if item.completed_at else None,
+            }
+            for item in capture_runs
+        ],
+        "capture_pages": [
+            {
+                "id": item.id,
+                "capture_run_id": item.capture_run_id,
+                "page_number": item.page_number,
+                "visible_job_ids": json.loads(item.visible_job_ids_json),
+                "next_control_present": item.next_control_present,
+                "next_control_enabled": item.next_control_enabled,
+            }
+            for item in capture_pages
+        ],
+        "capture_items": [
+            {
+                "id": item.id,
+                "capture_run_id": item.capture_run_id,
+                "source_job_id": item.source_job_id,
+                "source_url": item.source_url,
+                "title": item.title,
+                "company": item.company,
+                "location": item.location,
+                "detail_status": item.detail_status,
+                "verification_reasons": json.loads(item.verification_reasons_json),
+                "source_document_id": item.source_document_id,
+                "posting_id": item.posting_id,
+            }
+            for item in capture_items
+        ],
+'''
+          text = text.replace(marker, addition + marker)
+          text = text.replace(
+              '        f"- Captured source documents: {len(data[\'source_documents\'])}",',
+              '        f"- Capture runs: {len(data[\'capture_runs\'])}",\n'
+              '        f"- Capture items: {len(data[\'capture_items\'])}",\n'
+              '        f"- Rejected capture items: {sum(1 for row in data[\'capture_items\'] if row[\'detail_status\'] != \'verified\')}",\n'
+              '        f"- Captured source documents: {len(data[\'source_documents\'])}",'
+          )
+          text = text.replace(
+              '        "data/opportunities.csv": _csv_bytes(',
+              '''        "data/capture_runs.csv": _csv_bytes(
+            data["capture_runs"],
+            ["id", "source", "mode", "status", "search_url", "started_at", "completed_at"],
+        ),
+        "data/capture_items.csv": _csv_bytes(
+            data["capture_items"],
+            [
+                "id", "capture_run_id", "source_job_id", "source_url", "title", "company",
+                "location", "detail_status", "source_document_id", "posting_id",
+            ],
+        ),
+        "data/opportunities.csv": _csv_bytes('''
+          )
+          path.write_text(text, encoding='utf-8')
+
+          health = Path('backend/tests/test_health.py')
+          health_text = health.read_text(encoding='utf-8').replace('"version": "0.6.0"', '"version": "0.7.0"')
+          health.write_text(health_text, encoding='utf-8')
+          PY
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          uv python install 3.12
+          uv sync --all-groups
+      - name: Format backend
+        working-directory: backend
+        run: uv run ruff format .
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git diff --cached --quiet || git commit -m "feat: include capture diagnostics in analysis pack"
+          git push origin HEAD:feature/capture-history-diagnostics
