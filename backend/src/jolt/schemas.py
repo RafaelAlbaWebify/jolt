@@ -45,7 +45,7 @@ class IntakeResponse(BaseModel):
     title: str
     company: str
     location: str
-    recommendation: Recommendation
+    recommendation: str
     confidence: str
     ranking_score: int
     reasons: list[str]
@@ -110,9 +110,9 @@ class OpportunitySummary(BaseModel):
     title: str
     company: str
     location: str
-    recommendation: Recommendation
+    recommendation: str
     ranking_score: int
-    review_decision: ReviewChoice | None = None
+    review_decision: str | None = None
     application_id: str | None = None
     application_status: str | None = None
     outcome_type: str | None = None
