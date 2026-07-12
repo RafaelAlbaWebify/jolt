@@ -1,0 +1,32 @@
+name: Temporary local capture safety cleanup
+
+on:
+  push:
+    branches: [feature/supervised-linkedin-local-runner]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/supervised-linkedin-local-runner
+      - name: Remove browser fingerprint modification
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/src/jolt/supervised_capture.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('                args=["--disable-blink-features=AutomationControlled"],\n', '')
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/jolt/supervised_capture.py
+          git diff --cached --quiet || git commit -m "safety: avoid browser fingerprint modification"
+          git push origin HEAD:feature/supervised-linkedin-local-runner
