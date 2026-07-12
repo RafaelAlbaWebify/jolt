@@ -28,8 +28,6 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             session.close()
 
-    SessionDependency = Annotated[Session, Depends(get_session)]
-
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "jolt-backend", "version": "0.2.0"}
@@ -37,7 +35,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
         request: ManualIntakeRequest,
-        session: SessionDependency,
+        session: Annotated[Session, Depends(get_session)],
     ) -> IntakeResponse:
         return ingest_manual(session, request)
 
@@ -49,7 +47,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     def create_review(
         posting_id: str,
         request: ReviewRequest,
-        session: SessionDependency,
+        session: Annotated[Session, Depends(get_session)],
     ) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
@@ -57,7 +55,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
-    def opportunities(session: SessionDependency) -> list[OpportunitySummary]:
+    def opportunities(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[OpportunitySummary]:
         return list_opportunities(session)
 
     return app
