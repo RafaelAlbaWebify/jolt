@@ -31,6 +31,50 @@ class SourceDocument(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class CaptureRun(Base):
+    __tablename__ = "capture_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    search_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    warnings_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CapturePage(Base):
+    __tablename__ = "capture_pages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    capture_run_id: Mapped[str] = mapped_column(ForeignKey("capture_runs.id"), index=True)
+    page_number: Mapped[int] = mapped_column(nullable=False)
+    visible_job_ids_json: Mapped[str] = mapped_column(Text, nullable=False)
+    next_control_present: Mapped[bool] = mapped_column(nullable=False)
+    next_control_enabled: Mapped[bool] = mapped_column(nullable=False)
+
+
+class CaptureItem(Base):
+    __tablename__ = "capture_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    capture_run_id: Mapped[str] = mapped_column(ForeignKey("capture_runs.id"), index=True)
+    source_job_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    company: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    location: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    detail_status: Mapped[str] = mapped_column(String(40), nullable=False)
+    verification_reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    source_document_id: Mapped[str | None] = mapped_column(
+        ForeignKey("source_documents.id"), nullable=True, index=True
+    )
+    posting_id: Mapped[str | None] = mapped_column(
+        ForeignKey("postings.id"), nullable=True, index=True
+    )
+
+
 class ProfileVersion(Base):
     __tablename__ = "profile_versions"
 

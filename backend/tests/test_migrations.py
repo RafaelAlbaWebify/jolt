@@ -18,8 +18,14 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
     assert {
         "alembic_version",
         "source_documents",
+        "capture_runs",
+        "capture_pages",
+        "capture_items",
         "profile_versions",
         "postings",
         "evaluations",
         "review_decisions",
+        "applications",
+        "application_events",
+        "outcomes",
     }.issubset(tables)
