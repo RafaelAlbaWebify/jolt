@@ -8,21 +8,70 @@ This repository is a clean rebuild. The legacy `jolt-job-tracker` repository is 
 
 ## Current capability
 
-JOLT now has a tested local manual-intake workflow:
+JOLT now supports:
 
 ```text
-paste job text
+manual or verified LinkedIn evidence
 → preserve source evidence
-→ normalize the posting
-→ detect duplicates
+→ normalize and deduplicate the posting
 → evaluate with a versioned profile
 → record a separate human decision
-→ retain the opportunity in SQLite
+→ track the application and outcome
+→ retain capture diagnostics in SQLite
+→ export the complete evidence chain
 ```
 
 The current evaluation rules are deliberately small and provisional. They prove the architecture; they are not yet claimed to represent a complete job-search strategy.
 
-## Local development
+## Controlled Windows startup
+
+Prerequisites available in `PATH`:
+
+- Git
+- Node.js 22 or later
+- npm
+- `uv`
+
+From the repository root:
+
+```powershell
+.\tools\start-jolt.ps1
+```
+
+The command automatically:
+
+1. Synchronizes Python dependencies.
+2. Applies Alembic database migrations.
+3. Installs frontend dependencies.
+4. Starts the backend and frontend.
+5. Waits until both services respond.
+6. Records process IDs and local logs under `.jolt`.
+7. Opens `http://127.0.0.1:5173`.
+
+Start JOLT and immediately begin a bounded supervised LinkedIn capture:
+
+```powershell
+.\tools\start-jolt.ps1 `
+    -StartLinkedInCapture `
+    -SearchUrl "https://www.linkedin.com/jobs/search/?keywords=IT%20Support" `
+    -MaxJobs 10
+```
+
+Stop the local services:
+
+```powershell
+.\tools\stop-jolt.ps1
+```
+
+Create one validation ZIP directly in Downloads:
+
+```powershell
+.\tools\validate-jolt.ps1
+```
+
+The validation ZIP contains service reachability, prerequisite paths, process state, and local logs. It does not automatically open the Downloads folder.
+
+## Manual development
 
 Backend:
 
@@ -57,7 +106,7 @@ npm test
 npm run build
 ```
 
-GitHub Actions executes the same core checks for pull requests and `main`.
+GitHub Actions executes the same core checks for pull requests and `main`, plus Windows PowerShell parser validation for the permanent local commands.
 
 ## Core principles
 
