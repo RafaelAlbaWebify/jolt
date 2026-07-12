@@ -63,6 +63,10 @@ class LinkedInFixtureCaptureRequest(BaseModel):
 class CaptureItemResponse(BaseModel):
     capture_item_id: str
     source_job_id: str
+    source_url: str = ""
+    title: str = ""
+    company: str = ""
+    location: str = ""
     detail_status: str
     verification_reasons: list[str]
     source_document_id: str | None = None
@@ -70,7 +74,14 @@ class CaptureItemResponse(BaseModel):
     identity_status: str | None = None
 
 
-class CaptureRunResponse(BaseModel):
+class CapturePageResponse(BaseModel):
+    page_number: int
+    visible_job_ids: list[str]
+    next_control_present: bool
+    next_control_enabled: bool
+
+
+class CaptureRunSummary(BaseModel):
     capture_run_id: str
     source: str
     mode: str
@@ -79,6 +90,13 @@ class CaptureRunResponse(BaseModel):
     warnings: list[str]
     started_at: str
     completed_at: str | None
+    total_items: int
+    verified_items: int
+    rejected_items: int
+
+
+class CaptureRunResponse(CaptureRunSummary):
+    pages: list[CapturePageResponse]
     items: list[CaptureItemResponse]
 
 
