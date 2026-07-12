@@ -136,18 +136,17 @@ def run_linkedin_fixture_capture(
     return _capture_run_response(run, stored_pages, responses)
 
 
+def _count_items(session: Session, run_id: str, status: str | None = None) -> int:
+    statement = select(func.count(CaptureItem.id)).where(CaptureItem.capture_run_id == run_id)
+    if status is not None:
+        statement = statement.where(CaptureItem.detail_status == status)
+    return int(session.scalar(statement) or 0)
+
+
 def list_capture_runs(session: Session) -> list[CaptureRunSummary]:
     runs = session.scalars(select(CaptureRun).order_by(CaptureRun.started_at.desc())).all()
     summaries: list[CaptureRunSummary] = []
     for run in runs:
-        counts = dict(
-            session.execute(
-                select(CaptureItem.detail_status, func.count(CaptureItem.id))
-                .where(CaptureItem.capture_run_id == run.id)
-                .group_by(CaptureItem.detail_status)
-            ).all()
-        )
-        total = sum(counts.values())
         summaries.append(
             CaptureRunSummary(
                 capture_run_id=run.id,
@@ -158,9 +157,9 @@ def list_capture_runs(session: Session) -> list[CaptureRunSummary]:
                 warnings=json.loads(run.warnings_json),
                 started_at=run.started_at.isoformat(),
                 completed_at=run.completed_at.isoformat() if run.completed_at else None,
-                total_items=total,
-                verified_items=counts.get("verified", 0),
-                rejected_items=counts.get("rejected_unverified", 0),
+                total_items=_count_items(session, run.id),
+                verified_items=_count_items(session, run.id, "verified"),
+                rejected_items=_count_items(session, run.id, "rejected_unverified"),
             )
         )
     return summaries
