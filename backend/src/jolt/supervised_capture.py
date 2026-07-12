@@ -212,7 +212,6 @@ def run_capture(
                 user_data_dir=profile_dir,
                 headless=False,
                 viewport={"width": 1440, "height": 1000},
-                args=["--disable-blink-features=AutomationControlled"],
             )
             context.tracing.start(screenshots=True, snapshots=True, sources=False)
             page = context.pages[0] if context.pages else context.new_page()
