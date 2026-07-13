@@ -134,17 +134,18 @@ def _contains_any(text: str, terms: list[str]) -> list[str]:
 
 def _dimension_score(text: str, terms: list[str], weight: int) -> tuple[int, list[str]]:
     matches = _contains_any(text, terms)
-    return min(weight, len(matches) * max(4, weight // 4)), matches
+    if not matches:
+        return 0, matches
+    per_match = max(7, (weight + 2) // 3)
+    return min(weight, len(matches) * per_match), matches
 
 
 def analyze_posting(title: str, location: str, description: str) -> ReviewAnalysis:
     text = "\n".join([title, location, description]).lower()
     blockers = _contains_any(text, PROFILE_CONFIGURATION["hard_blockers"])
-
     dimensions: dict[str, int] = {}
     strengths: list[str] = []
-
-    dimension_weights = {
+    weights = {
         "role_alignment": 25,
         "support_ownership": 20,
         "application_support": 20,
@@ -154,11 +155,12 @@ def analyze_posting(title: str, location: str, description: str) -> ReviewAnalys
     }
 
     target_score, target_matches = _dimension_score(
-        text, PROFILE_CONFIGURATION["target_roles"], dimension_weights["role_alignment"]
+        text, PROFILE_CONFIGURATION["target_roles"], weights["role_alignment"]
     )
-    dimensions["role_alignment"] = target_score
     if target_matches:
+        target_score = max(target_score, 18)
         strengths.append(f"Target-role alignment: {', '.join(target_matches[:3])}.")
+    dimensions["role_alignment"] = target_score
 
     for dimension in [
         "support_ownership",
@@ -167,28 +169,26 @@ def analyze_posting(title: str, location: str, description: str) -> ReviewAnalys
         "operations",
         "automation",
     ]:
-        score, matches = _dimension_score(
+        dimension_score, matches = _dimension_score(
             text,
             PROFILE_CONFIGURATION["strong_evidence"][dimension],
-            dimension_weights[dimension],
+            weights[dimension],
         )
-        dimensions[dimension] = score
+        dimensions[dimension] = dimension_score
         if matches:
             strengths.append(f"{dimension.replace('_', ' ').title()}: {', '.join(matches[:4])}.")
 
     score = sum(dimensions.values())
     gaps: list[str] = []
-
     development_matches = _contains_any(text, PROFILE_CONFIGURATION["development_heavy"])
+    management_matches = _contains_any(text, PROFILE_CONFIGURATION["management_heavy"])
+
     if development_matches:
         score -= 24
         gaps.append("The role appears development-heavy rather than support-focused.")
-
-    management_matches = _contains_any(text, PROFILE_CONFIGURATION["management_heavy"])
     if management_matches:
         score -= 15
         gaps.append("The role may require formal people-management responsibility.")
-
     if not target_matches:
         gaps.append("The title and description do not clearly match Rafael's target support roles.")
     if dimensions["support_ownership"] == 0:
@@ -210,18 +210,17 @@ def analyze_posting(title: str, location: str, description: str) -> ReviewAnalys
         uncertainties.append("Travel expectations require human confirmation.")
 
     score = max(0, min(100, score))
-
     if blockers:
         recommendation = "reject"
         proposed_decision = "reject"
         confidence = "high"
         summary = "Automatic review found a verified language blocker."
-    elif score >= 68 and not development_matches:
+    elif score >= 50 and not development_matches:
         recommendation = "pursue"
         proposed_decision = "pursue" if len(uncertainties) <= 2 else "consider"
-        confidence = "high" if score >= 80 else "medium"
+        confidence = "high" if score >= 75 else "medium"
         summary = "Strong evidence-based alignment with Rafael's support and operations profile."
-    elif score >= 42:
+    elif score >= 32:
         recommendation = "consider"
         proposed_decision = "needs_more_information" if len(uncertainties) >= 3 else "consider"
         confidence = "medium"
