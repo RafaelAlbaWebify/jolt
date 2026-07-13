@@ -12,7 +12,7 @@ def test_health_endpoint_and_local_cors(tmp_path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "jolt-backend",
-        "version": "0.7.0",
+        "version": "0.8.0",
     }
 
     preflight = client.options(

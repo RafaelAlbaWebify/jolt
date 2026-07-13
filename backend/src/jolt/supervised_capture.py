@@ -35,7 +35,7 @@ DETAIL_SELECTORS = (
     ".jobs-search__job-details--container",
     ".jobs-details",
     "[class*='job-details']",
-    "main a[href*='/jobs/view/']",
+    "main",
 )
 COMPANY_SELECTORS = (
     ".job-card-container__primary-description",
@@ -57,12 +57,9 @@ class CapturedCard:
     company: str
     location: str
     detail_html: str
+    description: str
     identity_verified: bool
     verification_reason: str
-
-
-def utc_stamp() -> str:
-    return datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
 
 def redact_text(value: str) -> str:
@@ -98,16 +95,8 @@ def first_matching_locator(root: Page | Locator, selectors: tuple[str, ...]) -> 
 def select_card_locator(page: Page) -> tuple[Locator, str]:
     for selector in CARD_SELECTORS:
         locator = page.locator(selector)
-        count = locator.count()
-        if count == 0:
-            continue
-        if selector == "a[href*='/jobs/view/']":
-            locator = locator.filter(
-                has=page.locator(
-                    "xpath=ancestor-or-self::*[self::li or @data-job-id or @data-occludable-job-id]"
-                )
-            )
-        return locator, selector
+        if locator.count() > 0:
+            return locator, selector
     return page.locator("__jolt_missing_selector__"), ""
 
 
@@ -134,7 +123,7 @@ def detail_matches(page: Page, expected_job_id: str) -> bool:
             if panel_id == expected_job_id:
                 return True
             links = panel.locator("a[href*='/jobs/view/']")
-            for link_index in range(min(links.count(), 10)):
+            for link_index in range(min(links.count(), 20)):
                 href = links.nth(link_index).get_attribute("href") or ""
                 if extract_job_id(href) == expected_job_id:
                     return True
@@ -157,6 +146,17 @@ def _card_identity(card: Locator) -> tuple[str, str]:
     title_link = first_matching_locator(card, TITLE_LINK_SELECTORS)
     source_url = title_link.get_attribute("href") or ""
     return source_job_id or extract_job_id(source_url), source_url
+
+
+def _detail_description(page: Page) -> str:
+    for selector in DETAIL_SELECTORS:
+        locator = page.locator(selector)
+        if locator.count() == 0:
+            continue
+        text = safe_text(locator.first)
+        if len(text) >= 40:
+            return text
+    return ""
 
 
 def capture_visible_cards(
@@ -190,6 +190,7 @@ def capture_visible_cards(
                     company=company,
                     location=location,
                     detail_html="",
+                    description="",
                     identity_verified=False,
                     verification_reason="Listing click timed out.",
                 )
@@ -198,6 +199,7 @@ def capture_visible_cards(
 
         verified = wait_for_expected_detail(page, source_job_id)
         detail_html = page.content() if verified else ""
+        description = _detail_description(page) if verified else ""
         reason = (
             "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
         )
@@ -210,6 +212,7 @@ def capture_visible_cards(
                 company=company,
                 location=location,
                 detail_html=detail_html,
+                description=description,
                 identity_verified=verified,
                 verification_reason=reason,
             )
@@ -220,20 +223,27 @@ def capture_visible_cards(
 def submit_capture(
     api_url: str, listing_html: str, cards: list[CapturedCard], search_url: str
 ) -> dict[str, Any]:
-    detail_map = {
-        card.source_job_id: card.detail_html
-        for card in cards
-        if card.identity_verified and card.detail_html
-    }
+    del listing_html
     payload = json.dumps(
         {
-            "listing_html": listing_html,
-            "detail_html_by_job_id": detail_map,
             "search_url": search_url,
+            "items": [
+                {
+                    "source_job_id": card.source_job_id,
+                    "source_url": card.source_url,
+                    "title": card.title,
+                    "company": card.company,
+                    "location": card.location,
+                    "description": card.description,
+                    "identity_verified": card.identity_verified,
+                    "verification_reason": card.verification_reason,
+                }
+                for card in cards
+            ],
         }
     ).encode("utf-8")
     request = urllib.request.Request(
-        f"{api_url.rstrip('/')}/api/captures/linkedin/fixture",
+        f"{api_url.rstrip('/')}/api/captures/linkedin/live",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -271,13 +281,11 @@ def _write_failure_diagnostics(
         encoding="utf-8",
     )
     if page is not None:
-        try:
+        with contextlib.suppress(Exception):
             page.screenshot(path=evidence_dir / "failure_page.png", full_page=True)
             (staging_dir / "failure_page.redacted.html").write_text(
                 redact_text(page.content()), encoding="utf-8"
             )
-        except Exception:
-            pass
 
 
 def run_capture(
@@ -295,84 +303,88 @@ def run_capture(
     context: BrowserContext | None = None
 
     try:
-        with sync_playwright() as playwright:
-            context = playwright.chromium.launch_persistent_context(
-                user_data_dir=profile_dir,
-                headless=False,
-                viewport={"width": 1440, "height": 1000},
-            )
-            context.tracing.start(screenshots=True, snapshots=True, sources=False)
-            page = context.pages[0] if context.pages else context.new_page()
-            page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
-            page.screenshot(path=evidence_dir / "01_search_opened.png", full_page=False)
-
-            if pause_for_login:
-                print("LinkedIn is open in a persistent local browser profile.")
-                print(
-                    "Log in manually if needed, apply the desired search filters, then return here."
+        try:
+            with sync_playwright() as playwright:
+                context = playwright.chromium.launch_persistent_context(
+                    user_data_dir=profile_dir,
+                    headless=False,
+                    viewport={"width": 1440, "height": 1000},
                 )
-                input("Press Enter to start the bounded capture: ")
+                context.tracing.start(screenshots=True, snapshots=True, sources=False)
+                page = context.pages[0] if context.pages else context.new_page()
+                page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                page.screenshot(path=evidence_dir / "01_search_opened.png", full_page=False)
 
-            cards_locator, matched_selector = wait_for_cards(page)
-            listing_html = page.content()
-            cards = capture_visible_cards(
-                page, max_jobs=max_jobs, evidence_dir=evidence_dir, cards=cards_locator
-            )
-            page.screenshot(path=evidence_dir / "99_capture_complete.png", full_page=False)
-            context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
-            context.close()
-            context = None
+                if pause_for_login:
+                    print("LinkedIn is open in a persistent local browser profile.")
+                    print(
+                        "Log in manually if needed, apply the desired search filters, then return here."
+                    )
+                    input("Press Enter to start the bounded capture: ")
 
-        summary = {
-            "search_url": search_url,
-            "captured_at": datetime.now(UTC).isoformat(),
-            "matched_card_selector": matched_selector,
-            "max_jobs": max_jobs,
-            "captured_count": len(cards),
-            "verified_count": sum(card.identity_verified for card in cards),
-            "cards": [asdict(card) | {"detail_html": "[stored separately]"} for card in cards],
-        }
-        (staging_dir / "capture_summary.json").write_text(
-            json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
-        )
-        (staging_dir / "listing_page.redacted.html").write_text(
-            redact_text(listing_html), encoding="utf-8"
-        )
-        for card in cards:
-            if card.detail_html:
-                (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
-                    redact_text(card.detail_html), encoding="utf-8"
+                cards_locator, matched_selector = wait_for_cards(page)
+                listing_html = page.content()
+                cards = capture_visible_cards(
+                    page, max_jobs=max_jobs, evidence_dir=evidence_dir, cards=cards_locator
                 )
-
-        api_result = submit_capture(api_url, listing_html, cards, search_url)
-        (staging_dir / "api_result.json").write_text(
-            json.dumps(api_result, indent=2, ensure_ascii=True), encoding="utf-8"
-        )
-        (staging_dir / "run.log").write_text(
-            redact_text(
-                "\n".join(
-                    [
-                        f"Matched selector: {matched_selector}",
-                        f"Captured {len(cards)} visible jobs.",
-                        f"Verified {sum(card.identity_verified for card in cards)} detail panels.",
-                        f"API result: {api_result.get('status', api_result.get('error', 'unknown'))}",
-                    ]
-                )
-            ),
-            encoding="utf-8",
-        )
-        return package_run(staging_dir, output_zip)
-    except Exception as exc:
-        _write_failure_diagnostics(staging_dir, evidence_dir, page, exc)
-        if context is not None:
-            with contextlib.suppress(Exception):
+                page.screenshot(path=evidence_dir / "99_capture_complete.png", full_page=False)
                 context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
-            with contextlib.suppress(Exception):
                 context.close()
-        package_run(staging_dir, output_zip)
-        raise RuntimeError(
-            f"LinkedIn capture failed. A diagnostic ZIP was still created at: {output_zip}"
-        ) from exc
+                context = None
+
+            summary = {
+                "search_url": search_url,
+                "captured_at": datetime.now(UTC).isoformat(),
+                "matched_card_selector": matched_selector,
+                "max_jobs": max_jobs,
+                "captured_count": len(cards),
+                "verified_count": sum(card.identity_verified for card in cards),
+                "cards": [
+                    asdict(card)
+                    | {"detail_html": "[stored separately]", "description": "[submitted]"}
+                    for card in cards
+                ],
+            }
+            (staging_dir / "capture_summary.json").write_text(
+                json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
+            )
+            (staging_dir / "listing_page.redacted.html").write_text(
+                redact_text(listing_html), encoding="utf-8"
+            )
+            for card in cards:
+                if card.detail_html:
+                    (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
+                        redact_text(card.detail_html), encoding="utf-8"
+                    )
+
+            api_result = submit_capture(api_url, listing_html, cards, search_url)
+            (staging_dir / "api_result.json").write_text(
+                json.dumps(api_result, indent=2, ensure_ascii=True), encoding="utf-8"
+            )
+            (staging_dir / "run.log").write_text(
+                redact_text(
+                    "\n".join(
+                        [
+                            f"Matched selector: {matched_selector}",
+                            f"Captured {len(cards)} visible jobs.",
+                            f"Verified {sum(card.identity_verified for card in cards)} detail panels.",
+                            f"API result: {api_result.get('status', api_result.get('error', 'completed'))}",
+                        ]
+                    )
+                ),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            _write_failure_diagnostics(staging_dir, evidence_dir, page, exc)
+            if context is not None:
+                with contextlib.suppress(Exception):
+                    context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
+                with contextlib.suppress(Exception):
+                    context.close()
+            package_run(staging_dir, output_zip)
+            raise
+
+        return package_run(staging_dir, output_zip)
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
 
