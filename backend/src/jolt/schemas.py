@@ -170,17 +170,17 @@ class ApplicationResponse(BaseModel):
 
 class OpportunitySummary(BaseModel):
     posting_id: str
-    evaluation_id: str
-    source_url: str
+    evaluation_id: str = ""
+    source_url: str = ""
     title: str
     company: str
     location: str
     recommendation: str
-    confidence: str
+    confidence: str = ""
     ranking_score: int
-    reasons: list[str]
-    profile_version_id: str
-    engine_version: str
+    reasons: list[str] = Field(default_factory=list)
+    profile_version_id: str = ""
+    engine_version: str = ""
     review_decision: str | None = None
     application_id: str | None = None
     application_status: str | None = None
