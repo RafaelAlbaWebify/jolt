@@ -58,11 +58,17 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert opportunities.json() == [
         {
             "posting_id": result["posting_id"],
+            "evaluation_id": result["evaluation_id"],
+            "source_url": payload["source_url"],
             "title": "Application Support Engineer",
             "company": "Example Systems",
             "location": "Remote Spain",
             "recommendation": "pursue",
+            "confidence": "medium",
             "ranking_score": 83,
+            "reasons": ["Relevant signal(s): application support, sql, incident, api."],
+            "profile_version_id": "default-job-search:v1",
+            "engine_version": "rules-v1",
             "review_decision": "pursue",
             "application_id": None,
             "application_status": None,
