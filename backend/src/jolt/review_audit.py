@@ -39,22 +39,17 @@ def audit(output_dir: Path) -> dict[str, object]:
     findings: list[dict[str, str]] = []
     for item in opportunities:
         if not isinstance(item, dict):
-            findings.append(
-                {"severity": "error", "message": "Non-object opportunity returned."}
-            )
+            findings.append({"severity": "error", "message": "Non-object opportunity returned."})
             continue
-
         title = str(item.get("title") or "Untitled opportunity")
         missing = sorted(field for field in REQUIRED_REVIEW_FIELDS if field not in item)
         if missing:
-            missing_fields = ", ".join(missing)
             findings.append(
                 {
                     "severity": "error",
-                    "message": f"{title}: missing automated-review fields: {missing_fields}",
+                    "message": (f"{title}: missing automated-review fields: {', '.join(missing)}"),
                 }
             )
-
         if item.get("profile_version_id") != EXPECTED_PROFILE:
             findings.append(
                 {
@@ -66,16 +61,12 @@ def audit(output_dir: Path) -> dict[str, object]:
             findings.append(
                 {"severity": "error", "message": f"{title}: unexpected engine version."}
             )
-
         score = item.get("ranking_score")
         if not isinstance(score, int) or not 0 <= score <= 100:
-            findings.append(
-                {"severity": "error", "message": f"{title}: invalid ranking score."}
-            )
-
-        review_decision = item.get("review_decision")
-        proposed_decision = item.get("proposed_decision")
-        if review_decision and proposed_decision != review_decision:
+            findings.append({"severity": "error", "message": f"{title}: invalid ranking score."})
+        if item.get("review_decision") and item.get("proposed_decision") != item.get(
+            "review_decision"
+        ):
             findings.append(
                 {
                     "severity": "info",
@@ -83,9 +74,7 @@ def audit(output_dir: Path) -> dict[str, object]:
                 }
             )
         if not item.get("fit_summary"):
-            findings.append(
-                {"severity": "warning", "message": f"{title}: empty fit summary."}
-            )
+            findings.append({"severity": "warning", "message": f"{title}: empty fit summary."})
         if not item.get("strengths") and not item.get("gaps"):
             findings.append(
                 {
@@ -94,15 +83,11 @@ def audit(output_dir: Path) -> dict[str, object]:
                 }
             )
 
-    (output_dir / "health.json").write_text(
-        json.dumps(health, indent=2), encoding="utf-8"
-    )
+    (output_dir / "health.json").write_text(json.dumps(health, indent=2), encoding="utf-8")
     (output_dir / "opportunities.json").write_text(
         json.dumps(opportunities, indent=2), encoding="utf-8"
     )
-    (output_dir / "captures.json").write_text(
-        json.dumps(captures, indent=2), encoding="utf-8"
-    )
+    (output_dir / "captures.json").write_text(json.dumps(captures, indent=2), encoding="utf-8")
 
     console_messages: list[str] = []
     page_errors: list[str] = []
@@ -116,19 +101,15 @@ def audit(output_dir: Path) -> dict[str, object]:
         page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
-        visible_text = page.locator("body").inner_text()
-        (output_dir / "workbench-visible-text.txt").write_text(
-            visible_text, encoding="utf-8"
-        )
+        html = page.locator("body").inner_text()
+        (output_dir / "workbench-visible-text.txt").write_text(html, encoding="utf-8")
         browser.close()
 
     if page_errors:
         findings.extend(
-            {"severity": "error", "message": f"Browser error: {error}"}
-            for error in page_errors
+            {"severity": "error", "message": f"Browser error: {error}"} for error in page_errors
         )
-
-    automated_review_visible = "Automated proposed decision" in visible_text
+    automated_review_visible = "Automated proposed decision" in html
     if opportunities and not automated_review_visible:
         findings.append(
             {
@@ -137,21 +118,16 @@ def audit(output_dir: Path) -> dict[str, object]:
             }
         )
 
-    has_errors = any(item["severity"] == "error" for item in findings)
-    status = "failed" if has_errors else "passed"
-    capture_count = len(captures) if isinstance(captures, list) else None
     summary: dict[str, object] = {
-        "status": status,
+        "status": "failed" if any(item["severity"] == "error" for item in findings) else "passed",
         "opportunity_count": len(opportunities),
-        "capture_count": capture_count,
+        "capture_count": len(captures) if isinstance(captures, list) else None,
         "automated_review_visible": automated_review_visible,
         "findings": findings,
         "console_messages": console_messages,
         "page_errors": page_errors,
     }
-    (output_dir / "audit-summary.json").write_text(
-        json.dumps(summary, indent=2), encoding="utf-8"
-    )
+    (output_dir / "audit-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 
 
