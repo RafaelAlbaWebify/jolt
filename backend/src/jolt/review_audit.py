@@ -152,9 +152,7 @@ def audit(output_dir: Path) -> dict[str, object]:
         posting_id = str(item.get("posting_id") or "")
         if posting_id:
             try:
-                history = _get_json(
-                    f"{API_BASE}/api/opportunities/{posting_id}/readiness/history"
-                )
+                history = _get_json(f"{API_BASE}/api/opportunities/{posting_id}/readiness/history")
                 readiness_histories[posting_id] = history
                 if not isinstance(history, list) or not history:
                     raise RuntimeError("history endpoint returned no reports")
@@ -169,7 +167,9 @@ def audit(output_dir: Path) -> dict[str, object]:
                 if isinstance(readiness, dict) and current_report.get("report_id") != readiness.get(
                     "report_id"
                 ):
-                    raise RuntimeError("current history report does not match opportunity readiness")
+                    raise RuntimeError(
+                        "current history report does not match opportunity readiness"
+                    )
                 readiness_history_count += 1
             except Exception as exc:  # noqa: BLE001
                 findings.append(
