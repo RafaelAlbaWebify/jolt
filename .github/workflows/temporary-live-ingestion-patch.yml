@@ -1,0 +1,151 @@
+name: Temporary live ingestion patch
+
+on:
+  push:
+    branches: [fix/live-capture-structured-ingestion]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/live-capture-structured-ingestion
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.14"
+      - name: Patch schemas, API, and runner
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          schemas = Path('backend/src/jolt/schemas.py')
+          text = schemas.read_text(encoding='utf-8')
+          marker = '''class CaptureItemResponse(BaseModel):\n'''
+          addition = '''class LinkedInLiveCaptureItemRequest(BaseModel):
+              source_job_id: str = Field(min_length=1)
+              source_url: str = ""
+              title: str = ""
+              company: str = ""
+              location: str = ""
+              description: str = ""
+              identity_verified: bool
+              verification_reason: str = ""
+
+
+          class LinkedInLiveCaptureRequest(BaseModel):
+              search_url: str = ""
+              items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=50)
+
+
+          '''
+          if 'class LinkedInLiveCaptureRequest' not in text:
+              text = text.replace(marker, addition + marker)
+          schemas.write_text(text, encoding='utf-8')
+
+          main = Path('backend/src/jolt/main.py')
+          text = main.read_text(encoding='utf-8')
+          text = text.replace(
+              'from jolt.database import create_session_factory\n',
+              'from jolt.database import create_session_factory\nfrom jolt.live_capture_workflow import run_linkedin_live_capture\n',
+          )
+          text = text.replace(
+              '    LinkedInFixtureCaptureRequest,\n',
+              '    LinkedInFixtureCaptureRequest,\n    LinkedInLiveCaptureRequest,\n',
+          )
+          endpoint_marker = '''    @app.get("/api/captures", response_model=list[CaptureRunSummary], tags=["captures"])
+          '''
+          endpoint = '''    @app.post(
+              "/api/captures/linkedin/live",
+              response_model=CaptureRunResponse,
+              tags=["captures"],
+          )
+          def linkedin_live_capture(
+              request: LinkedInLiveCaptureRequest,
+              session: Annotated[Session, Depends(get_session)],
+          ) -> CaptureRunResponse:
+              return run_linkedin_live_capture(session, request)
+
+          '''
+          if '/api/captures/linkedin/live' not in text:
+              text = text.replace(endpoint_marker, endpoint + endpoint_marker)
+          main.write_text(text, encoding='utf-8')
+
+          runner = Path('backend/src/jolt/supervised_capture.py')
+          text = runner.read_text(encoding='utf-8')
+          text = text.replace(
+              '    detail_html: str\n    identity_verified: bool\n',
+              '    detail_html: str\n    description: str\n    identity_verified: bool\n',
+          )
+          text = text.replace(
+              '                    detail_html="",\n                    identity_verified=False,\n',
+              '                    detail_html="",\n                    description="",\n                    identity_verified=False,\n',
+          )
+          text = text.replace(
+              '        detail_html = page.content() if verified else ""\n        reason = (\n',
+              '        detail_html = page.content() if verified else ""\n        description = safe_text(first_matching_locator(page, DETAIL_SELECTORS)) if verified else ""\n        reason = (\n',
+          )
+          text = text.replace(
+              '                detail_html=detail_html,\n                identity_verified=verified,\n',
+              '                detail_html=detail_html,\n                description=description,\n                identity_verified=verified,\n',
+          )
+          old_submit = '''    detail_map = {
+              card.source_job_id: card.detail_html
+              for card in cards
+              if card.identity_verified and card.detail_html
+          }
+          payload = json.dumps(
+              {
+                  "listing_html": listing_html,
+                  "detail_html_by_job_id": detail_map,
+                  "search_url": search_url,
+              }
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              f"{api_url.rstrip('/')}/api/captures/linkedin/fixture",
+          '''
+          new_submit = '''    del listing_html
+          payload = json.dumps(
+              {
+                  "search_url": search_url,
+                  "items": [
+                      {
+                          "source_job_id": card.source_job_id,
+                          "source_url": card.source_url,
+                          "title": card.title,
+                          "company": card.company,
+                          "location": card.location,
+                          "description": card.description,
+                          "identity_verified": card.identity_verified,
+                          "verification_reason": card.verification_reason,
+                      }
+                      for card in cards
+                  ],
+              }
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              f"{api_url.rstrip('/')}/api/captures/linkedin/live",
+          '''
+          if '/api/captures/linkedin/live' not in text:
+              text = text.replace(old_submit, new_submit)
+          runner.write_text(text, encoding='utf-8')
+          PY
+      - name: Format and test backend
+        working-directory: backend
+        run: |
+          uv python install 3.12
+          uv sync --all-groups
+          uv run ruff check . --fix
+          uv run ruff format .
+          uv run pyright
+          uv run pytest
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git diff --cached --quiet || git commit -m "fix: submit verified live capture evidence directly"
+          git push origin HEAD:fix/live-capture-structured-ingestion
