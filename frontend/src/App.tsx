@@ -5,6 +5,7 @@ import { ApplicationReadiness } from "./ApplicationReadiness";
 import type { ApplicationReadinessData } from "./ApplicationReadiness";
 import { AutomatedReview } from "./AutomatedReview";
 import { CaptureHistory } from "./CaptureHistory";
+import { ReadinessHistory } from "./ReadinessHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
 type ApplicationStatus =
@@ -246,6 +247,14 @@ export function App() {
                   <p className="confidence">{opportunity.confidence} confidence · {opportunity.engine_version}</p>
                   <AutomatedReview review={opportunity} />
                   <ApplicationReadiness readiness={opportunity.readiness} />
+                  <ReadinessHistory
+                    apiBase={API_BASE}
+                    postingId={opportunity.posting_id}
+                    title={opportunity.title || "Untitled opportunity"}
+                    disabled={busy}
+                    onRefreshed={refreshOpportunities}
+                    onError={setError}
+                  />
 
                   <div className="card-links">
                     {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
