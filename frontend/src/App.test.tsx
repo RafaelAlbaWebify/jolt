@@ -5,11 +5,17 @@ import { App } from "./App";
 
 const opportunity = {
   posting_id: "posting-1",
+  evaluation_id: "evaluation-1",
+  source_url: "https://www.linkedin.com/jobs/view/123",
   title: "Application Support Engineer",
   company: "Example Systems",
   location: "Remote Spain",
   recommendation: "pursue",
+  confidence: "medium",
   ranking_score: 83,
+  reasons: ["Relevant signal(s): application support, sql, incident."],
+  profile_version_id: "default-job-search:v1",
+  engine_version: "rules-v1",
   review_decision: null,
 };
 
@@ -88,6 +94,43 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "pursue" }));
     expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
+  });
+
+  it("reviews a captured opportunity directly from the workbench", async () => {
+    let reviewed = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/captures")) return jsonResponse([]);
+      if (url.endsWith("/api/opportunities")) {
+        return jsonResponse([{ ...opportunity, review_decision: reviewed ? "consider" : null }]);
+      }
+      if (url.includes("/reviews")) {
+        reviewed = true;
+        return jsonResponse({
+          review_id: "review-2",
+          posting_id: opportunity.posting_id,
+          evaluation_id: opportunity.evaluation_id,
+          decision: "consider",
+          evaluation_overridden: true,
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText(opportunity.reasons[0])).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
+      "href",
+      opportunity.source_url,
+    );
+
+    const card = screen.getByRole("heading", { name: opportunity.title }).closest("article");
+    expect(card).not.toBeNull();
+    fireEvent.click(card!.querySelector<HTMLButtonElement>("button:nth-of-type(2)")!);
+
+    await waitFor(() => expect(reviewed).toBe(true));
+    expect(await screen.findByText("consider", { selector: ".queue-status strong" })).toBeInTheDocument();
   });
 
   it("loads capture history and exposes rejected evidence", async () => {
