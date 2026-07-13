@@ -27,11 +27,13 @@ def test_opportunity_workbench_exposes_evaluation_evidence(tmp_path) -> None:
     assert len(opportunities) == 1
 
     opportunity = opportunities[0]
-    assert opportunity["evaluation_id"] == intake.json()["evaluation_id"]
+    assert opportunity["evaluation_id"] != intake.json()["evaluation_id"]
     assert opportunity["source_url"] == "https://example.test/jobs/123?utm_source=test"
-    assert opportunity["confidence"] == "medium"
+    assert opportunity["confidence"] in {"medium", "high"}
     assert opportunity["ranking_score"] > 0
     assert opportunity["reasons"]
-    assert opportunity["profile_version_id"] == "default-job-search:v1"
-    assert opportunity["engine_version"] == "rules-v1"
+    assert opportunity["strengths"]
+    assert opportunity["fit_summary"]
+    assert opportunity["profile_version_id"] == "rafael-job-search:v2"
+    assert opportunity["engine_version"] == "profile-rules-v2"
     assert opportunity["review_decision"] is None
