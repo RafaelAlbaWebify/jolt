@@ -150,9 +150,7 @@ def audit(output_dir: Path) -> dict[str, object]:
         posting_id = str(item.get("posting_id") or "")
         if posting_id:
             try:
-                pack = _get_bytes(
-                    f"{API_BASE}/api/opportunities/{posting_id}/preparation-pack"
-                )
+                pack = _get_bytes(f"{API_BASE}/api/opportunities/{posting_id}/preparation-pack")
                 if not pack.startswith(b"PK"):
                     raise RuntimeError("response is not a ZIP archive")
                 (pack_dir / f"{posting_id}.zip").write_bytes(pack)
@@ -184,15 +182,12 @@ def audit(output_dir: Path) -> dict[str, object]:
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
         visible_text = page.locator("body").inner_text()
-        (output_dir / "workbench-visible-text.txt").write_text(
-            visible_text, encoding="utf-8"
-        )
+        (output_dir / "workbench-visible-text.txt").write_text(visible_text, encoding="utf-8")
         browser.close()
 
     if page_errors:
         findings.extend(
-            {"severity": "error", "message": f"Browser error: {error}"}
-            for error in page_errors
+            {"severity": "error", "message": f"Browser error: {error}"} for error in page_errors
         )
     automated_review_visible = "Automated proposed decision" in visible_text
     readiness_visible = "Application readiness" in visible_text
@@ -231,9 +226,7 @@ def audit(output_dir: Path) -> dict[str, object]:
         "console_messages": console_messages,
         "page_errors": page_errors,
     }
-    (output_dir / "audit-summary.json").write_text(
-        json.dumps(summary, indent=2), encoding="utf-8"
-    )
+    (output_dir / "audit-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 
 
