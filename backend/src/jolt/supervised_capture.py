@@ -200,7 +200,9 @@ def capture_visible_cards(
         verified = wait_for_expected_detail(page, source_job_id)
         detail_html = page.content() if verified else ""
         description = _detail_description(page) if verified else ""
-        reason = "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        reason = (
+            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        )
         page.screenshot(path=evidence_dir / f"job_{source_job_id}.png", full_page=False)
         captured.append(
             CapturedCard(
@@ -315,7 +317,9 @@ def run_capture(
 
                 if pause_for_login:
                     print("LinkedIn is open in a persistent local browser profile.")
-                    print("Log in manually if needed, apply the desired search filters, then return here.")
+                    print(
+                        "Log in manually if needed, apply the desired search filters, then return here."
+                    )
                     input("Press Enter to start the bounded capture: ")
 
                 cards_locator, matched_selector = wait_for_cards(page)
@@ -336,7 +340,8 @@ def run_capture(
                 "captured_count": len(cards),
                 "verified_count": sum(card.identity_verified for card in cards),
                 "cards": [
-                    asdict(card) | {"detail_html": "[stored separately]", "description": "[submitted]"}
+                    asdict(card)
+                    | {"detail_html": "[stored separately]", "description": "[submitted]"}
                     for card in cards
                 ],
             }
