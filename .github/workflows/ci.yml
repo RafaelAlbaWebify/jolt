@@ -121,10 +121,14 @@ jobs:
           $start = Get-Content tools/start-jolt.ps1 -Raw
           $stop = Get-Content tools/stop-jolt.ps1 -Raw
           $validate = Get-Content tools/validate-jolt.ps1 -Raw
+          $audit = Get-Content tools/audit-jolt.ps1 -Raw
           if ($launcher -notmatch 'JOLT_REPO_PATH') { throw 'Launcher must support path-independent repository discovery.' }
           if (-not $launcher.Contains('Documents\GitHub\jolt')) { throw 'Launcher must check the standard repository path.' }
+          if ($launcher -notmatch '"audit"') { throw 'Launcher must expose the automated audit action.' }
           if ($start -notmatch 'alembic upgrade head') { throw 'Startup must apply migrations.' }
           if ($start -notmatch 'Wait-HttpEndpoint') { throw 'Startup must wait for services.' }
           if ($start -notmatch 'run-linkedin-capture.ps1') { throw 'Startup must integrate supervised capture.' }
           if ($stop -notmatch 'services.json') { throw 'Stop command must use recorded state.' }
           if ($validate -notmatch 'JOLT_WINDOWS_VALIDATION_') { throw 'Validation must create a stable ZIP name.' }
+          if ($audit -notmatch 'JOLT_REVIEW_AUDIT_') { throw 'Audit must create a stable ZIP name.' }
+          if ($audit -notmatch 'workbench-full.png') { throw 'Audit must include a full workbench screenshot.' }
