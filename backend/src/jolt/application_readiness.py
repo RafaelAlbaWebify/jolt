@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, select
@@ -23,7 +24,7 @@ class ApplicationReadiness(Base):
     priority: Mapped[str] = mapped_column(String(20), nullable=False)
     readiness_score: Mapped[int] = mapped_column(nullable=False)
     report_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 @dataclass(frozen=True)
@@ -55,35 +56,66 @@ class ReadinessAnalysis:
 EVIDENCE_LIBRARY: dict[str, tuple[list[str], str, str]] = {
     "incident_ownership": (
         ["incident", "troubleshoot", "root cause", "escalation", "production support"],
-        "Production-critical IT support with incident ownership, evidence collection, escalation, and runbook documentation.",
-        "Emphasize ownership from symptom reproduction through evidence-backed escalation and validation.",
+        (
+            "Production-critical IT support with incident ownership, evidence collection, "
+            "escalation, and runbook documentation."
+        ),
+        (
+            "Emphasize ownership from symptom reproduction through evidence-backed escalation "
+            "and validation."
+        ),
     ),
     "application_support": (
         ["application support", "software support", "logs", "api", "integration", "sql"],
-        "Support-side experience with SQL-dependent manufacturing applications, logs, integrations, and controlled validation.",
-        "Position SQL, logs, and integrations as troubleshooting tools rather than claiming developer or DBA ownership.",
+        (
+            "Support-side experience with SQL-dependent manufacturing applications, logs, "
+            "integrations, and controlled validation."
+        ),
+        (
+            "Position SQL, logs, and integrations as troubleshooting tools rather than claiming "
+            "developer or DBA ownership."
+        ),
     ),
     "infrastructure": (
         ["microsoft 365", "entra", "azure ad", "windows", "dns", "network", "vmware", "backup"],
-        "Hands-on Windows, Microsoft 365, Entra ID, DNS, networking, VMware, and backup operations experience.",
+        (
+            "Hands-on Windows, Microsoft 365, Entra ID, DNS, networking, VMware, and backup "
+            "operations experience."
+        ),
         "Lead with the infrastructure technologies explicitly requested by the posting.",
     ),
     "manufacturing_operations": (
         ["manufacturing", "mes", "plant", "production environment", "24/7"],
-        "Manufacturing IT exposure supporting production-critical MES and plant systems under operational pressure.",
-        "Use manufacturing examples only when the role values production continuity, operations, or industrial environments.",
+        (
+            "Manufacturing IT exposure supporting production-critical MES and plant systems "
+            "under operational pressure."
+        ),
+        (
+            "Use manufacturing examples only when the role values production continuity, "
+            "operations, or industrial environments."
+        ),
     ),
     "automation_documentation": (
         ["powershell", "automation", "python", "scripting", "runbook", "documentation"],
-        "PowerShell/Python automation awareness plus substantial operational documentation and runbook practice.",
-        "Describe automation as safe operational tooling with evidence and repeatability, not autonomous system modification.",
+        (
+            "PowerShell/Python automation awareness plus substantial operational documentation "
+            "and runbook practice."
+        ),
+        (
+            "Describe automation as safe operational tooling with evidence and repeatability, "
+            "not autonomous system modification."
+        ),
     ),
 }
 
 UNSUPPORTED_CLAIMS: dict[str, list[str]] = {
-    "software_development": ["software developer", "full stack", "frontend developer", "backend developer"],
+    "software_development": [
+        "software developer",
+        "full stack",
+        "frontend developer",
+        "backend developer",
+    ],
     "formal_management": ["people manager", "direct reports", "performance reviews", "head of"],
-    "unsupported_language": ["german", "french"],
     "advanced_database_ownership": ["database administrator", "dba", "database architect"],
 }
 
@@ -96,47 +128,68 @@ def analyze_readiness(posting: Posting) -> ReadinessAnalysis:
     text = "\n".join([posting.title, posting.location, posting.description]).lower()
     evidence_matches: list[str] = []
     cv_points: list[str] = []
-    talking_points: list[str] = []
     revision_topics: list[str] = []
 
-    for _, (terms, evidence, tailoring) in EVIDENCE_LIBRARY.items():
+    for terms, evidence, tailoring in EVIDENCE_LIBRARY.values():
         if _contains(text, terms):
             evidence_matches.append(evidence)
             cv_points.append(tailoring)
 
     warnings: list[str] = []
     if _contains(text, UNSUPPORTED_CLAIMS["software_development"]):
-        warnings.append("Do not present Rafael as a software developer; clarify support and troubleshooting scope.")
+        warnings.append(
+            "Do not present Rafael as a software developer; clarify support and troubleshooting scope."
+        )
     if _contains(text, UNSUPPORTED_CLAIMS["formal_management"]):
         warnings.append("Formal people-management evidence is not established.")
     if _contains(text, UNSUPPORTED_CLAIMS["advanced_database_ownership"]):
-        warnings.append("Do not claim DBA ownership; describe SQL-dependent application support accurately.")
+        warnings.append(
+            "Do not claim DBA ownership; describe SQL-dependent application support accurately."
+        )
     if "german" in text or "french" in text:
-        warnings.append("Confirm whether the additional language is mandatory; Rafael can claim English and Spanish only.")
+        warnings.append(
+            "Confirm whether the additional language is mandatory; Rafael can claim English and Spanish only."
+        )
 
     if _contains(text, ["sql", "database"]):
-        revision_topics.append("SQL support queries, joins, filtering, safe read-only diagnostics, and escalation boundaries.")
+        revision_topics.append(
+            "SQL support queries, joins, filtering, safe read-only diagnostics, and escalation boundaries."
+        )
     if _contains(text, ["api", "integration", "rest"]):
-        revision_topics.append("HTTP status codes, REST requests, authentication concepts, payload validation, and integration evidence.")
+        revision_topics.append(
+            "HTTP status codes, REST requests, authentication concepts, payload validation, and integration evidence."
+        )
     if _contains(text, ["logs", "monitoring", "production support"]):
-        revision_topics.append("Log correlation, timestamps, severity, reproduction, evidence packaging, and RCA structure.")
+        revision_topics.append(
+            "Log correlation, timestamps, severity, reproduction, evidence packaging, and RCA structure."
+        )
     if _contains(text, ["dns", "network", "tcp", "firewall"]):
-        revision_topics.append("DNS resolution, ports, TCP reachability, firewall evidence, and layered troubleshooting.")
+        revision_topics.append(
+            "DNS resolution, ports, TCP reachability, firewall evidence, and layered troubleshooting."
+        )
     if _contains(text, ["cloud", "aws", "azure"]):
-        revision_topics.append("Cloud shared responsibility, service health, IAM basics, availability, and support escalation.")
+        revision_topics.append(
+            "Cloud shared responsibility, service health, IAM basics, availability, and support escalation."
+        )
 
-    talking_points.extend(evidence_matches[:3])
     interview_questions = [
         "Describe a production-critical incident you owned from first symptom to validated resolution or escalation.",
         "How do you distinguish an application problem from a network, DNS, database, or endpoint problem?",
         "What evidence do you collect before escalating a software or integration issue?",
     ]
     if "sql" in text:
-        interview_questions.append("How have you used SQL safely while supporting an application without acting as the DBA?")
+        interview_questions.append(
+            "How have you used SQL safely while supporting an application without acting as the DBA?"
+        )
     if "api" in text or "integration" in text:
-        interview_questions.append("How would you troubleshoot an API or system-integration failure end to end?")
+        interview_questions.append(
+            "How would you troubleshoot an API or system-integration failure end to end?"
+        )
 
-    score = min(100, 35 + len(evidence_matches) * 12 + len(revision_topics) * 3 - len(warnings) * 8)
+    score = min(
+        100,
+        35 + len(evidence_matches) * 12 + len(revision_topics) * 3 - len(warnings) * 8,
+    )
     if len(evidence_matches) >= 4 and not warnings:
         priority = "high"
     elif len(evidence_matches) >= 2:
@@ -145,7 +198,10 @@ def analyze_readiness(posting: Posting) -> ReadinessAnalysis:
         priority = "low"
 
     checklist = [
-        "Confirm location, remote eligibility from Spain, contract type, salary, shifts, on-call, and travel.",
+        (
+            "Confirm location, remote eligibility from Spain, contract type, salary, shifts, "
+            "on-call, and travel."
+        ),
         "Open the source posting and verify that the captured description is complete and current.",
         "Select only evidence-backed CV points; do not add unsupported tools, duties, or seniority.",
         "Prepare one incident-ownership example and one technical troubleshooting example.",
@@ -158,7 +214,7 @@ def analyze_readiness(posting: Posting) -> ReadinessAnalysis:
         evidence_matches=evidence_matches,
         credibility_warnings=warnings,
         cv_tailoring_points=cv_points,
-        talking_points=talking_points,
+        talking_points=evidence_matches[:3],
         interview_questions=interview_questions,
         revision_topics=revision_topics,
         checklist=checklist,
