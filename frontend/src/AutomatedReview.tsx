@@ -1,6 +1,3 @@
-import { ApplicationReadiness } from "./ApplicationReadiness";
-import type { ApplicationReadinessData } from "./ApplicationReadiness";
-
 export type AutomatedReviewEvidence = {
   proposed_decision: string;
   fit_summary: string;
@@ -9,7 +6,6 @@ export type AutomatedReviewEvidence = {
   blockers: string[];
   uncertainties: string[];
   dimensions: Record<string, number>;
-  readiness?: ApplicationReadinessData | null;
 };
 
 function EvidenceGroup({ title, items }: { title: string; items: string[] }) {
@@ -47,7 +43,6 @@ export function AutomatedReview({ review }: { review: AutomatedReviewEvidence })
         <EvidenceGroup title="Verified blockers" items={review.blockers} />
         <EvidenceGroup title="Needs confirmation" items={review.uncertainties} />
       </div>
-      {review.readiness && <ApplicationReadiness readiness={review.readiness} />}
     </section>
   );
 }
