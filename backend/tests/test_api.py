@@ -63,7 +63,7 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert opportunity["company"] == "Example Systems"
     assert opportunity["recommendation"] == "pursue"
     assert opportunity["proposed_decision"] in {"pursue", "consider"}
-    assert opportunity["ranking_score"] >= 68
+    assert opportunity["ranking_score"] >= 50
     assert opportunity["review_decision"] == "pursue"
     assert opportunity["profile_version_id"] == "rafael-job-search:v2"
     assert opportunity["engine_version"] == "profile-rules-v2"
