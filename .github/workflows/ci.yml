@@ -40,7 +40,21 @@ jobs:
         if: steps.ruff.outcome == 'failure'
         run: exit 1
       - name: Ruff format check
-        run: uv run ruff format --check .
+        id: ruff_format
+        continue-on-error: true
+        run: |
+          mkdir -p ../artifacts
+          uv run ruff format --check --diff . 2>&1 | tee ../artifacts/ruff-format.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload Ruff format diagnostics
+        if: steps.ruff_format.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-ruff-format-diagnostics
+          path: artifacts/ruff-format.txt
+      - name: Fail on Ruff format errors
+        if: steps.ruff_format.outcome == 'failure'
+        run: exit 1
       - name: Pyright
         id: pyright
         continue-on-error: true
