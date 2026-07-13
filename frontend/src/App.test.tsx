@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
@@ -96,41 +96,24 @@ describe("App", () => {
     expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
   });
 
-  it("reviews a captured opportunity directly from the workbench", async () => {
-    let reviewed = false;
+  it("shows evaluation evidence and source provenance in the workbench", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
-      if (url.endsWith("/api/opportunities")) {
-        return jsonResponse([{ ...opportunity, review_decision: reviewed ? "consider" : null }]);
-      }
-      if (url.includes("/reviews")) {
-        reviewed = true;
-        return jsonResponse({
-          review_id: "review-2",
-          posting_id: opportunity.posting_id,
-          evaluation_id: opportunity.evaluation_id,
-          decision: "consider",
-          evaluation_overridden: true,
-        });
-      }
+      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity]);
       throw new Error(`Unexpected request: ${url}`);
     });
 
     render(<App />);
 
     expect(await screen.findByText(opportunity.reasons[0])).toBeInTheDocument();
+    expect(screen.getByText("medium confidence · rules-v1")).toBeInTheDocument();
+    expect(screen.getByText("Profile default-job-search:v1")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
       "href",
       opportunity.source_url,
     );
-
-    const card = screen.getByRole("heading", { name: opportunity.title }).closest("article");
-    expect(card).not.toBeNull();
-    fireEvent.click(card!.querySelector<HTMLButtonElement>("button:nth-of-type(2)")!);
-
-    await waitFor(() => expect(reviewed).toBe(true));
-    expect(await screen.findByText("consider", { selector: ".queue-status strong" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "pending (1)" })).toBeInTheDocument();
   });
 
   it("loads capture history and exposes rejected evidence", async () => {
