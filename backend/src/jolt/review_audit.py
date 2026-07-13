@@ -39,7 +39,9 @@ def audit(output_dir: Path) -> dict[str, object]:
     findings: list[dict[str, str]] = []
     for item in opportunities:
         if not isinstance(item, dict):
-            findings.append({"severity": "error", "message": "Non-object opportunity returned."})
+            findings.append(
+                {"severity": "error", "message": "Non-object opportunity returned."}
+            )
             continue
         title = str(item.get("title") or "Untitled opportunity")
         missing = sorted(field for field in REQUIRED_REVIEW_FIELDS if field not in item)
@@ -54,7 +56,10 @@ def audit(output_dir: Path) -> dict[str, object]:
             )
         if item.get("profile_version_id") != EXPECTED_PROFILE:
             findings.append(
-                {"severity": "error", "message": f"{title}: unexpected profile version."}
+                {
+                    "severity": "error",
+                    "message": f"{title}: unexpected profile version.",
+                }
             )
         if item.get("engine_version") != EXPECTED_ENGINE:
             findings.append(
@@ -75,10 +80,15 @@ def audit(output_dir: Path) -> dict[str, object]:
                 }
             )
         if not item.get("fit_summary"):
-            findings.append({"severity": "warning", "message": f"{title}: empty fit summary."})
+            findings.append(
+                {"severity": "warning", "message": f"{title}: empty fit summary."}
+            )
         if not item.get("strengths") and not item.get("gaps"):
             findings.append(
-                {"severity": "warning", "message": f"{title}: no strengths or gaps recorded."}
+                {
+                    "severity": "warning",
+                    "message": f"{title}: no strengths or gaps recorded.",
+                }
             )
 
     (output_dir / "health.json").write_text(
