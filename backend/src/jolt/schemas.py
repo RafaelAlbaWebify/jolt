@@ -60,6 +60,22 @@ class LinkedInFixtureCaptureRequest(BaseModel):
     page_number: int = Field(default=1, ge=1)
 
 
+class LinkedInLiveCaptureItemRequest(BaseModel):
+    source_job_id: str = Field(min_length=1)
+    source_url: str = ""
+    title: str = ""
+    company: str = ""
+    location: str = ""
+    description: str = ""
+    identity_verified: bool
+    verification_reason: str = ""
+
+
+class LinkedInLiveCaptureRequest(BaseModel):
+    search_url: str = ""
+    items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=50)
+
+
 class CaptureItemResponse(BaseModel):
     capture_item_id: str
     source_job_id: str
