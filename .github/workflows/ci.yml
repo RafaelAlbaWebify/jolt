@@ -108,7 +108,7 @@ jobs:
       - name: Commit generated lockfile
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/frontend-lockfile'
         run: |
-          if git diff --quiet -- package-lock.json; then
+          if [ -z "$(git status --porcelain -- package-lock.json)" ]; then
             echo "Lockfile is already committed."
             exit 0
           fi
