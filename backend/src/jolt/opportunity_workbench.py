@@ -5,11 +5,13 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.automated_review import analyze_posting, ensure_automated_reviews
 from jolt.database import Application, Evaluation, Outcome, Posting, ReviewDecision
 from jolt.schemas import OpportunitySummary
 
 
 def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
+    ensure_automated_reviews(session)
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     results: list[OpportunitySummary] = []
 
@@ -22,6 +24,7 @@ def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
         if evaluation is None:
             continue
 
+        analysis = analyze_posting(posting.title, posting.location, posting.description)
         review = session.scalar(
             select(ReviewDecision)
             .where(ReviewDecision.posting_id == posting.id)
@@ -45,8 +48,15 @@ def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
                 company=posting.company,
                 location=posting.location,
                 recommendation=evaluation.recommendation,
+                proposed_decision=analysis.proposed_decision,
                 confidence=evaluation.confidence,
                 ranking_score=evaluation.ranking_score,
+                fit_summary=analysis.summary,
+                strengths=analysis.strengths,
+                gaps=analysis.gaps,
+                blockers=analysis.blockers,
+                uncertainties=analysis.uncertainties,
+                dimensions=analysis.dimensions,
                 reasons=json.loads(evaluation.reasons_json),
                 profile_version_id=evaluation.profile_version_id,
                 engine_version=evaluation.engine_version,
