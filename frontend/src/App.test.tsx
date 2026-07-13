@@ -23,6 +23,20 @@ const opportunity = {
   reasons: ["Relevant signal(s): application support, sql, incident."],
   profile_version_id: "rafael-job-search:v2",
   engine_version: "profile-rules-v2",
+  readiness: {
+    report_id: "readiness-1",
+    profile_version_id: "rafael-job-search:v2",
+    engine_version: "application-readiness-v1",
+    priority: "high",
+    readiness_score: 91,
+    evidence_matches: ["Production-critical IT support with incident ownership."],
+    credibility_warnings: ["Do not claim DBA ownership."],
+    cv_tailoring_points: ["Position SQL as a support troubleshooting tool."],
+    talking_points: ["Incident ownership and controlled escalation."],
+    interview_questions: ["How would you troubleshoot an API integration failure?"],
+    revision_topics: ["SQL read-only diagnostics and escalation boundaries."],
+    checklist: ["Confirm salary, contract, remote eligibility, shifts, and travel."],
+  },
   review_decision: null,
 };
 
@@ -106,7 +120,7 @@ describe("App", () => {
     expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
   });
 
-  it("shows automated decision evidence and source provenance", async () => {
+  it("shows automated decision evidence, readiness, and source provenance", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
@@ -122,6 +136,13 @@ describe("App", () => {
     expect(screen.getByText(opportunity.uncertainties[0])).toBeInTheDocument();
     expect(screen.getByText("medium confidence · profile-rules-v2")).toBeInTheDocument();
     expect(screen.getByText("Profile rafael-job-search:v2")).toBeInTheDocument();
+    expect(screen.getByText("Application readiness · high priority · 91/100")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Application readiness · high priority · 91/100"));
+    expect(screen.getByText(opportunity.readiness.evidence_matches[0])).toBeInTheDocument();
+    expect(screen.getByText(opportunity.readiness.credibility_warnings[0])).toBeInTheDocument();
+    expect(screen.getByText(opportunity.readiness.interview_questions[0])).toBeInTheDocument();
+
     expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
       "href",
       opportunity.source_url,
