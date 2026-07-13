@@ -101,7 +101,21 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Tests
-        run: npm test
+        id: frontend_tests
+        continue-on-error: true
+        run: |
+          mkdir -p ../artifacts
+          npm test 2>&1 | tee ../artifacts/frontend-tests.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload frontend test diagnostics
+        if: steps.frontend_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-diagnostics
+          path: artifacts/frontend-tests.txt
+      - name: Fail on frontend test errors
+        if: steps.frontend_tests.outcome == 'failure'
+        run: exit 1
       - name: Production build
         run: npm run build
 

@@ -11,6 +11,7 @@ API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 EXPECTED_PROFILE = "rafael-job-search:v2"
 EXPECTED_ENGINE = "profile-rules-v2"
+EXPECTED_READINESS_ENGINE = "application-readiness-v1"
 REQUIRED_REVIEW_FIELDS = {
     "proposed_decision",
     "fit_summary",
@@ -20,11 +21,30 @@ REQUIRED_REVIEW_FIELDS = {
     "uncertainties",
     "dimensions",
 }
+REQUIRED_READINESS_FIELDS = {
+    "report_id",
+    "profile_version_id",
+    "engine_version",
+    "priority",
+    "readiness_score",
+    "evidence_matches",
+    "credibility_warnings",
+    "cv_tailoring_points",
+    "talking_points",
+    "interview_questions",
+    "revision_topics",
+    "checklist",
+}
 
 
 def _get_json(url: str) -> object:
     with urllib.request.urlopen(url, timeout=15) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
+
+
+def _get_bytes(url: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=30) as response:  # noqa: S310
+        return response.read()
 
 
 def audit(output_dir: Path) -> dict[str, object]:
@@ -37,6 +57,10 @@ def audit(output_dir: Path) -> dict[str, object]:
         raise RuntimeError("Opportunity API did not return a list.")
 
     findings: list[dict[str, str]] = []
+    pack_dir = output_dir / "preparation-packs"
+    pack_dir.mkdir(exist_ok=True)
+    preparation_pack_count = 0
+
     for item in opportunities:
         if not isinstance(item, dict):
             findings.append({"severity": "error", "message": "Non-object opportunity returned."})
@@ -47,7 +71,7 @@ def audit(output_dir: Path) -> dict[str, object]:
             findings.append(
                 {
                     "severity": "error",
-                    "message": (f"{title}: missing automated-review fields: {', '.join(missing)}"),
+                    "message": f"{title}: missing automated-review fields: {', '.join(missing)}",
                 }
             )
         if item.get("profile_version_id") != EXPECTED_PROFILE:
@@ -59,7 +83,7 @@ def audit(output_dir: Path) -> dict[str, object]:
             )
         if item.get("engine_version") != EXPECTED_ENGINE:
             findings.append(
-                {"severity": "error", "message": f"{title}: unexpected engine version."}
+                {"severity": "error", "message": f"{title}: unexpected review engine version."}
             )
         score = item.get("ranking_score")
         if not isinstance(score, int) or not 0 <= score <= 100:
@@ -83,6 +107,62 @@ def audit(output_dir: Path) -> dict[str, object]:
                 }
             )
 
+        readiness = item.get("readiness")
+        if not isinstance(readiness, dict):
+            findings.append(
+                {"severity": "error", "message": f"{title}: readiness report is missing."}
+            )
+        else:
+            missing_readiness = sorted(
+                field for field in REQUIRED_READINESS_FIELDS if field not in readiness
+            )
+            if missing_readiness:
+                findings.append(
+                    {
+                        "severity": "error",
+                        "message": f"{title}: missing readiness fields: {', '.join(missing_readiness)}",
+                    }
+                )
+            if readiness.get("profile_version_id") != EXPECTED_PROFILE:
+                findings.append(
+                    {
+                        "severity": "error",
+                        "message": f"{title}: readiness profile version is unexpected.",
+                    }
+                )
+            if readiness.get("engine_version") != EXPECTED_READINESS_ENGINE:
+                findings.append(
+                    {
+                        "severity": "error",
+                        "message": f"{title}: readiness engine version is unexpected.",
+                    }
+                )
+            readiness_score = readiness.get("readiness_score")
+            if not isinstance(readiness_score, int) or not 0 <= readiness_score <= 100:
+                findings.append(
+                    {"severity": "error", "message": f"{title}: invalid readiness score."}
+                )
+            if not readiness.get("checklist"):
+                findings.append(
+                    {"severity": "warning", "message": f"{title}: readiness checklist is empty."}
+                )
+
+        posting_id = str(item.get("posting_id") or "")
+        if posting_id:
+            try:
+                pack = _get_bytes(f"{API_BASE}/api/opportunities/{posting_id}/preparation-pack")
+                if not pack.startswith(b"PK"):
+                    raise RuntimeError("response is not a ZIP archive")
+                (pack_dir / f"{posting_id}.zip").write_bytes(pack)
+                preparation_pack_count += 1
+            except Exception as exc:  # noqa: BLE001
+                findings.append(
+                    {
+                        "severity": "error",
+                        "message": f"{title}: preparation pack failed: {exc}",
+                    }
+                )
+
     (output_dir / "health.json").write_text(json.dumps(health, indent=2), encoding="utf-8")
     (output_dir / "opportunities.json").write_text(
         json.dumps(opportunities, indent=2), encoding="utf-8"
@@ -101,15 +181,17 @@ def audit(output_dir: Path) -> dict[str, object]:
         page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
-        html = page.locator("body").inner_text()
-        (output_dir / "workbench-visible-text.txt").write_text(html, encoding="utf-8")
+        visible_text = page.locator("body").inner_text()
+        (output_dir / "workbench-visible-text.txt").write_text(visible_text, encoding="utf-8")
         browser.close()
 
     if page_errors:
         findings.extend(
             {"severity": "error", "message": f"Browser error: {error}"} for error in page_errors
         )
-    automated_review_visible = "Automated proposed decision" in html
+    automated_review_visible = "Automated proposed decision" in visible_text
+    readiness_visible = "Application readiness" in visible_text
+    preparation_download_visible = "Download preparation pack" in visible_text
     if opportunities and not automated_review_visible:
         findings.append(
             {
@@ -117,12 +199,29 @@ def audit(output_dir: Path) -> dict[str, object]:
                 "message": "Automated review data exists but is not visible in the workbench.",
             }
         )
+    if opportunities and not readiness_visible:
+        findings.append(
+            {
+                "severity": "error",
+                "message": "Readiness data exists but is not visible in the workbench.",
+            }
+        )
+    if opportunities and not preparation_download_visible:
+        findings.append(
+            {
+                "severity": "error",
+                "message": "Preparation-pack download is not visible in the workbench.",
+            }
+        )
 
     summary: dict[str, object] = {
         "status": "failed" if any(item["severity"] == "error" for item in findings) else "passed",
         "opportunity_count": len(opportunities),
         "capture_count": len(captures) if isinstance(captures, list) else None,
+        "preparation_pack_count": preparation_pack_count,
         "automated_review_visible": automated_review_visible,
+        "readiness_visible": readiness_visible,
+        "preparation_download_visible": preparation_download_visible,
         "findings": findings,
         "console_messages": console_messages,
         "page_errors": page_errors,

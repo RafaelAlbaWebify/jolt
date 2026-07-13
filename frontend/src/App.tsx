@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
+import { ApplicationReadiness } from "./ApplicationReadiness";
+import type { ApplicationReadinessData } from "./ApplicationReadiness";
 import { AutomatedReview } from "./AutomatedReview";
 import { CaptureHistory } from "./CaptureHistory";
 
@@ -31,6 +33,7 @@ export type Opportunity = {
   reasons: string[];
   profile_version_id: string;
   engine_version: string;
+  readiness: ApplicationReadinessData;
   review_decision: ReviewChoice | null;
   application_id?: string | null;
   application_status?: ApplicationStatus | null;
@@ -242,9 +245,16 @@ export function App() {
 
                   <p className="confidence">{opportunity.confidence} confidence · {opportunity.engine_version}</p>
                   <AutomatedReview review={opportunity} />
+                  <ApplicationReadiness readiness={opportunity.readiness} />
 
                   <div className="card-links">
                     {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
+                    <a
+                      href={`${API_BASE}/api/opportunities/${opportunity.posting_id}/preparation-pack`}
+                      download={`JOLT_PREPARATION_${opportunity.posting_id}.zip`}
+                    >
+                      Download preparation pack
+                    </a>
                     <span>Profile {opportunity.profile_version_id}</span>
                   </div>
 
