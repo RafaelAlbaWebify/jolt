@@ -131,6 +131,18 @@ button.filter-active, button.decision-active { background: #172033; border-color
 .review-evidence-group strong { font-size: 0.82rem; }
 .review-evidence-group ul { margin: 7px 0 0; padding-left: 18px; color: #344054; font-size: 0.82rem; line-height: 1.4; }
 
+.application-readiness {
+  padding: 12px;
+  border: 1px solid #bad8c4;
+  border-radius: 10px;
+  background: #f2fbf5;
+}
+.application-readiness summary { cursor: pointer; font-weight: 800; color: #176c38; }
+.application-readiness[open] summary { margin-bottom: 10px; }
+.readiness-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid #d7e9dd; }
+.readiness-section h5 { margin: 0 0 6px; font-size: 0.82rem; color: #244d32; }
+.readiness-section ul { margin: 0; padding-left: 18px; color: #344054; font-size: 0.82rem; line-height: 1.45; }
+
 @media (max-width: 760px) {
   .shell { width: min(100% - 20px, 1180px); padding-top: 24px; }
   .panel { padding: 18px; }
