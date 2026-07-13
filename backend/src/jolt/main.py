@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
@@ -195,6 +196,23 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> list[OpportunitySummary]:
         return list_opportunity_workbench(session)
+
+    @app.get("/api/opportunities/{posting_id}/preparation-pack", tags=["exports"])
+    def preparation_pack(
+        posting_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        try:
+            content = build_application_preparation_pack(session, posting_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": "attachment; filename=JOLT_APPLICATION_PREPARATION.zip"
+            },
+        )
 
     @app.get("/api/exports/analysis-pack", tags=["exports"])
     def analysis_pack(
