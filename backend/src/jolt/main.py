@@ -13,6 +13,7 @@ from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linked
 from jolt.database import create_session_factory
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.opportunity_workbench import list_opportunity_workbench
+from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -123,6 +124,26 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/opportunities/{posting_id}/readiness/history", tags=["readiness"])
+    def readiness_history(
+        posting_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[dict[str, object]]:
+        try:
+            return list_readiness_history(session, posting_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/opportunities/{posting_id}/readiness/refresh", tags=["readiness"])
+    def refresh_readiness(
+        posting_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, object]:
+        try:
+            return refresh_readiness_report(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
