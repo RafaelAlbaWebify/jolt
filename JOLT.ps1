@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("start", "stop", "validate", "capture")]
+    [ValidateSet("start", "stop", "validate", "capture", "audit")]
     [string]$Action = "start",
     [string]$RepoPath = "",
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
@@ -57,5 +57,8 @@ switch ($Action) {
             -SearchUrl $SearchUrl `
             -MaxJobs $MaxJobs `
             -NoBrowser:$NoBrowser
+    }
+    "audit" {
+        & (Join-Path $tools "audit-jolt.ps1")
     }
 }
