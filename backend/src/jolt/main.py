@@ -11,6 +11,7 @@ from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.live_capture_workflow import run_linkedin_live_capture
+from jolt.opportunity_workbench import list_opportunity_workbench
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -30,7 +31,6 @@ from jolt.workflow import (
     create_application,
     get_application,
     ingest_manual,
-    list_opportunities,
     record_outcome,
     record_review,
     transition_application,
@@ -194,7 +194,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     def opportunities(
         session: Annotated[Session, Depends(get_session)],
     ) -> list[OpportunitySummary]:
-        return list_opportunities(session)
+        return list_opportunity_workbench(session)
 
     @app.get("/api/exports/analysis-pack", tags=["exports"])
     def analysis_pack(
