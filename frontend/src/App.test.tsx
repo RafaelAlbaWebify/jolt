@@ -1,15 +1,21 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 
 const opportunity = {
   posting_id: "posting-1",
+  evaluation_id: "evaluation-1",
+  source_url: "https://www.linkedin.com/jobs/view/123",
   title: "Application Support Engineer",
   company: "Example Systems",
   location: "Remote Spain",
   recommendation: "pursue",
+  confidence: "medium",
   ranking_score: 83,
+  reasons: ["Relevant signal(s): application support, sql, incident."],
+  profile_version_id: "default-job-search:v1",
+  engine_version: "rules-v1",
   review_decision: null,
 };
 
@@ -32,7 +38,10 @@ function jsonResponse(value: object) {
 }
 
 describe("App", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("submits a manual opportunity and records a human review", async () => {
     let reviewed = false;
@@ -88,6 +97,26 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "pursue" }));
     expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
+  });
+
+  it("shows evaluation evidence and source provenance in the workbench", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/captures")) return jsonResponse([]);
+      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity]);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText(opportunity.reasons[0])).toBeInTheDocument();
+    expect(screen.getByText("medium confidence · rules-v1")).toBeInTheDocument();
+    expect(screen.getByText("Profile default-job-search:v1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
+      "href",
+      opportunity.source_url,
+    );
+    expect(screen.getByRole("button", { name: "pending (1)" })).toBeInTheDocument();
   });
 
   it("loads capture history and exposes rejected evidence", async () => {

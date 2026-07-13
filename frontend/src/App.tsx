@@ -1,15 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
 import { CaptureHistory } from "./CaptureHistory";
 
+type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
+type ApplicationStatus =
+  | "preparing" | "submitted" | "acknowledged" | "recruiter_screen"
+  | "technical_interview" | "hiring_manager_interview" | "final_interview"
+  | "offer" | "rejected" | "withdrawn" | "no_response" | "closed";
+type QueueFilter = "all" | "pending" | "pursue" | "active";
+
 export type Opportunity = {
   posting_id: string;
+  evaluation_id: string;
+  source_url: string;
   title: string;
   company: string;
   location: string;
   recommendation: "pursue" | "consider" | "reject";
+  confidence: string;
   ranking_score: number;
+  reasons: string[];
+  profile_version_id: string;
+  engine_version: string;
   review_decision: ReviewChoice | null;
   application_id?: string | null;
   application_status?: ApplicationStatus | null;
@@ -29,19 +42,17 @@ type IntakeResult = {
   reasons: string[];
 };
 
-type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
-type ApplicationStatus =
-  | "preparing" | "submitted" | "acknowledged" | "recruiter_screen"
-  | "technical_interview" | "hiring_manager_interview" | "final_interview"
-  | "offer" | "rejected" | "withdrawn" | "no_response" | "closed";
-
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const REVIEW_CHOICES: ReviewChoice[] = [
+  "pursue", "consider", "defer", "reject", "needs_more_information",
+];
 
 export function App() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [rawText, setRawText] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -54,6 +65,23 @@ export function App() {
   useEffect(() => {
     refreshOpportunities().catch(() => setError("The JOLT API is not available."));
   }, [refreshOpportunities]);
+
+  const visibleOpportunities = useMemo(() => {
+    const filtered = opportunities.filter((opportunity) => {
+      if (queueFilter === "pending") return !opportunity.review_decision;
+      if (queueFilter === "pursue") return opportunity.review_decision === "pursue";
+      if (queueFilter === "active") return Boolean(opportunity.application_id && !opportunity.outcome_type);
+      return true;
+    });
+    return [...filtered].sort((left, right) => right.ranking_score - left.ranking_score);
+  }, [opportunities, queueFilter]);
+
+  const counts = useMemo(() => ({
+    all: opportunities.length,
+    pending: opportunities.filter((item) => !item.review_decision).length,
+    pursue: opportunities.filter((item) => item.review_decision === "pursue").length,
+    active: opportunities.filter((item) => item.application_id && !item.outcome_type).length,
+  }), [opportunities]);
 
   async function apiAction(url: string, body: object) {
     setBusy(true);
@@ -93,10 +121,9 @@ export function App() {
     }
   }
 
-  async function review(decision: ReviewChoice) {
-    if (!intake) return;
-    await apiAction(`/api/opportunities/${intake.posting_id}/reviews`, {
-      evaluation_id: intake.evaluation_id,
+  async function reviewOpportunity(postingId: string, evaluationId: string, decision: ReviewChoice) {
+    await apiAction(`/api/opportunities/${postingId}/reviews`, {
+      evaluation_id: evaluationId,
       decision,
     });
   }
@@ -156,8 +183,8 @@ export function App() {
           </div>
           <ul>{intake.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
           <div className="review-actions" aria-label="Record your decision">
-            {(["pursue", "consider", "defer", "reject", "needs_more_information"] as const).map((choice) => (
-              <button type="button" disabled={busy} onClick={() => review(choice)} key={choice}>
+            {REVIEW_CHOICES.map((choice) => (
+              <button type="button" disabled={busy} onClick={() => reviewOpportunity(intake.posting_id, intake.evaluation_id, choice)} key={choice}>
                 {choice.replaceAll("_", " ")}
               </button>
             ))}
@@ -166,21 +193,79 @@ export function App() {
       )}
 
       <section className="panel" aria-labelledby="queue-heading">
-        <h2 id="queue-heading">Opportunity and application queue</h2>
-        {opportunities.length === 0 ? <p>No opportunities saved yet.</p> : (
-          <div className="queue">
-            {opportunities.map((opportunity) => (
-              <article key={opportunity.posting_id}>
-                <div>
-                  <h3>{opportunity.title || "Untitled opportunity"}</h3>
-                  <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
+        <div className="section-heading">
+          <div>
+            <h2 id="queue-heading">Opportunity review workbench</h2>
+            <p>Review evidence, override recommendations deliberately, and move only chosen roles into applications.</p>
+          </div>
+          <button type="button" className="secondary" disabled={busy} onClick={() => refreshOpportunities()}>
+            Refresh queue
+          </button>
+        </div>
+
+        <div className="queue-filters" aria-label="Filter opportunities">
+          {(["all", "pending", "pursue", "active"] as QueueFilter[]).map((filter) => (
+            <button
+              type="button"
+              className={queueFilter === filter ? "filter-active" : "secondary"}
+              onClick={() => setQueueFilter(filter)}
+              key={filter}
+            >
+              {filter} ({counts[filter]})
+            </button>
+          ))}
+        </div>
+
+        {visibleOpportunities.length === 0 ? <p>No opportunities match this view.</p> : (
+          <div className="queue opportunity-grid">
+            {visibleOpportunities.map((opportunity) => (
+              <article className="opportunity-card" key={opportunity.posting_id}>
+                <div className="opportunity-main">
+                  <div className="opportunity-title-row">
+                    <div>
+                      <h3>{opportunity.title || "Untitled opportunity"}</h3>
+                      <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
+                    </div>
+                    <div className={`score score-${opportunity.recommendation}`}>
+                      <strong>{opportunity.ranking_score}</strong>
+                      <span>{opportunity.recommendation}</span>
+                    </div>
+                  </div>
+
+                  <p className="confidence">{opportunity.confidence} confidence · {opportunity.engine_version}</p>
+                  {opportunity.reasons.length > 0 && (
+                    <ul className="evidence-list">
+                      {opportunity.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                    </ul>
+                  )}
+
+                  <div className="card-links">
+                    {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
+                    <span>Profile {opportunity.profile_version_id}</span>
+                  </div>
+
+                  <div className="review-actions" aria-label={`Review ${opportunity.title}`}>
+                    {REVIEW_CHOICES.map((choice) => (
+                      <button
+                        type="button"
+                        className={opportunity.review_decision === choice ? "decision-active" : "secondary"}
+                        disabled={busy}
+                        onClick={() => reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, choice)}
+                        key={choice}
+                      >
+                        {choice.replaceAll("_", " ")}
+                      </button>
+                    ))}
+                  </div>
+
                   {opportunity.review_decision === "pursue" && !opportunity.application_id && (
                     <button disabled={busy} type="button" onClick={() => apiAction(
                       `/api/opportunities/${opportunity.posting_id}/applications`, {}
                     )}>Start application</button>
                   )}
+
                   {opportunity.application_id && !opportunity.outcome_type && (
-                    <div className="review-actions" aria-label={`Update ${opportunity.title}`}>
+                    <div className="review-actions application-actions" aria-label={`Update ${opportunity.title}`}>
                       {opportunity.application_status === "preparing" && (
                         <button disabled={busy} type="button" onClick={() => apiAction(
                           `/api/applications/${opportunity.application_id}/transitions`, { status: "submitted" }
@@ -191,16 +276,17 @@ export function App() {
                           `/api/applications/${opportunity.application_id}/transitions`, { status: "recruiter_screen" }
                         )}>Recruiter screen</button>
                       )}
-                      <button disabled={busy} type="button" onClick={() => apiAction(
+                      <button disabled={busy} type="button" className="secondary" onClick={() => apiAction(
                         `/api/applications/${opportunity.application_id}/outcomes`,
                         { outcome_type: "rejected_by_employer" }
                       )}>Record employer rejection</button>
                     </div>
                   )}
                 </div>
+
                 <div className="queue-status">
                   <strong>{opportunity.outcome_type ?? opportunity.application_status ?? opportunity.review_decision ?? "pending review"}</strong>
-                  <span>{opportunity.recommendation} · {opportunity.ranking_score}</span>
+                  <span>human decision</span>
                 </div>
               </article>
             ))}
