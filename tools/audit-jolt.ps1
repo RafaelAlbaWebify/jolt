@@ -41,8 +41,10 @@ try {
         "JOLT automated review audit",
         "Generated: $((Get-Date).ToString('o'))",
         "",
-        "Review audit-summary.json, opportunities.json, and workbench-full.png.",
-        "The screenshot captures the complete local workbench.",
+        "Review audit-summary.json, opportunities.json, readiness-histories.json, and the workbench screenshots.",
+        "workbench-full.png captures the complete local workbench.",
+        "workbench-readiness-history.png captures an expanded readiness-history panel when opportunities exist.",
+        "The audit reads readiness history and preparation packs but does not recalculate readiness.",
         "No application or recruiter action was performed."
     ) | Set-Content -Path (Join-Path $Staging "README.txt") -Encoding UTF8
 

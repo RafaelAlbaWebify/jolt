@@ -57,9 +57,11 @@ def audit(output_dir: Path) -> dict[str, object]:
         raise RuntimeError("Opportunity API did not return a list.")
 
     findings: list[dict[str, str]] = []
+    readiness_histories: dict[str, object] = {}
     pack_dir = output_dir / "preparation-packs"
     pack_dir.mkdir(exist_ok=True)
     preparation_pack_count = 0
+    readiness_history_count = 0
 
     for item in opportunities:
         if not isinstance(item, dict):
@@ -150,6 +152,34 @@ def audit(output_dir: Path) -> dict[str, object]:
         posting_id = str(item.get("posting_id") or "")
         if posting_id:
             try:
+                history = _get_json(f"{API_BASE}/api/opportunities/{posting_id}/readiness/history")
+                readiness_histories[posting_id] = history
+                if not isinstance(history, list) or not history:
+                    raise RuntimeError("history endpoint returned no reports")
+                current_reports = [
+                    report
+                    for report in history
+                    if isinstance(report, dict) and report.get("is_current") is True
+                ]
+                if len(current_reports) != 1:
+                    raise RuntimeError("history must contain exactly one current report")
+                current_report = current_reports[0]
+                if isinstance(readiness, dict) and current_report.get("report_id") != readiness.get(
+                    "report_id"
+                ):
+                    raise RuntimeError(
+                        "current history report does not match opportunity readiness"
+                    )
+                readiness_history_count += 1
+            except Exception as exc:  # noqa: BLE001
+                findings.append(
+                    {
+                        "severity": "error",
+                        "message": f"{title}: readiness history failed: {exc}",
+                    }
+                )
+
+            try:
                 pack = _get_bytes(f"{API_BASE}/api/opportunities/{posting_id}/preparation-pack")
                 if not pack.startswith(b"PK"):
                     raise RuntimeError("response is not a ZIP archive")
@@ -168,9 +198,13 @@ def audit(output_dir: Path) -> dict[str, object]:
         json.dumps(opportunities, indent=2), encoding="utf-8"
     )
     (output_dir / "captures.json").write_text(json.dumps(captures, indent=2), encoding="utf-8")
+    (output_dir / "readiness-histories.json").write_text(
+        json.dumps(readiness_histories, indent=2), encoding="utf-8"
+    )
 
     console_messages: list[str] = []
     page_errors: list[str] = []
+    expanded_history_visible = False
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1600, "height": 1000})
@@ -182,6 +216,16 @@ def audit(output_dir: Path) -> dict[str, object]:
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
         visible_text = page.locator("body").inner_text()
+        history_controls = page.get_by_role("button", name="Readiness report history")
+        if opportunities and history_controls.count() > 0:
+            history_controls.first.click()
+            page.wait_for_load_state("networkidle")
+            page.screenshot(path=output_dir / "workbench-readiness-history.png", full_page=True)
+            expanded_text = page.locator("body").inner_text()
+            expanded_history_visible = "Recalculate readiness" in expanded_text
+            (output_dir / "workbench-readiness-history-text.txt").write_text(
+                expanded_text, encoding="utf-8"
+            )
         (output_dir / "workbench-visible-text.txt").write_text(visible_text, encoding="utf-8")
         browser.close()
 
@@ -192,6 +236,7 @@ def audit(output_dir: Path) -> dict[str, object]:
     automated_review_visible = "Automated proposed decision" in visible_text
     readiness_visible = "Application readiness" in visible_text
     preparation_download_visible = "Download preparation pack" in visible_text
+    readiness_history_control_visible = "Readiness report history" in visible_text
     if opportunities and not automated_review_visible:
         findings.append(
             {
@@ -213,15 +258,32 @@ def audit(output_dir: Path) -> dict[str, object]:
                 "message": "Preparation-pack download is not visible in the workbench.",
             }
         )
+    if opportunities and not readiness_history_control_visible:
+        findings.append(
+            {
+                "severity": "error",
+                "message": "Readiness-history controls are not visible in the workbench.",
+            }
+        )
+    if opportunities and not expanded_history_visible:
+        findings.append(
+            {
+                "severity": "error",
+                "message": "Readiness history could not be expanded in the workbench.",
+            }
+        )
 
     summary: dict[str, object] = {
         "status": "failed" if any(item["severity"] == "error" for item in findings) else "passed",
         "opportunity_count": len(opportunities),
         "capture_count": len(captures) if isinstance(captures, list) else None,
         "preparation_pack_count": preparation_pack_count,
+        "readiness_history_count": readiness_history_count,
         "automated_review_visible": automated_review_visible,
         "readiness_visible": readiness_visible,
         "preparation_download_visible": preparation_download_visible,
+        "readiness_history_control_visible": readiness_history_control_visible,
+        "expanded_history_visible": expanded_history_visible,
         "findings": findings,
         "console_messages": console_messages,
         "page_errors": page_errors,
