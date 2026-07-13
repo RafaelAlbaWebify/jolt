@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
+from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -18,6 +19,7 @@ from jolt.schemas import (
     CaptureRunSummary,
     IntakeResponse,
     LinkedInFixtureCaptureRequest,
+    LinkedInLiveCaptureRequest,
     ManualIntakeRequest,
     OpportunitySummary,
     OutcomeRequest,
@@ -38,7 +40,7 @@ LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    app = FastAPI(title="JOLT API", version="0.7.0")
+    app = FastAPI(title="JOLT API", version="0.8.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=LOCAL_FRONTEND_ORIGINS,
@@ -57,7 +59,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "jolt-backend", "version": "0.7.0"}
+        return {"status": "ok", "service": "jolt-backend", "version": "0.8.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
@@ -76,6 +78,17 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> CaptureRunResponse:
         return run_linkedin_fixture_capture(session, request)
+
+    @app.post(
+        "/api/captures/linkedin/live",
+        response_model=CaptureRunResponse,
+        tags=["captures"],
+    )
+    def linkedin_live_capture(
+        request: LinkedInLiveCaptureRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> CaptureRunResponse:
+        return run_linkedin_live_capture(session, request)
 
     @app.get("/api/captures", response_model=list[CaptureRunSummary], tags=["captures"])
     def capture_history(
