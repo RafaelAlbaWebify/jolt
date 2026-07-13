@@ -113,9 +113,10 @@ def run_linkedin_live_capture(
             )
         )
 
+    completed_at = utc_now()
     run.status = "completed_with_warnings" if warnings else "completed"
     run.warnings_json = json.dumps(warnings)
-    run.completed_at = utc_now()
+    run.completed_at = completed_at
     session.commit()
 
     verified_count = sum(item.detail_status == "verified" for item in responses)
@@ -128,7 +129,7 @@ def run_linkedin_live_capture(
         search_url=run.search_url,
         warnings=warnings,
         started_at=run.started_at.isoformat(),
-        completed_at=run.completed_at.isoformat() if run.completed_at else None,
+        completed_at=completed_at.isoformat(),
         total_items=len(responses),
         verified_items=verified_count,
         rejected_items=rejected_count,
