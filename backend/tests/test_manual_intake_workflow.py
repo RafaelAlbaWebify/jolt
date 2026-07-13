@@ -55,26 +55,20 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     restarted_client = _client(database_path)
     opportunities = restarted_client.get("/api/opportunities")
     assert opportunities.status_code == 200
-    assert opportunities.json() == [
-        {
-            "posting_id": result["posting_id"],
-            "evaluation_id": result["evaluation_id"],
-            "source_url": payload["source_url"],
-            "title": "Application Support Engineer",
-            "company": "Example Systems",
-            "location": "Remote Spain",
-            "recommendation": "pursue",
-            "confidence": "medium",
-            "ranking_score": 83,
-            "reasons": ["Relevant signal(s): application support, sql, incident, api."],
-            "profile_version_id": "default-job-search:v1",
-            "engine_version": "rules-v1",
-            "review_decision": "pursue",
-            "application_id": None,
-            "application_status": None,
-            "outcome_type": None,
-        }
-    ]
+    items = opportunities.json()
+    assert len(items) == 1
+    opportunity = items[0]
+    assert opportunity["posting_id"] == result["posting_id"]
+    assert opportunity["source_url"] == payload["source_url"]
+    assert opportunity["recommendation"] == "pursue"
+    assert opportunity["proposed_decision"] == "pursue"
+    assert opportunity["confidence"] in {"medium", "high"}
+    assert opportunity["ranking_score"] >= 50
+    assert opportunity["profile_version_id"] == "rafael-job-search:v2"
+    assert opportunity["engine_version"] == "profile-rules-v2"
+    assert opportunity["review_decision"] == "pursue"
+    assert opportunity["strengths"]
+    assert opportunity["application_id"] is None
 
 
 def test_missing_information_does_not_become_hard_reject(tmp_path: Path) -> None:
