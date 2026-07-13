@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -14,7 +14,7 @@ PROFILE_ID = "rafael-job-search"
 PROFILE_VERSION_ID = "rafael-job-search:v2"
 ENGINE_VERSION = "profile-rules-v2"
 
-PROFILE_CONFIGURATION = {
+PROFILE_CONFIGURATION: dict[str, Any] = {
     "candidate": "Rafael Alba",
     "base_location": "Spain",
     "languages": ["English", "Spanish"],
