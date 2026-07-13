@@ -98,8 +98,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: npm install
+      - name: Install pinned dependencies
+        run: npm install --ignore-scripts --no-fund
+      - name: Dependency security audit
+        id: frontend_audit
+        continue-on-error: true
+        run: |
+          mkdir -p ../artifacts
+          npm audit --audit-level=high 2>&1 | tee ../artifacts/frontend-audit.txt
+          exit ${PIPESTATUS[0]}
+      - name: Upload frontend audit diagnostics
+        if: steps.frontend_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-audit-diagnostics
+          path: artifacts/frontend-audit.txt
+      - name: Fail on high-severity frontend vulnerabilities
+        if: steps.frontend_audit.outcome == 'failure'
+        run: exit 1
       - name: Tests
         id: frontend_tests
         continue-on-error: true
