@@ -33,7 +33,9 @@ def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
             .where(ReviewDecision.posting_id == posting.id)
             .order_by(ReviewDecision.reviewed_at.desc())
         )
-        application = session.scalar(select(Application).where(Application.posting_id == posting.id))
+        application = session.scalar(
+            select(Application).where(Application.posting_id == posting.id)
+        )
         outcome = (
             session.scalar(select(Outcome).where(Outcome.application_id == application.id))
             if application
