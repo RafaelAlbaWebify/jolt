@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
+import { AutomatedReview } from "./AutomatedReview";
 import { CaptureHistory } from "./CaptureHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
@@ -18,8 +19,15 @@ export type Opportunity = {
   company: string;
   location: string;
   recommendation: "pursue" | "consider" | "reject";
+  proposed_decision: ReviewChoice;
   confidence: string;
   ranking_score: number;
+  fit_summary: string;
+  strengths: string[];
+  gaps: string[];
+  blockers: string[];
+  uncertainties: string[];
+  dimensions: Record<string, number>;
   reasons: string[];
   profile_version_id: string;
   engine_version: string;
@@ -196,7 +204,7 @@ export function App() {
         <div className="section-heading">
           <div>
             <h2 id="queue-heading">Opportunity review workbench</h2>
-            <p>Review evidence, override recommendations deliberately, and move only chosen roles into applications.</p>
+            <p>JOLT proposes an evidence-backed decision. You confirm or override it before any application starts.</p>
           </div>
           <button type="button" className="secondary" disabled={busy} onClick={() => refreshOpportunities()}>
             Refresh queue
@@ -233,11 +241,7 @@ export function App() {
                   </div>
 
                   <p className="confidence">{opportunity.confidence} confidence · {opportunity.engine_version}</p>
-                  {opportunity.reasons.length > 0 && (
-                    <ul className="evidence-list">
-                      {opportunity.reasons.map((reason) => <li key={reason}>{reason}</li>)}
-                    </ul>
-                  )}
+                  <AutomatedReview review={opportunity} />
 
                   <div className="card-links">
                     {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}

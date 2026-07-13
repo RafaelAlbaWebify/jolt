@@ -11,11 +11,18 @@ const opportunity = {
   company: "Example Systems",
   location: "Remote Spain",
   recommendation: "pursue",
+  proposed_decision: "pursue",
   confidence: "medium",
   ranking_score: 83,
+  fit_summary: "Strong evidence-based alignment with Rafael's support and operations profile.",
+  strengths: ["Application Support: application support, sql, api."],
+  gaps: [],
+  blockers: [],
+  uncertainties: ["Salary or compensation is not evidenced."],
+  dimensions: { role_alignment: 25, application_support: 20, support_ownership: 16 },
   reasons: ["Relevant signal(s): application support, sql, incident."],
-  profile_version_id: "default-job-search:v1",
-  engine_version: "rules-v1",
+  profile_version_id: "rafael-job-search:v2",
+  engine_version: "profile-rules-v2",
   review_decision: null,
 };
 
@@ -99,7 +106,7 @@ describe("App", () => {
     expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
   });
 
-  it("shows evaluation evidence and source provenance in the workbench", async () => {
+  it("shows automated decision evidence and source provenance", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
@@ -109,9 +116,12 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(opportunity.reasons[0])).toBeInTheDocument();
-    expect(screen.getByText("medium confidence · rules-v1")).toBeInTheDocument();
-    expect(screen.getByText("Profile default-job-search:v1")).toBeInTheDocument();
+    expect(await screen.findByText("Automated proposed decision")).toBeInTheDocument();
+    expect(screen.getByText(opportunity.fit_summary)).toBeInTheDocument();
+    expect(screen.getByText(opportunity.strengths[0])).toBeInTheDocument();
+    expect(screen.getByText(opportunity.uncertainties[0])).toBeInTheDocument();
+    expect(screen.getByText("medium confidence · profile-rules-v2")).toBeInTheDocument();
+    expect(screen.getByText("Profile rafael-job-search:v2")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
       "href",
       opportunity.source_url,

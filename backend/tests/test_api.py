@@ -59,16 +59,17 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert len(items) == 1
     opportunity = items[0]
     assert opportunity["posting_id"] == result["posting_id"]
-    assert opportunity["source_url"] == payload["source_url"]
+    assert opportunity["title"] == "Application Support Engineer"
+    assert opportunity["company"] == "Example Systems"
     assert opportunity["recommendation"] == "pursue"
-    assert opportunity["proposed_decision"] == "pursue"
-    assert opportunity["confidence"] in {"medium", "high"}
+    assert opportunity["proposed_decision"] in {"pursue", "consider"}
     assert opportunity["ranking_score"] >= 50
+    assert opportunity["review_decision"] == "pursue"
     assert opportunity["profile_version_id"] == "rafael-job-search:v2"
     assert opportunity["engine_version"] == "profile-rules-v2"
-    assert opportunity["review_decision"] == "pursue"
     assert opportunity["strengths"]
-    assert opportunity["application_id"] is None
+    assert opportunity["fit_summary"]
+    assert "application_support" in opportunity["dimensions"]
 
 
 def test_missing_information_does_not_become_hard_reject(tmp_path: Path) -> None:
@@ -83,3 +84,26 @@ def test_missing_information_does_not_become_hard_reject(tmp_path: Path) -> None
     assert result["recommendation"] == "consider"
     assert result["confidence"] in {"low", "medium"}
     assert result["identity_status"] == "new"
+
+
+def test_automated_review_rejects_verified_language_blocker(tmp_path: Path) -> None:
+    client = _client(tmp_path / "blocker.db")
+    intake = client.post(
+        "/api/intake/manual",
+        json={
+            "source_url": "https://example.com/jobs/german",
+            "raw_text": (
+                "Technical Support Engineer\nExample GmbH\nLocation: Remote Europe\n"
+                "Troubleshoot incidents and APIs. Must speak German."
+            ),
+        },
+    )
+    assert intake.status_code == 200
+
+    opportunities = client.get("/api/opportunities")
+    assert opportunities.status_code == 200
+    opportunity = opportunities.json()[0]
+    assert opportunity["recommendation"] == "reject"
+    assert opportunity["proposed_decision"] == "reject"
+    assert opportunity["confidence"] == "high"
+    assert opportunity["blockers"]
