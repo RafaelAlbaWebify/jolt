@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import shutil
@@ -101,7 +102,11 @@ def select_card_locator(page: Page) -> tuple[Locator, str]:
         if count == 0:
             continue
         if selector == "a[href*='/jobs/view/']":
-            locator = locator.filter(has=page.locator("xpath=ancestor-or-self::*[self::li or @data-job-id or @data-occludable-job-id]"))
+            locator = locator.filter(
+                has=page.locator(
+                    "xpath=ancestor-or-self::*[self::li or @data-job-id or @data-occludable-job-id]"
+                )
+            )
         return locator, selector
     return page.locator("__jolt_missing_selector__"), ""
 
@@ -147,9 +152,7 @@ def wait_for_expected_detail(page: Page, expected_job_id: str, timeout_ms: int =
 
 def _card_identity(card: Locator) -> tuple[str, str]:
     source_job_id = (
-        card.get_attribute("data-job-id")
-        or card.get_attribute("data-occludable-job-id")
-        or ""
+        card.get_attribute("data-job-id") or card.get_attribute("data-occludable-job-id") or ""
     )
     title_link = first_matching_locator(card, TITLE_LINK_SELECTORS)
     source_url = title_link.get_attribute("href") or ""
@@ -195,7 +198,9 @@ def capture_visible_cards(
 
         verified = wait_for_expected_detail(page, source_job_id)
         detail_html = page.content() if verified else ""
-        reason = "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        reason = (
+            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        )
         page.screenshot(path=evidence_dir / f"job_{source_job_id}.png", full_page=False)
         captured.append(
             CapturedCard(
@@ -303,7 +308,9 @@ def run_capture(
 
             if pause_for_login:
                 print("LinkedIn is open in a persistent local browser profile.")
-                print("Log in manually if needed, apply the desired search filters, then return here.")
+                print(
+                    "Log in manually if needed, apply the desired search filters, then return here."
+                )
                 input("Press Enter to start the bounded capture: ")
 
             cards_locator, matched_selector = wait_for_cards(page)
@@ -358,14 +365,10 @@ def run_capture(
     except Exception as exc:
         _write_failure_diagnostics(staging_dir, evidence_dir, page, exc)
         if context is not None:
-            try:
+            with contextlib.suppress(Exception):
                 context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
-            except Exception:
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 context.close()
-            except Exception:
-                pass
         package_run(staging_dir, output_zip)
         raise RuntimeError(
             f"LinkedIn capture failed. A diagnostic ZIP was still created at: {output_zip}"
