@@ -168,6 +168,21 @@ class ApplicationResponse(BaseModel):
     events: list[ApplicationEventResponse]
 
 
+class ApplicationReadinessSummary(BaseModel):
+    report_id: str
+    profile_version_id: str
+    engine_version: str
+    priority: str
+    readiness_score: int
+    evidence_matches: list[str] = Field(default_factory=list)
+    credibility_warnings: list[str] = Field(default_factory=list)
+    cv_tailoring_points: list[str] = Field(default_factory=list)
+    talking_points: list[str] = Field(default_factory=list)
+    interview_questions: list[str] = Field(default_factory=list)
+    revision_topics: list[str] = Field(default_factory=list)
+    checklist: list[str] = Field(default_factory=list)
+
+
 class OpportunitySummary(BaseModel):
     posting_id: str
     evaluation_id: str = ""
@@ -188,6 +203,7 @@ class OpportunitySummary(BaseModel):
     reasons: list[str] = Field(default_factory=list)
     profile_version_id: str = ""
     engine_version: str = ""
+    readiness: ApplicationReadinessSummary | None = None
     review_decision: str | None = None
     application_id: str | None = None
     application_status: str | None = None
