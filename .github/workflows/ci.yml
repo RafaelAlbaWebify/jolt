@@ -99,7 +99,8 @@ jobs:
         shell: pwsh
         run: |
           $failed = $false
-          Get-ChildItem tools -Filter *.ps1 | ForEach-Object {
+          $scripts = @(Get-Item JOLT.ps1) + @(Get-ChildItem tools -Filter *.ps1)
+          $scripts | ForEach-Object {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
@@ -116,9 +117,12 @@ jobs:
       - name: Validate command contracts
         shell: pwsh
         run: |
+          $launcher = Get-Content JOLT.ps1 -Raw
           $start = Get-Content tools/start-jolt.ps1 -Raw
           $stop = Get-Content tools/stop-jolt.ps1 -Raw
           $validate = Get-Content tools/validate-jolt.ps1 -Raw
+          if ($launcher -notmatch 'JOLT_REPO_PATH') { throw 'Launcher must support path-independent repository discovery.' }
+          if ($launcher -notmatch 'Documents\\GitHub\\jolt') { throw 'Launcher must check the standard repository path.' }
           if ($start -notmatch 'alembic upgrade head') { throw 'Startup must apply migrations.' }
           if ($start -notmatch 'Wait-HttpEndpoint') { throw 'Startup must wait for services.' }
           if ($start -notmatch 'run-linkedin-capture.ps1') { throw 'Startup must integrate supervised capture.' }
