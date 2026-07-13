@@ -176,8 +176,15 @@ class OpportunitySummary(BaseModel):
     company: str
     location: str
     recommendation: str
+    proposed_decision: str = "needs_more_information"
     confidence: str = ""
     ranking_score: int
+    fit_summary: str = ""
+    strengths: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    uncertainties: list[str] = Field(default_factory=list)
+    dimensions: dict[str, int] = Field(default_factory=dict)
     reasons: list[str] = Field(default_factory=list)
     profile_version_id: str = ""
     engine_version: str = ""
