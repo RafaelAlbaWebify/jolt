@@ -15,7 +15,7 @@ def test_opportunity_workbench_exposes_evaluation_evidence(tmp_path) -> None:
                 "Application Support Engineer\n"
                 "Example Systems\n"
                 "Location: Remote Spain\n"
-                "Support SQL integrations, APIs, incidents, and production applications."
+                "Support SQL integrations, APIs, incidents, logs, DNS, and production applications."
             ),
         },
     )
@@ -37,3 +37,18 @@ def test_opportunity_workbench_exposes_evaluation_evidence(tmp_path) -> None:
     assert opportunity["profile_version_id"] == "rafael-job-search:v2"
     assert opportunity["engine_version"] == "profile-rules-v2"
     assert opportunity["review_decision"] is None
+
+    readiness = opportunity["readiness"]
+    assert readiness["report_id"]
+    assert readiness["profile_version_id"] == "rafael-job-search:v2"
+    assert readiness["engine_version"] == "application-readiness-v1"
+    assert readiness["priority"] in {"low", "medium", "high"}
+    assert 0 <= readiness["readiness_score"] <= 100
+    assert readiness["evidence_matches"]
+    assert readiness["cv_tailoring_points"]
+    assert readiness["interview_questions"]
+    assert readiness["revision_topics"]
+    assert readiness["checklist"]
+
+    second = client.get("/api/opportunities").json()[0]["readiness"]
+    assert second["report_id"] == readiness["report_id"]
