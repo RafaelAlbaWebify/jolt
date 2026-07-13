@@ -109,10 +109,33 @@ button.filter-active, button.decision-active { background: #172033; border-color
 .queue-status span { margin-top: 3px; color: #667085; font-size: 0.82rem; }
 .error { padding: 12px 14px; border-radius: 9px; background: #fff1f1; color: #9b1c1c; font-weight: 700; }
 
+.automated-review {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #cfd7ea;
+  border-radius: 12px;
+  background: #f7f9ff;
+}
+.automated-review-heading { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.automated-review-heading div { display: grid; gap: 3px; }
+.automated-review-heading strong { font-size: 1.05rem; text-transform: capitalize; }
+.automated-review-heading > span { color: #667085; font-size: 0.8rem; }
+.review-label { color: #294db5; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.dimension-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.dimension-grid div { display: grid; gap: 3px; padding: 8px; border-radius: 8px; background: #fff; border: 1px solid #e1e6f0; }
+.dimension-grid span { font-size: 0.7rem; color: #667085; text-transform: capitalize; }
+.dimension-grid strong { font-size: 1rem; }
+.review-evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.review-evidence-group { padding: 10px; border-radius: 8px; background: #fff; border: 1px solid #e1e6f0; }
+.review-evidence-group strong { font-size: 0.82rem; }
+.review-evidence-group ul { margin: 7px 0 0; padding-left: 18px; color: #344054; font-size: 0.82rem; line-height: 1.4; }
+
 @media (max-width: 760px) {
   .shell { width: min(100% - 20px, 1180px); padding-top: 24px; }
   .panel { padding: 18px; }
-  .section-heading, .opportunity-card, .opportunity-title-row { flex-direction: column; }
-  .opportunity-grid { grid-template-columns: 1fr; }
+  .section-heading, .opportunity-card, .opportunity-title-row, .automated-review-heading { flex-direction: column; }
+  .opportunity-grid, .review-evidence-grid { grid-template-columns: 1fr; }
+  .dimension-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .queue-status { justify-items: start; text-align: left; }
 }
