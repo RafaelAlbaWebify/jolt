@@ -1,0 +1,1363 @@
+
+> jolt-frontend@0.1.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90m/home/runner/work/jolt/jolt/frontend[39m
+
+ [31m❯[39m src/App.test.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 357[2mms[22m[39m
+[31m   [31m×[31m App[2m > [22mreviews a captured opportunity directly from the workbench[90m 25[2mms[22m[31m[39m
+[31m     → Found multiple elements with the role "link" and name "Open source job"
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<a[31m
+  [33mhref[31m=[32m"https://www.linkedin.com/jobs/view/123"[31m
+  [33mrel[31m=[32m"noreferrer"[31m
+  [33mtarget[31m=[32m"_blank"[31m
+[36m>[31m
+  [0mOpen source job[0m
+[36m</a>[31m
+
+Ignored nodes: comments, script, style
+[36m<a[31m
+  [33mhref[31m=[32m"https://www.linkedin.com/jobs/view/123"[31m
+  [33mrel[31m=[32m"noreferrer"[31m
+  [33mtarget[31m=[32m"_blank"[31m
+[36m>[31m
+  [0mOpen source job[0m
+[36m</a>[31m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<main[31m
+      [33mclass[31m=[32m"shell"[31m
+    [36m>[31m
+      [36m<header[31m
+        [33mclass[31m=[32m"hero"[31m
+      [36m>[31m
+        [36m<p[31m
+          [33mclass[31m=[32m"eyebrow"[31m
+        [36m>[31m
+          [0mJob Opportunity Learning & Tracking[0m
+        [36m</p>[31m
+        [36m<h1>[31m
+          [0mJOLT[0m
+        [36m</h1>[31m
+        [36m<p>[31m
+          [0mTurn job evidence into an auditable decision, application workflow, and outcome history.[0m
+        [36m</p>[31m
+      [36m</header>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"export-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"export-heading"[31m
+        [36m>[31m
+          [0mAnalysis and feedback[0m
+        [36m</h2>[31m
+        [36m<p>[31m
+          [0mExport the complete evidence chain as JSON, CSV, and a readable Markdown summary.[0m
+        [36m</p>[31m
+        [36m<a[31m
+          [33mdownload[31m=[32m"JOLT_ANALYSIS_PACK.zip"[31m
+          [33mhref[31m=[32m"http://127.0.0.1:8000/api/exports/analysis-pack"[31m
+        [36m>[31m
+          [0mDownload analysis pack[0m
+        [36m</a>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"capture-history-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"section-heading"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mid[31m=[32m"capture-history-heading"[31m
+            [36m>[31m
+              [0mLinkedIn capture history[0m
+            [36m</h2>[31m
+            [36m<p>[31m
+              [0mInspect accepted and rejected evidence before relying on captured opportunities.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRefresh captures[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<p>[31m
+          [0mNo capture runs recorded yet.[0m
+        [36m</p>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"intake-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"intake-heading"[31m
+        [36m>[31m
+          [0mManual opportunity intake[0m
+        [36m</h2>[31m
+        [36m<form>[31m
+          [36m<label>[31m
+            [0mSource URL [0m
+            [36m<span>[31m
+              [0m(optional)[0m
+            [36m</span>[31m
+            [36m<input[31m
+              [33mtype[31m=[32m"url"[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label>[31m
+            [0mJob text[0m
+            [36m<textarea[31m
+              [33mplaceholder[31m=[32m"Job title
+Company
+Location: Remote Spain
+Full description..."[31m
+              [33mrequired[31m=[32m""[31m
+              [33mrows[31m=[32m"10"[31m
+            [36m>[31m
+              [0mApplication Support Engineer
+Example Systems
+Location: Remote Spain[0m
+            [36m</textarea>[31m
+          [36m</label>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"submit"[31m
+          [36m>[31m
+            [0mEvaluate opportunity[0m
+          [36m</button>[31m
+        [36m</form>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"result-heading"[31m
+        [33mclass[31m=[32m"panel result"[31m
+      [36m>[31m
+        [36m<div>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"eyebrow"[31m
+          [36m>[31m
+            [0mnew[0m
+          [36m</p>[31m
+          [36m<h2[31m
+            [33mid[31m=[32m"result-heading"[31m
+          [36m>[31m
+            [0mApplication Support Engineer[0m
+          [36m</h2>[31m
+          [36m<p>[31m
+            [0mExample Systems · Remote Spain[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"recommendation"[31m
+        [36m>[31m
+          [36m<strong>[31m
+            [0mpursue[0m
+          [36m</strong>[31m
+          [36m<span>[31m
+            [0mRule score [0m
+            [0m83[0m
+            [0m · [0m
+            [0mmedium[0m
+            [0m confidence[0m
+          [36m</span>[31m
+        [36m</div>[31m
+        [36m<ul>[31m
+          [36m<li>[31m
+            [0mRelevant signals found.[0m
+          [36m</li>[31m
+        [36m</ul>[31m
+        [36m<div[31m
+          [33maria-label[31m=[32m"Record your decision"[31m
+          [33mclass[31m=[32m"review-actions"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mpursue[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mconsider[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mdefer[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mreject[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mneeds more information[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"queue-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"section-heading"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mid[31m=[32m"queue-heading"[31m
+            [36m>[31m
+              [0mOpportunity review workbench[0m
+            [36m</h2>[31m
+            [36m<p>[31m
+              [0mReview evidence, override recommendations deliberately, and move only chosen roles into applications.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRefresh queue[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33maria-label[31m=[32m"Filter opportunities"[31m
+          [33mclass[31m=[32m"queue-filters"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"filter-active"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mall[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mpending[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mpursue[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mactive[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"queue opportunity-grid"[31m
+        [36m>[31m
+          [36m<article[31m
+            [33mclass[31m=[32m"opportunity-card"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"opportunity-main"[31m
+            [36m>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"opportunity-title-row"[31m
+              [36m>[31m
+                [36m<div>[31m
+                  [36m<h3>[31m
+                    [0mApplication Support Engineer[0m
+                  [36m</h3>[31m
+                  [36m<p>[31m
+                    [0mExample Systems · Remote Spain[0m
+                  [36m</p>[31m
+                [36m</div>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"score score-pursue"[31m
+                [36m>[31m
+                  [36m<strong>[31m
+                    [0m83[0m
+                  [36m</strong>[31m
+                  [36m<span>[31m
+                    [0mpursue[0m
+                  [36m</span>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"confidence"[31m
+              [36m>[31m
+                [0mmedium[0m
+                [0m confidence · [0m
+                [0mrules-v1[0m
+              [36m</p>[31m
+              [36m<ul[31m
+                [33mclass[31m=[32m"evidence-list"[31m
+              [36m>[31m
+                [36m<li>[31m
+                  [0mRelevant signal(s): application support, sql, incident.[0m
+                [36m</li>[31m
+              [36m</ul>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"card-links"[31m
+              [36m>[31m
+                [36m<a[31m
+                  [33mhref[31m=[32m"https://www.linkedin.com/jobs/view/123"[31m
+                  [33mrel[31m=[32m"noreferrer"[31m
+                  [33mtarget[31m=[32m"_blank"[31m
+                [36m>[31m
+                  [0mOpen source job[0m
+                [36m</a>[31m
+                [36m<span>[31m
+                  [0mProfile [0m
+                  [0mdefault-job-search:v1[0m
+                [36m</span>[31m
+              [36m</div>[31m
+              [36m<div[31m
+                [33maria-label[31m=[32m"Review Application Support Engineer"[31m
+                [33mclass[31m=[32m"review-actions"[31m
+              [36m>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"decision-active"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mpursue[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mconsider[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mdefer[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mreject[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mneeds more information[0m
+                [36m</button>[31m
+              [36m</div>[31m
+              [36m<button[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mStart application[0m
+              [36m</button>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"queue-status"[31m
+            [36m>[31m
+              [36m<strong>[31m
+                [0mpursue[0m
+              [36m</strong>[31m
+              [36m<span>[31m
+                [0mhuman decision[0m
+              [36m</span>[31m
+            [36m</div>[31m
+          [36m</article>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+    [36m</main>[31m
+  [36m</div>[31m
+  [36m<div>[31m
+    [36m<main[31m
+      [33mclass[31m=[32m"shell"[31m
+    [36m>[31m
+      [36m<header[31m
+        [33mclass[31m=[32m"hero"[31m
+      [36m>[31m
+        [36m<p[31m
+          [33mclass[31m=[32m"eyebrow"[31m
+        [36m>[31m
+          [0mJob Opportunity Learning & Tracking[0m
+        [36m</p>[31m
+        [36m<h1>[31m
+          [0mJOLT[0m
+        [36m</h1>[31m
+        [36m<p>[31m
+          [0mTurn job evidence into an auditable decision, application workflow, and outcome history.[0m
+        [36m</p>[31m
+      [36m</header>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"export-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"export-heading"[31m
+        [36m>[31m
+          [0mAnalysis and feedback[0m
+        [36m</h2>[31m
+        [36m<p>[31m
+          [0mExport the complete evidence chain as JSON, CSV, and a readable Markdown summary.[0m
+        [36m</p>[31m
+        [36m<a[31m
+          [33mdownload[31m=[32m"JOLT_ANALYSIS_PACK.zip"[31m
+          [33mhref[31m=[32m"http://127.0.0.1:8000/api/exports/analysis-pack"[31m
+        [36m>[31m
+          [0mDownload analysis pack[0m
+        [36m</a>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"capture-history-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"section-heading"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mid[31m=[32m"capture-history-heading"[31m
+            [36m>[31m
+              [0mLinkedIn capture history[0m
+            [36m</h2>[31m
+            [36m<p>[31m
+              [0mInspect accepted and rejected evidence before relying on captured opportunities.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRefresh captures[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<p>[31m
+          [0mNo capture runs recorded yet.[0m
+        [36m</p>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"intake-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<h2[31m
+          [33mid[31m=[32m"intake-heading"[31m
+        [36m>[31m
+          [0mManual opportunity intake[0m
+        [36m</h2>[31m
+        [36m<form>[31m
+          [36m<label>[31m
+            [0mSource URL [0m
+            [36m<span>[31m
+              [0m(optional)[0m
+            [36m</span>[31m
+            [36m<input[31m
+              [33mtype[31m=[32m"url"[31m
+              [33mvalue[31m=[32m""[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<label>[31m
+            [0mJob text[0m
+            [36m<textarea[31m
+              [33mplaceholder[31m=[32m"Job title
+Company
+Location: Remote Spain
+Full description..."[31m
+              [33mrequired[31m=[32m""[31m
+              [33mrows[31m=[32m"10"[31m
+            [36m/>[31m
+          [36m</label>[31m
+          [36m<button[31m
+            [33mdisabled[31m=[32m""[31m
+            [33mtype[31m=[32m"submit"[31m
+          [36m>[31m
+            [0mEvaluate opportunity[0m
+          [36m</button>[31m
+        [36m</form>[31m
+      [36m</section>[31m
+      [36m<section[31m
+        [33maria-labelledby[31m=[32m"queue-heading"[31m
+        [33mclass[31m=[32m"panel"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"section-heading"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mid[31m=[32m"queue-heading"[31m
+            [36m>[31m
+              [0mOpportunity review workbench[0m
+            [36m</h2>[31m
+            [36m<p>[31m
+              [0mReview evidence, override recommendations deliberately, and move only chosen roles into applications.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mRefresh queue[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33maria-label[31m=[32m"Filter opportunities"[31m
+          [33mclass[31m=[32m"queue-filters"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"filter-active"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mall[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mpending[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mpursue[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"secondary"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [0mactive[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"queue opportunity-grid"[31m
+        [36m>[31m
+          [36m<article[31m
+            [33mclass[31m=[32m"opportunity-card"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"opportunity-main"[31m
+            [36m>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"opportunity-title-row"[31m
+              [36m>[31m
+                [36m<div>[31m
+                  [36m<h3>[31m
+                    [0mApplication Support Engineer[0m
+                  [36m</h3>[31m
+                  [36m<p>[31m
+                    [0mExample Systems · Remote Spain[0m
+                  [36m</p>[31m
+                [36m</div>[31m
+                [36m<div[31m
+                  [33mclass[31m=[32m"score score-pursue"[31m
+                [36m>[31m
+                  [36m<strong>[31m
+                    [0m83[0m
+                  [36m</strong>[31m
+                  [36m<span>[31m
+                    [0mpursue[0m
+                  [36m</span>[31m
+                [36m</div>[31m
+              [36m</div>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"confidence"[31m
+              [36m>[31m
+                [0mmedium[0m
+                [0m confidence · [0m
+                [0mrules-v1[0m
+              [36m</p>[31m
+              [36m<ul[31m
+                [33mclass[31m=[32m"evidence-list"[31m
+              [36m>[31m
+                [36m<li>[31m
+                  [0mRelevant signal(s): application support, sql, incident.[0m
+                [36m</li>[31m
+              [36m</ul>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"card-links"[31m
+              [36m>[31m
+                [36m<a[31m
+                  [33mhref[31m=[32m"https://www.linkedin.com/jobs/view/123"[31m
+                  [33mrel[31m=[32m"noreferrer"[31m
+                  [33mtarget[31m=[32m"_blank"[31m
+                [36m>[31m
+                  [0mOpen source job[0m
+                [36m</a>[31m
+                [36m<span>[31m
+                  [0mProfile [0m
+                  [0mdefault-job-search:v1[0m
+                [36m</span>[31m
+              [36m</div>[31m
+              [36m<div[31m
+                [33maria-label[31m=[32m"Review Application Support Engineer"[31m
+                [33mclass[31m=[32m"review-actions"[31m
+              [36m>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mpursue[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mconsider[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mdefer[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mreject[0m
+                [36m</button>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"secondary"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mneeds more information[0m
+                [36m</button>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"queue-status"[31m
+            [36m>[31m
+              [36m<strong>[31m
+                [0mpending review[0m
+              [36m</strong>[31m
+              [36m<span>[31m
+                [0mhuman decision[0m
+              [36m</span>[31m
+            [36m</div>[31m
+          [36m</article>[31m
+        [36m</div>[31m
+      [36m</section>[31m
+    [36m</main>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/App.test.tsx[2m > [22mApp[2m > [22mreviews a captured opportunity directly from the workbench
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the role "link" and name "Open source job"
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<a[39m
+  [33mhref[39m=[32m"https://www.linkedin.com/jobs/view/123"[39m
+  [33mrel[39m=[32m"noreferrer"[39m
+  [33mtarget[39m=[32m"_blank"[39m
+[36m>[39m
+  [0mOpen source job[0m
+[36m</a>[39m
+
+Ignored nodes: comments, script, style
+[36m<a[39m
+  [33mhref[39m=[32m"https://www.linkedin.com/jobs/view/123"[39m
+  [33mrel[39m=[32m"noreferrer"[39m
+  [33mtarget[39m=[32m"_blank"[39m
+[36m>[39m
+  [0mOpen source job[0m
+[36m</a>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"hero"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"eyebrow"[39m
+        [36m>[39m
+          [0mJob Opportunity Learning & Tracking[0m
+        [36m</p>[39m
+        [36m<h1>[39m
+          [0mJOLT[0m
+        [36m</h1>[39m
+        [36m<p>[39m
+          [0mTurn job evidence into an auditable decision, application workflow, and outcome history.[0m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"export-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mid[39m=[32m"export-heading"[39m
+        [36m>[39m
+          [0mAnalysis and feedback[0m
+        [36m</h2>[39m
+        [36m<p>[39m
+          [0mExport the complete evidence chain as JSON, CSV, and a readable Markdown summary.[0m
+        [36m</p>[39m
+        [36m<a[39m
+          [33mdownload[39m=[32m"JOLT_ANALYSIS_PACK.zip"[39m
+          [33mhref[39m=[32m"http://127.0.0.1:8000/api/exports/analysis-pack"[39m
+        [36m>[39m
+          [0mDownload analysis pack[0m
+        [36m</a>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"capture-history-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"section-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mid[39m=[32m"capture-history-heading"[39m
+            [36m>[39m
+              [0mLinkedIn capture history[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mInspect accepted and rejected evidence before relying on captured opportunities.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mRefresh captures[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p>[39m
+          [0mNo capture runs recorded yet.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"intake-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mid[39m=[32m"intake-heading"[39m
+        [36m>[39m
+          [0mManual opportunity intake[0m
+        [36m</h2>[39m
+        [36m<form>[39m
+          [36m<label>[39m
+            [0mSource URL [0m
+            [36m<span>[39m
+              [0m(optional)[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mtype[39m=[32m"url"[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mJob text[0m
+            [36m<textarea[39m
+              [33mplaceholder[39m=[32m"Job title
+Company
+Location: Remote Spain
+Full description..."[39m
+              [33mrequired[39m=[32m""[39m
+              [33mrows[39m=[32m"10"[39m
+            [36m>[39m
+              [0mApplication Support Engineer
+Example Systems
+Location: Remote Spain[0m
+            [36m</textarea>[39m
+          [36m</label>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mEvaluate opportunity[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"result-heading"[39m
+        [33mclass[39m=[32m"panel result"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"eyebrow"[39m
+          [36m>[39m
+            [0mnew[0m
+          [36m</p>[39m
+          [36m<h2[39m
+            [33mid[39m=[32m"result-heading"[39m
+          [36m>[39m
+            [0mApplication Support Engineer[0m
+          [36m</h2>[39m
+          [36m<p>[39m
+            [0mExample Systems · Remote Spain[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"recommendation"[39m
+        [36m>[39m
+          [36m<strong>[39m
+            [0mpursue[0m
+          [36m</strong>[39m
+          [36m<span>[39m
+            [0mRule score [0m
+            [0m83[0m
+            [0m · [0m
+            [0mmedium[0m
+            [0m confidence[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<ul>[39m
+          [36m<li>[39m
+            [0mRelevant signals found.[0m
+          [36m</li>[39m
+        [36m</ul>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Record your decision"[39m
+          [33mclass[39m=[32m"review-actions"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mpursue[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mconsider[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mdefer[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mreject[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mneeds more information[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"queue-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"section-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mid[39m=[32m"queue-heading"[39m
+            [36m>[39m
+              [0mOpportunity review workbench[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mReview evidence, override recommendations deliberately, and move only chosen roles into applications.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mRefresh queue[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Filter opportunities"[39m
+          [33mclass[39m=[32m"queue-filters"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"filter-active"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mall[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mpending[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mpursue[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mactive[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"queue opportunity-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"opportunity-card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"opportunity-main"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"opportunity-title-row"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3>[39m
+                    [0mApplication Support Engineer[0m
+                  [36m</h3>[39m
+                  [36m<p>[39m
+                    [0mExample Systems · Remote Spain[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"score score-pursue"[39m
+                [36m>[39m
+                  [36m<strong>[39m
+                    [0m83[0m
+                  [36m</strong>[39m
+                  [36m<span>[39m
+                    [0mpursue[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"confidence"[39m
+              [36m>[39m
+                [0mmedium[0m
+                [0m confidence · [0m
+                [0mrules-v1[0m
+              [36m</p>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m>[39m
+                [36m<li>[39m
+                  [0mRelevant signal(s): application support, sql, incident.[0m
+                [36m</li>[39m
+              [36m</ul>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"card-links"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mhref[39m=[32m"https://www.linkedin.com/jobs/view/123"[39m
+                  [33mrel[39m=[32m"noreferrer"[39m
+                  [33mtarget[39m=[32m"_blank"[39m
+                [36m>[39m
+                  [0mOpen source job[0m
+                [36m</a>[39m
+                [36m<span>[39m
+                  [0mProfile [0m
+                  [0mdefault-job-search:v1[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33maria-label[39m=[32m"Review Application Support Engineer"[39m
+                [33mclass[39m=[32m"review-actions"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"decision-active"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mpursue[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mconsider[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mdefer[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mreject[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mneeds more information[0m
+                [36m</button>[39m
+              [36m</div>[39m
+              [36m<button[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mStart application[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"queue-status"[39m
+            [36m>[39m
+              [36m<strong>[39m
+                [0mpursue[0m
+              [36m</strong>[39m
+              [36m<span>[39m
+                [0mhuman decision[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</article>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<main[39m
+      [33mclass[39m=[32m"shell"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"hero"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"eyebrow"[39m
+        [36m>[39m
+          [0mJob Opportunity Learning & Tracking[0m
+        [36m</p>[39m
+        [36m<h1>[39m
+          [0mJOLT[0m
+        [36m</h1>[39m
+        [36m<p>[39m
+          [0mTurn job evidence into an auditable decision, application workflow, and outcome history.[0m
+        [36m</p>[39m
+      [36m</header>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"export-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mid[39m=[32m"export-heading"[39m
+        [36m>[39m
+          [0mAnalysis and feedback[0m
+        [36m</h2>[39m
+        [36m<p>[39m
+          [0mExport the complete evidence chain as JSON, CSV, and a readable Markdown summary.[0m
+        [36m</p>[39m
+        [36m<a[39m
+          [33mdownload[39m=[32m"JOLT_ANALYSIS_PACK.zip"[39m
+          [33mhref[39m=[32m"http://127.0.0.1:8000/api/exports/analysis-pack"[39m
+        [36m>[39m
+          [0mDownload analysis pack[0m
+        [36m</a>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"capture-history-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"section-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mid[39m=[32m"capture-history-heading"[39m
+            [36m>[39m
+              [0mLinkedIn capture history[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mInspect accepted and rejected evidence before relying on captured opportunities.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mRefresh captures[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<p>[39m
+          [0mNo capture runs recorded yet.[0m
+        [36m</p>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"intake-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<h2[39m
+          [33mid[39m=[32m"intake-heading"[39m
+        [36m>[39m
+          [0mManual opportunity intake[0m
+        [36m</h2>[39m
+        [36m<form>[39m
+          [36m<label>[39m
+            [0mSource URL [0m
+            [36m<span>[39m
+              [0m(optional)[0m
+            [36m</span>[39m
+            [36m<input[39m
+              [33mtype[39m=[32m"url"[39m
+              [33mvalue[39m=[32m""[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<label>[39m
+            [0mJob text[0m
+            [36m<textarea[39m
+              [33mplaceholder[39m=[32m"Job title
+Company
+Location: Remote Spain
+Full description..."[39m
+              [33mrequired[39m=[32m""[39m
+              [33mrows[39m=[32m"10"[39m
+            [36m/>[39m
+          [36m</label>[39m
+          [36m<button[39m
+            [33mdisabled[39m=[32m""[39m
+            [33mtype[39m=[32m"submit"[39m
+          [36m>[39m
+            [0mEvaluate opportunity[0m
+          [36m</button>[39m
+        [36m</form>[39m
+      [36m</section>[39m
+      [36m<section[39m
+        [33maria-labelledby[39m=[32m"queue-heading"[39m
+        [33mclass[39m=[32m"panel"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"section-heading"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mid[39m=[32m"queue-heading"[39m
+            [36m>[39m
+              [0mOpportunity review workbench[0m
+            [36m</h2>[39m
+            [36m<p>[39m
+              [0mReview evidence, override recommendations deliberately, and move only chosen roles into applications.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mRefresh queue[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33maria-label[39m=[32m"Filter opportunities"[39m
+          [33mclass[39m=[32m"queue-filters"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"filter-active"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mall[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mpending[0m
+            [0m ([0m
+            [0m1[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mpursue[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"secondary"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mactive[0m
+            [0m ([0m
+            [0m0[0m
+            [0m)[0m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"queue opportunity-grid"[39m
+        [36m>[39m
+          [36m<article[39m
+            [33mclass[39m=[32m"opportunity-card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"opportunity-main"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"opportunity-title-row"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3>[39m
+                    [0mApplication Support Engineer[0m
+                  [36m</h3>[39m
+                  [36m<p>[39m
+                    [0mExample Systems · Remote Spain[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"score score-pursue"[39m
+                [36m>[39m
+                  [36m<strong>[39m
+                    [0m83[0m
+                  [36m</strong>[39m
+                  [36m<span>[39m
+                    [0mpursue[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"confidence"[39m
+              [36m>[39m
+                [0mmedium[0m
+                [0m confidence · [0m
+                [0mrules-v1[0m
+              [36m</p>[39m
+              [36m<ul[39m
+                [33mclass[39m=[32m"evidence-list"[39m
+              [36m>[39m
+                [36m<li>[39m
+                  [0mRelevant signal(s): application support, sql, incident.[0m
+                [36m</li>[39m
+              [36m</ul>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"card-links"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mhref[39m=[32m"https://www.linkedin.com/jobs/view/123"[39m
+                  [33mrel[39m=[32m"noreferrer"[39m
+                  [33mtarget[39m=[32m"_blank"[39m
+                [36m>[39m
+                  [0mOpen source job[0m
+                [36m</a>[39m
+                [36m<span>[39m
+                  [0mProfile [0m
+                  [0mdefault-job-search:v1[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33maria-label[39m=[32m"Review Application Support Engineer"[39m
+                [33mclass[39m=[32m"review-actions"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mpursue[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mconsider[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mdefer[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mreject[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"secondary"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mneeds more information[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"queue-status"[39m
+            [36m>[39m
+              [36m<strong>[39m
+                [0mpending review[0m
+              [36m</strong>[39m
+              [36m<span>[39m
+                [0mhuman decision[0m
+              [36m</span>[39m
+            [36m</div>[39m
+          [36m</article>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</main>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m getElementError node_modules/@testing-library/dom/dist/query-helpers.js:[2m20:35[22m[39m
+[90m [2m❯[22m getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:[2m23:10[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m55:13[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/App.test.tsx:[2m123:19[22m[39m
+    [90m121| [39m
+    [90m122| [39m    [34mexpect[39m([35mawait[39m screen[33m.[39m[34mfindByText[39m(opportunity[33m.[39mreasons[[34m0[39m]))[33m.[39m[34mtoBeInTheD[39m…
+    [90m123| [39m    [34mexpect[39m(screen[33m.[39m[34mgetByRole[39m([32m"link"[39m[33m,[39m { name[33m:[39m [32m"Open source job"[39m }))[33m.[39m[34mtoHa[39m…
+    [90m   | [39m                  [31m^[39m
+    [90m124| [39m      [32m"href"[39m[33m,[39m
+    [90m125| [39m      opportunity[33m.[39msource_url[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 10:06:24
+[2m   Duration [22m 1.25s[2m (transform 204ms, setup 81ms, collect 278ms, tests 357ms, environment 333ms, prepare 58ms)[22m
+
+
+::error file=/home/runner/work/jolt/jolt/frontend/src/App.test.tsx,title=src/App.test.tsx > App > reviews a captured opportunity directly from the workbench,line=123,column=19::TestingLibraryElementError: Found multiple elements with the role "link" and name "Open source job"%0A%0AHere are the matching elements:%0A%0AIgnored nodes: comments, script, style%0A<a%0A  href="https://www.linkedin.com/jobs/view/123"%0A  rel="noreferrer"%0A  target="_blank"%0A>%0A  Open source job%0A</a>%0A%0AIgnored nodes: comments, script, style%0A<a%0A  href="https://www.linkedin.com/jobs/view/123"%0A  rel="noreferrer"%0A  target="_blank"%0A>%0A  Open source job%0A</a>%0A%0A(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).%0A%0AIgnored nodes: comments, script, style%0A<body>%0A  <div>%0A    <main%0A      class="shell"%0A    >%0A      <header%0A        class="hero"%0A      >%0A        <p%0A          class="eyebrow"%0A        >%0A          Job Opportunity Learning & Tracking%0A        </p>%0A        <h1>%0A          JOLT%0A        </h1>%0A        <p>%0A          Turn job evidence into an auditable decision, application workflow, and outcome history.%0A        </p>%0A      </header>%0A      <section%0A        aria-labelledby="export-heading"%0A        class="panel"%0A      >%0A        <h2%0A          id="export-heading"%0A        >%0A          Analysis and feedback%0A        </h2>%0A        <p>%0A          Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.%0A        </p>%0A        <a%0A          download="JOLT_ANALYSIS_PACK.zip"%0A          href="http://127.0.0.1:8000/api/exports/analysis-pack"%0A        >%0A          Download analysis pack%0A        </a>%0A      </section>%0A      <section%0A        aria-labelledby="capture-history-heading"%0A        class="panel"%0A      >%0A        <div%0A          class="section-heading"%0A        >%0A          <div>%0A            <h2%0A              id="capture-history-heading"%0A            >%0A              LinkedIn capture history%0A            </h2>%0A            <p>%0A              Inspect accepted and rejected evidence before relying on captured opportunities.%0A            </p>%0A          </div>%0A          <button%0A            type="button"%0A          >%0A            Refresh captures%0A          </button>%0A        </div>%0A        <p>%0A          No capture runs recorded yet.%0A        </p>%0A      </section>%0A      <section%0A        aria-labelledby="intake-heading"%0A        class="panel"%0A      >%0A        <h2%0A          id="intake-heading"%0A        >%0A          Manual opportunity intake%0A        </h2>%0A        <form>%0A          <label>%0A            Source URL %0A            <span>%0A              (optional)%0A            </span>%0A            <input%0A              type="url"%0A              value=""%0A            />%0A          </label>%0A          <label>%0A            Job text%0A            <textarea%0A              placeholder="Job title%0ACompany%0ALocation: Remote Spain%0AFull description..."%0A              required=""%0A              rows="10"%0A            >%0A              Application Support Engineer%0AExample Systems%0ALocation: Remote Spain%0A            </textarea>%0A          </label>%0A          <button%0A            type="submit"%0A          >%0A            Evaluate opportunity%0A          </button>%0A        </form>%0A      </section>%0A      <section%0A        aria-labelledby="result-heading"%0A        class="panel result"%0A      >%0A        <div>%0A          <p%0A            class="eyebrow"%0A          >%0A            new%0A          </p>%0A          <h2%0A            id="result-heading"%0A          >%0A            Application Support Engineer%0A          </h2>%0A          <p>%0A            Example Systems · Remote Spain%0A          </p>%0A        </div>%0A        <div%0A          class="recommendation"%0A        >%0A          <strong>%0A            pursue%0A          </strong>%0A          <span>%0A            Rule score %0A            83%0A             · %0A            medium%0A             confidence%0A          </span>%0A        </div>%0A        <ul>%0A          <li>%0A            Relevant signals found.%0A          </li>%0A        </ul>%0A        <div%0A          aria-label="Record your decision"%0A          class="review-actions"%0A        >%0A          <button%0A            type="button"%0A          >%0A            pursue%0A          </button>%0A          <button%0A            type="button"%0A          >%0A            consider%0A          </button>%0A          <button%0A            type="button"%0A          >%0A            defer%0A          </button>%0A          <button%0A            type="button"%0A          >%0A            reject%0A          </button>%0A          <button%0A            type="button"%0A          >%0A            needs more information%0A          </button>%0A        </div>%0A      </section>%0A      <section%0A        aria-labelledby="queue-heading"%0A        class="panel"%0A      >%0A        <div%0A          class="section-heading"%0A        >%0A          <div>%0A            <h2%0A              id="queue-heading"%0A            >%0A              Opportunity review workbench%0A            </h2>%0A            <p>%0A              Review evidence, override recommendations deliberately, and move only chosen roles into applications.%0A            </p>%0A          </div>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            Refresh queue%0A          </button>%0A        </div>%0A        <div%0A          aria-label="Filter opportunities"%0A          class="queue-filters"%0A        >%0A          <button%0A            class="filter-active"%0A            type="button"%0A          >%0A            all%0A             (%0A            1%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            pending%0A             (%0A            0%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            pursue%0A             (%0A            1%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            active%0A             (%0A            0%0A            )%0A          </button>%0A        </div>%0A        <div%0A          class="queue opportunity-grid"%0A        >%0A          <article%0A            class="opportunity-card"%0A          >%0A            <div%0A              class="opportunity-main"%0A            >%0A              <div%0A                class="opportunity-title-row"%0A              >%0A                <div>%0A                  <h3>%0A                    Application Support Engineer%0A                  </h3>%0A                  <p>%0A                    Example Systems · Remote Spain%0A                  </p>%0A                </div>%0A                <div%0A                  class="score score-pursue"%0A                >%0A                  <strong>%0A                    83%0A                  </strong>%0A                  <span>%0A                    pursue%0A                  </span>%0A                </div>%0A              </div>%0A              <p%0A                class="confidence"%0A              >%0A                medium%0A                 confidence · %0A                rules-v1%0A              </p>%0A              <ul%0A                class="evidence-list"%0A              >%0A                <li>%0A                  Relevant signal(s): application support, sql, incident.%0A                </li>%0A              </ul>%0A              <div%0A                class="card-links"%0A              >%0A                <a%0A                  href="https://www.linkedin.com/jobs/view/123"%0A                  rel="noreferrer"%0A                  target="_blank"%0A                >%0A                  Open source job%0A                </a>%0A                <span>%0A                  Profile %0A                  default-job-search:v1%0A                </span>%0A              </div>%0A              <div%0A                aria-label="Review Application Support Engineer"%0A                class="review-actions"%0A              >%0A                <button%0A                  class="decision-active"%0A                  type="button"%0A                >%0A                  pursue%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  consider%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  defer%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  reject%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  needs more information%0A                </button>%0A              </div>%0A              <button%0A                type="button"%0A              >%0A                Start application%0A              </button>%0A            </div>%0A            <div%0A              class="queue-status"%0A            >%0A              <strong>%0A                pursue%0A              </strong>%0A              <span>%0A                human decision%0A              </span>%0A            </div>%0A          </article>%0A        </div>%0A      </section>%0A    </main>%0A  </div>%0A  <div>%0A    <main%0A      class="shell"%0A    >%0A      <header%0A        class="hero"%0A      >%0A        <p%0A          class="eyebrow"%0A        >%0A          Job Opportunity Learning & Tracking%0A        </p>%0A        <h1>%0A          JOLT%0A        </h1>%0A        <p>%0A          Turn job evidence into an auditable decision, application workflow, and outcome history.%0A        </p>%0A      </header>%0A      <section%0A        aria-labelledby="export-heading"%0A        class="panel"%0A      >%0A        <h2%0A          id="export-heading"%0A        >%0A          Analysis and feedback%0A        </h2>%0A        <p>%0A          Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.%0A        </p>%0A        <a%0A          download="JOLT_ANALYSIS_PACK.zip"%0A          href="http://127.0.0.1:8000/api/exports/analysis-pack"%0A        >%0A          Download analysis pack%0A        </a>%0A      </section>%0A      <section%0A        aria-labelledby="capture-history-heading"%0A        class="panel"%0A      >%0A        <div%0A          class="section-heading"%0A        >%0A          <div>%0A            <h2%0A              id="capture-history-heading"%0A            >%0A              LinkedIn capture history%0A            </h2>%0A            <p>%0A              Inspect accepted and rejected evidence before relying on captured opportunities.%0A            </p>%0A          </div>%0A          <button%0A            type="button"%0A          >%0A            Refresh captures%0A          </button>%0A        </div>%0A        <p>%0A          No capture runs recorded yet.%0A        </p>%0A      </section>%0A      <section%0A        aria-labelledby="intake-heading"%0A        class="panel"%0A      >%0A        <h2%0A          id="intake-heading"%0A        >%0A          Manual opportunity intake%0A        </h2>%0A        <form>%0A          <label>%0A            Source URL %0A            <span>%0A              (optional)%0A            </span>%0A            <input%0A              type="url"%0A              value=""%0A            />%0A          </label>%0A          <label>%0A            Job text%0A            <textarea%0A              placeholder="Job title%0ACompany%0ALocation: Remote Spain%0AFull description..."%0A              required=""%0A              rows="10"%0A            />%0A          </label>%0A          <button%0A            disabled=""%0A            type="submit"%0A          >%0A            Evaluate opportunity%0A          </button>%0A        </form>%0A      </section>%0A      <section%0A        aria-labelledby="queue-heading"%0A        class="panel"%0A      >%0A        <div%0A          class="section-heading"%0A        >%0A          <div>%0A            <h2%0A              id="queue-heading"%0A            >%0A              Opportunity review workbench%0A            </h2>%0A            <p>%0A              Review evidence, override recommendations deliberately, and move only chosen roles into applications.%0A            </p>%0A          </div>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            Refresh queue%0A          </button>%0A        </div>%0A        <div%0A          aria-label="Filter opportunities"%0A          class="queue-filters"%0A        >%0A          <button%0A            class="filter-active"%0A            type="button"%0A          >%0A            all%0A             (%0A            1%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            pending%0A             (%0A            1%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            pursue%0A             (%0A            0%0A            )%0A          </button>%0A          <button%0A            class="secondary"%0A            type="button"%0A          >%0A            active%0A             (%0A            0%0A            )%0A          </button>%0A        </div>%0A        <div%0A          class="queue opportunity-grid"%0A        >%0A          <article%0A            class="opportunity-card"%0A          >%0A            <div%0A              class="opportunity-main"%0A            >%0A              <div%0A                class="opportunity-title-row"%0A              >%0A                <div>%0A                  <h3>%0A                    Application Support Engineer%0A                  </h3>%0A                  <p>%0A                    Example Systems · Remote Spain%0A                  </p>%0A                </div>%0A                <div%0A                  class="score score-pursue"%0A                >%0A                  <strong>%0A                    83%0A                  </strong>%0A                  <span>%0A                    pursue%0A                  </span>%0A                </div>%0A              </div>%0A              <p%0A                class="confidence"%0A              >%0A                medium%0A                 confidence · %0A                rules-v1%0A              </p>%0A              <ul%0A                class="evidence-list"%0A              >%0A                <li>%0A                  Relevant signal(s): application support, sql, incident.%0A                </li>%0A              </ul>%0A              <div%0A                class="card-links"%0A              >%0A                <a%0A                  href="https://www.linkedin.com/jobs/view/123"%0A                  rel="noreferrer"%0A                  target="_blank"%0A                >%0A                  Open source job%0A                </a>%0A                <span>%0A                  Profile %0A                  default-job-search:v1%0A                </span>%0A              </div>%0A              <div%0A                aria-label="Review Application Support Engineer"%0A                class="review-actions"%0A              >%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  pursue%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  consider%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  defer%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  reject%0A                </button>%0A                <button%0A                  class="secondary"%0A                  type="button"%0A                >%0A                  needs more information%0A                </button>%0A              </div>%0A            </div>%0A            <div%0A              class="queue-status"%0A            >%0A              <strong>%0A                pending review%0A              </strong>%0A              <span>%0A                human decision%0A              </span>%0A            </div>%0A          </article>%0A        </div>%0A      </section>%0A    </main>%0A  </div>%0A</body>%0A ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19%0A ❯ getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35%0A ❯ getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:55:13%0A ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19%0A ❯ src/App.test.tsx:123:19%0A%0A
