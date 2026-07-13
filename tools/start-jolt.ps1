@@ -22,6 +22,7 @@ $FrontendOutLog = Join-Path $LogRoot "frontend.out.log"
 $FrontendErrLog = Join-Path $LogRoot "frontend.err.log"
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
+$ExpectedBackendVersion = "0.8.0"
 
 function Assert-Command {
     param([Parameter(Mandatory)][string]$Name)
@@ -53,6 +54,18 @@ function Wait-HttpEndpoint {
     throw "$Name did not become ready at $Url within $TimeoutSeconds seconds. Review logs in $LogRoot."
 }
 
+function Assert-FreshBackend {
+    $health = Invoke-RestMethod -Uri "$BackendUrl/api/health" -TimeoutSec 5
+    if ([string]$health.version -ne $ExpectedBackendVersion) {
+        throw "Unexpected JOLT backend version '$($health.version)'. Expected '$ExpectedBackendVersion'. A stale backend may still own port 8000."
+    }
+
+    $openApi = Invoke-RestMethod -Uri "$BackendUrl/openapi.json" -TimeoutSec 5
+    if ($null -eq $openApi.paths.PSObject.Properties['/api/captures/linkedin/live']) {
+        throw "The running backend does not expose /api/captures/linkedin/live. Refusing to start capture against a stale API."
+    }
+}
+
 function Stop-ProcessSafely {
     param([System.Diagnostics.Process]$Process)
     if ($null -ne $Process -and -not $Process.HasExited) {
@@ -67,9 +80,7 @@ Assert-Command -Name "npm"
 New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot | Out-Null
 Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
 
-if (Test-Path $StatePath) {
-    & (Join-Path $PSScriptRoot "stop-jolt.ps1")
-}
+& (Join-Path $PSScriptRoot "stop-jolt.ps1")
 
 Write-Host "Preparing backend dependencies..."
 Push-Location $BackendRoot
@@ -113,6 +124,7 @@ try {
         -WindowStyle Hidden
 
     Wait-HttpEndpoint -Url "$BackendUrl/api/health" -Name "JOLT backend"
+    Assert-FreshBackend
     Wait-HttpEndpoint -Url $FrontendUrl -Name "JOLT frontend"
 
     @{
@@ -120,6 +132,7 @@ try {
         frontend_pid = $frontendProcess.Id
         backend_url = $BackendUrl
         frontend_url = $FrontendUrl
+        backend_version = $ExpectedBackendVersion
         started_at = (Get-Date).ToString("o")
     } | ConvertTo-Json | Set-Content -Path $StatePath -Encoding UTF8
 
@@ -127,8 +140,8 @@ try {
     Write-Host "JOLT is ready."
     Write-Host "Application: $FrontendUrl"
     Write-Host "Backend health: $BackendUrl/api/health"
+    Write-Host "Backend version: $ExpectedBackendVersion"
     Write-Host "Logs: $LogRoot"
-    Write-Host "Stop command: .\tools\stop-jolt.ps1"
 
     if (-not $NoBrowser) {
         Start-Process $FrontendUrl
