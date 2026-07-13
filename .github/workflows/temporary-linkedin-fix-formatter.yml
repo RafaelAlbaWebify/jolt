@@ -25,8 +25,8 @@ jobs:
       - name: Format and fix lint
         working-directory: backend
         run: |
+          uv run ruff check . --fix --unsafe-fixes
           uv run ruff format .
-          uv run ruff check . --fix
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
