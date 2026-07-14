@@ -26,12 +26,16 @@ def audit_capture_evidence(
 
     for summary in captures:
         if not isinstance(summary, dict):
-            findings.append({"severity": "error", "message": "Capture history contains a non-object row."})
+            findings.append(
+                {"severity": "error", "message": "Capture history contains a non-object row."}
+            )
             continue
 
         run_id = str(summary.get("capture_run_id") or "")
         if not run_id:
-            findings.append({"severity": "error", "message": "Capture history row is missing capture_run_id."})
+            findings.append(
+                {"severity": "error", "message": "Capture history row is missing capture_run_id."}
+            )
             continue
 
         try:
@@ -97,7 +101,10 @@ def _validate_run_metadata(
                 }
             )
 
-    if all(isinstance(value, int) for value in (total, verified, rejected)) and total != verified + rejected:
+    if (
+        all(isinstance(value, int) for value in (total, verified, rejected))
+        and total != verified + rejected
+    ):
         findings.append(
             {
                 "severity": "error",
