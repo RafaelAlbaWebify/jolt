@@ -16,5 +16,8 @@ def test_windows_certification_command_is_path_independent_and_safe() -> None:
     assert "JOLT_REVIEW_AUDIT_" in runner
     assert "active_database_overwritten = $false" in runner
     assert "active_database_included = $false" in runner
+    assert "backup_database_included = $false" in runner
     assert "restored_database_included = $false" in runner
+    assert "Remove-Item -LiteralPath $BackupZip -Force" in runner
+    assert "Remove-Item -LiteralPath $RestoreRoot -Recurse -Force" in runner
     assert 'throw "The repository has uncommitted changes.' in runner
