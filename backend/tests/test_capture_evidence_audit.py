@@ -71,7 +71,7 @@ def test_capture_evidence_audit_reports_broken_chain() -> None:
                 "posting_id": None,
                 "source_document_id": None,
                 "artifact_id": "artifact-1",
-                "artifact_hash": "not-a-hash",
+                "artifact_hash": "g" * 64,
             },
             {
                 "source_job_id": "rejected",
