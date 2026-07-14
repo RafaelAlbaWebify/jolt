@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from jolt.api import create_app
+from jolt.main import create_app
 
 
 def test_live_capture_records_requested_bound_and_stop_reason(tmp_path: Path) -> None:
