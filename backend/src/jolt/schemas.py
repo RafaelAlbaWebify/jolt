@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 ReviewChoice = Literal["pursue", "consider", "defer", "reject", "needs_more_information"]
 Recommendation = Literal["pursue", "consider", "reject"]
@@ -116,6 +117,21 @@ class CaptureRunSummary(BaseModel):
     total_items: int
     verified_items: int
     rejected_items: int
+
+    @field_validator("started_at", "completed_at", mode="before")
+    @classmethod
+    def normalize_utc_timestamp(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        elif isinstance(value, str):
+            parsed = datetime.fromisoformat(value)
+        else:
+            return value
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC).isoformat()
 
 
 class CaptureRunResponse(CaptureRunSummary):
