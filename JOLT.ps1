@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("start", "stop", "validate", "capture", "audit", "backup", "restore")]
+    [ValidateSet("start", "stop", "validate", "capture", "audit", "backup", "restore", "certify")]
     [string]$Action = "start",
     [string]$RepoPath = "",
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
@@ -62,4 +62,5 @@ switch ($Action) {
         }
         & (Join-Path $tools "restore-jolt.ps1") -BackupPath $BackupPath -TargetPath $RestoreTarget
     }
+    "certify" { & (Join-Path $tools "certify-jolt.ps1") }
 }
