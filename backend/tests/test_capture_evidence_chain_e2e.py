@@ -109,9 +109,7 @@ def test_live_capture_preserves_auditable_evidence_chain(tmp_path) -> None:
         assert len(postings) == 1
         assert len(source_documents) == 1
 
-        artifacts_by_item = {
-            artifact.capture_item_id: artifact for artifact in artifacts
-        }
+        artifacts_by_item = {artifact.capture_item_id: artifact for artifact in artifacts}
         request_items = {
             verified_item["source_job_id"]: verified_item,
             rejected_item["source_job_id"]: rejected_item,
@@ -120,33 +118,24 @@ def test_live_capture_preserves_auditable_evidence_chain(tmp_path) -> None:
 
         for capture_item in capture_items:
             artifact = artifacts_by_item[capture_item.id]
-            expected_payload = json.dumps(
-                request_items[capture_item.source_job_id], sort_keys=True
-            )
+            expected_payload = json.dumps(request_items[capture_item.source_job_id], sort_keys=True)
             expected_hash = hashlib.sha256(expected_payload.encode("utf-8")).hexdigest()
 
             assert artifact.artifact_type == "linkedin_live_item_json"
             assert artifact.content_type == "application/json"
             assert artifact.raw_payload == expected_payload
             assert artifact.content_hash == expected_hash
-            assert (
-                responses_by_job[capture_item.source_job_id]["artifact_id"]
-                == artifact.id
-            )
+            assert responses_by_job[capture_item.source_job_id]["artifact_id"] == artifact.id
             assert (
                 responses_by_job[capture_item.source_job_id]["artifact_hash"]
                 == artifact.content_hash
             )
 
         verified_row = next(
-            item
-            for item in capture_items
-            if item.source_job_id == verified_item["source_job_id"]
+            item for item in capture_items if item.source_job_id == verified_item["source_job_id"]
         )
         rejected_row = next(
-            item
-            for item in capture_items
-            if item.source_job_id == rejected_item["source_job_id"]
+            item for item in capture_items if item.source_job_id == rejected_item["source_job_id"]
         )
         assert verified_row.posting_id == postings[0].id
         assert verified_row.source_document_id == source_documents[0].id
