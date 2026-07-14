@@ -27,6 +27,9 @@ def test_application_preparation_pack_contains_evidence_and_boundaries(tmp_path)
     response = client.get(f"/api/opportunities/{posting_id}/preparation-pack")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/zip"
+    assert response.headers["content-disposition"] == (
+        f"attachment; filename=JOLT_PREPARATION_{posting_id}.zip"
+    )
 
     with ZipFile(BytesIO(response.content)) as archive:
         names = set(archive.namelist())
