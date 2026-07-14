@@ -1,78 +1,54 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
-
-from jolt.database import Base, Posting, SourceDocument, utc_now
-
-
-class PostingEvidence(Base):
-    __tablename__ = "posting_evidence"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    posting_id: Mapped[str] = mapped_column(ForeignKey("postings.id"), nullable=False, index=True)
-    source_document_id: Mapped[str] = mapped_column(
-        ForeignKey("source_documents.id"), nullable=False, unique=True, index=True
-    )
-    identity_status: Mapped[str] = mapped_column(String(40), nullable=False)
-    match_basis: Mapped[str] = mapped_column(String(40), nullable=False)
-    linked_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+from jolt.database import Posting, SourceDocument
+from jolt.workflow import normalize_url
 
 
-def stage_posting_evidence(
-    session: Session,
-    *,
-    posting_id: str,
-    source_document_id: str,
-    identity_status: str,
-    match_basis: str,
-) -> PostingEvidence:
-    evidence = PostingEvidence(
-        id=str(uuid4()),
-        posting_id=posting_id,
-        source_document_id=source_document_id,
-        identity_status=identity_status,
-        match_basis=match_basis,
-        linked_at=utc_now(),
-    )
-    session.add(evidence)
-    return evidence
+def opportunity_identity_evidence(session: Session, posting_id: str) -> dict[str, object]:
+    posting = session.get(Posting, posting_id)
+    if posting is None:
+        raise LookupError("Posting was not found.")
 
+    original = session.get(SourceDocument, posting.source_document_id)
+    if original is None:
+        raise RuntimeError("Posting source document was not found.")
 
-def ensure_original_posting_evidence(session: Session, posting: Posting) -> None:
-    existing = session.scalar(
-        select(PostingEvidence).where(
-            PostingEvidence.source_document_id == posting.source_document_id
-        )
-    )
-    if existing is None:
-        stage_posting_evidence(
-            session,
-            posting_id=posting.id,
-            source_document_id=posting.source_document_id,
-            identity_status="original",
-            match_basis="canonical_posting",
+    documents = session.scalars(select(SourceDocument).order_by(SourceDocument.captured_at)).all()
+    evidence: list[dict[str, object]] = []
+    seen: set[str] = set()
+
+    for document in documents:
+        match_basis = ""
+        normalized_source_url = normalize_url(document.source_url)
+        if posting.canonical_url and normalized_source_url == posting.canonical_url:
+            match_basis = "canonical_url"
+        elif document.content_hash == original.content_hash:
+            match_basis = "content_hash"
+        if not match_basis or document.id in seen:
+            continue
+        seen.add(document.id)
+        evidence.append(
+            {
+                "source_document_id": document.id,
+                "source_type": document.source_type,
+                "source_url": document.source_url,
+                "identity_status": (
+                    "original" if document.id == posting.source_document_id else "confirmed_duplicate"
+                ),
+                "match_basis": match_basis,
+                "captured_at": document.captured_at.isoformat(),
+            }
         )
 
-
-def posting_evidence_payloads(session: Session, posting: Posting) -> list[dict[str, object]]:
-    ensure_original_posting_evidence(session, posting)
-    rows = session.execute(
-        select(PostingEvidence, SourceDocument)
-        .join(SourceDocument, SourceDocument.id == PostingEvidence.source_document_id)
-        .where(PostingEvidence.posting_id == posting.id)
-        .order_by(SourceDocument.captured_at)
-    ).all()
-    return [
-        {
-            "source_document_id": evidence.source_document_id,
-            "source_type": source.source_type,
-            "source_url": source.source_url,
-            "identity_status": evidence.identity_status,
-            "match_basis": evidence.match_basis,
-            "captured_at": source.captured_at.isoformat(),
-        }
-        for evidence, source in rows
-    ]
+    duplicate_count = sum(item["identity_status"] == "confirmed_duplicate" for item in evidence)
+    return {
+        "posting_id": posting.id,
+        "canonical_url": posting.canonical_url,
+        "identity_status": posting.identity_status,
+        "evidence_count": len(evidence),
+        "duplicate_evidence_count": duplicate_count,
+        "evidence": evidence,
+    }
