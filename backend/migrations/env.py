@@ -15,9 +15,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-configured_url = os.getenv("JOLT_DATABASE_URL")
+configured_url = config.attributes.get("database_url") or os.getenv("JOLT_DATABASE_URL")
 if configured_url:
-    config.set_main_option("sqlalchemy.url", configured_url)
+    config.set_main_option("sqlalchemy.url", str(configured_url))
 
 target_metadata = Base.metadata
 

@@ -5,6 +5,8 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -180,11 +182,20 @@ def default_database_url() -> str:
     return f"sqlite:///{(data_dir / 'jolt.db').as_posix()}"
 
 
-def create_session_factory(database_url: str | None = None) -> sessionmaker[Session]:
+def migrate_database(database_url: str | None = None) -> str:
     url = database_url or default_database_url()
+    backend_root = Path(__file__).resolve().parents[2]
+    config = Config(str(backend_root / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_root / "migrations"))
+    config.attributes["database_url"] = url
+    command.upgrade(config, "head")
+    return url
+
+
+def create_session_factory(database_url: str | None = None) -> sessionmaker[Session]:
+    url = migrate_database(database_url)
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
-    Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
