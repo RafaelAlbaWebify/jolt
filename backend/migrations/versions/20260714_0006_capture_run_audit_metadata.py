@@ -20,8 +20,10 @@ TABLE_NAME = "capture_runs"
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    columns = {column["name"] for column in inspector.get_columns(TABLE_NAME)}
+    if not inspector.has_table(TABLE_NAME):
+        return
 
+    columns = {column["name"] for column in inspector.get_columns(TABLE_NAME)}
     with op.batch_alter_table(TABLE_NAME) as batch:
         if "requested_item_limit" not in columns:
             batch.add_column(sa.Column("requested_item_limit", sa.Integer(), nullable=True))
@@ -48,8 +50,10 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    columns = {column["name"] for column in inspector.get_columns(TABLE_NAME)}
+    if not inspector.has_table(TABLE_NAME):
+        return
 
+    columns = {column["name"] for column in inspector.get_columns(TABLE_NAME)}
     with op.batch_alter_table(TABLE_NAME) as batch:
         if "stop_reason" in columns:
             batch.drop_column("stop_reason")
