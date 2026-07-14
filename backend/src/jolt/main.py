@@ -227,12 +227,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
             content = build_application_preparation_pack(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        filename = f"JOLT_PREPARATION_{posting_id}.zip"
         return StreamingResponse(
             BytesIO(content),
             media_type="application/zip",
-            headers={
-                "Content-Disposition": "attachment; filename=JOLT_APPLICATION_PREPARATION.zip"
-            },
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     @app.get("/api/exports/analysis-pack", tags=["exports"])
