@@ -36,7 +36,9 @@ def opportunity_identity_evidence(session: Session, posting_id: str) -> dict[str
                 "source_type": document.source_type,
                 "source_url": document.source_url,
                 "identity_status": (
-                    "original" if document.id == posting.source_document_id else "confirmed_duplicate"
+                    "original"
+                    if document.id == posting.source_document_id
+                    else "confirmed_duplicate"
                 ),
                 "match_basis": match_basis,
                 "captured_at": document.captured_at.isoformat(),
