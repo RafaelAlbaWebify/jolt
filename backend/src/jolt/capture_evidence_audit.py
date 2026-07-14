@@ -102,7 +102,9 @@ def _validate_run_metadata(
             )
 
     if (
-        all(isinstance(value, int) for value in (total, verified, rejected))
+        isinstance(total, int)
+        and isinstance(verified, int)
+        and isinstance(rejected, int)
         and total != verified + rejected
     ):
         findings.append(
