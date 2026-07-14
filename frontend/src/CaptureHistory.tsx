@@ -7,6 +7,9 @@ export type CaptureRunSummary = {
   status: string;
   search_url: string;
   warnings: string[];
+  requested_item_limit: number | null;
+  observed_item_count: number;
+  stop_reason: string;
   started_at: string;
   completed_at: string | null;
   total_items: number;
@@ -42,6 +45,15 @@ type Props = {
   apiBase: string;
   onError: (message: string) => void;
 };
+
+function readableReason(value: string): string {
+  return value ? value.replaceAll("_", " ") : "not recorded";
+}
+
+function captureBound(run: CaptureRunSummary): string {
+  const requested = run.requested_item_limit ?? "not recorded";
+  return `${run.observed_item_count} observed · ${requested} requested`;
+}
 
 export function CaptureHistory({ apiBase, onError }: Props) {
   const [runs, setRuns] = useState<CaptureRunSummary[]>([]);
@@ -80,7 +92,11 @@ export function CaptureHistory({ apiBase, onError }: Props) {
           <h2 id="capture-history-heading">LinkedIn capture history</h2>
           <p>Inspect accepted and rejected evidence before relying on captured opportunities.</p>
         </div>
-        <button type="button" disabled={busy} onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}
+        >
           Refresh captures
         </button>
       </div>
@@ -93,6 +109,8 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                 <h3>{run.source} · {run.mode}</h3>
                 <p>{new Date(run.started_at).toLocaleString()} · {run.status.replaceAll("_", " ")}</p>
                 <p>{run.verified_items} verified · {run.rejected_items} rejected · {run.total_items} total</p>
+                <p>{captureBound(run)}</p>
+                <p><strong>Stopped:</strong> {readableReason(run.stop_reason)}</p>
               </div>
               <button type="button" disabled={busy} onClick={() => inspect(run.capture_run_id)}>
                 Inspect capture
@@ -105,6 +123,8 @@ export function CaptureHistory({ apiBase, onError }: Props) {
       {selected && (
         <div className="capture-diagnostics" aria-live="polite">
           <h3>Capture diagnostics</h3>
+          <p><strong>Capture bound:</strong> {captureBound(selected)}</p>
+          <p><strong>Stop reason:</strong> {readableReason(selected.stop_reason)}</p>
           {selected.search_url && <p><a href={selected.search_url} target="_blank" rel="noreferrer">Open source search</a></p>}
           {selected.warnings.length > 0 && (
             <div>
