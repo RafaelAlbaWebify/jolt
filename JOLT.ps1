@@ -1,11 +1,13 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("start", "stop", "validate", "capture", "audit")]
+    [ValidateSet("start", "stop", "validate", "capture", "audit", "backup", "restore")]
     [string]$Action = "start",
     [string]$RepoPath = "",
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
     [ValidateRange(1, 50)]
     [int]$MaxJobs = 10,
+    [string]$BackupPath = "",
+    [string]$RestoreTarget = "",
     [switch]$NoBrowser
 )
 
@@ -42,15 +44,9 @@ $root = Resolve-JoltRepository -ExplicitPath $RepoPath
 $tools = Join-Path $root "tools"
 
 switch ($Action) {
-    "start" {
-        & (Join-Path $tools "start-jolt.ps1") -NoBrowser:$NoBrowser
-    }
-    "stop" {
-        & (Join-Path $tools "stop-jolt.ps1")
-    }
-    "validate" {
-        & (Join-Path $tools "validate-jolt.ps1")
-    }
+    "start" { & (Join-Path $tools "start-jolt.ps1") -NoBrowser:$NoBrowser }
+    "stop" { & (Join-Path $tools "stop-jolt.ps1") }
+    "validate" { & (Join-Path $tools "validate-jolt.ps1") }
     "capture" {
         & (Join-Path $tools "start-jolt.ps1") `
             -StartLinkedInCapture `
@@ -58,7 +54,12 @@ switch ($Action) {
             -MaxJobs $MaxJobs `
             -NoBrowser:$NoBrowser
     }
-    "audit" {
-        & (Join-Path $tools "audit-jolt.ps1")
+    "audit" { & (Join-Path $tools "audit-jolt.ps1") }
+    "backup" { & (Join-Path $tools "backup-jolt.ps1") -OutputPath $BackupPath }
+    "restore" {
+        if (-not $BackupPath -or -not $RestoreTarget) {
+            throw "Restore requires -BackupPath and -RestoreTarget."
+        }
+        & (Join-Path $tools "restore-jolt.ps1") -BackupPath $BackupPath -TargetPath $RestoreTarget
     }
 }
