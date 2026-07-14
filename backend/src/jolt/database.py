@@ -193,7 +193,7 @@ def migrate_database(database_url: str | None = None) -> str:
 
 
 def create_session_factory(database_url: str | None = None) -> sessionmaker[Session]:
-    url = database_url or default_database_url()
+    url = migrate_database(database_url)
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
     return sessionmaker(bind=engine, expire_on_commit=False)
