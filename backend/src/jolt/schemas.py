@@ -74,6 +74,8 @@ class LinkedInLiveCaptureItemRequest(BaseModel):
 class LinkedInLiveCaptureRequest(BaseModel):
     search_url: str = ""
     items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=50)
+    requested_item_limit: int | None = Field(default=None, ge=1, le=50)
+    stop_reason: str = Field(default="", max_length=80)
 
 
 class CaptureItemResponse(BaseModel):
@@ -106,6 +108,9 @@ class CaptureRunSummary(BaseModel):
     status: str
     search_url: str
     warnings: list[str]
+    requested_item_limit: int | None = None
+    observed_item_count: int = 0
+    stop_reason: str = ""
     started_at: str
     completed_at: str | None
     total_items: int
