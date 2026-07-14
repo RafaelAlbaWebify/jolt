@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
@@ -20,7 +21,7 @@ class CaptureArtifact(Base):
     content_type: Mapped[str] = mapped_column(String(80), nullable=False)
     raw_payload: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    captured_at: Mapped[object] = mapped_column(DateTime(timezone=True), nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 def stage_capture_artifact(
