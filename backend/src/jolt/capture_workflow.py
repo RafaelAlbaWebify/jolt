@@ -6,6 +6,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from jolt.capture_artifacts import CaptureArtifact, stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import CaptureItem, CapturePage, CaptureRun, utc_now
 from jolt.schemas import (
@@ -27,7 +28,12 @@ def _raw_posting_text(title: str, company: str, location: str, description: str)
     return "\n".join(line for line in lines if line).strip()
 
 
-def _item_response(item: CaptureItem, identity_status: str | None = None) -> CaptureItemResponse:
+def _item_response(
+    session: Session, item: CaptureItem, identity_status: str | None = None
+) -> CaptureItemResponse:
+    artifact = session.scalar(
+        select(CaptureArtifact).where(CaptureArtifact.capture_item_id == item.id)
+    )
     return CaptureItemResponse(
         capture_item_id=item.id,
         source_job_id=item.source_job_id,
@@ -40,6 +46,8 @@ def _item_response(item: CaptureItem, identity_status: str | None = None) -> Cap
         source_document_id=item.source_document_id,
         posting_id=item.posting_id,
         identity_status=identity_status,
+        artifact_id=artifact.id if artifact else None,
+        artifact_hash=artifact.content_hash if artifact else None,
     )
 
 
@@ -125,7 +133,14 @@ def run_linkedin_fixture_capture(
                 posting_id=posting_id,
             )
             session.add(item)
-            responses.append(_item_response(item, identity_status))
+            stage_capture_artifact(
+                session,
+                capture_item_id=item.id,
+                artifact_type="linkedin_detail_html",
+                content_type="text/html",
+                raw_payload=detail_html,
+            )
+            responses.append(_item_response(session, item, identity_status))
 
         warnings = list(evidence.warnings)
         if unverified_count:
@@ -186,7 +201,7 @@ def get_capture_run(session: Session, capture_run_id: str) -> CaptureRunResponse
     return _capture_run_response(
         run,
         list(pages),
-        [_item_response(item) for item in items],
+        [_item_response(session, item) for item in items],
     )
 
 
