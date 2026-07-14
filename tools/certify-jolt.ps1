@@ -115,6 +115,7 @@ try {
         }
         privacy = [ordered]@{
             active_database_included = $false
+            backup_database_included = $false
             restored_database_included = $false
             raw_capture_payloads_included = $false
             absolute_user_paths_included = $false
@@ -128,12 +129,13 @@ try {
         "Generated: $((Get-Date).ToString('o'))",
         "",
         "This package proves that the current clean checkout completed the full JOLT review/capture audit, created a verified SQLite backup, and restored that backup to an isolated test database.",
-        "The active database and restored test database are not included.",
+        "The active database, temporary backup database, and restored test database are not included.",
         "Review certification-summary.json and the nested JOLT_REVIEW_AUDIT_*.zip.",
         "Result: passed"
     ) | Set-Content -LiteralPath (Join-Path $Staging "README.txt") -Encoding UTF8
 
     Remove-Item -LiteralPath $RestoreRoot -Recurse -Force
+    Remove-Item -LiteralPath $BackupZip -Force
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
     Write-Host "JOLT Windows certification passed: $OutputZip"
 }
