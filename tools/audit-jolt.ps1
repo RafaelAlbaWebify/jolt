@@ -58,9 +58,13 @@ try {
         uv run playwright install chromium
         if ($LASTEXITCODE -ne 0) { throw "Playwright Chromium could not be installed." }
 
-        $auditExitCode = 0
+        $reviewAuditExitCode = 0
         uv run python -m jolt.review_audit --output-dir $Staging
-        $auditExitCode = $LASTEXITCODE
+        $reviewAuditExitCode = $LASTEXITCODE
+
+        $captureAuditExitCode = 0
+        uv run python -m jolt.capture_evidence_audit_cli --output-dir $Staging
+        $captureAuditExitCode = $LASTEXITCODE
     }
     finally {
         Pop-Location
@@ -118,6 +122,7 @@ try {
         privacy = [ordered]@{
             database_contents_included = $false
             absolute_user_paths_included = $false
+            raw_capture_payloads_included = $false
         }
     }
     $provenance | ConvertTo-Json -Depth 8 | Set-Content -Path $ProvenancePath -Encoding UTF8
@@ -127,20 +132,21 @@ try {
     }
 
     @(
-        "JOLT automated review audit",
+        "JOLT automated review and capture evidence audit",
         "Generated: $((Get-Date).ToString('o'))",
         "",
-        "Review audit-summary.json, audit-provenance.json, opportunities.json, readiness-histories.json, workbench-full.png, and workbench-readiness-history.png.",
+        "Review audit-summary.json, capture-audit-summary.json, capture-details.json, audit-provenance.json, opportunities.json, readiness-histories.json, workbench-full.png, and workbench-readiness-history.png.",
+        "The capture audit validates summary/detail consistency, bounds, stop reasons, canonical linkage, and immutable artifact identities without including raw artifact payloads.",
         "The provenance file records the exact commit, repository state, migration revision, runtime versions, and SHA-256 hashes of local database files.",
-        "Database contents and absolute user paths are not included.",
+        "Database contents, raw capture payloads, and absolute user paths are not included.",
         "The screenshots capture the local workbench and readiness-history panel.",
-        "No readiness recalculation, application, or recruiter action was performed."
+        "No readiness recalculation, application, capture, or recruiter action was performed."
     ) | Set-Content -Path (Join-Path $Staging "README.txt") -Encoding UTF8
 
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
     Write-Host "Review audit package created: $OutputZip"
 
-    if ($auditExitCode -ne 0) {
+    if ($reviewAuditExitCode -ne 0 -or $captureAuditExitCode -ne 0) {
         throw "The audit found one or more errors. Review the ZIP created in Downloads."
     }
 }
