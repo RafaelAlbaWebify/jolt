@@ -88,6 +88,8 @@ class CaptureItemResponse(BaseModel):
     source_document_id: str | None = None
     posting_id: str | None = None
     identity_status: str | None = None
+    artifact_id: str | None = None
+    artifact_hash: str | None = None
 
 
 class CapturePageResponse(BaseModel):

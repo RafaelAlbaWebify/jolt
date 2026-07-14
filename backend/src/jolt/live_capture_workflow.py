@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from jolt.capture_artifacts import stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import CaptureItem, CapturePage, CaptureRun, utc_now
 from jolt.schemas import (
@@ -98,6 +99,13 @@ def run_linkedin_live_capture(
                 posting_id=posting_id,
             )
             session.add(item)
+            artifact = stage_capture_artifact(
+                session,
+                capture_item_id=item.id,
+                artifact_type="linkedin_live_item_json",
+                content_type="application/json",
+                raw_payload=json.dumps(evidence.model_dump(mode="json"), sort_keys=True),
+            )
             responses.append(
                 CaptureItemResponse(
                     capture_item_id=item.id,
@@ -111,6 +119,8 @@ def run_linkedin_live_capture(
                     source_document_id=source_document_id,
                     posting_id=posting_id,
                     identity_status=identity_status,
+                    artifact_id=artifact.id,
+                    artifact_hash=artifact.content_hash,
                 )
             )
 
