@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from jolt.capture_artifacts import CaptureArtifact, stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
-from jolt.database import CaptureItem, CapturePage, CaptureRun, utc_now
+from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, utc_now
 from jolt.schemas import (
     CaptureItemResponse,
     CapturePageResponse,
@@ -34,6 +34,9 @@ def _item_response(
     artifact = session.scalar(
         select(CaptureArtifact).where(CaptureArtifact.capture_item_id == item.id)
     )
+    if identity_status is None and item.posting_id:
+        posting = session.get(Posting, item.posting_id)
+        identity_status = posting.identity_status if posting else None
     return CaptureItemResponse(
         capture_item_id=item.id,
         source_job_id=item.source_job_id,
