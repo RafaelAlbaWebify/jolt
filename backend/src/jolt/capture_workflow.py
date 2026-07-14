@@ -67,6 +67,7 @@ def run_linkedin_fixture_capture(
         adapter = LinkedInFixtureAdapter()
         evidence = adapter.parse_listing_page(request.listing_html, request.page_number)
         now = utc_now()
+        observed_count = len(evidence.listings)
         run = CaptureRun(
             id=str(uuid4()),
             source="linkedin",
@@ -74,6 +75,9 @@ def run_linkedin_fixture_capture(
             status="running",
             search_url=request.search_url,
             warnings_json=json.dumps(list(evidence.warnings)),
+            requested_item_limit=observed_count,
+            observed_item_count=observed_count,
+            stop_reason="fixture_page_processed",
             started_at=now,
             completed_at=None,
         )
@@ -174,6 +178,9 @@ def list_capture_runs(session: Session) -> list[CaptureRunSummary]:
                 status=run.status,
                 search_url=run.search_url,
                 warnings=json.loads(run.warnings_json),
+                requested_item_limit=run.requested_item_limit,
+                observed_item_count=run.observed_item_count,
+                stop_reason=run.stop_reason,
                 started_at=run.started_at.isoformat(),
                 completed_at=run.completed_at.isoformat() if run.completed_at else None,
                 total_items=_count_items(session, run.id),
@@ -219,6 +226,9 @@ def _capture_run_response(
         status=run.status,
         search_url=run.search_url,
         warnings=json.loads(run.warnings_json),
+        requested_item_limit=run.requested_item_limit,
+        observed_item_count=run.observed_item_count,
+        stop_reason=run.stop_reason,
         started_at=run.started_at.isoformat(),
         completed_at=run.completed_at.isoformat() if run.completed_at else None,
         total_items=len(items),

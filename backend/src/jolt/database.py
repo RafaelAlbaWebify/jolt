@@ -40,6 +40,9 @@ class CaptureRun(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False)
     search_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
     warnings_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    requested_item_limit: Mapped[int | None] = mapped_column(nullable=True)
+    observed_item_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    stop_reason: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

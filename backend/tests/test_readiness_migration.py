@@ -8,7 +8,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect
 
 PREVIOUS_REVISION = "20260712_0003"
-CURRENT_REVISION = "20260714_0005"
+CURRENT_REVISION = "20260714_0006"
 TABLE_NAME = "application_readiness_reports"
 INDEX_NAME = "ix_application_readiness_reports_posting_id"
 

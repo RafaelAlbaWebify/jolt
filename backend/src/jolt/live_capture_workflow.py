@@ -26,10 +26,21 @@ def _posting_text(title: str, company: str, location: str, description: str) -> 
     return "\n".join(line for line in lines if line).strip()
 
 
+def _resolve_stop_reason(request: LinkedInLiveCaptureRequest, observed_count: int) -> str:
+    if request.stop_reason:
+        return request.stop_reason
+    if request.requested_item_limit is not None and observed_count >= request.requested_item_limit:
+        return "requested_limit_reached"
+    return "submitted_batch_completed"
+
+
 def run_linkedin_live_capture(
     session: Session, request: LinkedInLiveCaptureRequest
 ) -> CaptureRunResponse:
     try:
+        requested_limit = request.requested_item_limit or len(request.items)
+        observed_count = len(request.items)
+        stop_reason = _resolve_stop_reason(request, observed_count)
         run = CaptureRun(
             id=str(uuid4()),
             source="linkedin",
@@ -37,6 +48,9 @@ def run_linkedin_live_capture(
             status="running",
             search_url=request.search_url,
             warnings_json="[]",
+            requested_item_limit=requested_limit,
+            observed_item_count=observed_count,
+            stop_reason=stop_reason,
             started_at=utc_now(),
             completed_at=None,
         )
@@ -139,6 +153,9 @@ def run_linkedin_live_capture(
             status=run.status,
             search_url=run.search_url,
             warnings=warnings,
+            requested_item_limit=run.requested_item_limit,
+            observed_item_count=run.observed_item_count,
+            stop_reason=run.stop_reason,
             started_at=run.started_at.isoformat(),
             completed_at=completed_at.isoformat(),
             total_items=len(responses),
