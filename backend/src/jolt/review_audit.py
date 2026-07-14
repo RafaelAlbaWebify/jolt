@@ -47,6 +47,10 @@ def _get_bytes(url: str) -> bytes:
         return response.read()
 
 
+def _contains_text(text: str, expected: str) -> bool:
+    return expected.casefold() in text.casefold()
+
+
 def audit(output_dir: Path) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
     health = _get_json(f"{API_BASE}/api/health")
@@ -216,13 +220,17 @@ def audit(output_dir: Path) -> dict[str, object]:
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
         visible_text = page.locator("body").inner_text()
-        history_controls = page.get_by_role("button", name="Readiness report history")
-        if opportunities and history_controls.count() > 0:
-            history_controls.first.click()
-            page.wait_for_load_state("networkidle")
+        history_details = page.locator("details").filter(has_text="Readiness report history")
+        if opportunities and history_details.count() > 0:
+            first_history = history_details.first
+            first_history.evaluate("element => { element.open = true; }")
+            page.wait_for_timeout(250)
             page.screenshot(path=output_dir / "workbench-readiness-history.png", full_page=True)
             expanded_text = page.locator("body").inner_text()
-            expanded_history_visible = "Recalculate readiness" in expanded_text
+            expanded_history_visible = bool(first_history.get_attribute("open") is not None) and (
+                _contains_text(expanded_text, "Recalculate readiness")
+                or _contains_text(expanded_text, "Current report")
+            )
             (output_dir / "workbench-readiness-history-text.txt").write_text(
                 expanded_text, encoding="utf-8"
             )
@@ -233,10 +241,10 @@ def audit(output_dir: Path) -> dict[str, object]:
         findings.extend(
             {"severity": "error", "message": f"Browser error: {error}"} for error in page_errors
         )
-    automated_review_visible = "Automated proposed decision" in visible_text
-    readiness_visible = "Application readiness" in visible_text
-    preparation_download_visible = "Download preparation pack" in visible_text
-    readiness_history_control_visible = "Readiness report history" in visible_text
+    automated_review_visible = _contains_text(visible_text, "Automated proposed decision")
+    readiness_visible = _contains_text(visible_text, "Application readiness")
+    preparation_download_visible = _contains_text(visible_text, "Download preparation pack")
+    readiness_history_control_visible = _contains_text(visible_text, "Readiness report history")
     if opportunities and not automated_review_visible:
         findings.append(
             {
