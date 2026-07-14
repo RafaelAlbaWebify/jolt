@@ -93,7 +93,8 @@ describe("ApplicationDashboard", () => {
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
 
     expect(await screen.findByRole("heading", { name: opportunity.title })).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Application workflow · submitted"));
+    const workflowSummary = await screen.findByText("Application workflow · submitted");
+    fireEvent.click(workflowSummary);
     expect(await screen.findByText("Rafael_Application_Support_CV.pdf")).toBeInTheDocument();
     expect(screen.getByText(/preparing → submitted/)).toBeInTheDocument();
 
