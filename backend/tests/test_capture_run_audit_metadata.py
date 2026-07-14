@@ -1,9 +1,6 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-
 from jolt.api import create_app
 
 
