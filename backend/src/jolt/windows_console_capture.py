@@ -3,23 +3,27 @@ from __future__ import annotations
 import builtins
 import sys
 from collections.abc import Callable
-from typing import cast
+from typing import Protocol, cast
 
 from jolt import supervised_capture
+
+
+class _ConsoleReader(Protocol):
+    def getwch(self) -> str: ...
 
 
 def _windows_console_input(prompt: str = "") -> str:
     import msvcrt
 
-    getwch = cast(Callable[[], str], getattr(msvcrt, "getwch"))
+    console = cast(_ConsoleReader, msvcrt)
     print(prompt, end="", flush=True)
     while True:
-        key = getwch()
+        key = console.getwch()
         if key in ("\r", "\n"):
             print()
             return ""
         if key in ("\x00", "\xe0"):
-            getwch()
+            console.getwch()
 
 
 def install_console_input() -> Callable[[str], str] | None:
