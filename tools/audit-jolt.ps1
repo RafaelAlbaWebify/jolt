@@ -12,6 +12,7 @@ $Staging = Join-Path $env:TEMP "JOLT_REVIEW_AUDIT_$Timestamp"
 $OutputZip = Join-Path $Downloads "JOLT_REVIEW_AUDIT_$Timestamp.zip"
 $SummaryPath = Join-Path $Staging "audit-summary.json"
 $ProvenancePath = Join-Path $Staging "audit-provenance.json"
+$AuditSnapshotZip = Join-Path $env:TEMP "JOLT_AUDIT_SNAPSHOT_$Timestamp.zip"
 
 function Invoke-TextCommand {
     param(
@@ -78,28 +79,39 @@ try {
         $health = [ordered]@{ error = $_.Exception.Message }
     }
 
-    $databaseFiles = @(
-        $databaseRoots = @(
-            (Join-Path $RepoRoot ".jolt"),
-            (Join-Path $BackendRoot "data")
-        )
-        $databaseCandidates = foreach ($databaseRoot in $databaseRoots) {
-            if (Test-Path -LiteralPath $databaseRoot -PathType Container) {
-                Get-ChildItem -LiteralPath $databaseRoot -Recurse -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Extension -in @(".db", ".sqlite", ".sqlite3") }
-            }
+    Remove-Item -LiteralPath $AuditSnapshotZip -Force -ErrorAction SilentlyContinue
+    & (Join-Path $PSScriptRoot "backup-jolt.ps1") -OutputPath $AuditSnapshotZip
+
+    Push-Location $BackendRoot
+    try {
+        $snapshotManifestJson = uv run python -m jolt.backup verify --backup $AuditSnapshotZip
+        if ($LASTEXITCODE -ne 0) {
+            throw "Audit database snapshot verification failed."
         }
-        $databaseCandidates |
-            Sort-Object FullName -Unique |
-            ForEach-Object {
-                $hash = Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256
-                [ordered]@{
-                    relative_path = Get-RepositoryRelativePath -Path $_.FullName
-                    sha256 = $hash.Hash.ToLowerInvariant()
-                    size_bytes = $_.Length
-                    last_write_utc = $_.LastWriteTimeUtc.ToString("o")
-                }
-            }
+    }
+    finally {
+        Pop-Location
+    }
+
+    $snapshotManifest = $snapshotManifestJson | ConvertFrom-Json
+    if (
+        [string]::IsNullOrWhiteSpace([string]$snapshotManifest.database_sha256) -or
+        [int64]$snapshotManifest.database_size -lt 1 -or
+        [string]::IsNullOrWhiteSpace([string]$snapshotManifest.alembic_revision)
+    ) {
+        throw "Audit database snapshot manifest is incomplete."
+    }
+
+    $databaseFiles = @(
+        [ordered]@{
+            relative_path = "backend\data\jolt.db"
+            evidence_type = "consistent_sqlite_backup_snapshot"
+            sha256 = [string]$snapshotManifest.database_sha256
+            size_bytes = [int64]$snapshotManifest.database_size
+            alembic_revision = [string]$snapshotManifest.alembic_revision
+            source_file_read_directly = $false
+            snapshot_archive_included = $false
+        }
     )
 
     $gitStatus = Invoke-TextCommand -FilePath "git" -Arguments @("status", "--porcelain")
