@@ -129,7 +129,7 @@ try {
         }
         application = [ordered]@{
             health = $health
-            alembic_revision = Invoke-TextCommand -FilePath "uv" -Arguments @("run", "alembic", "current") -WorkingDirectory $BackendRoot
+            alembic_revision = [string]$snapshotManifest.alembic_revision
         }
         runtime = [ordered]@{
             operating_system = [System.Environment]::OSVersion.VersionString
