@@ -12,6 +12,7 @@ $Staging = Join-Path $env:TEMP "JOLT_REVIEW_AUDIT_$Timestamp"
 $OutputZip = Join-Path $Downloads "JOLT_REVIEW_AUDIT_$Timestamp.zip"
 $SummaryPath = Join-Path $Staging "audit-summary.json"
 $ProvenancePath = Join-Path $Staging "audit-provenance.json"
+$AuditSnapshotZip = Join-Path $env:TEMP "JOLT_AUDIT_SNAPSHOT_$Timestamp.zip"
 
 function Invoke-TextCommand {
     param(
@@ -78,18 +79,39 @@ try {
         $health = [ordered]@{ error = $_.Exception.Message }
     }
 
+    Remove-Item -LiteralPath $AuditSnapshotZip -Force -ErrorAction SilentlyContinue
+    & (Join-Path $PSScriptRoot "backup-jolt.ps1") -OutputPath $AuditSnapshotZip
+
+    Push-Location $BackendRoot
+    try {
+        $snapshotManifestJson = uv run python -m jolt.backup verify --backup $AuditSnapshotZip
+        if ($LASTEXITCODE -ne 0) {
+            throw "Audit database snapshot verification failed."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    $snapshotManifest = $snapshotManifestJson | ConvertFrom-Json
+    if (
+        [string]::IsNullOrWhiteSpace([string]$snapshotManifest.database_sha256) -or
+        [int64]$snapshotManifest.database_size -lt 1 -or
+        [string]::IsNullOrWhiteSpace([string]$snapshotManifest.alembic_revision)
+    ) {
+        throw "Audit database snapshot manifest is incomplete."
+    }
+
     $databaseFiles = @(
-        Get-ChildItem -Path (Join-Path $RepoRoot ".jolt") -Recurse -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Extension -in @(".db", ".sqlite", ".sqlite3") } |
-            ForEach-Object {
-                $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
-                [ordered]@{
-                    relative_path = Get-RepositoryRelativePath -Path $_.FullName
-                    sha256 = $hash.Hash.ToLowerInvariant()
-                    size_bytes = $_.Length
-                    last_write_utc = $_.LastWriteTimeUtc.ToString("o")
-                }
-            }
+        [ordered]@{
+            relative_path = "backend\data\jolt.db"
+            evidence_type = "consistent_sqlite_backup_snapshot"
+            sha256 = [string]$snapshotManifest.database_sha256
+            size_bytes = [int64]$snapshotManifest.database_size
+            alembic_revision = [string]$snapshotManifest.alembic_revision
+            source_file_read_directly = $false
+            snapshot_archive_included = $false
+        }
     )
 
     $gitStatus = Invoke-TextCommand -FilePath "git" -Arguments @("status", "--porcelain")
@@ -107,7 +129,7 @@ try {
         }
         application = [ordered]@{
             health = $health
-            alembic_revision = Invoke-TextCommand -FilePath "uv" -Arguments @("run", "alembic", "current") -WorkingDirectory $BackendRoot
+            alembic_revision = [string]$snapshotManifest.alembic_revision
         }
         runtime = [ordered]@{
             operating_system = [System.Environment]::OSVersion.VersionString
@@ -116,7 +138,7 @@ try {
             uv = Invoke-TextCommand -FilePath "uv" -Arguments @("--version")
             python = Invoke-TextCommand -FilePath "uv" -Arguments @("run", "python", "--version") -WorkingDirectory $BackendRoot
             node = Invoke-TextCommand -FilePath "node" -Arguments @("--version")
-            npm = Invoke-TextCommand -FilePath "npm" -Arguments @("--version")
+            npm = Invoke-TextCommand -FilePath "npm.cmd" -Arguments @("--version")
         }
         databases = $databaseFiles
         privacy = [ordered]@{
@@ -151,5 +173,6 @@ try {
     }
 }
 finally {
+    & (Join-Path $PSScriptRoot "stop-jolt.ps1") -ErrorAction SilentlyContinue
     Remove-Item $Staging -Recurse -Force -ErrorAction SilentlyContinue
 }

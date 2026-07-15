@@ -95,3 +95,58 @@ def test_capture_evidence_audit_reports_broken_chain() -> None:
     assert "Capture run-1/verified: artifact hash is not hexadecimal SHA-256." in messages
     assert "Capture run-1/rejected: rejected item has canonical linkage." in messages
     assert metrics["capture_detail_count"] == 1
+
+
+def test_capture_evidence_audit_accepts_explicit_legacy_run_metadata() -> None:
+    summary = {
+        **_summary(),
+        "requested_item_limit": None,
+        "observed_item_count": 0,
+        "stop_reason": "legacy_unknown",
+        "total_items": 1,
+        "verified_items": 1,
+        "rejected_items": 0,
+    }
+    detail = {
+        **summary,
+        "pages": [],
+        "items": [
+            {
+                "source_job_id": "legacy-verified",
+                "detail_status": "verified",
+                "posting_id": "posting-legacy",
+                "source_document_id": "source-legacy",
+                "artifact_id": None,
+                "artifact_hash": None,
+            }
+        ],
+    }
+
+    details, findings, metrics = audit_capture_evidence([summary], lambda _: detail)
+
+    assert details == {"run-1": detail}
+    assert findings == []
+    assert metrics == {
+        "capture_detail_count": 1,
+        "capture_item_count": 1,
+        "capture_artifact_count": 0,
+        "legacy_capture_item_count": 1,
+    }
+
+
+def test_capture_evidence_audit_still_rejects_current_count_mismatch() -> None:
+    summary = {
+        **_summary(),
+        "observed_item_count": 1,
+        "total_items": 2,
+        "verified_items": 1,
+        "rejected_items": 1,
+    }
+    detail = {**summary, "pages": [], "items": []}
+
+    _, findings, _ = audit_capture_evidence([summary], lambda _: detail)
+
+    assert {
+        "severity": "error",
+        "message": "Capture run-1: observed count does not equal persisted item count.",
+    } in findings
