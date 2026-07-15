@@ -24,10 +24,30 @@ $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
 $ExpectedBackendVersion = "0.8.0"
 
-function Assert-Command {
-    param([Parameter(Mandatory)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Required command '$Name' was not found in PATH."
+function Resolve-ApplicationCommand {
+    param([Parameter(Mandatory)][string[]]$Names)
+
+    foreach ($name in $Names) {
+        $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -ne $command) {
+            return $command.Source
+        }
+    }
+
+    throw "Required application '$($Names -join "' or '")' was not found in PATH."
+}
+
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory)][string]$FilePath,
+        [string[]]$Arguments = @(),
+        [Parameter(Mandatory)][string]$FailureMessage
+    )
+
+    & $FilePath @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "$FailureMessage Exit code: $LASTEXITCODE."
     }
 }
 
@@ -35,11 +55,16 @@ function Wait-HttpEndpoint {
     param(
         [Parameter(Mandatory)][string]$Url,
         [Parameter(Mandatory)][string]$Name,
+        [System.Diagnostics.Process]$Process,
         [int]$TimeoutSeconds = 60
     )
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
+        if ($null -ne $Process -and $Process.HasExited) {
+            throw "$Name exited before becoming ready at $Url. Exit code: $($Process.ExitCode). Review logs in $LogRoot."
+        }
+
         try {
             $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 3
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) {
@@ -73,40 +98,49 @@ function Stop-ProcessSafely {
     }
 }
 
-Assert-Command -Name "uv"
-Assert-Command -Name "node"
-Assert-Command -Name "npm"
+$stage = "resolving required applications"
+$uvCommand = Resolve-ApplicationCommand -Names @("uv.exe", "uv")
+$nodeCommand = Resolve-ApplicationCommand -Names @("node.exe", "node")
+$npmCommand = Resolve-ApplicationCommand -Names @("npm.cmd")
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot | Out-Null
 Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
 
 & (Join-Path $PSScriptRoot "stop-jolt.ps1")
 
-Write-Host "Preparing backend dependencies..."
-Push-Location $BackendRoot
-try {
-    uv sync --all-groups
-    New-Item -ItemType Directory -Force -Path (Join-Path $BackendRoot "data") | Out-Null
-    uv run alembic upgrade head
-}
-finally {
-    Pop-Location
-}
-
-Write-Host "Preparing frontend dependencies..."
-Push-Location $FrontendRoot
-try {
-    npm install
-}
-finally {
-    Pop-Location
-}
-
 $backendProcess = $null
 $frontendProcess = $null
 try {
+    $stage = "preparing backend dependencies"
+    Write-Host "Preparing backend dependencies..."
+    Push-Location $BackendRoot
+    try {
+        Invoke-NativeCommand -FilePath $uvCommand -Arguments @("sync", "--all-groups") `
+            -FailureMessage "Backend dependencies could not be prepared."
+        New-Item -ItemType Directory -Force -Path (Join-Path $BackendRoot "data") | Out-Null
+        Invoke-NativeCommand -FilePath $uvCommand -Arguments @("run", "alembic", "upgrade", "head") `
+            -FailureMessage "Database migrations could not be applied."
+    }
+    finally {
+        Pop-Location
+    }
+
+    $stage = "preparing frontend dependencies"
+    Write-Host "Preparing frontend dependencies..."
+    Push-Location $FrontendRoot
+    try {
+        # Call npm.cmd explicitly. The npm PowerShell shim can fail under StrictMode
+        # with an internal missing 'Statement' property on some Windows installations.
+        Invoke-NativeCommand -FilePath $npmCommand -Arguments @("ci") `
+            -FailureMessage "Frontend dependencies could not be prepared."
+    }
+    finally {
+        Pop-Location
+    }
+
+    $stage = "starting backend"
     Write-Host "Starting JOLT backend..."
-    $backendProcess = Start-Process -FilePath "uv" `
+    $backendProcess = Start-Process -FilePath $uvCommand `
         -ArgumentList @("run", "uvicorn", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
         -WorkingDirectory $BackendRoot `
         -RedirectStandardOutput $BackendOutLog `
@@ -114,8 +148,9 @@ try {
         -PassThru `
         -WindowStyle Hidden
 
+    $stage = "starting frontend"
     Write-Host "Starting JOLT frontend..."
-    $frontendProcess = Start-Process -FilePath "npm.cmd" `
+    $frontendProcess = Start-Process -FilePath $npmCommand `
         -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", "5173") `
         -WorkingDirectory $FrontendRoot `
         -RedirectStandardOutput $FrontendOutLog `
@@ -123,9 +158,12 @@ try {
         -PassThru `
         -WindowStyle Hidden
 
-    Wait-HttpEndpoint -Url "$BackendUrl/api/health" -Name "JOLT backend"
+    $stage = "waiting for backend readiness"
+    Wait-HttpEndpoint -Url "$BackendUrl/api/health" -Name "JOLT backend" -Process $backendProcess
     Assert-FreshBackend
-    Wait-HttpEndpoint -Url $FrontendUrl -Name "JOLT frontend"
+
+    $stage = "waiting for frontend readiness"
+    Wait-HttpEndpoint -Url $FrontendUrl -Name "JOLT frontend" -Process $frontendProcess
 
     @{
         backend_pid = $backendProcess.Id
@@ -158,5 +196,5 @@ catch {
     Stop-ProcessSafely -Process $frontendProcess
     Stop-ProcessSafely -Process $backendProcess
     Remove-Item $StatePath -Force -ErrorAction SilentlyContinue
-    throw
+    throw "JOLT startup failed during stage '$stage'. $($_.Exception.Message)"
 }
