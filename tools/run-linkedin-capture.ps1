@@ -38,7 +38,7 @@ try {
     Write-Host "Capture is bounded to $MaxJobs visible listings."
     Write-Host ""
 
-    uv run python -m jolt.supervised_capture `
+    uv run python -m jolt.windows_console_capture `
         --search-url $SearchUrl `
         --api-url $ApiUrl `
         --profile-dir $ProfileDir `
