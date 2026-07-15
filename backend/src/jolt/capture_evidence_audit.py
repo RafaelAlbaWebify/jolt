@@ -114,7 +114,14 @@ def _validate_run_metadata(
             }
         )
 
-    if isinstance(observed, int) and isinstance(total, int) and observed != total:
+    legacy_run_metadata = stop_reason == "legacy_unknown" and requested is None
+
+    if (
+        not legacy_run_metadata
+        and isinstance(observed, int)
+        and isinstance(total, int)
+        and observed != total
+    ):
         findings.append(
             {
                 "severity": "error",

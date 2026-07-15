@@ -79,10 +79,20 @@ try {
     }
 
     $databaseFiles = @(
-        Get-ChildItem -Path (Join-Path $RepoRoot ".jolt") -Recurse -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Extension -in @(".db", ".sqlite", ".sqlite3") } |
+        $databaseRoots = @(
+            (Join-Path $RepoRoot ".jolt"),
+            (Join-Path $BackendRoot "data")
+        )
+        $databaseCandidates = foreach ($databaseRoot in $databaseRoots) {
+            if (Test-Path -LiteralPath $databaseRoot -PathType Container) {
+                Get-ChildItem -LiteralPath $databaseRoot -Recurse -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Extension -in @(".db", ".sqlite", ".sqlite3") }
+            }
+        }
+        $databaseCandidates |
+            Sort-Object FullName -Unique |
             ForEach-Object {
-                $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
+                $hash = Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256
                 [ordered]@{
                     relative_path = Get-RepositoryRelativePath -Path $_.FullName
                     sha256 = $hash.Hash.ToLowerInvariant()
@@ -116,7 +126,7 @@ try {
             uv = Invoke-TextCommand -FilePath "uv" -Arguments @("--version")
             python = Invoke-TextCommand -FilePath "uv" -Arguments @("run", "python", "--version") -WorkingDirectory $BackendRoot
             node = Invoke-TextCommand -FilePath "node" -Arguments @("--version")
-            npm = Invoke-TextCommand -FilePath "npm" -Arguments @("--version")
+            npm = Invoke-TextCommand -FilePath "npm.cmd" -Arguments @("--version")
         }
         databases = $databaseFiles
         privacy = [ordered]@{
@@ -151,5 +161,6 @@ try {
     }
 }
 finally {
+    & (Join-Path $PSScriptRoot "stop-jolt.ps1") -ErrorAction SilentlyContinue
     Remove-Item $Staging -Recurse -Force -ErrorAction SilentlyContinue
 }
