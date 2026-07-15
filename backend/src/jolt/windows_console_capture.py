@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import sys
 from collections.abc import Callable
+from typing import cast
 
 from jolt import supervised_capture
 
@@ -10,14 +11,15 @@ from jolt import supervised_capture
 def _windows_console_input(prompt: str = "") -> str:
     import msvcrt
 
+    getwch = cast(Callable[[], str], getattr(msvcrt, "getwch"))
     print(prompt, end="", flush=True)
     while True:
-        key = msvcrt.getwch()
+        key = getwch()
         if key in ("\r", "\n"):
             print()
             return ""
         if key in ("\x00", "\xe0"):
-            msvcrt.getwch()
+            getwch()
 
 
 def install_console_input() -> Callable[[str], str] | None:
