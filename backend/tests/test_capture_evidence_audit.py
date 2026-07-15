@@ -96,6 +96,7 @@ def test_capture_evidence_audit_reports_broken_chain() -> None:
     assert "Capture run-1/rejected: rejected item has canonical linkage." in messages
     assert metrics["capture_detail_count"] == 1
 
+
 def test_capture_evidence_audit_accepts_explicit_legacy_run_metadata() -> None:
     summary = {
         **_summary(),
