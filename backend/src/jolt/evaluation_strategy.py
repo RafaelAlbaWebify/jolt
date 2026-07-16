@@ -243,15 +243,16 @@ def assess_posting(
         [
             min(100, _capability_score(capability.evidence_level) + 10)
             for capability in profile.capabilities
-            if capability.transferable_to
-            and _matched_terms(text, capability.transferable_to)
+            if capability.transferable_to and _matched_terms(text, capability.transferable_to)
         ],
         default=25,
     )
 
     required_hours = sum(_preparation_hours(item.gap_type) for item in capability_results)
     available_hours = round(profile.preparation.hours_per_week * interview_days / 7)
-    preparation_feasibility = 100 if required_hours == 0 else min(100, available_hours * 100 // required_hours)
+    preparation_feasibility = (
+        100 if required_hours == 0 else min(100, available_hours * 100 // required_hours)
+    )
     opportunity_quality = 50
     strategic_value = role_family.strategic_value if role_family else 35
 
@@ -276,7 +277,9 @@ def assess_posting(
         round(preparation_feasibility * len(preparable) / max(1, len(capability_results)) / 4),
     )
     fit_by_interview = min(100, fit_now + interview_uplift)
-    fit_on_the_job = min(100, max(fit_by_interview, round((fit_by_interview + strategic_value) / 2)))
+    fit_on_the_job = min(
+        100, max(fit_by_interview, round((fit_by_interview + strategic_value) / 2))
+    )
 
     if eligibility == "ineligible" or (role_family and role_family.priority == "excluded"):
         recommendation: Recommendation = "do_not_pursue"
