@@ -65,7 +65,9 @@ def _contains_text(text: str, expected: str) -> bool:
 
 
 def _is_versioned_private_profile(value: object) -> bool:
-    return isinstance(value, str) and bool(re.fullmatch(r"[a-z0-9][a-z0-9._-]*:v[1-9][0-9]*", value))
+    return isinstance(value, str) and bool(
+        re.fullmatch(r"[a-z0-9][a-z0-9._-]*:v[1-9][0-9]*", value)
+    )
 
 
 def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[dict[str, str]]:
@@ -129,18 +131,15 @@ def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[d
 
     if not isinstance(item.get("interview_days"), int) or item.get("interview_days", -1) < 0:
         findings.append({"severity": "error", "message": f"{title}: invalid interview window."})
-    if not isinstance(item.get("estimated_preparation_hours"), int) or item.get(
-        "estimated_preparation_hours", -1
-    ) < 0:
-        findings.append(
-            {"severity": "error", "message": f"{title}: invalid preparation estimate."}
-        )
+    if (
+        not isinstance(item.get("estimated_preparation_hours"), int)
+        or item.get("estimated_preparation_hours", -1) < 0
+    ):
+        findings.append({"severity": "error", "message": f"{title}: invalid preparation estimate."})
     if not isinstance(item.get("strategy_gaps"), list):
         findings.append({"severity": "error", "message": f"{title}: strategy gaps are invalid."})
     if not isinstance(item.get("preparation_plan"), list):
-        findings.append(
-            {"severity": "error", "message": f"{title}: preparation plan is invalid."}
-        )
+        findings.append({"severity": "error", "message": f"{title}: preparation plan is invalid."})
     return findings
 
 
@@ -252,7 +251,9 @@ def audit(output_dir: Path) -> dict[str, object]:
                 if isinstance(readiness, dict) and current_report.get("report_id") != readiness.get(
                     "report_id"
                 ):
-                    raise RuntimeError("current history report does not match opportunity readiness")
+                    raise RuntimeError(
+                        "current history report does not match opportunity readiness"
+                    )
                 readiness_history_count += 1
             except Exception as exc:  # noqa: BLE001
                 findings.append(
@@ -330,7 +331,10 @@ def audit(output_dir: Path) -> dict[str, object]:
         )
     if opportunities and not readiness_visible:
         findings.append(
-            {"severity": "error", "message": "Readiness data exists but is not visible in the workbench."}
+            {
+                "severity": "error",
+                "message": "Readiness data exists but is not visible in the workbench.",
+            }
         )
     if opportunities and not preparation_download_visible:
         findings.append(
