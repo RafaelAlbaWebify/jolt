@@ -206,6 +206,15 @@ class ApplicationReadinessSummary(BaseModel):
     checklist: list[str] = Field(default_factory=list)
 
 
+class StrategyGapSummary(BaseModel):
+    capability_id: str
+    label: str
+    evidence_level: int
+    gap_type: str
+    matched_terms: list[str] = Field(default_factory=list)
+    preparation_topics: list[str] = Field(default_factory=list)
+
+
 class OpportunitySummary(BaseModel):
     posting_id: str
     evaluation_id: str = ""
@@ -226,6 +235,15 @@ class OpportunitySummary(BaseModel):
     reasons: list[str] = Field(default_factory=list)
     profile_version_id: str = ""
     engine_version: str = ""
+    eligibility: str = ""
+    role_family_id: str | None = None
+    fit_now: int | None = None
+    fit_by_interview: int | None = None
+    fit_on_the_job: int | None = None
+    interview_days: int | None = None
+    estimated_preparation_hours: int | None = None
+    strategy_gaps: list[StrategyGapSummary] = Field(default_factory=list)
+    preparation_plan: list[str] = Field(default_factory=list)
     readiness: ApplicationReadinessSummary | None = None
     review_decision: str | None = None
     application_id: str | None = None
