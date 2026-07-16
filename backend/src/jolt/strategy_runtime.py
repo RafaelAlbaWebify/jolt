@@ -68,8 +68,7 @@ def assessment_reasons(assessment: StrategyAssessment) -> list[str]:
     reasons.extend(f"Blocker: {item}" for item in assessment.blockers)
     reasons.extend(f"Uncertainty: {item}" for item in assessment.uncertainties)
     reasons.append(
-        "Strategy assessment JSON: "
-        + json.dumps(assessment_payload(assessment), sort_keys=True)
+        "Strategy assessment JSON: " + json.dumps(assessment_payload(assessment), sort_keys=True)
     )
     return reasons
 
@@ -85,9 +84,7 @@ def proposed_decision(assessment: StrategyAssessment) -> str:
     }[assessment.recommendation]
 
 
-def ensure_private_profile_version(
-    session: Session, profile: StrategyProfile
-) -> ProfileVersion:
+def ensure_private_profile_version(session: Session, profile: StrategyProfile) -> ProfileVersion:
     expected_metadata = public_profile_metadata(profile)
     existing = session.get(ProfileVersion, profile.version_id)
     if existing is not None:
@@ -118,9 +115,7 @@ def ensure_strategy_reviews(
     changed = False
 
     for posting in session.scalars(select(Posting)).all():
-        assessment = assess_posting(
-            profile, posting.title, posting.location, posting.description
-        )
+        assessment = assess_posting(profile, posting.title, posting.location, posting.description)
         assessments[posting.id] = assessment
         existing = session.scalar(
             select(Evaluation).where(
