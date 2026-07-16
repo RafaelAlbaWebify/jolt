@@ -142,14 +142,15 @@ def _matched_terms(text: str, terms: list[str]) -> tuple[str, ...]:
 
 
 def _gap_type(evidence_level: int) -> GapType:
-    return {
+    mapping: dict[int, GapType] = {
         5: "ready_now",
         4: "ready_now",
         3: "preparable_in_days",
         2: "preparable_in_1_to_2_weeks",
         1: "preparable_in_1_to_3_months",
         0: "experience_gap",
-    }[evidence_level]
+    }
+    return mapping[evidence_level]
 
 
 def _capability_score(level: int) -> int:
