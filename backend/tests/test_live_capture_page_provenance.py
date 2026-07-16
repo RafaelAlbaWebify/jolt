@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from playwright.sync_api import TimeoutError
 
 from jolt.capture_runtime_enhancements import _click_with_one_retry
 from jolt.main import create_app
@@ -75,16 +75,17 @@ def test_click_retries_once_before_succeeding(monkeypatch) -> None:
             nonlocal attempts
             attempts += 1
             if attempts == 1:
-                from playwright.sync_api import TimeoutError
-
                 raise TimeoutError("first click timed out")
 
-    card = SimpleNamespace(scroll_into_view_if_needed=lambda **_: None)
+    class FakeCard:
+        def scroll_into_view_if_needed(self, *, timeout: int) -> None:
+            return None
+
     link = FakeLink()
     monkeypatch.setattr(
         "jolt.capture_runtime_enhancements.multipage_capture._title_link",
         lambda _: link,
     )
 
-    assert _click_with_one_retry(link, card) is True
+    assert _click_with_one_retry(link, FakeCard()) is True  # type: ignore[arg-type]
     assert attempts == 2
