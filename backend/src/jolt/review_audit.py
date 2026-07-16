@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import urllib.request
 from pathlib import Path
 
@@ -9,8 +10,9 @@ from playwright.sync_api import sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
-EXPECTED_PROFILE = "rafael-job-search:v2"
-EXPECTED_ENGINE = "profile-rules-v2"
+LEGACY_PROFILE = "rafael-job-search:v2"
+LEGACY_ENGINE = "profile-rules-v2"
+PRIVATE_ENGINE = "profile-rules-v3"
 EXPECTED_READINESS_ENGINE = "application-readiness-v1"
 REQUIRED_REVIEW_FIELDS = {
     "proposed_decision",
@@ -20,6 +22,17 @@ REQUIRED_REVIEW_FIELDS = {
     "blockers",
     "uncertainties",
     "dimensions",
+}
+REQUIRED_STRATEGY_FIELDS = {
+    "eligibility",
+    "role_family_id",
+    "fit_now",
+    "fit_by_interview",
+    "fit_on_the_job",
+    "interview_days",
+    "estimated_preparation_hours",
+    "strategy_gaps",
+    "preparation_plan",
 }
 REQUIRED_READINESS_FIELDS = {
     "report_id",
@@ -51,6 +64,86 @@ def _contains_text(text: str, expected: str) -> bool:
     return expected.casefold() in text.casefold()
 
 
+def _is_versioned_private_profile(value: object) -> bool:
+    return isinstance(value, str) and bool(re.fullmatch(r"[a-z0-9][a-z0-9._-]*:v[1-9][0-9]*", value))
+
+
+def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    profile = item.get("profile_version_id")
+    engine = item.get("engine_version")
+
+    if engine == LEGACY_ENGINE:
+        if profile != LEGACY_PROFILE:
+            findings.append(
+                {"severity": "error", "message": f"{title}: legacy engine/profile pair is invalid."}
+            )
+        return findings
+
+    if engine != PRIVATE_ENGINE:
+        findings.append(
+            {"severity": "error", "message": f"{title}: unexpected review engine version."}
+        )
+        return findings
+
+    if not _is_versioned_private_profile(profile):
+        findings.append(
+            {"severity": "error", "message": f"{title}: private profile version is invalid."}
+        )
+
+    missing_strategy = sorted(field for field in REQUIRED_STRATEGY_FIELDS if field not in item)
+    if missing_strategy:
+        findings.append(
+            {
+                "severity": "error",
+                "message": f"{title}: missing strategy fields: {', '.join(missing_strategy)}",
+            }
+        )
+        return findings
+
+    for field in ("fit_now", "fit_by_interview", "fit_on_the_job"):
+        value = item.get(field)
+        if not isinstance(value, int) or not 0 <= value <= 100:
+            findings.append(
+                {"severity": "error", "message": f"{title}: invalid {field.replace('_', ' ')}."}
+            )
+
+    fit_now = item.get("fit_now")
+    fit_by_interview = item.get("fit_by_interview")
+    fit_on_the_job = item.get("fit_on_the_job")
+    if all(isinstance(value, int) for value in (fit_now, fit_by_interview, fit_on_the_job)):
+        if not fit_now <= fit_by_interview <= fit_on_the_job:
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"{title}: strategy fit progression is inconsistent.",
+                }
+            )
+        if item.get("ranking_score") != fit_by_interview:
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"{title}: ranking score does not match interview-ready fit.",
+                }
+            )
+
+    if not isinstance(item.get("interview_days"), int) or item.get("interview_days", -1) < 0:
+        findings.append({"severity": "error", "message": f"{title}: invalid interview window."})
+    if not isinstance(item.get("estimated_preparation_hours"), int) or item.get(
+        "estimated_preparation_hours", -1
+    ) < 0:
+        findings.append(
+            {"severity": "error", "message": f"{title}: invalid preparation estimate."}
+        )
+    if not isinstance(item.get("strategy_gaps"), list):
+        findings.append({"severity": "error", "message": f"{title}: strategy gaps are invalid."})
+    if not isinstance(item.get("preparation_plan"), list):
+        findings.append(
+            {"severity": "error", "message": f"{title}: preparation plan is invalid."}
+        )
+    return findings
+
+
 def audit(output_dir: Path) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
     health = _get_json(f"{API_BASE}/api/health")
@@ -80,17 +173,8 @@ def audit(output_dir: Path) -> dict[str, object]:
                     "message": f"{title}: missing automated-review fields: {', '.join(missing)}",
                 }
             )
-        if item.get("profile_version_id") != EXPECTED_PROFILE:
-            findings.append(
-                {
-                    "severity": "error",
-                    "message": f"{title}: unexpected profile version.",
-                }
-            )
-        if item.get("engine_version") != EXPECTED_ENGINE:
-            findings.append(
-                {"severity": "error", "message": f"{title}: unexpected review engine version."}
-            )
+        findings.extend(_validate_evaluation_contract(item, title))
+
         score = item.get("ranking_score")
         if not isinstance(score, int) or not 0 <= score <= 100:
             findings.append({"severity": "error", "message": f"{title}: invalid ranking score."})
@@ -107,10 +191,7 @@ def audit(output_dir: Path) -> dict[str, object]:
             findings.append({"severity": "warning", "message": f"{title}: empty fit summary."})
         if not item.get("strengths") and not item.get("gaps"):
             findings.append(
-                {
-                    "severity": "warning",
-                    "message": f"{title}: no strengths or gaps recorded.",
-                }
+                {"severity": "warning", "message": f"{title}: no strengths or gaps recorded."}
             )
 
         readiness = item.get("readiness")
@@ -129,7 +210,7 @@ def audit(output_dir: Path) -> dict[str, object]:
                         "message": f"{title}: missing readiness fields: {', '.join(missing_readiness)}",
                     }
                 )
-            if readiness.get("profile_version_id") != EXPECTED_PROFILE:
+            if readiness.get("profile_version_id") != LEGACY_PROFILE:
                 findings.append(
                     {
                         "severity": "error",
@@ -171,9 +252,7 @@ def audit(output_dir: Path) -> dict[str, object]:
                 if isinstance(readiness, dict) and current_report.get("report_id") != readiness.get(
                     "report_id"
                 ):
-                    raise RuntimeError(
-                        "current history report does not match opportunity readiness"
-                    )
+                    raise RuntimeError("current history report does not match opportunity readiness")
                 readiness_history_count += 1
             except Exception as exc:  # noqa: BLE001
                 findings.append(
@@ -191,10 +270,7 @@ def audit(output_dir: Path) -> dict[str, object]:
                 preparation_pack_count += 1
             except Exception as exc:  # noqa: BLE001
                 findings.append(
-                    {
-                        "severity": "error",
-                        "message": f"{title}: preparation pack failed: {exc}",
-                    }
+                    {"severity": "error", "message": f"{title}: preparation pack failed: {exc}"}
                 )
 
     (output_dir / "health.json").write_text(json.dumps(health, indent=2), encoding="utf-8")
@@ -254,10 +330,7 @@ def audit(output_dir: Path) -> dict[str, object]:
         )
     if opportunities and not readiness_visible:
         findings.append(
-            {
-                "severity": "error",
-                "message": "Readiness data exists but is not visible in the workbench.",
-            }
+            {"severity": "error", "message": "Readiness data exists but is not visible in the workbench."}
         )
     if opportunities and not preparation_download_visible:
         findings.append(
