@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable
 from typing import Protocol, cast
 
-from jolt import supervised_capture
+from jolt import multipage_capture
 
 
 class _ConsoleReader(Protocol):
@@ -37,7 +37,7 @@ def install_console_input() -> Callable[[str], str] | None:
 
 def main() -> int:
     install_console_input()
-    return supervised_capture.main()
+    return multipage_capture.main()
 
 
 if __name__ == "__main__":
