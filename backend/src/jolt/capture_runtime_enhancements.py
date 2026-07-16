@@ -4,6 +4,7 @@ import contextlib
 import json
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Locator, Page, TimeoutError
@@ -16,15 +17,18 @@ _last_pages: list[multipage_capture.PageEvidence] = []
 
 
 def _click_with_one_retry(title_link: Locator, card: Locator) -> bool:
+    active_link = title_link
     for attempt in range(2):
         try:
-            title_link.click(timeout=8_000)
+            active_link.click(timeout=8_000)
             return True
         except TimeoutError:
             if attempt == 0:
                 with contextlib.suppress(TimeoutError):
                     card.scroll_into_view_if_needed(timeout=2_000)
-                title_link = multipage_capture._title_link(card) or title_link
+                refreshed = multipage_capture._title_link(card)
+                if refreshed is not None:
+                    active_link = refreshed
     return False
 
 
@@ -34,7 +38,7 @@ def capture_page_cards(
     *,
     page_number: int,
     remaining: int,
-    evidence_dir,
+    evidence_dir: Path,
     seen: set[str],
     skipped: list[multipage_capture.SkippedCard],
 ) -> list[CapturedCard]:
