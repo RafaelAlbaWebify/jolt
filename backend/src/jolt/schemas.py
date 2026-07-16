@@ -72,9 +72,17 @@ class LinkedInLiveCaptureItemRequest(BaseModel):
     verification_reason: str = ""
 
 
+class LinkedInLiveCapturePageRequest(BaseModel):
+    page_number: int = Field(ge=1)
+    visible_job_ids: list[str] = Field(default_factory=list)
+    next_control_present: bool = False
+    next_control_enabled: bool = False
+
+
 class LinkedInLiveCaptureRequest(BaseModel):
     search_url: str = ""
     items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=50)
+    pages: list[LinkedInLiveCapturePageRequest] = Field(default_factory=list, max_length=10)
     requested_item_limit: int | None = Field(default=None, ge=1, le=50)
     stop_reason: str = Field(default="", max_length=80)
 
