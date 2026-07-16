@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+from pathlib import Path
+from types import SimpleNamespace
+
+from fastapi.testclient import TestClient
+
+from jolt.capture_runtime_enhancements import _click_with_one_retry
+from jolt.main import create_app
+
+
+def test_live_capture_persists_real_page_provenance(tmp_path: Path) -> None:
+    client = TestClient(create_app(f"sqlite:///{(tmp_path / 'pages.db').as_posix()}"))
+    response = client.post(
+        "/api/captures/linkedin/live",
+        json={
+            "search_url": "https://www.linkedin.com/jobs/search/?keywords=technical%20support",
+            "requested_item_limit": 2,
+            "stop_reason": "requested_limit_reached",
+            "pages": [
+                {
+                    "page_number": 1,
+                    "visible_job_ids": ["1001", "1002"],
+                    "next_control_present": True,
+                    "next_control_enabled": True,
+                },
+                {
+                    "page_number": 2,
+                    "visible_job_ids": ["1003", "1004"],
+                    "next_control_present": True,
+                    "next_control_enabled": True,
+                },
+            ],
+            "items": [
+                {
+                    "source_job_id": "1001",
+                    "source_url": "https://www.linkedin.com/jobs/view/1001",
+                    "title": "Technical Support Engineer",
+                    "company": "Example One",
+                    "location": "Remote Europe",
+                    "description": "Technical support, incidents, APIs and integrations.",
+                    "identity_verified": True,
+                },
+                {
+                    "source_job_id": "1003",
+                    "source_url": "https://www.linkedin.com/jobs/view/1003",
+                    "title": "Application Support Engineer",
+                    "company": "Example Two",
+                    "location": "Spain",
+                    "description": "Application support, SQL and production incidents.",
+                    "identity_verified": True,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["search_url"].endswith("keywords=technical%20support")
+    assert [page["page_number"] for page in payload["pages"]] == [1, 2]
+    assert payload["pages"][0]["visible_job_ids"] == ["1001", "1002"]
+    assert payload["pages"][1]["visible_job_ids"] == ["1003", "1004"]
+
+    capture_id = payload["capture_run_id"]
+    stored = client.get(f"/api/captures/{capture_id}")
+    assert stored.status_code == 200
+    assert stored.json()["pages"] == payload["pages"]
+
+
+def test_click_retries_once_before_succeeding(monkeypatch) -> None:
+    attempts = 0
+
+    class FakeLink:
+        def click(self, *, timeout: int) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                from playwright.sync_api import TimeoutError
+
+                raise TimeoutError("first click timed out")
+
+    card = SimpleNamespace(scroll_into_view_if_needed=lambda **_: None)
+    link = FakeLink()
+    monkeypatch.setattr(
+        "jolt.capture_runtime_enhancements.multipage_capture._title_link",
+        lambda _: link,
+    )
+
+    assert _click_with_one_retry(link, card) is True
+    assert attempts == 2
