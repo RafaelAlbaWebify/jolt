@@ -6,6 +6,8 @@ param(
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
     [ValidateRange(1, 50)]
     [int]$MaxJobs = 10,
+    [ValidateRange(1, 10)]
+    [int]$MaxPages = 3,
     [string]$BackupPath = "",
     [string]$RestoreTarget = "",
     [switch]$NoBrowser
@@ -52,6 +54,7 @@ switch ($Action) {
             -StartLinkedInCapture `
             -SearchUrl $SearchUrl `
             -MaxJobs $MaxJobs `
+            -MaxPages $MaxPages `
             -NoBrowser:$NoBrowser
     }
     "audit" { & (Join-Path $tools "audit-jolt.ps1") }
