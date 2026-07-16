@@ -5,7 +5,12 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from playwright.sync_api import TimeoutError
 
-from jolt.capture_runtime_enhancements import _click_with_one_retry
+from jolt.capture_runtime_enhancements import (
+    _click_with_one_retry,
+    _is_relevant_filter_label,
+    _reset_runtime_state,
+    _retry_metrics,
+)
 from jolt.main import create_app
 
 
@@ -68,6 +73,7 @@ def test_live_capture_persists_real_page_provenance(tmp_path: Path) -> None:
 
 
 def test_click_retries_once_before_succeeding(monkeypatch) -> None:
+    _reset_runtime_state()
     attempts = 0
 
     class FakeLink:
@@ -89,3 +95,30 @@ def test_click_retries_once_before_succeeding(monkeypatch) -> None:
 
     assert _click_with_one_retry(link, FakeCard()) is True  # type: ignore[arg-type]
     assert attempts == 2
+    assert _retry_metrics == {
+        "retry_attempted_count": 1,
+        "recovered_after_retry_count": 1,
+        "failed_after_retry_count": 0,
+    }
+
+
+def test_runtime_state_reset_clears_retry_metrics() -> None:
+    _reset_runtime_state()
+    _retry_metrics["retry_attempted_count"] = 4
+    _retry_metrics["recovered_after_retry_count"] = 2
+    _retry_metrics["failed_after_retry_count"] = 2
+
+    _reset_runtime_state()
+
+    assert _retry_metrics == {
+        "retry_attempted_count": 0,
+        "recovered_after_retry_count": 0,
+        "failed_after_retry_count": 0,
+    }
+
+
+def test_unrelated_following_control_is_not_a_job_filter() -> None:
+    assert _is_relevant_filter_label("Following") is False
+    assert _is_relevant_filter_label("  Following  ") is False
+    assert _is_relevant_filter_label("Remote") is True
+    assert _is_relevant_filter_label("Past week") is True
