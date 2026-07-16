@@ -34,6 +34,27 @@ def _resolve_stop_reason(request: LinkedInLiveCaptureRequest, observed_count: in
     return "submitted_batch_completed"
 
 
+def _page_requests(request: LinkedInLiveCaptureRequest) -> list[CapturePageResponse]:
+    if request.pages:
+        return [
+            CapturePageResponse(
+                page_number=page.page_number,
+                visible_job_ids=list(page.visible_job_ids),
+                next_control_present=page.next_control_present,
+                next_control_enabled=page.next_control_enabled,
+            )
+            for page in request.pages
+        ]
+    return [
+        CapturePageResponse(
+            page_number=1,
+            visible_job_ids=[item.source_job_id for item in request.items],
+            next_control_present=False,
+            next_control_enabled=False,
+        )
+    ]
+
+
 def run_linkedin_live_capture(
     session: Session, request: LinkedInLiveCaptureRequest
 ) -> CaptureRunResponse:
@@ -56,16 +77,18 @@ def run_linkedin_live_capture(
         )
         session.add(run)
 
-        visible_ids = [item.source_job_id for item in request.items]
-        page = CapturePage(
-            id=str(uuid4()),
-            capture_run_id=run.id,
-            page_number=1,
-            visible_job_ids_json=json.dumps(visible_ids),
-            next_control_present=False,
-            next_control_enabled=False,
-        )
-        session.add(page)
+        page_responses = _page_requests(request)
+        for page in page_responses:
+            session.add(
+                CapturePage(
+                    id=str(uuid4()),
+                    capture_run_id=run.id,
+                    page_number=page.page_number,
+                    visible_job_ids_json=json.dumps(page.visible_job_ids),
+                    next_control_present=page.next_control_present,
+                    next_control_enabled=page.next_control_enabled,
+                )
+            )
 
         responses: list[CaptureItemResponse] = []
         warnings: list[str] = []
@@ -161,14 +184,7 @@ def run_linkedin_live_capture(
             total_items=len(responses),
             verified_items=verified_count,
             rejected_items=rejected_count,
-            pages=[
-                CapturePageResponse(
-                    page_number=1,
-                    visible_job_ids=visible_ids,
-                    next_control_present=False,
-                    next_control_enabled=False,
-                )
-            ],
+            pages=page_responses,
             items=responses,
         )
     except Exception:
