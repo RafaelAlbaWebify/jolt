@@ -88,14 +88,21 @@ def proposed_decision(assessment: StrategyAssessment) -> str:
 def ensure_private_profile_version(
     session: Session, profile: StrategyProfile
 ) -> ProfileVersion:
+    expected_metadata = public_profile_metadata(profile)
     existing = session.get(ProfileVersion, profile.version_id)
     if existing is not None:
+        stored_metadata = json.loads(existing.configuration_json)
+        if stored_metadata.get("profile_sha256") != expected_metadata["profile_sha256"]:
+            raise ValueError(
+                "Private strategy profile content changed without a version increment. "
+                "Increase the profile version before recalculating evaluations."
+            )
         return existing
     record = ProfileVersion(
         id=profile.version_id,
         profile_id=profile.profile_id,
         version=profile.version,
-        configuration_json=json.dumps(public_profile_metadata(profile), sort_keys=True),
+        configuration_json=json.dumps(expected_metadata, sort_keys=True),
         created_at=utc_now(),
     )
     session.add(record)
