@@ -113,7 +113,11 @@ def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[d
     fit_now = item.get("fit_now")
     fit_by_interview = item.get("fit_by_interview")
     fit_on_the_job = item.get("fit_on_the_job")
-    if all(isinstance(value, int) for value in (fit_now, fit_by_interview, fit_on_the_job)):
+    if (
+        isinstance(fit_now, int)
+        and isinstance(fit_by_interview, int)
+        and isinstance(fit_on_the_job, int)
+    ):
         if not fit_now <= fit_by_interview <= fit_on_the_job:
             findings.append(
                 {
@@ -129,12 +133,11 @@ def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[d
                 }
             )
 
-    if not isinstance(item.get("interview_days"), int) or item.get("interview_days", -1) < 0:
+    interview_days = item.get("interview_days")
+    if not isinstance(interview_days, int) or interview_days < 0:
         findings.append({"severity": "error", "message": f"{title}: invalid interview window."})
-    if (
-        not isinstance(item.get("estimated_preparation_hours"), int)
-        or item.get("estimated_preparation_hours", -1) < 0
-    ):
+    preparation_hours = item.get("estimated_preparation_hours")
+    if not isinstance(preparation_hours, int) or preparation_hours < 0:
         findings.append({"severity": "error", "message": f"{title}: invalid preparation estimate."})
     if not isinstance(item.get("strategy_gaps"), list):
         findings.append({"severity": "error", "message": f"{title}: strategy gaps are invalid."})
