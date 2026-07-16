@@ -98,9 +98,7 @@ def test_private_strategy_is_persisted_without_profile_contents(
     assert opportunity["strategy_gaps"][0]["gap_type"] == "preparable_in_1_to_2_weeks"
     assert opportunity["preparation_plan"] == ["Practise HTTP troubleshooting."]
 
-    session_factory = create_session_factory(
-        f"sqlite:///{database_path.as_posix()}"
-    )
+    session_factory = create_session_factory(f"sqlite:///{database_path.as_posix()}")
     with session_factory() as session:
         profile = session.get(ProfileVersion, "private-test-profile:v3")
         assert profile is not None
@@ -124,9 +122,7 @@ def test_private_strategy_is_persisted_without_profile_contents(
         assert len(evaluations) == 1
 
 
-def test_missing_private_profile_preserves_legacy_workbench(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_missing_private_profile_preserves_legacy_workbench(tmp_path: Path, monkeypatch) -> None:
     database_path = tmp_path / "legacy.db"
     monkeypatch.setenv("JOLT_PROFILE_PATH", str(tmp_path / "missing.private.json"))
     client = TestClient(create_app(f"sqlite:///{database_path.as_posix()}"))
