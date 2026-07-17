@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import socket
 import time
 import urllib.error
 import urllib.request
@@ -25,7 +24,7 @@ def _get_json(url: str) -> object:
                 timeout=REQUEST_TIMEOUT_SECONDS,
             ) as response:
                 return json.loads(response.read().decode("utf-8"))
-        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+        except (TimeoutError, urllib.error.URLError) as exc:
             last_error = exc
             if attempt == REQUEST_ATTEMPTS:
                 break
