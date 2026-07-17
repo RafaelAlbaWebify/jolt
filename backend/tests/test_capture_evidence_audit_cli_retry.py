@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import socket
-
 import pytest
 
 from jolt import capture_evidence_audit_cli
 
 
 class _Response:
-    def __enter__(self) -> "_Response":
+    def __enter__(self) -> _Response:
         return self
 
     def __exit__(self, exc_type, exc, traceback) -> None:
@@ -26,7 +24,7 @@ def test_get_json_retries_transient_timeouts(monkeypatch: pytest.MonkeyPatch) ->
         attempts += 1
         assert timeout == capture_evidence_audit_cli.REQUEST_TIMEOUT_SECONDS
         if attempts < 3:
-            raise socket.timeout("temporary timeout")
+            raise TimeoutError("temporary timeout")
         return _Response()
 
     monkeypatch.setattr(capture_evidence_audit_cli.urllib.request, "urlopen", fake_urlopen)
@@ -38,7 +36,7 @@ def test_get_json_retries_transient_timeouts(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_get_json_reports_exhausted_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_urlopen(url: str, timeout: int) -> _Response:
-        raise socket.timeout("still slow")
+        raise TimeoutError("still slow")
 
     monkeypatch.setattr(capture_evidence_audit_cli.urllib.request, "urlopen", fake_urlopen)
     monkeypatch.setattr(capture_evidence_audit_cli.time, "sleep", lambda seconds: None)
