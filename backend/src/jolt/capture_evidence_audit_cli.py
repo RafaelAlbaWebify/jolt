@@ -2,17 +2,38 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 from jolt.capture_evidence_audit import audit_capture_evidence
 
 API_BASE = "http://127.0.0.1:8000"
+REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 1
 
 
 def _get_json(url: str) -> object:
-    with urllib.request.urlopen(url, timeout=15) as response:  # noqa: S310
-        return json.loads(response.read().decode("utf-8"))
+    last_error: Exception | None = None
+    for attempt in range(1, REQUEST_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(  # noqa: S310
+                url,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            ) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+            last_error = exc
+            if attempt == REQUEST_ATTEMPTS:
+                break
+            time.sleep(RETRY_DELAY_SECONDS)
+
+    raise RuntimeError(
+        f"request failed after {REQUEST_ATTEMPTS} attempts: {last_error}"
+    ) from last_error
 
 
 def run(output_dir: Path) -> dict[str, object]:
