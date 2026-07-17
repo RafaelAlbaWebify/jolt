@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -137,8 +138,63 @@ def load_strategy_profile(path: Path | None = None) -> StrategyProfile:
     return StrategyProfile.model_validate(payload)
 
 
+def _normalize_match_text(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _term_pattern(term: str) -> re.Pattern[str] | None:
+    normalized = _normalize_match_text(term)
+    if not normalized:
+        return None
+    escaped = re.escape(normalized).replace(r"\ ", r"\s+")
+    prefix = r"(?<!\w)" if normalized[0].isalnum() else ""
+    suffix = r"(?!\w)" if normalized[-1].isalnum() else ""
+    return re.compile(prefix + escaped + suffix)
+
+
 def _matched_terms(text: str, terms: list[str]) -> tuple[str, ...]:
-    return tuple(term for term in terms if term.lower() in text)
+    normalized_text = _normalize_match_text(text)
+    matches: list[str] = []
+    for term in terms:
+        pattern = _term_pattern(term)
+        if pattern is not None and pattern.search(normalized_text):
+            matches.append(term)
+    return tuple(matches)
+
+
+def _role_term_specificity(terms: tuple[str, ...]) -> int:
+    return sum(len(_normalize_match_text(term).split()) * 100 + len(term) for term in terms)
+
+
+def _select_role_family(
+    profile: StrategyProfile,
+    title: str,
+    location: str,
+    description: str,
+) -> RoleFamily | None:
+    candidates: list[tuple[tuple[int, int, int, int, int], RoleFamily]] = []
+    body = "\n".join([location, description])
+    priority_rank = {"primary": 3, "secondary": 2, "opportunistic": 1, "excluded": 0}
+
+    for index, family in enumerate(profile.role_families):
+        title_matches = _matched_terms(title, family.terms)
+        body_matches = _matched_terms(body, family.terms)
+        if not title_matches and not body_matches:
+            continue
+
+        excluded_title_precedence = int(family.priority == "excluded" and bool(title_matches))
+        score = (
+            excluded_title_precedence,
+            int(bool(title_matches)),
+            _role_term_specificity(title_matches) * 1000 + len(title_matches) * 100,
+            _role_term_specificity(body_matches) * 10 + len(body_matches),
+            priority_rank[family.priority] * 100 + family.strategic_value - index,
+        )
+        candidates.append((score, family))
+
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item[0])[1]
 
 
 def _gap_type(evidence_level: int) -> GapType:
@@ -181,7 +237,7 @@ def assess_posting(
     *,
     days_until_technical: int | None = None,
 ) -> StrategyAssessment:
-    text = "\n".join([title, location, description]).lower()
+    text = "\n".join([title, location, description])
     interview_days = (
         profile.preparation.default_days_until_technical
         if days_until_technical is None
@@ -206,12 +262,7 @@ def assess_posting(
             uncertainties.append(message)
             eligibility = "eligible_with_conditions"
 
-    role_matches = [
-        (family, _matched_terms(text, family.terms))
-        for family in profile.role_families
-        if _matched_terms(text, family.terms)
-    ]
-    role_family = role_matches[0][0] if role_matches else None
+    role_family = _select_role_family(profile, title, location, description)
     role_alignment = {
         "primary": 100,
         "secondary": 75,
