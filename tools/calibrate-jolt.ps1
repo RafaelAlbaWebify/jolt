@@ -28,11 +28,11 @@ try {
         $auditExitCode = $LASTEXITCODE
     }
     catch {
-        $auditExitCode = 1
+        $auditExitCode = 2
         $auditFailure = $_.Exception.Message
         [ordered]@{
             generated_at = (Get-Date).ToUniversalTime().ToString("o")
-            result = "failed"
+            result = "runner_failed"
             findings = @(
                 [ordered]@{
                     severity = "error"
@@ -42,6 +42,7 @@ try {
         } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $SummaryPath -Encoding UTF8
     }
 
+    $summary = $null
     if (Test-Path -LiteralPath $SummaryPath -PathType Leaf) {
         $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
         if ($null -ne $summary.findings) {
@@ -55,7 +56,7 @@ try {
     elseif ($auditExitCode -ne 0) {
         [ordered]@{
             generated_at = (Get-Date).ToUniversalTime().ToString("o")
-            result = "failed"
+            result = "runner_failed"
             findings = @(
                 [ordered]@{
                     severity = "error"
@@ -66,10 +67,18 @@ try {
     }
 
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
-    Write-Host "Automated JOLT calibration package: $OutputZip"
 
-    if ($auditExitCode -ne 0) {
-        throw "The Playwright calibration audit reported findings. Evidence package: $OutputZip"
+    if ($auditExitCode -eq 0) {
+        Write-Host "Automated JOLT calibration passed: $OutputZip"
+    }
+    elseif ($auditExitCode -eq 1) {
+        Write-Warning "Automated JOLT calibration completed with review findings."
+        Write-Host "Evidence package: $OutputZip"
+        $global:LASTEXITCODE = 1
+    }
+    else {
+        Write-Error "Automated JOLT calibration could not complete. Evidence package: $OutputZip" -ErrorAction Continue
+        $global:LASTEXITCODE = 2
     }
 }
 finally {
