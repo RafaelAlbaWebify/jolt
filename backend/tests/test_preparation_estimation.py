@@ -7,15 +7,11 @@ from jolt.preparation_estimation import PreparationGap, estimate_preparation_hou
 def test_duplicate_topics_are_counted_once_using_highest_gap() -> None:
     hours = estimate_preparation_hours(
         [
+            PreparationGap("logs", "preparable_in_days", ("Log analysis",)),
             PreparationGap(
-                capability_id="logs",
-                gap_type="preparable_in_days",
-                preparation_topics=("Log analysis",),
-            ),
-            PreparationGap(
-                capability_id="observability",
-                gap_type="preparable_in_1_to_2_weeks",
-                preparation_topics=("  log   analysis  ",),
+                "observability",
+                "preparable_in_1_to_2_weeks",
+                ("  log   analysis  ",),
             ),
         ]
     )
@@ -23,23 +19,48 @@ def test_duplicate_topics_are_counted_once_using_highest_gap() -> None:
     assert hours == 10
 
 
-def test_distinct_topics_remain_distinct_workstreams() -> None:
+def test_distinct_single_topic_capabilities_remain_distinct_workstreams() -> None:
     hours = estimate_preparation_hours(
         [
-            PreparationGap(
-                capability_id="sql",
-                gap_type="preparable_in_days",
-                preparation_topics=("SQL troubleshooting",),
-            ),
-            PreparationGap(
-                capability_id="api",
-                gap_type="preparable_in_1_to_2_weeks",
-                preparation_topics=("API diagnostics",),
-            ),
+            PreparationGap("sql", "preparable_in_days", ("SQL troubleshooting",)),
+            PreparationGap("api", "preparable_in_1_to_2_weeks", ("API diagnostics",)),
         ]
     )
 
     assert hours == 14
+
+
+def test_capability_budget_is_divided_across_its_topics() -> None:
+    hours = estimate_preparation_hours(
+        [
+            PreparationGap(
+                "application-diagnostics",
+                "preparable_in_1_to_2_weeks",
+                ("Logs", "API diagnostics", "SQL troubleshooting"),
+            )
+        ]
+    )
+
+    assert hours == 12
+
+
+def test_shared_topics_merge_after_budget_allocation() -> None:
+    hours = estimate_preparation_hours(
+        [
+            PreparationGap(
+                "application-diagnostics",
+                "preparable_in_1_to_2_weeks",
+                ("Logs", "SQL troubleshooting"),
+            ),
+            PreparationGap(
+                "observability",
+                "preparable_in_days",
+                ("logs", "metrics"),
+            ),
+        ]
+    )
+
+    assert hours == 9
 
 
 def test_capabilities_without_topics_keep_separate_fallbacks() -> None:
