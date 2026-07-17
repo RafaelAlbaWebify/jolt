@@ -17,6 +17,20 @@ def test_flags_likely_target_without_role_family() -> None:
     assert any(item["code"] == "likely_target_missing_role_family" for item in findings)
 
 
+def test_generic_customer_support_is_not_assumed_to_be_it_target() -> None:
+    findings = semantic_findings(
+        {
+            "posting_id": "customer",
+            "title": "Customer Support Specialist (Night Shift)",
+            "role_family_id": None,
+            "recommendation": "defer",
+            "estimated_preparation_hours": 10,
+        }
+    )
+
+    assert not any(item["code"] == "likely_target_missing_role_family" for item in findings)
+
+
 def test_flags_rejected_support_or_network_title() -> None:
     findings = semantic_findings(
         {
