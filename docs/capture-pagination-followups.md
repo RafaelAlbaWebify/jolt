@@ -2,9 +2,9 @@
 
 PR #49 adds bounded multi-page LinkedIn capture, real page provenance, retry handling, and search-state evidence.
 
-## Deferred integrity validation
+## Completed integrity validation
 
-The live-capture request currently accepts optional page evidence. Before expanding the capture API further, add request validation for these invariants:
+The live-capture request now validates these invariants at the Pydantic request boundary so malformed input returns HTTP 422 before persistence:
 
 - page numbers are unique;
 - page numbers are contiguous and begin at 1;
@@ -13,7 +13,7 @@ The live-capture request currently accepts optional page evidence. Before expand
 - when page evidence is supplied, every submitted item job ID appears in at least one observed page;
 - visible job IDs are normalized, non-empty, and deduplicated within each page.
 
-These checks should be implemented at the Pydantic request boundary so malformed input returns HTTP 422 rather than failing during persistence.
+Requests that omit optional page evidence remain backward compatible and continue to use the existing synthetic single-page fallback during persistence.
 
 ## Architecture cleanup
 
