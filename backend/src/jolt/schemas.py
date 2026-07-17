@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 ReviewChoice = Literal["pursue", "consider", "defer", "reject", "needs_more_information"]
 Recommendation = Literal["pursue", "consider", "reject"]
@@ -71,12 +71,36 @@ class LinkedInLiveCaptureItemRequest(BaseModel):
     identity_verified: bool
     verification_reason: str = ""
 
+    @field_validator("source_job_id")
+    @classmethod
+    def normalize_source_job_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("source_job_id must not be blank")
+        return normalized
+
 
 class LinkedInLiveCapturePageRequest(BaseModel):
     page_number: int = Field(ge=1)
     visible_job_ids: list[str] = Field(default_factory=list)
     next_control_present: bool = False
     next_control_enabled: bool = False
+
+    @field_validator("visible_job_ids")
+    @classmethod
+    def normalize_visible_job_ids(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("visible_job_ids must not contain blank values")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("visible_job_ids must be unique within each page")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_next_control_state(self) -> LinkedInLiveCapturePageRequest:
+        if self.next_control_enabled and not self.next_control_present:
+            raise ValueError("enabled next control must also be present")
+        return self
 
 
 class LinkedInLiveCaptureRequest(BaseModel):
@@ -85,6 +109,34 @@ class LinkedInLiveCaptureRequest(BaseModel):
     pages: list[LinkedInLiveCapturePageRequest] = Field(default_factory=list, max_length=10)
     requested_item_limit: int | None = Field(default=None, ge=1, le=50)
     stop_reason: str = Field(default="", max_length=80)
+
+    @model_validator(mode="after")
+    def validate_capture_evidence(self) -> LinkedInLiveCaptureRequest:
+        item_ids = [item.source_job_id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("item source_job_id values must be unique")
+
+        if not self.pages:
+            return self
+
+        page_numbers = [page.page_number for page in self.pages]
+        if len(page_numbers) != len(set(page_numbers)):
+            raise ValueError("page numbers must be unique")
+        if sorted(page_numbers) != list(range(1, len(self.pages) + 1)):
+            raise ValueError("page numbers must be contiguous and begin at 1")
+
+        observed_job_ids = {
+            job_id
+            for page in self.pages
+            for job_id in page.visible_job_ids
+        }
+        missing_item_ids = sorted(set(item_ids) - observed_job_ids)
+        if missing_item_ids:
+            raise ValueError(
+                "every submitted item must appear in page evidence; missing: "
+                + ", ".join(missing_item_ids)
+            )
+        return self
 
 
 class CaptureItemResponse(BaseModel):
