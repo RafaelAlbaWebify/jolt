@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import sys
 from collections.abc import Callable
+from importlib import import_module
 from typing import Protocol, cast
 
 from jolt import capture_runtime_enhancements
@@ -13,9 +14,7 @@ class _ConsoleReader(Protocol):
 
 
 def _windows_console_input(prompt: str = "") -> str:
-    import msvcrt
-
-    console = cast(_ConsoleReader, msvcrt)
+    console = cast(_ConsoleReader, import_module("msvcrt"))
     print(prompt, end="", flush=True)
     while True:
         key = console.getwch()
