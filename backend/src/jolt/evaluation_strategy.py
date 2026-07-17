@@ -9,6 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from jolt.preparation_estimation import PreparationGap, estimate_preparation_hours
+
 EvidenceLevel = Literal[0, 1, 2, 3, 4, 5]
 RolePriority = Literal["primary", "secondary", "opportunistic", "excluded"]
 Recommendation = Literal[
@@ -300,7 +302,14 @@ def assess_posting(
         default=25,
     )
 
-    required_hours = sum(_preparation_hours(item.gap_type) for item in capability_results)
+    required_hours = estimate_preparation_hours(
+        PreparationGap(
+            capability_id=item.capability_id,
+            gap_type=item.gap_type,
+            preparation_topics=item.preparation_topics,
+        )
+        for item in capability_results
+    )
     available_hours = round(profile.preparation.hours_per_week * interview_days / 7)
     preparation_feasibility = (
         100 if required_hours == 0 else min(100, available_hours * 100 // required_hours)
