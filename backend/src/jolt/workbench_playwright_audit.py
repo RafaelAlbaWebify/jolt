@@ -42,12 +42,12 @@ def _scroll_like_reviewer(page: Page) -> list[int]:
     total_height = page.evaluate("document.documentElement.scrollHeight")
     position = 0
     while position < total_height:
-        page.evaluate("window.scrollTo(0, arguments[0])", position)
+        page.evaluate("position => window.scrollTo(0, position)", position)
         page.wait_for_timeout(200)
         heights.append(position)
         position += step
         total_height = page.evaluate("document.documentElement.scrollHeight")
-    page.evaluate("window.scrollTo(0, 0)")
+    page.evaluate("() => window.scrollTo(0, 0)")
     return heights
 
 
