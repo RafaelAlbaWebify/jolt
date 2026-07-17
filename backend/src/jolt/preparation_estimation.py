@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -29,10 +30,13 @@ def _normalise_topic(topic: str) -> str:
 def estimate_preparation_hours(gaps: Iterable[PreparationGap]) -> int:
     """Estimate preparation effort without double-counting overlapping work.
 
-    Each unique preparation topic is one workstream. When several capabilities
-    point to the same workstream, the largest applicable estimate wins rather
-    than adding the same study effort repeatedly. Capabilities without an
-    explicit topic retain a capability-specific fallback workstream.
+    A capability's estimate is its total preparation budget, not a cost to apply
+    independently to every listed topic. The budget is divided across that
+    capability's unique topics. Shared topics are then merged by keeping the
+    largest contribution required by any capability.
+
+    Capabilities without explicit topics retain a capability-specific fallback
+    workstream so unrelated unknown work is not collapsed accidentally.
     """
 
     workstreams: dict[str, int] = {}
@@ -49,7 +53,8 @@ def estimate_preparation_hours(gaps: Iterable[PreparationGap]) -> int:
         if not topics:
             topics = {f"capability:{gap.capability_id}"}
 
+        hours_per_topic = math.ceil(hours / len(topics))
         for topic in topics:
-            workstreams[topic] = max(workstreams.get(topic, 0), hours)
+            workstreams[topic] = max(workstreams.get(topic, 0), hours_per_topic)
 
     return sum(workstreams.values())
