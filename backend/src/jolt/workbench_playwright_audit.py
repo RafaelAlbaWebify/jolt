@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,32 +26,6 @@ def _visible_text(page: Page) -> str:
     return " ".join(page.locator("body").inner_text(timeout=10_000).split())
 
 
-def _wait_for_workbench(page: Page, first_title: str) -> None:
-    page.wait_for_selector("#root", state="attached", timeout=20_000)
-    page.wait_for_function(
-        "document.body && document.body.innerText.trim().length > 80",
-        timeout=30_000,
-    )
-    if first_title:
-        page.get_by_text(first_title, exact=True).first.wait_for(state="visible", timeout=30_000)
-
-
-def _scroll_like_reviewer(page: Page) -> list[int]:
-    heights: list[int] = []
-    viewport = page.viewport_size or {"height": 900}
-    step = max(400, viewport["height"] - 150)
-    total_height = page.evaluate("document.documentElement.scrollHeight")
-    position = 0
-    while position < total_height:
-        page.evaluate("position => window.scrollTo(0, position)", position)
-        page.wait_for_timeout(200)
-        heights.append(position)
-        position += step
-        total_height = page.evaluate("document.documentElement.scrollHeight")
-    page.evaluate("() => window.scrollTo(0, 0)")
-    return heights
-
-
 def _first_visible_exact_text(page: Page, text: str) -> Locator | None:
     if not text:
         return None
@@ -67,6 +42,39 @@ def _first_visible_exact_text(page: Page, text: str) -> Locator | None:
         except Exception:
             continue
     return None
+
+
+def _wait_for_workbench(page: Page, first_title: str) -> None:
+    page.wait_for_selector("#root", state="attached", timeout=20_000)
+    page.wait_for_function(
+        "document.body && document.body.innerText.trim().length > 80",
+        timeout=30_000,
+    )
+    if not first_title:
+        return
+
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if _first_visible_exact_text(page, first_title) is not None:
+            return
+        page.wait_for_timeout(250)
+    raise TimeoutError(f'No visible exact-title match rendered for "{first_title}".')
+
+
+def _scroll_like_reviewer(page: Page) -> list[int]:
+    heights: list[int] = []
+    viewport = page.viewport_size or {"height": 900}
+    step = max(400, viewport["height"] - 150)
+    total_height = page.evaluate("document.documentElement.scrollHeight")
+    position = 0
+    while position < total_height:
+        page.evaluate("position => window.scrollTo(0, position)", position)
+        page.wait_for_timeout(200)
+        heights.append(position)
+        position += step
+        total_height = page.evaluate("document.documentElement.scrollHeight")
+    page.evaluate("() => window.scrollTo(0, 0)")
+    return heights
 
 
 def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, object]:
