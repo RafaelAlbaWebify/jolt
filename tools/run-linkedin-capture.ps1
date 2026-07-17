@@ -3,6 +3,8 @@ param(
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
     [ValidateRange(1, 50)]
     [int]$MaxJobs = 10,
+    [ValidateRange(1, 10)]
+    [int]$MaxPages = 3,
     [string]$ApiUrl = "http://127.0.0.1:8000"
 )
 
@@ -35,7 +37,8 @@ try {
     Write-Host "Starting supervised LinkedIn capture."
     Write-Host "The browser profile stays local at: $ProfileDir"
     Write-Host "Credentials are entered only in the browser and are never requested by this script."
-    Write-Host "Capture is bounded to $MaxJobs visible listings."
+    Write-Host "Capture is bounded to $MaxJobs total listings across at most $MaxPages page(s)."
+    Write-Host "Unsupported cards are recorded and skipped instead of aborting the run."
     Write-Host ""
 
     uv run python -m jolt.windows_console_capture `
@@ -43,7 +46,8 @@ try {
         --api-url $ApiUrl `
         --profile-dir $ProfileDir `
         --output-zip $OutputZip `
-        --max-jobs $MaxJobs
+        --max-jobs $MaxJobs `
+        --max-pages $MaxPages
 
     if (-not (Test-Path $OutputZip)) {
         throw "The capture command completed without creating the expected ZIP."

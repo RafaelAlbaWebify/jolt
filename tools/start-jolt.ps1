@@ -4,6 +4,8 @@ param(
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
     [ValidateRange(1, 50)]
     [int]$MaxJobs = 10,
+    [ValidateRange(1, 10)]
+    [int]$MaxPages = 3,
     [switch]$NoBrowser
 )
 
@@ -189,6 +191,7 @@ try {
         & (Join-Path $PSScriptRoot "run-linkedin-capture.ps1") `
             -SearchUrl $SearchUrl `
             -MaxJobs $MaxJobs `
+            -MaxPages $MaxPages `
             -ApiUrl $BackendUrl
     }
 }
