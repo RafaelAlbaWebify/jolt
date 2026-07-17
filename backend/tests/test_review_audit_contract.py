@@ -6,7 +6,7 @@ from jolt.review_audit import _is_versioned_private_profile, _validate_evaluatio
 def _private_item() -> dict[str, object]:
     return {
         "profile_version_id": "private-profile:v2",
-        "engine_version": "profile-rules-v3",
+        "engine_version": "profile-rules-v4",
         "ranking_score": 72,
         "eligibility": "eligible_with_conditions",
         "role_family_id": "application_support",
@@ -20,8 +20,14 @@ def _private_item() -> dict[str, object]:
     }
 
 
-def test_private_strategy_v3_contract_is_valid() -> None:
+def test_private_strategy_v4_contract_is_valid() -> None:
     assert _validate_evaluation_contract(_private_item(), "Example") == []
+
+
+def test_private_strategy_v3_history_contract_remains_valid() -> None:
+    item = _private_item()
+    item["engine_version"] = "profile-rules-v3"
+    assert _validate_evaluation_contract(item, "Historical") == []
 
 
 def test_legacy_contract_remains_valid() -> None:

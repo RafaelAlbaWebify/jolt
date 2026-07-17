@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -12,7 +12,7 @@ API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 LEGACY_PROFILE = "rafael-job-search:v2"
 LEGACY_ENGINE = "profile-rules-v2"
-PRIVATE_ENGINE = "profile-rules-v3"
+PRIVATE_ENGINES = {"profile-rules-v3", "profile-rules-v4"}
 EXPECTED_READINESS_ENGINE = "application-readiness-v1"
 REQUIRED_REVIEW_FIELDS = {
     "proposed_decision",
@@ -82,7 +82,7 @@ def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[d
             )
         return findings
 
-    if engine != PRIVATE_ENGINE:
+    if engine not in PRIVATE_ENGINES:
         findings.append(
             {"severity": "error", "message": f"{title}: unexpected review engine version."}
         )
@@ -297,8 +297,39 @@ def audit(output_dir: Path) -> dict[str, object]:
             lambda message: console_messages.append(f"{message.type}: {message.text}"),
         )
         page.on("pageerror", lambda error: page_errors.append(str(error)))
-        page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
-        page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
+        page.goto(
+            APP_URL,
+            wait_until="domcontentloaded",
+            timeout=60_000,
+        )
+        page.locator("#root").wait_for(
+            state="attached",
+            timeout=30_000,
+        )
+
+        first_title = ""
+        if opportunities and isinstance(opportunities[0], dict):
+            first_title = str(
+                opportunities[0].get("title") or ""
+            ).strip()
+
+        page.wait_for_function(
+            """([expectedCount, expectedTitle]) => {
+                const text = document.body?.innerText || "";
+                const countReady =
+                    text.includes(`all (${expectedCount})`);
+                const titleReady =
+                    Boolean(expectedTitle) &&
+                    text.includes(expectedTitle);
+                return countReady || titleReady;
+            }""",
+            arg=[len(opportunities), first_title],
+            timeout=60_000,
+        )
+        page.screenshot(
+            path=output_dir / "workbench-full.png",
+            full_page=True,
+        )
         visible_text = page.locator("body").inner_text()
         history_details = page.locator("details").filter(has_text="Readiness report history")
         if opportunities and history_details.count() > 0:

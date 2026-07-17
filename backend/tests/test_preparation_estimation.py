@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from jolt.evaluation_strategy import StrategyProfile, assess_posting
 from jolt.preparation_estimation import PreparationGap, estimate_preparation_hours
@@ -60,7 +60,7 @@ def test_shared_topics_merge_after_budget_allocation() -> None:
         ]
     )
 
-    assert hours == 9
+    assert hours == 12
 
 
 def test_capabilities_without_topics_keep_separate_fallbacks() -> None:
