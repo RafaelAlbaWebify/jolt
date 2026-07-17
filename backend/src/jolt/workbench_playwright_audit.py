@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, TimeoutError, sync_playwright
+from playwright.sync_api import Locator, Page, TimeoutError, sync_playwright
 
 
 def _get_json(url: str) -> Any:
@@ -49,6 +49,24 @@ def _scroll_like_reviewer(page: Page) -> list[int]:
         total_height = page.evaluate("document.documentElement.scrollHeight")
     page.evaluate("() => window.scrollTo(0, 0)")
     return heights
+
+
+def _first_visible_exact_text(page: Page, text: str) -> Locator | None:
+    if not text:
+        return None
+    matches = page.get_by_text(text, exact=True)
+    try:
+        count = matches.count()
+    except Exception:
+        return None
+    for index in range(count):
+        candidate = matches.nth(index)
+        try:
+            if candidate.is_visible(timeout=1_000):
+                return candidate
+        except Exception:
+            continue
+    return None
 
 
 def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, object]:
@@ -96,20 +114,16 @@ def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, o
                 company = str(opportunity.get("company") or "").strip()
                 location = str(opportunity.get("location") or "").strip()
                 posting_id = str(opportunity.get("posting_id") or index)
-                title_locator = page.get_by_text(title, exact=True).first if title else None
-                title_visible = False
+                title_locator = _first_visible_exact_text(page, title)
+                title_visible = title_locator is not None
                 screenshot = ""
 
                 if title_locator is not None:
                     try:
-                        title_visible = title_locator.is_visible(timeout=2_000)
-                        if title_visible:
-                            title_locator.scroll_into_view_if_needed(timeout=2_000)
-                            page.wait_for_timeout(100)
-                            screenshot = (
-                                f"opportunity-{index:03d}-{_safe_name(title, posting_id)}.png"
-                            )
-                            page.screenshot(path=output_dir / screenshot, full_page=False)
+                        title_locator.scroll_into_view_if_needed(timeout=2_000)
+                        page.wait_for_timeout(100)
+                        screenshot = f"opportunity-{index:03d}-{_safe_name(title, posting_id)}.png"
+                        page.screenshot(path=output_dir / screenshot, full_page=False)
                     except Exception:
                         title_visible = False
 
