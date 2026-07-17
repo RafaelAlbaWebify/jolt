@@ -12,14 +12,9 @@ class PreparationGap:
     preparation_topics: tuple[str, ...]
 
 
-_GAP_HOURS = {
-    "ready_now": 0,
+_INTERVIEW_PREPARATION_HOURS = {
     "preparable_in_days": 4,
     "preparable_in_1_to_2_weeks": 10,
-    "preparable_in_1_to_3_months": 35,
-    "experience_gap": 120,
-    "fundamental_mismatch": 240,
-    "unknown": 20,
 }
 
 
@@ -28,7 +23,12 @@ def _normalise_topic(topic: str) -> str:
 
 
 def estimate_preparation_hours(gaps: Iterable[PreparationGap]) -> int:
-    """Estimate preparation effort without double-counting overlapping work.
+    """Estimate realistic preparation effort before a technical interview.
+
+    Only gaps that can reasonably be improved within days or one to two weeks
+    contribute to this number. Longer-term development, experience gaps,
+    fundamental mismatches and unknown gaps remain represented by the gap model,
+    but are not converted into misleading pre-interview study hours.
 
     A capability's estimate is its total preparation budget, not a cost to apply
     independently to every listed topic. The budget is divided across that
@@ -36,12 +36,12 @@ def estimate_preparation_hours(gaps: Iterable[PreparationGap]) -> int:
     largest contribution required by any capability.
 
     Capabilities without explicit topics retain a capability-specific fallback
-    workstream so unrelated unknown work is not collapsed accidentally.
+    workstream so unrelated short-term preparation is not collapsed accidentally.
     """
 
     workstreams: dict[str, int] = {}
     for gap in gaps:
-        hours = _GAP_HOURS.get(gap.gap_type, _GAP_HOURS["unknown"])
+        hours = _INTERVIEW_PREPARATION_HOURS.get(gap.gap_type, 0)
         if hours == 0:
             continue
 
