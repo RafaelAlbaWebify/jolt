@@ -165,10 +165,8 @@ def capture_page_cards(
         if len(captured) >= remaining:
             break
         card = cards.nth(index)
-        try:
+        with contextlib.suppress(TimeoutError):
             card.scroll_into_view_if_needed(timeout=2_000)
-        except TimeoutError:
-            pass
 
         title_link = _title_link(card)
         source_job_id, source_url = _card_identity(card, title_link)
@@ -179,7 +177,9 @@ def capture_page_cards(
             continue
         if source_job_id in seen:
             skipped.append(
-                SkippedCard(page_number, index, source_job_id, "Duplicate job identity across pages.")
+                SkippedCard(
+                    page_number, index, source_job_id, "Duplicate job identity across pages."
+                )
             )
             continue
         if title_link is None:
@@ -216,7 +216,9 @@ def capture_page_cards(
         verified = wait_for_expected_detail(page, source_job_id)
         detail_html = page.content() if verified else ""
         description = _detail_description(page) if verified else ""
-        reason = "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        reason = (
+            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        )
         with contextlib.suppress(Exception):
             page.screenshot(
                 path=evidence_dir / f"page_{page_number}_job_{source_job_id}.png",
@@ -324,9 +326,7 @@ def capture_pages(
             )
         )
         with contextlib.suppress(Exception):
-            page.screenshot(
-                path=evidence_dir / f"page_{page_number}_listing.png", full_page=False
-            )
+            page.screenshot(path=evidence_dir / f"page_{page_number}_listing.png", full_page=False)
 
         captured.extend(
             capture_page_cards(

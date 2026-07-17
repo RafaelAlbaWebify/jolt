@@ -28,16 +28,16 @@ def _page_html() -> str:
             `<p>Detailed production support responsibilities, incident ownership, APIs, SQL and documentation for job ${{id}}.</p>`;
         }}
         function pageTwo() {{
-          document.querySelector('ul').innerHTML = `{_card('2002', 'Duplicate Support Engineer')}{_card('2003', 'Production Support Engineer')}`;
+          document.querySelector('ul').innerHTML = `{_card("2002", "Duplicate Support Engineer")}{_card("2003", "Production Support Engineer")}`;
           document.querySelector('.artdeco-pagination').innerHTML = '';
         }}
       </script>
       <ul>
-        {_card('2001', 'Application Support Engineer')}
+        {_card("2001", "Application Support Engineer")}
         <li class="jobs-search-results__list-item" data-occludable-job-id="unsupported-card">
           <span>Promoted card without a title link</span>
         </li>
-        {_card('2002', 'Technical Support Engineer')}
+        {_card("2002", "Technical Support Engineer")}
       </ul>
       <div class="artdeco-pagination"><button aria-label="Page 2" onclick="pageTwo()">2</button></div>
       <main></main>

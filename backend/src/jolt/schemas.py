@@ -125,11 +125,7 @@ class LinkedInLiveCaptureRequest(BaseModel):
         if sorted(page_numbers) != list(range(1, len(self.pages) + 1)):
             raise ValueError("page numbers must be contiguous and begin at 1")
 
-        observed_job_ids = {
-            job_id
-            for page in self.pages
-            for job_id in page.visible_job_ids
-        }
+        observed_job_ids = {job_id for page in self.pages for job_id in page.visible_job_ids}
         missing_item_ids = sorted(set(item_ids) - observed_job_ids)
         if missing_item_ids:
             raise ValueError(

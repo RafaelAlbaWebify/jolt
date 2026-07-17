@@ -106,22 +106,28 @@ def _active_filter_labels(page: Page) -> list[str]:
 def extract_search_state(page: Page) -> dict[str, Any]:
     parsed = urlparse(page.url)
     query = parse_qs(parsed.query)
-    keywords = _first_input_value(
-        page,
-        (
-            "input[aria-label*='Search by title' i]",
-            "input[placeholder*='Search jobs' i]",
-            "input[id*='jobs-search-box-keyword-id']",
-        ),
-    ) or query.get("keywords", [""])[0]
-    location = _first_input_value(
-        page,
-        (
-            "input[aria-label*='City' i]",
-            "input[placeholder*='City' i]",
-            "input[id*='jobs-search-box-location-id']",
-        ),
-    ) or query.get("location", [""])[0]
+    keywords = (
+        _first_input_value(
+            page,
+            (
+                "input[aria-label*='Search by title' i]",
+                "input[placeholder*='Search jobs' i]",
+                "input[id*='jobs-search-box-keyword-id']",
+            ),
+        )
+        or query.get("keywords", [""])[0]
+    )
+    location = (
+        _first_input_value(
+            page,
+            (
+                "input[aria-label*='City' i]",
+                "input[placeholder*='City' i]",
+                "input[id*='jobs-search-box-location-id']",
+            ),
+        )
+        or query.get("location", [""])[0]
+    )
     return {
         "effective_url": page.url,
         "keywords": keywords,
@@ -222,9 +228,7 @@ def capture_page_cards(
         detail_html = page.content() if verified else ""
         description = multipage_capture._detail_description(page) if verified else ""
         reason = (
-            ""
-            if verified
-            else "Detail panel did not reach the expected LinkedIn job identity."
+            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
         )
         with contextlib.suppress(Exception):
             page.screenshot(
