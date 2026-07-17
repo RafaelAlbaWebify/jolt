@@ -11,14 +11,19 @@ from typing import Any
 LIKELY_TARGET_TITLE = re.compile(
     r"\b(?:technical support|it support|help desk|service desk|application support|"
     r"product support|customer technical support|end user support|2nd line support|"
-    r"second line support|first level it support|support engineer|support specialist|"
-    r"network support|noc engineer|active directory|m365|microsoft 365|cloud identity|"
-    r"data entry|data quality|cyber security analyst|cybersecurity analyst|soc analyst|"
-    r"support service manager)\b",
+    r"second line support|first level it support|level 2 it support|support engineer|"
+    r"technical support specialist|application support specialist|product support specialist|"
+    r"network support|network engineer|noc engineer|active directory|m365|microsoft 365|"
+    r"cloud identity|identity engineer|data entry specialist|data quality|"
+    r"cyber security analyst|cybersecurity analyst|soc analyst|support service manager|"
+    r"service delivery manager|technical support manager)\b",
     re.IGNORECASE,
 )
 SUPPORT_OR_NETWORK_TITLE = re.compile(
-    r"\b(?:support|service desk|help desk|network|noc|identity|m365|microsoft 365)\b",
+    r"\b(?:technical support|it support|application support|product support|"
+    r"customer technical support|end user support|service desk|help desk|"
+    r"network support|network engineer|noc engineer|identity engineer|"
+    r"active directory|m365|microsoft 365)\b",
     re.IGNORECASE,
 )
 PREPARATION_REVIEW_THRESHOLD = 40
