@@ -18,7 +18,7 @@ from jolt.evaluation_strategy import (
     load_strategy_profile,
 )
 
-ENGINE_VERSION = "profile-rules-v3"
+ENGINE_VERSION = "profile-rules-v4"
 
 
 def load_active_strategy_profile(path: Path | None = None) -> StrategyProfile | None:
