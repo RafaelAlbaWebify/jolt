@@ -74,6 +74,19 @@ def test_capabilities_without_topics_keep_separate_fallbacks() -> None:
     assert hours == 8
 
 
+def test_long_term_and_experience_gaps_are_not_interview_preparation_hours() -> None:
+    hours = estimate_preparation_hours(
+        [
+            PreparationGap("long-term", "preparable_in_1_to_3_months", ("Cloud depth",)),
+            PreparationGap("experience", "experience_gap", ("Production ownership",)),
+            PreparationGap("mismatch", "fundamental_mismatch", ("Software development",)),
+            PreparationGap("unknown", "unknown", ("Unclear requirement",)),
+        ]
+    )
+
+    assert hours == 0
+
+
 def test_assess_posting_uses_deduplicated_preparation_topics() -> None:
     profile = StrategyProfile.model_validate(
         {
