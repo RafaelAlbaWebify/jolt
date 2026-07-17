@@ -10,9 +10,12 @@ $Downloads = Join-Path $env:USERPROFILE "Downloads"
 $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $Staging = Join-Path $env:TEMP "JOLT_CALIBRATION_$Timestamp"
 $OutputZip = Join-Path $Downloads "JOLT_CALIBRATION_$Timestamp.zip"
+$SummaryPath = Join-Path $Staging "playwright-calibration-summary.json"
 
 New-Item -ItemType Directory -Force -Path $Downloads, $Staging | Out-Null
 
+$auditExitCode = 0
+$auditFailure = $null
 try {
     & (Join-Path $PSScriptRoot "start-jolt.ps1") -NoBrowser
 
@@ -22,16 +25,52 @@ try {
             --api-url "http://127.0.0.1:8000" `
             --app-url "http://127.0.0.1:5173" `
             --output-dir $Staging
-        if ($LASTEXITCODE -ne 0) {
-            throw "The Playwright calibration audit reported errors."
+        $auditExitCode = $LASTEXITCODE
+    }
+    catch {
+        $auditExitCode = 1
+        $auditFailure = $_.Exception.Message
+        [ordered]@{
+            generated_at = (Get-Date).ToUniversalTime().ToString("o")
+            result = "failed"
+            findings = @(
+                [ordered]@{
+                    severity = "error"
+                    message = "Calibration runner failed before a complete summary was produced: $auditFailure"
+                }
+            )
+        } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $SummaryPath -Encoding UTF8
+    }
+
+    if (Test-Path -LiteralPath $SummaryPath -PathType Leaf) {
+        $summary = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+        if ($null -ne $summary.findings) {
+            foreach ($finding in @($summary.findings)) {
+                $severity = [string]$finding.severity
+                $message = [string]$finding.message
+                Write-Host "[$severity] $message"
+            }
         }
     }
-    finally {
-        Pop-Location
+    elseif ($auditExitCode -ne 0) {
+        [ordered]@{
+            generated_at = (Get-Date).ToUniversalTime().ToString("o")
+            result = "failed"
+            findings = @(
+                [ordered]@{
+                    severity = "error"
+                    message = "The Playwright calibration audit exited with code $auditExitCode without writing a summary."
+                }
+            )
+        } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $SummaryPath -Encoding UTF8
     }
 
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
     Write-Host "Automated JOLT calibration package: $OutputZip"
+
+    if ($auditExitCode -ne 0) {
+        throw "The Playwright calibration audit reported findings. Evidence package: $OutputZip"
+    }
 }
 finally {
     & (Join-Path $PSScriptRoot "stop-jolt.ps1") -ErrorAction SilentlyContinue
