@@ -11,6 +11,7 @@ $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $Staging = Join-Path $env:TEMP "JOLT_CALIBRATION_$Timestamp"
 $OutputZip = Join-Path $Downloads "JOLT_CALIBRATION_$Timestamp.zip"
 $SummaryPath = Join-Path $Staging "playwright-calibration-summary.json"
+$SemanticSummaryPath = Join-Path $Staging "semantic-calibration-summary.json"
 
 New-Item -ItemType Directory -Force -Path $Downloads, $Staging | Out-Null
 
@@ -26,6 +27,13 @@ try {
             --app-url "http://127.0.0.1:5173" `
             --output-dir $Staging
         $auditExitCode = $LASTEXITCODE
+
+        uv run python -m jolt.calibration_semantics `
+            --api-url "http://127.0.0.1:8000" `
+            --output $SemanticSummaryPath
+        if ($LASTEXITCODE -ne 0 -and $auditExitCode -lt 2) {
+            $auditExitCode = 2
+        }
     }
     catch {
         $auditExitCode = 2
@@ -66,12 +74,21 @@ try {
         } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $SummaryPath -Encoding UTF8
     }
 
+    $semanticFindingCount = 0
+    if (Test-Path -LiteralPath $SemanticSummaryPath -PathType Leaf) {
+        $semanticSummary = Get-Content -LiteralPath $SemanticSummaryPath -Raw | ConvertFrom-Json
+        $semanticFindingCount = [int]$semanticSummary.finding_count
+        foreach ($finding in @($semanticSummary.findings)) {
+            Write-Host "[review] $([string]$finding.message)"
+        }
+    }
+
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
 
-    if ($auditExitCode -eq 0) {
+    if ($auditExitCode -eq 0 -and $semanticFindingCount -eq 0) {
         Write-Host "Automated JOLT calibration passed: $OutputZip"
     }
-    elseif ($auditExitCode -eq 1) {
+    elseif ($auditExitCode -le 1) {
         Write-Warning "Automated JOLT calibration completed with review findings."
         Write-Host "Evidence package: $OutputZip"
         $global:LASTEXITCODE = 1
