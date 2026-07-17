@@ -21,4 +21,4 @@ The current Windows runner uses `capture_runtime_enhancements` as a compatibilit
 
 ## Required validation
 
-Run Ruff, Ruff format, Pyright, pytest, PowerShell parsing/contract checks, and one bounded Windows capture before merging the cleanup.
+Run Ruff, Ruff format, Pyright, pytest, PowerShell parsing/contract checks, and one bounded Windows capture before merging PR #49 or beginning the compatibility-layer cleanup.
