@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from jolt.evaluation_strategy import StrategyProfile, assess_posting
 from jolt.preparation_estimation import PreparationGap, estimate_preparation_hours

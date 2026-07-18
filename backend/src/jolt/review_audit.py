@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -309,9 +309,7 @@ def audit(output_dir: Path) -> dict[str, object]:
 
         first_title = ""
         if opportunities and isinstance(opportunities[0], dict):
-            first_title = str(
-                opportunities[0].get("title") or ""
-            ).strip()
+            first_title = str(opportunities[0].get("title") or "").strip()
 
         page.wait_for_function(
             """([expectedCount, expectedTitle]) => {

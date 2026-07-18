@@ -46,9 +46,7 @@ def estimate_preparation_hours(gaps: Iterable[PreparationGap]) -> int:
             continue
 
         topics = {
-            _normalise_topic(topic)
-            for topic in gap.preparation_topics
-            if _normalise_topic(topic)
+            _normalise_topic(topic) for topic in gap.preparation_topics if _normalise_topic(topic)
         }
         if not topics:
             topics = {f"capability:{gap.capability_id}"}

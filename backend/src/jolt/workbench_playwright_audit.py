@@ -113,9 +113,7 @@ def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, o
             scroll_positions = _scroll_like_reviewer(page)
             page.screenshot(path=output_dir / "workbench-full.png", full_page=True)
             body_text = _visible_text(page)
-            (output_dir / "workbench-visible-text.txt").write_text(
-                body_text, encoding="utf-8"
-            )
+            (output_dir / "workbench-visible-text.txt").write_text(body_text, encoding="utf-8")
 
             for index, opportunity in enumerate(opportunities, start=1):
                 title = str(opportunity.get("title") or "").strip()
@@ -152,9 +150,7 @@ def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, o
                     "fit_now": opportunity.get("fit_now"),
                     "fit_by_interview": opportunity.get("fit_by_interview"),
                     "fit_on_the_job": opportunity.get("fit_on_the_job"),
-                    "estimated_preparation_hours": opportunity.get(
-                        "estimated_preparation_hours"
-                    ),
+                    "estimated_preparation_hours": opportunity.get("estimated_preparation_hours"),
                 }
                 rendered.append(
                     {
@@ -202,7 +198,9 @@ def audit_workbench(api_url: str, app_url: str, output_dir: Path) -> dict[str, o
         "visible_strategy_labels": visible_strategy_labels,
         "findings": findings,
         "opportunities": rendered,
-        "result": "passed" if not any(item["severity"] == "error" for item in findings) else "failed",
+        "result": "passed"
+        if not any(item["severity"] == "error" for item in findings)
+        else "failed",
     }
     (output_dir / "playwright-calibration-summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"

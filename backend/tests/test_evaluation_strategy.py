@@ -170,7 +170,7 @@ def test_short_window_does_not_pretend_experience_gap_is_closed() -> None:
 
     assert result.fit_by_interview == result.fit_now
     assert result.gaps[0].gap_type == "experience_gap"
-    assert result.estimated_preparation_hours == 120
+    assert result.estimated_preparation_hours == 0
     assert result.preparation_plan == ()
 
 

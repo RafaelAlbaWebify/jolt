@@ -83,9 +83,7 @@ def run_semantic_audit(api_url: str, output_path: Path) -> dict[str, object]:
         raise ValueError("Opportunity API did not return a list.")
 
     findings = [
-        finding
-        for opportunity in opportunities
-        for finding in semantic_findings(opportunity)
+        finding for opportunity in opportunities for finding in semantic_findings(opportunity)
     ]
     counts: dict[str, int] = {}
     for finding in findings:
