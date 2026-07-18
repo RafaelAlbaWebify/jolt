@@ -30,7 +30,13 @@ def _record(
     )
 
 
-def _screenshot(page: Page, output_dir: Path, filename: str, *, full_page: bool = False) -> str:
+def _screenshot(
+    page: Page,
+    output_dir: Path,
+    filename: str,
+    *,
+    full_page: bool = False,
+) -> str:
     page.screenshot(path=output_dir / filename, full_page=full_page)
     return filename
 
@@ -47,7 +53,10 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
-        page.on("console", lambda message: console_messages.append(f"{message.type}: {message.text}"))
+        page.on(
+            "console",
+            lambda message: console_messages.append(f"{message.type}: {message.text}"),
+        )
         page.on("pageerror", lambda error: page_errors.append(str(error)))
 
         page.goto(app_url, wait_until="domcontentloaded", timeout=60_000)
@@ -71,7 +80,10 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
         positions: list[int] = []
         position = 0
         while position < total_height:
-            page.evaluate("value => window.scrollTo({ top: value, behavior: 'instant' })", position)
+            page.evaluate(
+                "value => window.scrollTo({ top: value, behavior: 'instant' })",
+                position,
+            )
             page.wait_for_timeout(250)
             positions.append(position)
             position += max(500, viewport_height - 150)
@@ -100,7 +112,9 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
             journey,
             step="expand_first_details_panel",
             expected="The first available details panel can be expanded.",
-            actual="Expanded successfully." if expanded else "No expandable details panel was available.",
+            actual="Expanded successfully."
+            if expanded
+            else "No expandable details panel was available.",
             passed=expanded or details.count() == 0,
             screenshot=expanded_shot,
         )
