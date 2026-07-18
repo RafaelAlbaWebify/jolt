@@ -14,9 +14,16 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 }
 
 $PreviousProfilePath = $env:JOLT_PROFILE_PATH
-$TestProfilePath = Join-Path $env:TEMP "jolt-no-private-profile-for-tests.json"
-Remove-Item -LiteralPath $TestProfilePath -Force -ErrorAction SilentlyContinue
+$PreviousDatabaseUrl = $env:JOLT_DATABASE_URL
+$TestRoot = Join-Path $env:TEMP "JOLT_LOCAL_QUALITY_$Timestamp"
+$TestProfilePath = Join-Path $TestRoot "no-private-profile.json"
+$TestDatabasePath = Join-Path $TestRoot "jolt-test.db"
+
+Remove-Item -LiteralPath $TestRoot -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $TestRoot | Out-Null
+
 $env:JOLT_PROFILE_PATH = $TestProfilePath
+$env:JOLT_DATABASE_URL = "sqlite:///$($TestDatabasePath.Replace('\', '/'))"
 
 $results = [ordered]@{}
 
@@ -56,6 +63,7 @@ try {
         }
         checks = $results
         private_profile_isolated = $true
+        database_isolated = $true
         result = "passed"
     }
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
@@ -68,4 +76,13 @@ finally {
     else {
         $env:JOLT_PROFILE_PATH = $PreviousProfilePath
     }
+
+    if ($null -eq $PreviousDatabaseUrl) {
+        Remove-Item Env:JOLT_DATABASE_URL -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:JOLT_DATABASE_URL = $PreviousDatabaseUrl
+    }
+
+    Remove-Item -LiteralPath $TestRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
