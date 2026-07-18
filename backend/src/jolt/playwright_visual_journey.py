@@ -49,7 +49,11 @@ def _screenshot(
     return f"screenshots/{filename}"
 
 
-def _wait_for_loaded_workbench(page: Page, expected_count: int, first_title: str) -> None:
+def _wait_for_loaded_workbench(
+    page: Page,
+    expected_count: int,
+    first_title: str,
+) -> None:
     if expected_count < 1:
         raise RuntimeError("Visual certification requires at least one opportunity.")
     page.locator("#root").wait_for(state="attached", timeout=30_000)
@@ -75,7 +79,10 @@ def _scroll_like_reviewer(page: Page) -> list[int]:
         total_height = int(page.evaluate("document.documentElement.scrollHeight"))
         if position >= total_height:
             break
-        page.evaluate("value => window.scrollTo({ top: value, behavior: 'instant' })", position)
+        page.evaluate(
+            "value => window.scrollTo({ top: value, behavior: 'instant' })",
+            position,
+        )
         page.wait_for_timeout(250)
         positions.append(position)
         position += step
@@ -108,7 +115,8 @@ def _expand_readiness_history(page: Page) -> tuple[bool, int]:
 def _write_summary(output_dir: Path, summary: dict[str, object]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "playwright-journey.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
+        json.dumps(summary, indent=2, ensure_ascii=True),
+        encoding="utf-8",
     )
 
 
@@ -126,7 +134,9 @@ def run(
         raise RuntimeError("Opportunity API did not return a list.")
     expected_count = len(opportunities)
     if expected_count < 1:
-        raise RuntimeError("Opportunity API returned no opportunities for visual certification.")
+        raise RuntimeError(
+            "Opportunity API returned no opportunities for visual certification."
+        )
 
     first_title = ""
     if isinstance(opportunities[0], dict):
@@ -142,7 +152,9 @@ def run(
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.on(
                 "console",
-                lambda message: console_messages.append(f"{message.type}: {message.text}"),
+                lambda message: console_messages.append(
+                    f"{message.type}: {message.text}"
+                ),
             )
             page.on("pageerror", lambda error: page_errors.append(str(error)))
 
@@ -150,7 +162,12 @@ def run(
             try:
                 _wait_for_loaded_workbench(page, expected_count, first_title)
             except TimeoutError as exc:
-                timeout_shot = _screenshot(page, screenshots, "00-load-timeout.png", full_page=True)
+                timeout_shot = _screenshot(
+                    page,
+                    screenshots,
+                    "00-load-timeout.png",
+                    full_page=True,
+                )
                 _record(
                     journey,
                     step="wait_for_loaded_workbench",
@@ -170,7 +187,8 @@ def run(
                     journey,
                     step="open_workbench",
                     expected=(
-                        "The JOLT workbench renders current opportunity data, not only the shell."
+                        "The JOLT workbench renders current opportunity data, "
+                        "not only the shell."
                     ),
                     actual=(
                         f"Rendered data for {expected_count} expected opportunities."
@@ -182,12 +200,18 @@ def run(
                 )
 
                 positions = _scroll_like_reviewer(page)
-                full = _screenshot(page, screenshots, "02-workbench-full.png", full_page=True)
+                full = _screenshot(
+                    page,
+                    screenshots,
+                    "02-workbench-full.png",
+                    full_page=True,
+                )
                 _record(
                     journey,
                     step="review_full_workbench",
                     expected=(
-                        "A reviewer can traverse the populated workbench without a page error."
+                        "A reviewer can traverse the populated workbench without "
+                        "a page error."
                     ),
                     actual=f"Reviewed {len(positions)} bounded scroll positions.",
                     passed=data_loaded and not page_errors,
@@ -195,12 +219,17 @@ def run(
                 )
 
                 expanded, panel_count = _expand_readiness_history(page)
-                expanded_shot = _screenshot(page, screenshots, "03-readiness-history.png")
+                expanded_shot = _screenshot(
+                    page,
+                    screenshots,
+                    "03-readiness-history.png",
+                )
                 _record(
                     journey,
                     step="expand_readiness_history",
                     expected=(
-                        "A populated readiness-history panel can be expanded by its summary control."
+                        "A populated readiness-history panel can be expanded by "
+                        "its summary control."
                     ),
                     actual=(
                         "Expanded readiness history successfully."
@@ -216,13 +245,16 @@ def run(
 
                 buttons = page.get_by_role("button")
                 visible_buttons = sum(
-                    1 for index in range(buttons.count()) if buttons.nth(index).is_visible()
+                    1
+                    for index in range(buttons.count())
+                    if buttons.nth(index).is_visible()
                 )
                 _record(
                     journey,
                     step="inspect_controls",
                     expected=(
-                        "Visible interactive controls are discoverable through accessible roles."
+                        "Visible interactive controls are discoverable through "
+                        "accessible roles."
                     ),
                     actual=f"Found {visible_buttons} visible buttons.",
                     passed=visible_buttons > 0,
@@ -232,13 +264,17 @@ def run(
 
     findings: list[dict[str, str]] = []
     for error in page_errors:
-        findings.append({"severity": "error", "message": f"Browser page error: {error}"})
+        findings.append(
+            {"severity": "error", "message": f"Browser page error: {error}"}
+        )
     for item in journey:
         if not item["passed"]:
             findings.append(
                 {
                     "severity": "error",
-                    "message": f"Visual journey step failed: {item['step']}: {item['actual']}",
+                    "message": (
+                        f"Visual journey step failed: {item['step']}: {item['actual']}"
+                    ),
                 }
             )
 
@@ -258,7 +294,9 @@ def run(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the JOLT visual-review Playwright journey.")
+    parser = argparse.ArgumentParser(
+        description="Run the JOLT visual-review Playwright journey."
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--app-url", default=APP_URL)
     parser.add_argument("--api-url", default=API_URL)
@@ -275,7 +313,9 @@ def main() -> int:
             "journey": [],
             "console_messages": [],
             "page_errors": [],
-            "findings": [{"severity": "error", "message": f"Visual journey crashed: {exc}"}],
+            "findings": [
+                {"severity": "error", "message": f"Visual journey crashed: {exc}"}
+            ],
         }
         _write_summary(args.output_dir, summary)
 
