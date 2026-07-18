@@ -17,13 +17,18 @@ $PreviousProfilePath = $env:JOLT_PROFILE_PATH
 $PreviousDatabaseUrl = $env:JOLT_DATABASE_URL
 $TestRoot = Join-Path $env:TEMP "JOLT_LOCAL_QUALITY_$Timestamp"
 $TestProfilePath = Join-Path $TestRoot "no-private-profile.json"
-$TestDatabasePath = Join-Path $TestRoot "jolt-test.db"
+$ActiveDatabasePath = Join-Path $BackendRoot "data\jolt.db"
 
 Remove-Item -LiteralPath $TestRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $TestRoot | Out-Null
 
 $env:JOLT_PROFILE_PATH = $TestProfilePath
-$env:JOLT_DATABASE_URL = "sqlite:///$($TestDatabasePath.Replace('\', '/'))"
+Remove-Item Env:JOLT_DATABASE_URL -ErrorAction SilentlyContinue
+
+$activeDatabaseHashBefore = $null
+if (Test-Path -LiteralPath $ActiveDatabasePath -PathType Leaf) {
+    $activeDatabaseHashBefore = (Get-FileHash -LiteralPath $ActiveDatabasePath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
 
 $results = [ordered]@{}
 
@@ -54,6 +59,15 @@ try {
         Pop-Location
     }
 
+    $activeDatabaseHashAfter = $null
+    if (Test-Path -LiteralPath $ActiveDatabasePath -PathType Leaf) {
+        $activeDatabaseHashAfter = (Get-FileHash -LiteralPath $ActiveDatabasePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $activeDatabaseUnchanged = $activeDatabaseHashBefore -eq $activeDatabaseHashAfter
+    if (-not $activeDatabaseUnchanged) {
+        throw "The local quality gate changed the active JOLT database."
+    }
+
     $summary = [ordered]@{
         generated_utc = (Get-Date).ToUniversalTime().ToString("o")
         repository = [ordered]@{
@@ -63,7 +77,8 @@ try {
         }
         checks = $results
         private_profile_isolated = $true
-        database_isolated = $true
+        database_environment_cleared = $true
+        active_database_unchanged = $activeDatabaseUnchanged
         result = "passed"
     }
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
