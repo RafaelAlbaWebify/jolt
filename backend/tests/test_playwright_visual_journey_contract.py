@@ -3,9 +3,9 @@ from pathlib import Path
 
 def _journey_source() -> str:
     repository = Path(__file__).resolve().parents[2]
-    return (
-        repository / "backend" / "src" / "jolt" / "playwright_visual_journey.py"
-    ).read_text(encoding="utf-8")
+    return (repository / "backend" / "src" / "jolt" / "playwright_visual_journey.py").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_visual_journey_requires_real_loaded_data_and_bounded_review() -> None:

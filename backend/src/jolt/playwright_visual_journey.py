@@ -134,9 +134,7 @@ def run(
         raise RuntimeError("Opportunity API did not return a list.")
     expected_count = len(opportunities)
     if expected_count < 1:
-        raise RuntimeError(
-            "Opportunity API returned no opportunities for visual certification."
-        )
+        raise RuntimeError("Opportunity API returned no opportunities for visual certification.")
 
     first_title = ""
     if isinstance(opportunities[0], dict):
@@ -152,9 +150,7 @@ def run(
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.on(
                 "console",
-                lambda message: console_messages.append(
-                    f"{message.type}: {message.text}"
-                ),
+                lambda message: console_messages.append(f"{message.type}: {message.text}"),
             )
             page.on("pageerror", lambda error: page_errors.append(str(error)))
 
@@ -178,17 +174,15 @@ def run(
                 )
             else:
                 visible_text = page.locator("body").inner_text()
-                data_loaded = (
-                    f"all ({expected_count})" in visible_text
-                    or bool(first_title and first_title in visible_text)
+                data_loaded = f"all ({expected_count})" in visible_text or bool(
+                    first_title and first_title in visible_text
                 )
                 top = _screenshot(page, screenshots, "01-workbench-top.png")
                 _record(
                     journey,
                     step="open_workbench",
                     expected=(
-                        "The JOLT workbench renders current opportunity data, "
-                        "not only the shell."
+                        "The JOLT workbench renders current opportunity data, not only the shell."
                     ),
                     actual=(
                         f"Rendered data for {expected_count} expected opportunities."
@@ -210,8 +204,7 @@ def run(
                     journey,
                     step="review_full_workbench",
                     expected=(
-                        "A reviewer can traverse the populated workbench without "
-                        "a page error."
+                        "A reviewer can traverse the populated workbench without a page error."
                     ),
                     actual=f"Reviewed {len(positions)} bounded scroll positions.",
                     passed=data_loaded and not page_errors,
@@ -235,8 +228,7 @@ def run(
                         "Expanded readiness history successfully."
                         if expanded
                         else (
-                            "No usable readiness-history panel was available; "
-                            f"found {panel_count}."
+                            f"No usable readiness-history panel was available; found {panel_count}."
                         )
                     ),
                     passed=expanded,
@@ -245,16 +237,13 @@ def run(
 
                 buttons = page.get_by_role("button")
                 visible_buttons = sum(
-                    1
-                    for index in range(buttons.count())
-                    if buttons.nth(index).is_visible()
+                    1 for index in range(buttons.count()) if buttons.nth(index).is_visible()
                 )
                 _record(
                     journey,
                     step="inspect_controls",
                     expected=(
-                        "Visible interactive controls are discoverable through "
-                        "accessible roles."
+                        "Visible interactive controls are discoverable through accessible roles."
                     ),
                     actual=f"Found {visible_buttons} visible buttons.",
                     passed=visible_buttons > 0,
@@ -264,17 +253,13 @@ def run(
 
     findings: list[dict[str, str]] = []
     for error in page_errors:
-        findings.append(
-            {"severity": "error", "message": f"Browser page error: {error}"}
-        )
+        findings.append({"severity": "error", "message": f"Browser page error: {error}"})
     for item in journey:
         if not item["passed"]:
             findings.append(
                 {
                     "severity": "error",
-                    "message": (
-                        f"Visual journey step failed: {item['step']}: {item['actual']}"
-                    ),
+                    "message": (f"Visual journey step failed: {item['step']}: {item['actual']}"),
                 }
             )
 
@@ -294,9 +279,7 @@ def run(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Run the JOLT visual-review Playwright journey."
-    )
+    parser = argparse.ArgumentParser(description="Run the JOLT visual-review Playwright journey.")
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--app-url", default=APP_URL)
     parser.add_argument("--api-url", default=API_URL)
@@ -313,9 +296,7 @@ def main() -> int:
             "journey": [],
             "console_messages": [],
             "page_errors": [],
-            "findings": [
-                {"severity": "error", "message": f"Visual journey crashed: {exc}"}
-            ],
+            "findings": [{"severity": "error", "message": f"Visual journey crashed: {exc}"}],
         }
         _write_summary(args.output_dir, summary)
 
