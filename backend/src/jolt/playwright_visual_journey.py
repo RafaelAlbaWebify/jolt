@@ -6,7 +6,7 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
-from playwright.sync_api import Browser, Page, TimeoutError, sync_playwright
+from playwright.sync_api import Page, TimeoutError, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
 API_URL = "http://127.0.0.1:8000"
@@ -102,8 +102,14 @@ def _expand_readiness_history(page: Page) -> tuple[bool, int]:
     if panel.get_attribute("open") is None:
         summary.first.click(timeout=5_000)
         page.wait_for_timeout(300)
-    expanded = panel.get_attribute("open") is not None
-    return expanded, panel_count
+    return panel.get_attribute("open") is not None, panel_count
+
+
+def _write_summary(output_dir: Path, summary: dict[str, object]) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "playwright-journey.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
+    )
 
 
 def run(
@@ -129,11 +135,10 @@ def run(
     journey: list[dict[str, object]] = []
     console_messages: list[str] = []
     page_errors: list[str] = []
-    browser: Browser | None = None
 
-    try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.on(
                 "console",
@@ -142,76 +147,87 @@ def run(
             page.on("pageerror", lambda error: page_errors.append(str(error)))
 
             page.goto(app_url, wait_until="domcontentloaded", timeout=60_000)
-            _wait_for_loaded_workbench(page, expected_count, first_title)
+            try:
+                _wait_for_loaded_workbench(page, expected_count, first_title)
+            except TimeoutError as exc:
+                timeout_shot = _screenshot(page, screenshots, "00-load-timeout.png", full_page=True)
+                _record(
+                    journey,
+                    step="wait_for_loaded_workbench",
+                    expected="Opportunity data becomes visible within 60 seconds.",
+                    actual=f"Timed out waiting for loaded workbench data: {exc}",
+                    passed=False,
+                    screenshot=timeout_shot,
+                )
+            else:
+                visible_text = page.locator("body").inner_text()
+                data_loaded = (
+                    f"all ({expected_count})" in visible_text
+                    or bool(first_title and first_title in visible_text)
+                )
+                top = _screenshot(page, screenshots, "01-workbench-top.png")
+                _record(
+                    journey,
+                    step="open_workbench",
+                    expected=(
+                        "The JOLT workbench renders current opportunity data, not only the shell."
+                    ),
+                    actual=(
+                        f"Rendered data for {expected_count} expected opportunities."
+                        if data_loaded
+                        else "The shell rendered before opportunity data became visible."
+                    ),
+                    passed=data_loaded,
+                    screenshot=top,
+                )
 
-            visible_text = page.locator("body").inner_text()
-            data_loaded = (
-                f"all ({expected_count})" in visible_text
-                or bool(first_title and first_title in visible_text)
-            )
-            top = _screenshot(page, screenshots, "01-workbench-top.png")
-            _record(
-                journey,
-                step="open_workbench",
-                expected=(
-                    "The JOLT workbench renders current opportunity data, not only the shell."
-                ),
-                actual=(
-                    f"Rendered data for {expected_count} expected opportunities."
-                    if data_loaded
-                    else "The shell rendered before opportunity data became visible."
-                ),
-                passed=data_loaded,
-                screenshot=top,
-            )
+                positions = _scroll_like_reviewer(page)
+                full = _screenshot(page, screenshots, "02-workbench-full.png", full_page=True)
+                _record(
+                    journey,
+                    step="review_full_workbench",
+                    expected=(
+                        "A reviewer can traverse the populated workbench without a page error."
+                    ),
+                    actual=f"Reviewed {len(positions)} bounded scroll positions.",
+                    passed=data_loaded and not page_errors,
+                    screenshot=full,
+                )
 
-            positions = _scroll_like_reviewer(page)
-            full = _screenshot(page, screenshots, "02-workbench-full.png", full_page=True)
-            _record(
-                journey,
-                step="review_full_workbench",
-                expected="A reviewer can traverse the populated workbench without a page error.",
-                actual=f"Reviewed {len(positions)} bounded scroll positions.",
-                passed=data_loaded and not page_errors,
-                screenshot=full,
-            )
+                expanded, panel_count = _expand_readiness_history(page)
+                expanded_shot = _screenshot(page, screenshots, "03-readiness-history.png")
+                _record(
+                    journey,
+                    step="expand_readiness_history",
+                    expected=(
+                        "A populated readiness-history panel can be expanded by its summary control."
+                    ),
+                    actual=(
+                        "Expanded readiness history successfully."
+                        if expanded
+                        else (
+                            "No usable readiness-history panel was available; "
+                            f"found {panel_count}."
+                        )
+                    ),
+                    passed=expanded,
+                    screenshot=expanded_shot,
+                )
 
-            expanded, panel_count = _expand_readiness_history(page)
-            expanded_shot = _screenshot(page, screenshots, "03-readiness-history.png")
-            _record(
-                journey,
-                step="expand_readiness_history",
-                expected="A populated readiness-history panel can be expanded by its summary control.",
-                actual=(
-                    "Expanded readiness history successfully."
-                    if expanded
-                    else f"No usable readiness-history panel was available; found {panel_count}."
-                ),
-                passed=expanded,
-                screenshot=expanded_shot,
-            )
-
-            buttons = page.get_by_role("button")
-            visible_buttons = sum(
-                1 for index in range(buttons.count()) if buttons.nth(index).is_visible()
-            )
-            _record(
-                journey,
-                step="inspect_controls",
-                expected="Visible interactive controls are discoverable through accessible roles.",
-                actual=f"Found {visible_buttons} visible buttons.",
-                passed=visible_buttons > 0,
-            )
-    except TimeoutError as exc:
-        _record(
-            journey,
-            step="wait_for_loaded_workbench",
-            expected="Opportunity data becomes visible within 60 seconds.",
-            actual=f"Timed out waiting for loaded workbench data: {exc}",
-            passed=False,
-        )
-    finally:
-        if browser is not None:
+                buttons = page.get_by_role("button")
+                visible_buttons = sum(
+                    1 for index in range(buttons.count()) if buttons.nth(index).is_visible()
+                )
+                _record(
+                    journey,
+                    step="inspect_controls",
+                    expected=(
+                        "Visible interactive controls are discoverable through accessible roles."
+                    ),
+                    actual=f"Found {visible_buttons} visible buttons.",
+                    passed=visible_buttons > 0,
+                )
+        finally:
             browser.close()
 
     findings: list[dict[str, str]] = []
@@ -237,9 +253,7 @@ def run(
         "page_errors": page_errors,
         "findings": findings,
     }
-    (output_dir / "playwright-journey.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
-    )
+    _write_summary(output_dir, summary)
     return summary
 
 
@@ -249,7 +263,22 @@ def main() -> int:
     parser.add_argument("--app-url", default=APP_URL)
     parser.add_argument("--api-url", default=API_URL)
     args = parser.parse_args()
-    summary = run(args.output_dir, args.app_url, args.api_url)
+
+    try:
+        summary = run(args.output_dir, args.app_url, args.api_url)
+    except Exception as exc:  # noqa: BLE001
+        summary = {
+            "generated_at": datetime.now(UTC).isoformat(),
+            "app_url": args.app_url,
+            "api_url": args.api_url,
+            "result": "failed",
+            "journey": [],
+            "console_messages": [],
+            "page_errors": [],
+            "findings": [{"severity": "error", "message": f"Visual journey crashed: {exc}"}],
+        }
+        _write_summary(args.output_dir, summary)
+
     print(json.dumps(summary, indent=2, ensure_ascii=True))
     return 0 if summary["result"] == "passed" else 1
 
