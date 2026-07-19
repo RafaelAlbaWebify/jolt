@@ -5,12 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from playwright.sync_api import TimeoutError
 
-from jolt import capture_runtime_enhancements
-from jolt.capture_runtime_enhancements import (
-    _click_with_one_retry,
-    _is_relevant_filter_label,
-    _reset_runtime_state,
-)
+from jolt.linkedin_capture import RetryMetrics, _click_with_one_retry, _is_relevant_filter_label
 from jolt.main import create_app
 
 
@@ -73,8 +68,8 @@ def test_live_capture_persists_real_page_provenance(tmp_path: Path) -> None:
 
 
 def test_click_retries_once_before_succeeding(monkeypatch) -> None:
-    _reset_runtime_state()
     attempts = 0
+    metrics = RetryMetrics()
 
     class FakeLink:
         def click(self, *, timeout: int) -> None:
@@ -88,33 +83,27 @@ def test_click_retries_once_before_succeeding(monkeypatch) -> None:
             return None
 
     link = FakeLink()
-    monkeypatch.setattr(
-        "jolt.capture_runtime_enhancements.multipage_capture._title_link",
-        lambda _: link,
+    monkeypatch.setattr("jolt.linkedin_capture.multipage_capture._title_link", lambda _: link)
+
+    assert _click_with_one_retry(link, FakeCard(), metrics) is True  # type: ignore[arg-type]
+    assert attempts == 2
+    assert metrics == RetryMetrics(
+        retry_attempted_count=1,
+        recovered_after_retry_count=1,
+        failed_after_retry_count=0,
     )
 
-    assert _click_with_one_retry(link, FakeCard()) is True  # type: ignore[arg-type]
-    assert attempts == 2
-    assert capture_runtime_enhancements._retry_metrics == {
-        "retry_attempted_count": 1,
-        "recovered_after_retry_count": 1,
-        "failed_after_retry_count": 0,
-    }
 
+def test_retry_metrics_are_isolated_between_runs() -> None:
+    first = RetryMetrics(
+        retry_attempted_count=4,
+        recovered_after_retry_count=2,
+        failed_after_retry_count=2,
+    )
+    second = RetryMetrics()
 
-def test_runtime_state_reset_clears_retry_metrics() -> None:
-    _reset_runtime_state()
-    capture_runtime_enhancements._retry_metrics["retry_attempted_count"] = 4
-    capture_runtime_enhancements._retry_metrics["recovered_after_retry_count"] = 2
-    capture_runtime_enhancements._retry_metrics["failed_after_retry_count"] = 2
-
-    _reset_runtime_state()
-
-    assert capture_runtime_enhancements._retry_metrics == {
-        "retry_attempted_count": 0,
-        "recovered_after_retry_count": 0,
-        "failed_after_retry_count": 0,
-    }
+    assert first.retry_attempted_count == 4
+    assert second == RetryMetrics()
 
 
 def test_unrelated_following_control_is_not_a_job_filter() -> None:
