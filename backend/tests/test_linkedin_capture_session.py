@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from jolt.linkedin_capture import RetryMetrics, build_submit_payload
+from jolt.linkedin_capture import (
+    RetryMetrics,
+    _is_relevant_filter_label,
+    build_submit_payload,
+)
 from jolt.multipage_capture import PageEvidence
 from jolt.supervised_capture import CapturedCard
 
@@ -13,6 +17,14 @@ def test_retry_metrics_are_isolated_per_capture_run() -> None:
     assert second.retry_attempted_count == 0
     assert second.recovered_after_retry_count == 0
     assert second.failed_after_retry_count == 0
+
+
+def test_irrelevant_navigation_labels_are_not_capture_filters() -> None:
+    assert _is_relevant_filter_label("Past 24 hours") is True
+    assert _is_relevant_filter_label("  Remote  ") is True
+    assert _is_relevant_filter_label("Following") is False
+    assert _is_relevant_filter_label("Notifications") is False
+    assert _is_relevant_filter_label("   ") is False
 
 
 def test_submit_payload_includes_exact_page_evidence() -> None:
