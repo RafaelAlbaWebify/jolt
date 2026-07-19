@@ -94,8 +94,12 @@ def _active_filter_labels(page: Page) -> list[str]:
     return labels
 
 
-def extract_search_state(page: Page) -> dict[str, Any]:
-    effective_url = page.url
+def extract_search_state(
+    page: Page,
+    *,
+    effective_url: str | None = None,
+) -> dict[str, Any]:
+    effective_url = effective_url or page.url
     parsed = urlparse(effective_url)
     query = parse_qs(parsed.query)
     keywords = (
@@ -479,8 +483,8 @@ def run_capture(
                     )
                     input("Press Enter to start the bounded capture: ")
 
-                search_state = extract_search_state(page)
                 search_url = page.url
+                search_state = extract_search_state(page, effective_url=search_url)
                 cards, pages, skipped, stop_reason = capture_pages(
                     page,
                     max_jobs=max_jobs,

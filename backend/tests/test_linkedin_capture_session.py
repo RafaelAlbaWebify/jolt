@@ -63,6 +63,34 @@ def test_search_state_uses_one_stable_url_snapshot() -> None:
     }
 
 
+def test_search_state_uses_caller_url_snapshot_without_rereading_page() -> None:
+    snapshot = "https://www.linkedin.com/jobs/search/?keywords=support&f_TPR=r604800&f_WT=2"
+
+    class EmptyLocator:
+        def count(self) -> int:
+            return 0
+
+    class SnapshotPage:
+        @property
+        def url(self) -> str:
+            raise AssertionError("The page URL must not be read again.")
+
+        def locator(self, selector: str) -> EmptyLocator:
+            return EmptyLocator()
+
+    state = extract_search_state(
+        SnapshotPage(),  # type: ignore[arg-type]
+        effective_url=snapshot,
+    )
+
+    assert state["effective_url"] == snapshot
+    assert state["keywords"] == "support"
+    assert state["url_filter_parameters"] == {
+        "f_TPR": ["r604800"],
+        "f_WT": ["2"],
+    }
+
+
 def test_submit_payload_includes_exact_page_evidence() -> None:
     card = CapturedCard(
         source_job_id="123",
