@@ -4,6 +4,7 @@ from jolt.linkedin_capture import (
     RetryMetrics,
     _is_relevant_filter_label,
     build_submit_payload,
+    extract_search_state,
 )
 from jolt.multipage_capture import PageEvidence
 from jolt.supervised_capture import CapturedCard
@@ -25,6 +26,42 @@ def test_irrelevant_navigation_labels_are_not_capture_filters() -> None:
     assert _is_relevant_filter_label("Following") is False
     assert _is_relevant_filter_label("Notifications") is False
     assert _is_relevant_filter_label("   ") is False
+
+
+def test_search_state_uses_one_stable_url_snapshot() -> None:
+    initial_url = (
+        "https://www.linkedin.com/jobs/search/?keywords=support&f_TPR=r604800"
+        "&f_WT=2&geoId=91000000"
+    )
+    later_url = "https://www.linkedin.com/jobs/search/?keywords=changed"
+
+    class EmptyLocator:
+        def count(self) -> int:
+            return 0
+
+    class ChangingUrlPage:
+        def __init__(self) -> None:
+            self.reads = 0
+
+        @property
+        def url(self) -> str:
+            self.reads += 1
+            return initial_url if self.reads == 1 else later_url
+
+        def locator(self, selector: str) -> EmptyLocator:
+            return EmptyLocator()
+
+    page = ChangingUrlPage()
+    state = extract_search_state(page)  # type: ignore[arg-type]
+
+    assert page.reads == 1
+    assert state["effective_url"] == initial_url
+    assert state["keywords"] == "support"
+    assert state["url_filter_parameters"] == {
+        "f_TPR": ["r604800"],
+        "f_WT": ["2"],
+        "geoId": ["91000000"],
+    }
 
 
 def test_submit_payload_includes_exact_page_evidence() -> None:
