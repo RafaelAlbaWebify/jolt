@@ -95,7 +95,8 @@ def _active_filter_labels(page: Page) -> list[str]:
 
 
 def extract_search_state(page: Page) -> dict[str, Any]:
-    parsed = urlparse(page.url)
+    effective_url = page.url
+    parsed = urlparse(effective_url)
     query = parse_qs(parsed.query)
     keywords = (
         _first_input_value(
@@ -120,7 +121,7 @@ def extract_search_state(page: Page) -> dict[str, Any]:
         or query.get("location", [""])[0]
     )
     return {
-        "effective_url": page.url,
+        "effective_url": effective_url,
         "keywords": keywords,
         "location": location,
         "active_filter_labels": _active_filter_labels(page),

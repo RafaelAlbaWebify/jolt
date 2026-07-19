@@ -30,8 +30,7 @@ def test_irrelevant_navigation_labels_are_not_capture_filters() -> None:
 
 def test_search_state_uses_one_stable_url_snapshot() -> None:
     initial_url = (
-        "https://www.linkedin.com/jobs/search/?keywords=support&f_TPR=r604800"
-        "&f_WT=2&geoId=91000000"
+        "https://www.linkedin.com/jobs/search/?keywords=support&f_TPR=r604800&f_WT=2&geoId=91000000"
     )
     later_url = "https://www.linkedin.com/jobs/search/?keywords=changed"
 
