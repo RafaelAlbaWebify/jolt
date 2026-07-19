@@ -14,6 +14,7 @@ $BackupZip = Join-Path $Staging "JOLT_BACKUP_$Timestamp.zip"
 $RestoreRoot = Join-Path $Staging "restore-test"
 $RestoreDatabase = Join-Path $RestoreRoot "jolt.db"
 $CertificationSummary = Join-Path $Staging "certification-summary.json"
+$QualitySummary = Join-Path $Staging "local-quality-gate.json"
 
 function Invoke-TextCommand {
     param(
@@ -60,6 +61,12 @@ try {
         throw "The repository has uncommitted changes. Certification requires a clean checkout."
     }
 
+    & (Join-Path $PSScriptRoot "local-quality-gate.ps1") -OutputPath $QualitySummary
+    $quality = Get-Content -LiteralPath $QualitySummary -Raw | ConvertFrom-Json
+    if ($quality.result -ne "passed") {
+        throw "The local quality gate did not pass."
+    }
+
     & (Join-Path $PSScriptRoot "audit-jolt.ps1")
     $auditZip = Get-NewestAuditZip -Since $started
     if ($null -eq $auditZip) {
@@ -94,9 +101,16 @@ try {
             commit = $commit
             clean = $true
         }
+        local_quality_gate = [ordered]@{
+            included = $true
+            private_profile_isolated = $true
+            checks = $quality.checks
+            result = $quality.result
+        }
         audit = [ordered]@{
             source_zip = $auditZip.Name
             included = $true
+            structured_visual_journey_included = $true
         }
         backup = [ordered]@{
             format = $backupManifest.format
@@ -125,12 +139,13 @@ try {
     $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $CertificationSummary -Encoding UTF8
 
     @(
-        "JOLT Windows certification package",
+        "JOLT Windows local CI and visual certification package",
         "Generated: $((Get-Date).ToString('o'))",
         "",
-        "This package proves that the current clean checkout completed the full JOLT review/capture audit, created a verified SQLite backup, and restored that backup to an isolated test database.",
-        "The active database, temporary backup database, and restored test database are not included.",
-        "Review certification-summary.json and the nested JOLT_REVIEW_AUDIT_*.zip.",
+        "This package proves that the current clean checkout passed Ruff, formatting, Pyright, and the full backend test suite with the private profile isolated.",
+        "It also completed the full review/capture audit, structured Playwright visual journey, verified SQLite backup, and isolated restore test.",
+        "The active database, temporary backup database, restored test database, raw capture payloads, and absolute user paths are not included.",
+        "Review certification-summary.json, local-quality-gate.json, and the nested JOLT_REVIEW_AUDIT_*.zip.",
         "Result: passed"
     ) | Set-Content -LiteralPath (Join-Path $Staging "README.txt") -Encoding UTF8
 

@@ -38,14 +38,6 @@ function Invoke-TextCommand {
     }
 }
 
-function Get-RepositoryRelativePath {
-    param([Parameter(Mandatory)][string]$Path)
-
-    $repoUri = [System.Uri]::new(($RepoRoot.TrimEnd('\') + '\'))
-    $pathUri = [System.Uri]::new($Path)
-    return [System.Uri]::UnescapeDataString($repoUri.MakeRelativeUri($pathUri).ToString()).Replace('/', '\')
-}
-
 New-Item -ItemType Directory -Force -Path $Staging, $Downloads | Out-Null
 
 try {
@@ -66,6 +58,10 @@ try {
         $captureAuditExitCode = 0
         uv run python -m jolt.capture_evidence_audit_cli --output-dir $Staging
         $captureAuditExitCode = $LASTEXITCODE
+
+        $visualJourneyExitCode = 0
+        uv run python -m jolt.playwright_visual_journey --output-dir $Staging
+        $visualJourneyExitCode = $LASTEXITCODE
     }
     finally {
         Pop-Location
@@ -154,21 +150,23 @@ try {
     }
 
     @(
-        "JOLT automated review and capture evidence audit",
+        "JOLT automated review, capture evidence, and visual journey audit",
         "Generated: $((Get-Date).ToString('o'))",
         "",
-        "Review audit-summary.json, capture-audit-summary.json, capture-details.json, audit-provenance.json, opportunities.json, readiness-histories.json, workbench-full.png, and workbench-readiness-history.png.",
-        "The capture audit validates summary/detail consistency, bounds, stop reasons, canonical linkage, and immutable artifact identities without including raw artifact payloads.",
-        "The provenance file records the exact commit, repository state, migration revision, runtime versions, and SHA-256 hashes of local database files.",
+        "Review audit-summary.json, capture-audit-summary.json, capture-details.json, playwright-journey.json, audit-provenance.json, opportunities.json, readiness-histories.json, and screenshots\.",
+        "The visual journey records reviewer-like scrolling, expandable-panel inspection, accessible-control discovery, browser console messages, page errors, and named screenshots.",
         "Database contents, raw capture payloads, and absolute user paths are not included.",
-        "The screenshots capture the local workbench and readiness-history panel.",
         "No readiness recalculation, application, capture, or recruiter action was performed."
     ) | Set-Content -Path (Join-Path $Staging "README.txt") -Encoding UTF8
 
     Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
     Write-Host "Review audit package created: $OutputZip"
 
-    if ($reviewAuditExitCode -ne 0 -or $captureAuditExitCode -ne 0) {
+    if (
+        $reviewAuditExitCode -ne 0 -or
+        $captureAuditExitCode -ne 0 -or
+        $visualJourneyExitCode -ne 0
+    ) {
         throw "The audit found one or more errors. Review the ZIP created in Downloads."
     }
 }
