@@ -36,7 +36,7 @@ export function Workbench() {
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
 
   return (
-    <main className="shell">
+    <div className="shell workspace-shell">
       <header className="workspace-header">
         <div className="hero">
           <p className="eyebrow">Job Opportunity Learning & Tracking</p>
@@ -61,11 +61,11 @@ export function Workbench() {
         <p className="workspace-description">{view.description}</p>
       </header>
 
-      <div className="workspace-view" aria-live="polite">
+      <div className={`workspace-view workspace-view-${activeView}`} aria-live="polite">
         {activeView === "opportunities" && <App />}
         {activeView === "applications" && <ApplicationDashboard apiBase={API_BASE} />}
         {activeView === "evidence" && <IdentityEvidenceDashboard apiBase={API_BASE} />}
       </div>
-    </main>
+    </div>
   );
 }
