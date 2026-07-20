@@ -129,12 +129,8 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
         "viewport": {"width": 1440, "height": 1000},
         "result": "failed" if findings else "passed",
         "views": views,
-        "total_visible_buttons_across_views": sum(
-            view["visible_button_count"] for view in views
-        ),
-        "total_scroll_positions_across_views": sum(
-            view["scroll_position_count"] for view in views
-        ),
+        "total_visible_buttons_across_views": sum(view["visible_button_count"] for view in views),
+        "total_scroll_positions_across_views": sum(view["scroll_position_count"] for view in views),
         "console_messages": console_messages,
         "page_errors": page_errors,
         "findings": findings,
