@@ -30,6 +30,10 @@ class ViewAudit(TypedDict):
     screenshot: str
 
 
+def _progress(message: str) -> None:
+    print(f"[workspace-audit] {message}", flush=True)
+
+
 def _get_json(url: str) -> object:
     with urllib.request.urlopen(url, timeout=30) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
@@ -103,14 +107,18 @@ def run(
     app_url: str = APP_URL,
     api_url: str = API_URL,
 ) -> dict[str, object]:
+    output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     screenshots = output_dir / "workspace-screenshots"
     screenshots.mkdir(exist_ok=True)
 
+    _progress(f"Output directory: {output_dir}")
+    _progress("Loading opportunity data from the API.")
     opportunities = _get_json(f"{api_url.rstrip('/')}/api/opportunities")
     if not isinstance(opportunities, list):
         raise RuntimeError("Opportunity API did not return a list.")
     opportunity_count = len(opportunities)
+    _progress(f"Loaded {opportunity_count} opportunities.")
 
     first_title = ""
     if opportunities and isinstance(opportunities[0], dict):
@@ -130,27 +138,33 @@ def run(
     console_messages: list[str] = []
     views: list[ViewAudit] = []
 
+    _progress("Launching Playwright Chromium.")
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
+            page.set_default_timeout(30_000)
             page.on("pageerror", lambda error: page_errors.append(str(error)))
             page.on(
                 "console",
                 lambda message: console_messages.append(f"{message.type}: {message.text}"),
             )
+            _progress(f"Opening {app_url}.")
             page.goto(app_url, wait_until="domcontentloaded", timeout=60_000)
             page.locator("#root").wait_for(state="attached", timeout=30_000)
             page.get_by_role("navigation", name="JOLT workspace views").wait_for(
                 state="visible",
                 timeout=30_000,
             )
+            _progress("Workspace navigation is ready.")
 
             for view_id, label, expected_heading in VIEW_SPECS:
+                _progress(f"{label}: opening view.")
                 button = page.get_by_role("button", name=label, exact=True)
                 button.click(timeout=5_000)
                 heading = page.get_by_role("heading", name=expected_heading, exact=True)
                 heading.wait_for(state="visible", timeout=30_000)
+                _progress(f"{label}: waiting for populated data.")
                 data_ready = _wait_for_view_data(
                     page,
                     view_id=view_id,
@@ -161,10 +175,20 @@ def run(
                 )
                 page.wait_for_timeout(300)
 
+                _progress(f"{label}: measuring scroll positions.")
                 positions = _review_scroll_positions(page)
                 visible_buttons = _visible_button_count(page)
                 screenshot_name = f"workspace-{view_id}.png"
-                page.screenshot(path=screenshots / screenshot_name, full_page=True)
+                _progress(
+                    f"{label}: capturing screenshot "
+                    f"({len(positions)} scroll positions, {visible_buttons} visible buttons)."
+                )
+                page.screenshot(
+                    path=screenshots / screenshot_name,
+                    full_page=True,
+                    animations="disabled",
+                    timeout=60_000,
+                )
                 views.append(
                     {
                         "view": view_id,
@@ -177,7 +201,9 @@ def run(
                         "screenshot": f"workspace-screenshots/{screenshot_name}",
                     }
                 )
+                _progress(f"{label}: complete.")
         finally:
+            _progress("Closing Playwright Chromium.")
             browser.close()
 
     findings = [
@@ -228,9 +254,11 @@ def run(
         "page_errors": page_errors,
         "findings": findings,
     }
-    (output_dir / "workspace-navigation-audit.json").write_text(
+    summary_path = output_dir / "workspace-navigation-audit.json"
+    summary_path.write_text(
         json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
     )
+    _progress(f"Audit summary written to {summary_path}.")
     return summary
 
 
@@ -244,6 +272,7 @@ def main() -> int:
     try:
         summary = run(args.output_dir, args.app_url, args.api_url)
     except Exception as exc:  # noqa: BLE001
+        _progress(f"FAILED: {exc}")
         summary = {
             "generated_at": datetime.now(UTC).isoformat(),
             "app_url": args.app_url,
@@ -259,7 +288,7 @@ def main() -> int:
             json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
         )
 
-    print(json.dumps(summary, indent=2, ensure_ascii=True))
+    print(json.dumps(summary, indent=2, ensure_ascii=True), flush=True)
     return 0 if summary["result"] == "passed" else 1
 
 
