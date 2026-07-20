@@ -6,7 +6,7 @@ from collections.abc import Callable
 from importlib import import_module
 from typing import Protocol, cast
 
-from jolt import capture_runtime_enhancements
+from jolt import linkedin_capture
 
 
 class _ConsoleReader(Protocol):
@@ -36,7 +36,7 @@ def install_console_input() -> Callable[[str], str] | None:
 
 def main() -> int:
     install_console_input()
-    return capture_runtime_enhancements.main()
+    return linkedin_capture.main()
 
 
 if __name__ == "__main__":
