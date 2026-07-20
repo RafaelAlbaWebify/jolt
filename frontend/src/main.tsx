@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { Workbench } from "./Workbench";
 import "./styles.css";
+import "./CompactOpportunityWorkspace.css";
 
 const rootElement = document.getElementById("root");
 
