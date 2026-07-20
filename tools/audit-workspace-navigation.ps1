@@ -60,13 +60,14 @@ try {
         throw "Audit summary was not created: $AuditJson"
     }
 
-    $Screenshots = Get-ChildItem -LiteralPath (Join-Path $Staging "workspace-screenshots") -Filter "*.png" -File
+    $Screenshots = @(Get-ChildItem -LiteralPath (Join-Path $Staging "workspace-screenshots") -Filter "*.png" -File)
     if ($Screenshots.Count -ne 3) {
         throw "Expected exactly three workspace screenshots, found $($Screenshots.Count)."
     }
 
     Write-Host "[workspace-audit] Packaging only the validated audit directory."
-    Compress-Archive -LiteralPath (Join-Path $Staging "*") -DestinationPath $OutputZip -Force
+    $PackageContents = Join-Path $Staging "*"
+    Compress-Archive -Path $PackageContents -DestinationPath $OutputZip -Force
     if (-not (Test-Path -LiteralPath $OutputZip -PathType Leaf)) {
         throw "Audit ZIP was not created: $OutputZip"
     }
