@@ -101,8 +101,7 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
             browser.close()
 
     findings = [
-        {"severity": "error", "message": f"Browser page error: {error}"}
-        for error in page_errors
+        {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
     ]
     for view in views:
         if not view["heading_visible"]:
