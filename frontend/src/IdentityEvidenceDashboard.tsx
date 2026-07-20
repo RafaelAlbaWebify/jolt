@@ -29,10 +29,15 @@ type Props = { apiBase: string };
 
 export function IdentityEvidenceDashboard({ apiBase }: Props) {
   const [rows, setRows] = useState<Array<{ opportunity: Opportunity; evidence: IdentityEvidence }>>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
+      setLoading(true);
+      setError("");
       const opportunitiesResponse = await fetch(`${apiBase}/api/opportunities`);
       if (!opportunitiesResponse.ok) throw new Error("Unable to load identity evidence.");
       const opportunities = (await opportunitiesResponse.json()) as Opportunity[];
@@ -43,17 +48,34 @@ export function IdentityEvidenceDashboard({ apiBase }: Props) {
         if (!response.ok) throw new Error(`Unable to load identity evidence for ${opportunity.title}.`);
         return { opportunity, evidence: (await response.json()) as IdentityEvidence };
       }));
-      setRows(loaded);
+      if (!cancelled) setRows(loaded);
     }
-    load().catch((caught) => setError(caught instanceof Error ? caught.message : "Identity evidence failed."));
+
+    load()
+      .catch((caught) => {
+        if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : "Identity evidence failed.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [apiBase]);
 
   return (
     <section className="panel shell" aria-labelledby="identity-evidence-heading">
       <h2 id="identity-evidence-heading">Duplicate and source identity evidence</h2>
       <p>JOLT keeps every captured source document while using one canonical opportunity record. No records are merged or deleted here.</p>
+      {loading && <p role="status">Loading identity evidence…</p>}
       {error && <p className="error" role="alert">{error}</p>}
-      {rows.length === 0 && !error ? <p>No opportunity identity evidence is available.</p> : (
+      {!loading && !error && (
+        <p role="status">Identity evidence loaded for {rows.length} opportunities.</p>
+      )}
+      {!loading && rows.length === 0 && !error ? <p>No opportunity identity evidence is available.</p> : (
         <div className="queue opportunity-grid">
           {rows.map(({ opportunity, evidence }) => (
             <article className="opportunity-card" key={opportunity.posting_id}>
