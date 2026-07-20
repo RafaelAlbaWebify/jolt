@@ -55,9 +55,14 @@ type IntakeResult = {
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const PAGE_SIZE = 20;
 const REVIEW_CHOICES: ReviewChoice[] = [
   "pursue", "consider", "defer", "reject", "needs_more_information",
 ];
+
+function decisionLabel(value: ReviewChoice | null) {
+  return value ? value.replaceAll("_", " ") : "Pending review";
+}
 
 export function App() {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -65,6 +70,7 @@ export function App() {
   const [intake, setIntake] = useState<IntakeResult | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
+  const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -94,6 +100,13 @@ export function App() {
     pursue: opportunities.filter((item) => item.review_decision === "pursue").length,
     active: opportunities.filter((item) => item.application_id && !item.outcome_type).length,
   }), [opportunities]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleOpportunities.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedOpportunities = visibleOpportunities.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   async function apiAction(url: string, body: object) {
     setBusy(true);
@@ -140,6 +153,11 @@ export function App() {
     });
   }
 
+  function changeFilter(filter: QueueFilter) {
+    setQueueFilter(filter);
+    setPage(1);
+  }
+
   return (
     <main className="shell">
       <header className="hero">
@@ -150,37 +168,42 @@ export function App() {
 
       {error && <p className="error" role="alert">{error}</p>}
 
-      <section className="panel" aria-labelledby="export-heading">
-        <h2 id="export-heading">Analysis and feedback</h2>
-        <p>Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.</p>
-        <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
-          Download analysis pack
-        </a>
-      </section>
+      <details className="panel operations-tools">
+        <summary>Intake, captures, and exports</summary>
+        <div className="operations-grid">
+          <section aria-labelledby="export-heading">
+            <h2 id="export-heading">Analysis and feedback</h2>
+            <p>Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.</p>
+            <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
+              Download analysis pack
+            </a>
+          </section>
 
-      <CaptureHistory apiBase={API_BASE} onError={setError} />
+          <section aria-labelledby="intake-heading">
+            <h2 id="intake-heading">Manual opportunity intake</h2>
+            <form onSubmit={submitIntake}>
+              <label>
+                Source URL <span>(optional)</span>
+                <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" />
+              </label>
+              <label>
+                Job text
+                <textarea
+                  value={rawText}
+                  onChange={(event) => setRawText(event.target.value)}
+                  required rows={8}
+                  placeholder={"Job title\nCompany\nLocation: Remote Spain\nFull description..."}
+                />
+              </label>
+              <button disabled={busy || !rawText.trim()} type="submit">
+                {busy ? "Processing…" : "Evaluate opportunity"}
+              </button>
+            </form>
+          </section>
+        </div>
 
-      <section className="panel" aria-labelledby="intake-heading">
-        <h2 id="intake-heading">Manual opportunity intake</h2>
-        <form onSubmit={submitIntake}>
-          <label>
-            Source URL <span>(optional)</span>
-            <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" />
-          </label>
-          <label>
-            Job text
-            <textarea
-              value={rawText}
-              onChange={(event) => setRawText(event.target.value)}
-              required rows={10}
-              placeholder={"Job title\nCompany\nLocation: Remote Spain\nFull description..."}
-            />
-          </label>
-          <button disabled={busy || !rawText.trim()} type="submit">
-            {busy ? "Processing…" : "Evaluate opportunity"}
-          </button>
-        </form>
-      </section>
+        <CaptureHistory apiBase={API_BASE} onError={setError} />
+      </details>
 
       {intake && (
         <section className="panel result" aria-labelledby="result-heading">
@@ -204,11 +227,11 @@ export function App() {
         </section>
       )}
 
-      <section className="panel" aria-labelledby="queue-heading">
-        <div className="section-heading">
+      <section className="panel opportunity-workspace" aria-labelledby="queue-heading">
+        <div className="section-heading opportunity-toolbar">
           <div>
             <h2 id="queue-heading">Opportunity review workbench</h2>
-            <p>JOLT proposes an evidence-backed decision. You confirm or override it before any application starts.</p>
+            <p>Review the highest-value opportunities first. Open details only when evidence is needed.</p>
           </div>
           <button type="button" className="secondary" disabled={busy} onClick={() => refreshOpportunities()}>
             Refresh queue
@@ -220,7 +243,7 @@ export function App() {
             <button
               type="button"
               className={queueFilter === filter ? "filter-active" : "secondary"}
-              onClick={() => setQueueFilter(filter)}
+              onClick={() => changeFilter(filter)}
               key={filter}
             >
               {filter} ({counts[filter]})
@@ -228,93 +251,128 @@ export function App() {
           ))}
         </div>
 
+        <div className="queue-summary">
+          <span>
+            Showing {pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
+            {"–"}{Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of {visibleOpportunities.length}
+          </span>
+          <span>Page {currentPage} of {pageCount}</span>
+        </div>
+
         {visibleOpportunities.length === 0 ? <p>No opportunities match this view.</p> : (
-          <div className="queue opportunity-grid">
-            {visibleOpportunities.map((opportunity) => (
-              <article className="opportunity-card" key={opportunity.posting_id}>
-                <div className="opportunity-main">
-                  <div className="opportunity-title-row">
-                    <div>
-                      <h3>{opportunity.title || "Untitled opportunity"}</h3>
-                      <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
-                    </div>
-                    <div className={`score score-${opportunity.recommendation}`}>
-                      <strong>{opportunity.ranking_score}</strong>
-                      <span>{opportunity.recommendation}</span>
-                    </div>
+          <div className="opportunity-list">
+            {pagedOpportunities.map((opportunity) => (
+              <article className="opportunity-row" key={opportunity.posting_id}>
+                <div className="opportunity-row-primary">
+                  <div className="opportunity-row-title">
+                    <h3>{opportunity.title || "Untitled opportunity"}</h3>
+                    <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
                   </div>
 
-                  <p className="confidence">{opportunity.confidence} confidence · {opportunity.engine_version}</p>
-                  <AutomatedReview review={opportunity} />
-                  <ApplicationReadiness readiness={opportunity.readiness} />
-                  <ReadinessHistory
-                    apiBase={API_BASE}
-                    postingId={opportunity.posting_id}
-                    title={opportunity.title || "Untitled opportunity"}
-                    disabled={busy}
-                    onRefreshed={refreshOpportunities}
-                    onError={setError}
-                  />
+                  <div className={`score score-${opportunity.recommendation}`}>
+                    <strong>{opportunity.ranking_score}</strong>
+                    <span>{opportunity.recommendation}</span>
+                  </div>
 
-                  <div className="card-links">
-                    {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
-                    <a
-                      href={`${API_BASE}/api/opportunities/${opportunity.posting_id}/preparation-pack`}
-                      download={`JOLT_PREPARATION_${opportunity.posting_id}.zip`}
+                  <div className="opportunity-state">
+                    <strong>{opportunity.outcome_type ?? opportunity.application_status ?? decisionLabel(opportunity.review_decision)}</strong>
+                    <span>{opportunity.confidence} confidence</span>
+                  </div>
+
+                  <label className="decision-control">
+                    <span>Decision</span>
+                    <select
+                      aria-label={`Decision for ${opportunity.title}`}
+                      value={opportunity.review_decision ?? ""}
+                      disabled={busy}
+                      onChange={(event) => {
+                        const decision = event.target.value as ReviewChoice;
+                        if (decision) void reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, decision);
+                      }}
                     >
-                      Download preparation pack
-                    </a>
-                    <span>Profile {opportunity.profile_version_id}</span>
-                  </div>
+                      <option value="">Pending review</option>
+                      {REVIEW_CHOICES.map((choice) => (
+                        <option value={choice} key={choice}>{choice.replaceAll("_", " ")}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
 
-                  <div className="review-actions" aria-label={`Review ${opportunity.title}`}>
-                    {REVIEW_CHOICES.map((choice) => (
-                      <button
-                        type="button"
-                        className={opportunity.review_decision === choice ? "decision-active" : "secondary"}
-                        disabled={busy}
-                        onClick={() => reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, choice)}
-                        key={choice}
+                <details className="opportunity-details">
+                  <summary>Inspect evidence and workflow</summary>
+                  <div className="opportunity-detail-grid">
+                    <AutomatedReview review={opportunity} />
+                    <ApplicationReadiness readiness={opportunity.readiness} />
+                    <ReadinessHistory
+                      apiBase={API_BASE}
+                      postingId={opportunity.posting_id}
+                      title={opportunity.title || "Untitled opportunity"}
+                      disabled={busy}
+                      onRefreshed={refreshOpportunities}
+                      onError={setError}
+                    />
+
+                    <div className="card-links">
+                      {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
+                      <a
+                        href={`${API_BASE}/api/opportunities/${opportunity.posting_id}/preparation-pack`}
+                        download={`JOLT_PREPARATION_${opportunity.posting_id}.zip`}
                       >
-                        {choice.replaceAll("_", " ")}
-                      </button>
-                    ))}
-                  </div>
-
-                  {opportunity.review_decision === "pursue" && !opportunity.application_id && (
-                    <button disabled={busy} type="button" onClick={() => apiAction(
-                      `/api/opportunities/${opportunity.posting_id}/applications`, {}
-                    )}>Start application</button>
-                  )}
-
-                  {opportunity.application_id && !opportunity.outcome_type && (
-                    <div className="review-actions application-actions" aria-label={`Update ${opportunity.title}`}>
-                      {opportunity.application_status === "preparing" && (
-                        <button disabled={busy} type="button" onClick={() => apiAction(
-                          `/api/applications/${opportunity.application_id}/transitions`, { status: "submitted" }
-                        )}>Mark submitted</button>
-                      )}
-                      {["submitted", "acknowledged"].includes(opportunity.application_status ?? "") && (
-                        <button disabled={busy} type="button" onClick={() => apiAction(
-                          `/api/applications/${opportunity.application_id}/transitions`, { status: "recruiter_screen" }
-                        )}>Recruiter screen</button>
-                      )}
-                      <button disabled={busy} type="button" className="secondary" onClick={() => apiAction(
-                        `/api/applications/${opportunity.application_id}/outcomes`,
-                        { outcome_type: "rejected_by_employer" }
-                      )}>Record employer rejection</button>
+                        Download preparation pack
+                      </a>
+                      <span>Profile {opportunity.profile_version_id}</span>
                     </div>
-                  )}
-                </div>
 
-                <div className="queue-status">
-                  <strong>{opportunity.outcome_type ?? opportunity.application_status ?? opportunity.review_decision ?? "pending review"}</strong>
-                  <span>human decision</span>
-                </div>
+                    {opportunity.review_decision === "pursue" && !opportunity.application_id && (
+                      <button disabled={busy} type="button" onClick={() => apiAction(
+                        `/api/opportunities/${opportunity.posting_id}/applications`, {}
+                      )}>Start application</button>
+                    )}
+
+                    {opportunity.application_id && !opportunity.outcome_type && (
+                      <div className="review-actions application-actions" aria-label={`Update ${opportunity.title}`}>
+                        {opportunity.application_status === "preparing" && (
+                          <button disabled={busy} type="button" onClick={() => apiAction(
+                            `/api/applications/${opportunity.application_id}/transitions`, { status: "submitted" }
+                          )}>Mark submitted</button>
+                        )}
+                        {["submitted", "acknowledged"].includes(opportunity.application_status ?? "") && (
+                          <button disabled={busy} type="button" onClick={() => apiAction(
+                            `/api/applications/${opportunity.application_id}/transitions`, { status: "recruiter_screen" }
+                          )}>Recruiter screen</button>
+                        )}
+                        <button disabled={busy} type="button" className="secondary" onClick={() => apiAction(
+                          `/api/applications/${opportunity.application_id}/outcomes`,
+                          { outcome_type: "rejected_by_employer" }
+                        )}>Record employer rejection</button>
+                      </div>
+                    )}
+                  </div>
+                </details>
               </article>
             ))}
           </div>
         )}
+
+        <div className="pagination" aria-label="Opportunity pages">
+          <button
+            type="button"
+            className="secondary"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+          >
+            Previous
+          </button>
+          <span>Page {currentPage} of {pageCount}</span>
+          <button
+            type="button"
+            className="secondary"
+            disabled={currentPage >= pageCount}
+            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+          >
+            Next
+          </button>
+        </div>
       </section>
     </main>
   );
