@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
@@ -9,6 +10,7 @@ from typing import TypedDict
 from playwright.sync_api import Page, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
+API_URL = "http://127.0.0.1:8000"
 MAX_SCROLL_STEPS = 200
 VIEW_SPECS = (
     ("opportunities", "Opportunities", "Opportunity review workbench"),
@@ -25,6 +27,11 @@ class ViewAudit(TypedDict):
     visible_button_count: int
     scroll_position_count: int
     screenshot: str
+
+
+def _get_json(url: str) -> object:
+    with urllib.request.urlopen(url, timeout=30) as response:  # noqa: S310
+        return json.loads(response.read().decode("utf-8"))
 
 
 def _visible_button_count(page: Page) -> int:
@@ -58,10 +65,19 @@ def _review_scroll_positions(page: Page) -> list[int]:
     return positions
 
 
-def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
+def run(
+    output_dir: Path,
+    app_url: str = APP_URL,
+    api_url: str = API_URL,
+) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
     screenshots = output_dir / "workspace-screenshots"
     screenshots.mkdir(exist_ok=True)
+
+    opportunities = _get_json(f"{api_url.rstrip('/')}/api/opportunities")
+    if not isinstance(opportunities, list):
+        raise RuntimeError("Opportunity API did not return a list.")
+    opportunity_count = len(opportunities)
 
     page_errors: list[str] = []
     console_messages: list[str] = []
@@ -123,14 +139,34 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
                 }
             )
 
+    measurement_valid = opportunity_count > 0
+    if not measurement_valid:
+        findings.append(
+            {
+                "severity": "warning",
+                "message": (
+                    "The opportunity dataset is empty. Navigation rendering is valid, but control "
+                    "and scroll counts are not valid populated before/after redesign evidence."
+                ),
+            }
+        )
+
+    has_errors = any(item["severity"] == "error" for item in findings)
     summary: dict[str, object] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "app_url": app_url,
+        "api_url": api_url,
         "viewport": {"width": 1440, "height": 1000},
-        "result": "failed" if findings else "passed",
+        "result": "failed" if has_errors else "passed",
+        "opportunity_count": opportunity_count,
+        "measurement_valid": measurement_valid,
         "views": views,
-        "total_visible_buttons_across_views": sum(view["visible_button_count"] for view in views),
-        "total_scroll_positions_across_views": sum(view["scroll_position_count"] for view in views),
+        "total_visible_buttons_across_views": sum(
+            view["visible_button_count"] for view in views
+        ),
+        "total_scroll_positions_across_views": sum(
+            view["scroll_position_count"] for view in views
+        ),
         "console_messages": console_messages,
         "page_errors": page_errors,
         "findings": findings,
@@ -146,14 +182,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit JOLT workspace navigation views.")
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--app-url", default=APP_URL)
+    parser.add_argument("--api-url", default=API_URL)
     args = parser.parse_args()
 
     try:
-        summary = run(args.output_dir, args.app_url)
+        summary = run(args.output_dir, args.app_url, args.api_url)
     except Exception as exc:  # noqa: BLE001
         summary = {
             "generated_at": datetime.now(UTC).isoformat(),
             "app_url": args.app_url,
+            "api_url": args.api_url,
             "result": "failed",
             "views": [],
             "console_messages": [],
