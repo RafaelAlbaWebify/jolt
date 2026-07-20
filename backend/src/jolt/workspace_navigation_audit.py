@@ -24,6 +24,7 @@ class ViewAudit(TypedDict):
     label: str
     expected_heading: str
     heading_visible: bool
+    data_ready: bool
     visible_button_count: int
     scroll_position_count: int
     screenshot: str
@@ -65,6 +66,36 @@ def _review_scroll_positions(page: Page) -> list[int]:
     return positions
 
 
+def _wait_for_view_data(
+    page: Page,
+    *,
+    view_id: str,
+    opportunity_count: int,
+    first_title: str,
+    application_candidate_count: int,
+    first_application_title: str,
+) -> bool:
+    if view_id == "opportunities":
+        expected_text = f"all ({opportunity_count})"
+    elif view_id == "applications":
+        expected_text = (
+            first_application_title
+            if application_candidate_count > 0
+            else "No pursued or active applications are available."
+        )
+    else:
+        expected_text = (
+            first_title if opportunity_count > 0 else "No opportunity identity evidence is available."
+        )
+
+    page.wait_for_function(
+        "expectedText => (document.body?.innerText || '').includes(expectedText)",
+        arg=expected_text,
+        timeout=60_000,
+    )
+    return expected_text in page.locator("body").inner_text()
+
+
 def run(
     output_dir: Path,
     app_url: str = APP_URL,
@@ -78,6 +109,20 @@ def run(
     if not isinstance(opportunities, list):
         raise RuntimeError("Opportunity API did not return a list.")
     opportunity_count = len(opportunities)
+
+    first_title = ""
+    if opportunities and isinstance(opportunities[0], dict):
+        first_title = str(opportunities[0].get("title") or "").strip()
+
+    application_candidates = [
+        item
+        for item in opportunities
+        if isinstance(item, dict)
+        and (item.get("review_decision") == "pursue" or bool(item.get("application_id")))
+    ]
+    first_application_title = ""
+    if application_candidates:
+        first_application_title = str(application_candidates[0].get("title") or "").strip()
 
     page_errors: list[str] = []
     console_messages: list[str] = []
@@ -104,21 +149,27 @@ def run(
                 button.click(timeout=5_000)
                 heading = page.get_by_role("heading", name=expected_heading, exact=True)
                 heading.wait_for(state="visible", timeout=30_000)
+                data_ready = _wait_for_view_data(
+                    page,
+                    view_id=view_id,
+                    opportunity_count=opportunity_count,
+                    first_title=first_title,
+                    application_candidate_count=len(application_candidates),
+                    first_application_title=first_application_title,
+                )
                 page.wait_for_timeout(300)
 
                 positions = _review_scroll_positions(page)
                 visible_buttons = _visible_button_count(page)
                 screenshot_name = f"workspace-{view_id}.png"
-                page.screenshot(
-                    path=screenshots / screenshot_name,
-                    full_page=True,
-                )
+                page.screenshot(path=screenshots / screenshot_name, full_page=True)
                 views.append(
                     {
                         "view": view_id,
                         "label": label,
                         "expected_heading": expected_heading,
                         "heading_visible": heading.is_visible(),
+                        "data_ready": data_ready,
                         "visible_button_count": visible_buttons,
                         "scroll_position_count": len(positions),
                         "screenshot": f"workspace-screenshots/{screenshot_name}",
@@ -138,9 +189,16 @@ def run(
                     "message": f"Workspace heading was not visible for {view['view']}.",
                 }
             )
+        if not view["data_ready"]:
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"Workspace data did not finish loading for {view['view']}.",
+                }
+            )
 
-    measurement_valid = opportunity_count > 0
-    if not measurement_valid:
+    measurement_valid = opportunity_count > 0 and all(view["data_ready"] for view in views)
+    if opportunity_count < 1:
         findings.append(
             {
                 "severity": "warning",
@@ -159,6 +217,7 @@ def run(
         "viewport": {"width": 1440, "height": 1000},
         "result": "failed" if has_errors else "passed",
         "opportunity_count": opportunity_count,
+        "application_candidate_count": len(application_candidates),
         "measurement_valid": measurement_valid,
         "views": views,
         "total_visible_buttons_across_views": sum(
@@ -172,8 +231,7 @@ def run(
         "findings": findings,
     }
     (output_dir / "workspace-navigation-audit.json").write_text(
-        json.dumps(summary, indent=2, ensure_ascii=True),
-        encoding="utf-8",
+        json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
     )
     return summary
 
@@ -200,8 +258,7 @@ def main() -> int:
         }
         args.output_dir.mkdir(parents=True, exist_ok=True)
         (args.output_dir / "workspace-navigation-audit.json").write_text(
-            json.dumps(summary, indent=2, ensure_ascii=True),
-            encoding="utf-8",
+            json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
         )
 
     print(json.dumps(summary, indent=2, ensure_ascii=True))
