@@ -168,6 +168,7 @@ jobs:
           $stop = Get-Content tools/stop-jolt.ps1 -Raw
           $validate = Get-Content tools/validate-jolt.ps1 -Raw
           $audit = Get-Content tools/audit-jolt.ps1 -Raw
+          $reviewAudit = Get-Content backend/src/jolt/review_audit.py -Raw
           if ($launcher -notmatch 'JOLT_REPO_PATH') { throw 'Launcher must support path-independent repository discovery.' }
           if (-not $launcher.Contains('Documents\GitHub\jolt')) { throw 'Launcher must check the standard repository path.' }
           if ($launcher -notmatch '"audit"') { throw 'Launcher must expose the automated audit action.' }
@@ -177,4 +178,4 @@ jobs:
           if ($stop -notmatch 'services.json') { throw 'Stop command must use recorded state.' }
           if ($validate -notmatch 'JOLT_WINDOWS_VALIDATION_') { throw 'Validation must create a stable ZIP name.' }
           if ($audit -notmatch 'JOLT_REVIEW_AUDIT_') { throw 'Audit must create a stable ZIP name.' }
-          if ($audit -notmatch 'workbench-full.png') { throw 'Audit must include a full workbench screenshot.' }
+          if ($reviewAudit -notmatch 'workbench-full.png') { throw 'Review audit must include a full workbench screenshot.' }
