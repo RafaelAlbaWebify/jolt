@@ -3,6 +3,7 @@ import { useState } from "react";
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { IdentityEvidenceDashboard } from "./IdentityEvidenceDashboard";
+import "./Workbench.css";
 
 type WorkbenchView = "opportunities" | "applications" | "evidence";
 
