@@ -85,7 +85,9 @@ def _wait_for_view_data(
         )
     else:
         expected_text = (
-            first_title if opportunity_count > 0 else "No opportunity identity evidence is available."
+            first_title
+            if opportunity_count > 0
+            else "No opportunity identity evidence is available."
         )
 
     page.wait_for_function(
@@ -220,12 +222,8 @@ def run(
         "application_candidate_count": len(application_candidates),
         "measurement_valid": measurement_valid,
         "views": views,
-        "total_visible_buttons_across_views": sum(
-            view["visible_button_count"] for view in views
-        ),
-        "total_scroll_positions_across_views": sum(
-            view["scroll_position_count"] for view in views
-        ),
+        "total_visible_buttons_across_views": sum(view["visible_button_count"] for view in views),
+        "total_scroll_positions_across_views": sum(view["scroll_position_count"] for view in views),
         "console_messages": console_messages,
         "page_errors": page_errors,
         "findings": findings,
