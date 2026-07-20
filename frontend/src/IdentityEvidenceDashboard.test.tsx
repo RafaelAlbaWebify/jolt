@@ -16,7 +16,7 @@ describe("IdentityEvidenceDashboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows canonical and duplicate source evidence without raw payloads", async () => {
+  it("shows a loading state before canonical and duplicate source evidence", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/opportunities")) {
@@ -59,7 +59,9 @@ describe("IdentityEvidenceDashboard", () => {
 
     render(<IdentityEvidenceDashboard apiBase="http://127.0.0.1:8000" />);
 
+    expect(screen.getByRole("status")).toHaveTextContent("Loading identity evidence");
     expect(await screen.findByRole("heading", { name: "Application Support Engineer" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Identity evidence loaded for 1 opportunities.");
     expect(screen.getByText("2 source documents · 1 confirmed duplicate")).toBeInTheDocument();
     expect(screen.getByText("duplicate evidence")).toBeInTheDocument();
     expect(screen.getByText("Inspect identity evidence")).toBeInTheDocument();
