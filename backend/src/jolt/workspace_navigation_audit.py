@@ -4,6 +4,7 @@ import argparse
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypedDict
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -14,6 +15,16 @@ VIEW_SPECS = (
     ("applications", "Applications", "Application management"),
     ("evidence", "Evidence", "Duplicate and source identity evidence"),
 )
+
+
+class ViewAudit(TypedDict):
+    view: str
+    label: str
+    expected_heading: str
+    heading_visible: bool
+    visible_button_count: int
+    scroll_position_count: int
+    screenshot: str
 
 
 def _visible_button_count(page: Page) -> int:
@@ -54,7 +65,7 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
 
     page_errors: list[str] = []
     console_messages: list[str] = []
-    views: list[dict[str, object]] = []
+    views: list[ViewAudit] = []
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
@@ -119,10 +130,10 @@ def run(output_dir: Path, app_url: str = APP_URL) -> dict[str, object]:
         "result": "failed" if findings else "passed",
         "views": views,
         "total_visible_buttons_across_views": sum(
-            int(view["visible_button_count"]) for view in views
+            view["visible_button_count"] for view in views
         ),
         "total_scroll_positions_across_views": sum(
-            int(view["scroll_position_count"]) for view in views
+            view["scroll_position_count"] for view in views
         ),
         "console_messages": console_messages,
         "page_errors": page_errors,
