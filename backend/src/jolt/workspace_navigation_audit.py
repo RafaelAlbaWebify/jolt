@@ -126,9 +126,7 @@ def run(
     ]
     first_application_title = ""
     if application_candidates:
-        first_application_title = str(
-            application_candidates[0].get("title") or ""
-        ).strip()
+        first_application_title = str(application_candidates[0].get("title") or "").strip()
 
     page_errors: list[str] = []
     console_messages: list[str] = []
@@ -202,8 +200,7 @@ def run(
             browser.close()
 
     findings = [
-        {"severity": "error", "message": f"Browser page error: {error}"}
-        for error in page_errors
+        {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
     ]
     for view in views:
         if not view["heading_visible"]:
@@ -221,9 +218,7 @@ def run(
                 }
             )
 
-    measurement_valid = opportunity_count > 0 and all(
-        view["data_ready"] for view in views
-    )
+    measurement_valid = opportunity_count > 0 and all(view["data_ready"] for view in views)
     if opportunity_count < 1:
         findings.append(
             {
@@ -246,20 +241,14 @@ def run(
         "application_candidate_count": len(application_candidates),
         "measurement_valid": measurement_valid,
         "views": views,
-        "total_visible_buttons_across_views": sum(
-            view["visible_button_count"] for view in views
-        ),
-        "total_scroll_positions_across_views": sum(
-            view["scroll_position_count"] for view in views
-        ),
+        "total_visible_buttons_across_views": sum(view["visible_button_count"] for view in views),
+        "total_scroll_positions_across_views": sum(view["scroll_position_count"] for view in views),
         "console_messages": console_messages,
         "page_errors": page_errors,
         "findings": findings,
     }
     summary_path = output_dir / "workspace-navigation-audit.json"
-    summary_path.write_text(
-        json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
-    )
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8")
     _progress(f"Audit summary written to {summary_path}.")
     return summary
 
@@ -283,9 +272,7 @@ def main() -> int:
             "views": [],
             "console_messages": [],
             "page_errors": [],
-            "findings": [
-                {"severity": "error", "message": f"Workspace audit crashed: {exc}"}
-            ],
+            "findings": [{"severity": "error", "message": f"Workspace audit crashed: {exc}"}],
         }
         args.output_dir.mkdir(parents=True, exist_ok=True)
         (args.output_dir / "workspace-navigation-audit.json").write_text(
