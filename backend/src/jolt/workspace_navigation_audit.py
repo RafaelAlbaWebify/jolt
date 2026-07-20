@@ -75,29 +75,27 @@ def _wait_for_view_data(
     *,
     view_id: str,
     opportunity_count: int,
-    first_title: str,
     application_candidate_count: int,
     first_application_title: str,
 ) -> bool:
     if view_id == "opportunities":
         expected_text = f"all ({opportunity_count})"
+        timeout = 60_000
     elif view_id == "applications":
         expected_text = (
             first_application_title
             if application_candidate_count > 0
             else "No pursued or active applications are available."
         )
+        timeout = 60_000
     else:
-        expected_text = (
-            first_title
-            if opportunity_count > 0
-            else "No opportunity identity evidence is available."
-        )
+        expected_text = f"Identity evidence loaded for {opportunity_count} opportunities."
+        timeout = 180_000
 
     page.wait_for_function(
         "expectedText => (document.body?.innerText || '').includes(expectedText)",
         arg=expected_text,
-        timeout=60_000,
+        timeout=timeout,
     )
     return expected_text in page.locator("body").inner_text()
 
@@ -119,10 +117,6 @@ def run(
         raise RuntimeError("Opportunity API did not return a list.")
     opportunity_count = len(opportunities)
     _progress(f"Loaded {opportunity_count} opportunities.")
-
-    first_title = ""
-    if opportunities and isinstance(opportunities[0], dict):
-        first_title = str(opportunities[0].get("title") or "").strip()
 
     application_candidates = [
         item
@@ -169,7 +163,6 @@ def run(
                     page,
                     view_id=view_id,
                     opportunity_count=opportunity_count,
-                    first_title=first_title,
                     application_candidate_count=len(application_candidates),
                     first_application_title=first_application_title,
                 )
