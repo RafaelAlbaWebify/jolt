@@ -35,6 +35,16 @@
   color: #667085;
 }
 
+.workspace-view-opportunities > .shell {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.workspace-view-opportunities > .shell > .hero {
+  display: none;
+}
+
 .workspace-view > .panel:first-child,
 .workspace-view > section:first-child {
   margin-top: 0;
