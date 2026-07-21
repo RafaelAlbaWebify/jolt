@@ -36,9 +36,7 @@ def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
     ensure_automated_reviews(session)
 
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
-    source_documents = {
-        item.id: item for item in session.scalars(select(SourceDocument)).all()
-    }
+    source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
 
     latest_evaluations: dict[str, Evaluation] = {}
     for evaluation in session.scalars(
@@ -77,9 +75,7 @@ def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
                 posting_id=posting.id,
                 evaluation_id=evaluation.id,
                 source_url=(
-                    source_document.source_url
-                    if source_document
-                    else posting.canonical_url
+                    source_document.source_url if source_document else posting.canonical_url
                 ),
                 title=posting.title,
                 company=posting.company,
