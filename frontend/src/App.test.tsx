@@ -120,7 +120,7 @@ describe("App", () => {
     expect(await screen.findByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("pursue");
   });
 
-  it("shows compact opportunity state and expands detailed evidence on demand", async () => {
+  it("opens detailed evidence in a focused opportunity inspector", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
@@ -132,10 +132,11 @@ describe("App", () => {
 
     expect(await screen.findByText("medium confidence")).toBeInTheDocument();
     expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
-    expect(screen.getByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("");
+    expect(screen.queryByText("Automated proposed decision")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Inspect evidence and workflow"));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
 
+    expect(screen.getByRole("dialog", { name: opportunity.title })).toBeInTheDocument();
     expect(screen.getByText("Automated proposed decision")).toBeInTheDocument();
     expect(screen.getByText(opportunity.fit_summary)).toBeInTheDocument();
     expect(screen.getByText(opportunity.strengths[0])).toBeInTheDocument();
@@ -152,7 +153,46 @@ describe("App", () => {
       "href",
       opportunity.source_url,
     );
-    expect(screen.getByRole("button", { name: "pending (1)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("searches and sorts opportunities without changing backend state", async () => {
+    const secondOpportunity = {
+      ...opportunity,
+      posting_id: "posting-2",
+      evaluation_id: "evaluation-2",
+      title: "Cloud Operations Analyst",
+      company: "Beta Cloud",
+      location: "Madrid",
+      ranking_score: 95,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/captures")) return jsonResponse([]);
+      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity, secondOpportunity]);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Cloud Operations Analyst")).toBeInTheDocument();
+    const initialHeadings = screen.getAllByRole("heading", { level: 3 });
+    expect(initialHeadings[0]).toHaveTextContent("Cloud Operations Analyst");
+
+    fireEvent.change(screen.getByLabelText("Search opportunities"), {
+      target: { value: "Example Systems" },
+    });
+    expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
+    expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title_asc" } });
+    const sortedHeadings = screen.getAllByRole("heading", { level: 3 });
+    expect(sortedHeadings[0]).toHaveTextContent("Application Support Engineer");
   });
 
   it("loads capture history and exposes rejected evidence", async () => {
