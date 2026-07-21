@@ -10,20 +10,15 @@ FIRST_URL = (
     "?eBP=tracking-one&refId=abc&trackingId=first"
 )
 SECOND_URL = (
-    "https://www.linkedin.com/jobs/view/4434482145/"
-    "?eBP=tracking-two&refId=xyz&trackingId=second"
+    "https://www.linkedin.com/jobs/view/4434482145/?eBP=tracking-two&refId=xyz&trackingId=second"
 )
 
 
 def test_linkedin_job_identity_ignores_tracking_parameters() -> None:
     assert linkedin_job_id(FIRST_URL) == "4434482145"
     assert linkedin_job_id(SECOND_URL) == "4434482145"
-    assert canonicalize_source_url(FIRST_URL) == (
-        "https://www.linkedin.com/jobs/view/4434482145"
-    )
-    assert canonicalize_source_url(SECOND_URL) == (
-        "https://www.linkedin.com/jobs/view/4434482145"
-    )
+    assert canonicalize_source_url(FIRST_URL) == ("https://www.linkedin.com/jobs/view/4434482145")
+    assert canonicalize_source_url(SECOND_URL) == ("https://www.linkedin.com/jobs/view/4434482145")
 
 
 def test_tracking_variants_reuse_posting_and_preserve_source_evidence(
