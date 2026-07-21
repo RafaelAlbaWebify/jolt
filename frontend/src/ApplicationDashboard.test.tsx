@@ -135,4 +135,52 @@ describe("ApplicationDashboard", () => {
 
     expect(await screen.findByText("Application workflow · preparing")).toBeInTheDocument();
   });
+
+  it("summarises, filters, and searches the application pipeline", async () => {
+    const ready = {
+      ...opportunity,
+      posting_id: "posting-2",
+      title: "Cloud Support Engineer",
+      company: "Beta Cloud",
+      application_id: null,
+      application_status: null,
+    };
+    const closed = {
+      ...opportunity,
+      posting_id: "posting-3",
+      title: "Production Support Analyst",
+      company: "Gamma Systems",
+      application_id: "application-3",
+      application_status: "closed",
+      outcome_type: "rejected_by_employer",
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity, ready, closed]);
+      if (url.endsWith("/api/applications/application-1")) return jsonResponse(application);
+      if (url.endsWith("/api/applications/application-3")) {
+        return jsonResponse({ ...application, application_id: "application-3", status: "closed", outcome_type: "rejected_by_employer" });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+
+    expect(await screen.findByText("Cloud Support Engineer")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ready (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "active (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "closed (1)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "closed (1)" }));
+    expect(screen.getByText("Production Support Analyst")).toBeInTheDocument();
+    expect(screen.queryByText("Cloud Support Engineer")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "all (3)" }));
+    fireEvent.change(screen.getByLabelText("Search applications"), {
+      target: { value: "Beta Cloud" },
+    });
+    expect(screen.getByText("Cloud Support Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("Application Support Engineer")).not.toBeInTheDocument();
+  });
 });
