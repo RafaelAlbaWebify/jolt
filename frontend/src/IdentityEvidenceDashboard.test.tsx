@@ -36,27 +36,31 @@ describe("IdentityEvidenceDashboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("summarises, filters, searches, and inspects identity evidence", async () => {
-    const opportunities = [
+  it("loads once, then summarises, filters, searches, and inspects identity evidence", async () => {
+    const rows = [
       {
-        posting_id: "posting-1",
-        title: "Application Support Engineer",
-        company: "Example Systems",
-        location: "Remote Spain",
+        opportunity: {
+          posting_id: "posting-1",
+          title: "Application Support Engineer",
+          company: "Example Systems",
+          location: "Remote Spain",
+        },
+        evidence: evidence("posting-1", 1),
       },
       {
-        posting_id: "posting-2",
-        title: "Cloud Support Engineer",
-        company: "Beta Cloud",
-        location: "Madrid",
+        opportunity: {
+          posting_id: "posting-2",
+          title: "Cloud Support Engineer",
+          company: "Beta Cloud",
+          location: "Madrid",
+        },
+        evidence: evidence("posting-2", 0),
       },
     ];
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunities")) return jsonResponse(opportunities);
-      if (url.endsWith("/posting-1/identity-evidence")) return jsonResponse(evidence("posting-1", 1));
-      if (url.endsWith("/posting-2/identity-evidence")) return jsonResponse(evidence("posting-2", 0));
+      if (url.endsWith("/api/identity-evidence")) return jsonResponse(rows);
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -64,6 +68,7 @@ describe("IdentityEvidenceDashboard", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading identity evidence");
     expect(await screen.findByRole("heading", { name: "Application Support Engineer" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("status")).toHaveTextContent("Identity evidence loaded for 2 opportunities.");
     expect(screen.getByRole("button", { name: "duplicates (1)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "single (1)" })).toBeInTheDocument();
