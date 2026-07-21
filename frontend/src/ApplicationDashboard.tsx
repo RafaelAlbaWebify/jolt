@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApplicationWorkflow } from "./ApplicationWorkflow";
+import type { ApplicationStatus } from "./ApplicationWorkflow";
 
 type Opportunity = {
   posting_id: string;
@@ -9,7 +10,7 @@ type Opportunity = {
   location: string;
   review_decision: string | null;
   application_id?: string | null;
-  application_status?: string | null;
+  application_status?: ApplicationStatus | null;
   outcome_type?: string | null;
 };
 
@@ -147,6 +148,7 @@ export function ApplicationDashboard({ apiBase }: Props) {
                 title={opportunity.title || "Untitled opportunity"}
                 reviewDecision={opportunity.review_decision}
                 applicationId={opportunity.application_id}
+                applicationStatus={opportunity.application_status}
                 disabled={busy}
                 onChanged={async () => {
                   setBusy(true);
