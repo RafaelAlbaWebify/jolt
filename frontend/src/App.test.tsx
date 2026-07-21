@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
@@ -62,6 +62,7 @@ describe("App", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    document.body.style.overflow = "";
   });
 
   it("submits a manual opportunity and records a human review", async () => {
@@ -120,7 +121,7 @@ describe("App", () => {
     expect(await screen.findByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("pursue");
   });
 
-  it("opens detailed evidence in a focused opportunity inspector", async () => {
+  it("opens detailed evidence in a keyboard-accessible focused opportunity inspector", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
@@ -134,9 +135,12 @@ describe("App", () => {
     expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
     expect(screen.queryByText("Automated proposed decision")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    const inspectButton = screen.getByRole("button", { name: "Inspect" });
+    fireEvent.click(inspectButton);
 
     expect(screen.getByRole("dialog", { name: opportunity.title })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
     expect(screen.getByText("Automated proposed decision")).toBeInTheDocument();
     expect(screen.getByText(opportunity.fit_summary)).toBeInTheDocument();
     expect(screen.getByText(opportunity.strengths[0])).toBeInTheDocument();
@@ -154,8 +158,10 @@ describe("App", () => {
       opportunity.source_url,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+    await waitFor(() => expect(inspectButton).toHaveFocus());
   });
 
   it("searches and sorts opportunities without changing backend state", async () => {
