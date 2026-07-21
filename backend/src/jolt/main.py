@@ -13,6 +13,7 @@ from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linked
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.live_capture_workflow import run_linkedin_live_capture
+from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
 from jolt.opportunity_workbench import list_opportunity_workbench
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
 from jolt.schemas import (
@@ -228,6 +229,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get(
+        "/api/opportunity-index",
+        response_model=list[OpportunityIndexItem],
+        tags=["opportunities"],
+    )
+    def opportunity_index(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[OpportunityIndexItem]:
+        return list_opportunity_index(session)
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
     def opportunities(

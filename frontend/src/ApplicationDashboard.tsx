@@ -32,7 +32,7 @@ export function ApplicationDashboard({ apiBase }: Props) {
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`${apiBase}/api/opportunities`);
+    const response = await fetch(`${apiBase}/api/opportunity-index`);
     if (!response.ok) throw new Error("Unable to load application opportunities.");
     setOpportunities((await response.json()) as Opportunity[]);
   }, [apiBase]);

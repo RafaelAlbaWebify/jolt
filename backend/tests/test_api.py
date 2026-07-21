@@ -53,6 +53,30 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert duplicate.json()["source_document_id"] != result["source_document_id"]
 
     restarted_client = _client(database_path)
+    compact = restarted_client.get("/api/opportunity-index")
+    assert compact.status_code == 200
+    compact_items = compact.json()
+    assert len(compact_items) == 1
+    compact_opportunity = compact_items[0]
+    assert compact_opportunity == {
+        "posting_id": result["posting_id"],
+        "evaluation_id": compact_opportunity["evaluation_id"],
+        "source_url": payload["source_url"],
+        "title": "Application Support Engineer",
+        "company": "Example Systems",
+        "location": "Remote Spain",
+        "recommendation": "pursue",
+        "confidence": compact_opportunity["confidence"],
+        "ranking_score": compact_opportunity["ranking_score"],
+        "review_decision": "pursue",
+        "application_id": None,
+        "application_status": None,
+        "outcome_type": None,
+    }
+    assert "readiness" not in compact_opportunity
+    assert "strengths" not in compact_opportunity
+    assert "preparation_plan" not in compact_opportunity
+
     opportunities = restarted_client.get("/api/opportunities")
     assert opportunities.status_code == 200
     items = opportunities.json()
