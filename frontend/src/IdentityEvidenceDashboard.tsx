@@ -50,16 +50,9 @@ export function IdentityEvidenceDashboard({ apiBase }: Props) {
     async function load() {
       setLoading(true);
       setError("");
-      const opportunitiesResponse = await fetch(`${apiBase}/api/opportunities`);
-      if (!opportunitiesResponse.ok) throw new Error("Unable to load identity evidence.");
-      const opportunities = (await opportunitiesResponse.json()) as Opportunity[];
-      const loaded = await Promise.all(opportunities.map(async (opportunity) => {
-        const response = await fetch(
-          `${apiBase}/api/opportunities/${opportunity.posting_id}/identity-evidence`,
-        );
-        if (!response.ok) throw new Error(`Unable to load identity evidence for ${opportunity.title}.`);
-        return { opportunity, evidence: (await response.json()) as IdentityEvidence };
-      }));
+      const response = await fetch(`${apiBase}/api/identity-evidence`);
+      if (!response.ok) throw new Error("Unable to load identity evidence.");
+      const loaded = (await response.json()) as EvidenceRow[];
       if (!cancelled) setRows(loaded);
     }
 
