@@ -15,7 +15,7 @@ MAX_SCROLL_STEPS = 200
 VIEW_SPECS = (
     ("opportunities", "Opportunities", "Opportunity review workbench"),
     ("applications", "Applications", "Application management"),
-    ("evidence", "Evidence", "Duplicate and source identity evidence"),
+    ("evidence", "Evidence", "Identity evidence"),
 )
 
 
