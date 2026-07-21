@@ -7,11 +7,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, ViewportSize, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
 API_URL = "http://127.0.0.1:8000"
-VIEWPORT = {"width": 1440, "height": 1000}
+VIEWPORT: ViewportSize = {"width": 1440, "height": 1000}
 
 
 def _progress(message: str) -> None:
