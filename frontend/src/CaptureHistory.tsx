@@ -44,7 +44,6 @@ type CaptureRun = CaptureRunSummary & {
 type Props = {
   apiBase: string;
   onError: (message: string) => void;
-  loadWhenParentOpens?: boolean;
 };
 
 function readableReason(value: string): string {
@@ -56,11 +55,11 @@ function captureBound(run: CaptureRunSummary): string {
   return `${run.observed_item_count} observed · ${requested} requested`;
 }
 
-export function CaptureHistory({ apiBase, onError, loadWhenParentOpens = false }: Props) {
+export function CaptureHistory({ apiBase, onError }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [runs, setRuns] = useState<CaptureRunSummary[]>([]);
   const [selected, setSelected] = useState<CaptureRun | null>(null);
-  const [loaded, setLoaded] = useState(!loadWhenParentOpens);
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -70,21 +69,10 @@ export function CaptureHistory({ apiBase, onError, loadWhenParentOpens = false }
   }, [apiBase]);
 
   useEffect(() => {
-    if (!loadWhenParentOpens) {
-      setBusy(true);
-      refresh()
-        .catch((caught) => {
-          onError(caught instanceof Error ? caught.message : "Unable to load capture history.");
-        })
-        .finally(() => setBusy(false));
-      return;
-    }
+    if (loaded) return;
 
-    const details = sectionRef.current?.closest("details.operations-tools");
-    if (!(details instanceof HTMLDetailsElement) || loaded) return;
-
-    const loadWhenOpened = () => {
-      if (!details.open || loaded) return;
+    const load = () => {
+      if (loaded) return;
       setLoaded(true);
       setBusy(true);
       refresh()
@@ -94,10 +82,20 @@ export function CaptureHistory({ apiBase, onError, loadWhenParentOpens = false }
         .finally(() => setBusy(false));
     };
 
+    const details = sectionRef.current?.closest("details.operations-tools");
+    if (!(details instanceof HTMLDetailsElement)) {
+      load();
+      return;
+    }
+
+    const loadWhenOpened = () => {
+      if (details.open) load();
+    };
+
     details.addEventListener("toggle", loadWhenOpened);
     loadWhenOpened();
     return () => details.removeEventListener("toggle", loadWhenOpened);
-  }, [loadWhenParentOpens, loaded, onError, refresh]);
+  }, [loaded, onError, refresh]);
 
   async function inspect(runId: string) {
     setBusy(true);
