@@ -67,10 +67,16 @@ def test_bulk_identity_evidence_returns_opportunities_and_sources_once(tmp_path:
     ]
     for payload in payloads:
         assert client.post("/api/intake/manual", json=payload).status_code == 200
-    assert client.post(
-        "/api/intake/manual",
-        json={**payloads[0], "source_url": "https://www.linkedin.com/jobs/view/123?trk=duplicate"},
-    ).status_code == 200
+    assert (
+        client.post(
+            "/api/intake/manual",
+            json={
+                **payloads[0],
+                "source_url": "https://www.linkedin.com/jobs/view/123?trk=duplicate",
+            },
+        ).status_code
+        == 200
+    )
 
     response = client.get("/api/identity-evidence")
 
@@ -86,11 +92,7 @@ def test_bulk_identity_evidence_returns_opportunities_and_sources_once(tmp_path:
     )
     assert duplicate_row["evidence"]["evidence_count"] == 2
     assert duplicate_row["evidence"]["duplicate_evidence_count"] == 1
-    assert all(
-        "raw_text" not in item
-        for row in rows
-        for item in row["evidence"]["evidence"]
-    )
+    assert all("raw_text" not in item for row in rows for item in row["evidence"]["evidence"])
 
 
 def test_identity_evidence_returns_404_for_unknown_posting(tmp_path: Path) -> None:
