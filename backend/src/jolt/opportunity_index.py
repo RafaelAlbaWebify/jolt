@@ -5,7 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.automated_review import ensure_automated_reviews
-from jolt.database import Application, Evaluation, Outcome, Posting, ReviewDecision, SourceDocument
+from jolt.database import (
+    Application,
+    Evaluation,
+    Outcome,
+    Posting,
+    ReviewDecision,
+    SourceDocument,
+)
 
 
 class OpportunityIndexItem(BaseModel):
@@ -30,8 +37,7 @@ def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
 
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {
-        item.id: item
-        for item in session.scalars(select(SourceDocument)).all()
+        item.id: item for item in session.scalars(select(SourceDocument)).all()
     }
 
     latest_evaluations: dict[str, Evaluation] = {}
@@ -70,7 +76,11 @@ def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
             OpportunityIndexItem(
                 posting_id=posting.id,
                 evaluation_id=evaluation.id,
-                source_url=source_document.source_url if source_document else posting.canonical_url,
+                source_url=(
+                    source_document.source_url
+                    if source_document
+                    else posting.canonical_url
+                ),
                 title=posting.title,
                 company=posting.company,
                 location=posting.location,
