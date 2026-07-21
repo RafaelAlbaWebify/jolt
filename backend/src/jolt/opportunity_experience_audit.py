@@ -108,9 +108,9 @@ def run(output_dir: Path, app_url: str = APP_URL, api_url: str = API_URL) -> dic
             )
             _body_contains(page, f"all ({len(opportunities)})")
             page.get_by_role("button", name="Opportunities", exact=True).click()
-            page.get_by_role(
-                "heading", name="Opportunity review workbench", exact=True
-            ).wait_for(state="visible")
+            page.get_by_role("heading", name="Opportunity review workbench", exact=True).wait_for(
+                state="visible"
+            )
             page.get_by_label("Search opportunities").wait_for(state="visible")
             page.get_by_label("Sort").wait_for(state="visible")
 
@@ -229,8 +229,7 @@ def run(output_dir: Path, app_url: str = APP_URL, api_url: str = API_URL) -> dic
             browser.close()
 
     findings.extend(
-        {"severity": "error", "message": f"Browser page error: {error}"}
-        for error in page_errors
+        {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
     )
     has_errors = any(item["severity"] == "error" for item in findings)
     summary: dict[str, Any] = {
