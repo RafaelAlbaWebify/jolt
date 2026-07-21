@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { IdentityEvidenceDashboard } from "./IdentityEvidenceDashboard";
@@ -10,50 +10,53 @@ function jsonResponse(value: object) {
   });
 }
 
+function evidence(postingId: string, duplicateCount: number) {
+  return {
+    posting_id: postingId,
+    canonical_url: `https://www.linkedin.com/jobs/view/${postingId}`,
+    identity_status: duplicateCount ? "confirmed_duplicate" : "new",
+    evidence_count: duplicateCount + 1,
+    duplicate_evidence_count: duplicateCount,
+    evidence: [
+      {
+        source_document_id: `${postingId}-source-1`,
+        source_type: "linkedin_live",
+        source_url: `https://www.linkedin.com/jobs/view/${postingId}`,
+        identity_status: "original",
+        match_basis: "canonical_url",
+        captured_at: "2026-07-14T10:00:00+00:00",
+      },
+    ],
+  };
+}
+
 describe("IdentityEvidenceDashboard", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("shows a loading state before canonical and duplicate source evidence", async () => {
+  it("summarises, filters, searches, and inspects identity evidence", async () => {
+    const opportunities = [
+      {
+        posting_id: "posting-1",
+        title: "Application Support Engineer",
+        company: "Example Systems",
+        location: "Remote Spain",
+      },
+      {
+        posting_id: "posting-2",
+        title: "Cloud Support Engineer",
+        company: "Beta Cloud",
+        location: "Madrid",
+      },
+    ];
+
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunities")) {
-        return jsonResponse([{
-          posting_id: "posting-1",
-          title: "Application Support Engineer",
-          company: "Example Systems",
-          location: "Remote Spain",
-        }]);
-      }
-      if (url.endsWith("/api/opportunities/posting-1/identity-evidence")) {
-        return jsonResponse({
-          posting_id: "posting-1",
-          canonical_url: "https://www.linkedin.com/jobs/view/123",
-          identity_status: "new",
-          evidence_count: 2,
-          duplicate_evidence_count: 1,
-          evidence: [
-            {
-              source_document_id: "source-1",
-              source_type: "linkedin_live",
-              source_url: "https://www.linkedin.com/jobs/view/123",
-              identity_status: "original",
-              match_basis: "canonical_url",
-              captured_at: "2026-07-14T10:00:00+00:00",
-            },
-            {
-              source_document_id: "source-2",
-              source_type: "manual",
-              source_url: "https://www.linkedin.com/jobs/view/123?trk=duplicate",
-              identity_status: "confirmed_duplicate",
-              match_basis: "canonical_url",
-              captured_at: "2026-07-14T11:00:00+00:00",
-            },
-          ],
-        });
-      }
+      if (url.endsWith("/api/opportunities")) return jsonResponse(opportunities);
+      if (url.endsWith("/posting-1/identity-evidence")) return jsonResponse(evidence("posting-1", 1));
+      if (url.endsWith("/posting-2/identity-evidence")) return jsonResponse(evidence("posting-2", 0));
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -61,9 +64,23 @@ describe("IdentityEvidenceDashboard", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading identity evidence");
     expect(await screen.findByRole("heading", { name: "Application Support Engineer" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Identity evidence loaded for 1 opportunities.");
-    expect(screen.getByText("2 source documents · 1 confirmed duplicate")).toBeInTheDocument();
-    expect(screen.getByText("duplicate evidence")).toBeInTheDocument();
-    expect(screen.getByText("Inspect identity evidence")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Identity evidence loaded for 2 opportunities.");
+    expect(screen.getByRole("button", { name: "duplicates (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "single (1)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "duplicates (1)" }));
+    expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("Cloud Support Engineer")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "all (2)" }));
+    fireEvent.change(screen.getByLabelText("Search evidence"), { target: { value: "Beta Cloud" } });
+    expect(screen.getByText("Cloud Support Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("Application Support Engineer")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search evidence"), { target: { value: "" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Inspect" })[0]);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Canonical source")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open source evidence" })).toBeInTheDocument();
   });
 });
