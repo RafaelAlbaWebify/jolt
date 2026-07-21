@@ -47,6 +47,9 @@ const captureSummary = {
   status: "completed_with_warnings",
   search_url: "https://www.linkedin.com/jobs/search/",
   warnings: ["1 detail panel failed identity verification."],
+  requested_item_limit: 2,
+  observed_item_count: 2,
+  stop_reason: "requested_limit_reached",
   started_at: "2026-07-12T20:00:00Z",
   completed_at: "2026-07-12T20:01:00Z",
   total_items: 2,
@@ -201,8 +204,8 @@ describe("App", () => {
     expect(sortedHeadings[0]).toHaveTextContent("Application Support Engineer");
   });
 
-  it("loads capture history and exposes rejected evidence", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+  it("loads capture history only after operations tools open and exposes rejected evidence", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/opportunities")) return jsonResponse([]);
       if (url.endsWith("/api/captures")) return jsonResponse([captureSummary]);
@@ -233,7 +236,14 @@ describe("App", () => {
 
     render(<App />);
 
+    await screen.findByText("No opportunities match this view.");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/api/captures"));
+
+    fireEvent.click(screen.getByText("Intake, captures, and exports"));
     expect(await screen.findByText("1 verified · 1 rejected · 2 total")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
     fireEvent.click(screen.getByRole("button", { name: "Inspect capture" }));
 
     expect(await screen.findByRole("heading", { name: "Production Support Engineer" })).toBeInTheDocument();

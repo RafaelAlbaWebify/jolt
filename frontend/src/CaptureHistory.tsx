@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type CaptureRunSummary = {
   capture_run_id: string;
@@ -56,8 +56,10 @@ function captureBound(run: CaptureRunSummary): string {
 }
 
 export function CaptureHistory({ apiBase, onError }: Props) {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const [runs, setRuns] = useState<CaptureRunSummary[]>([]);
   const [selected, setSelected] = useState<CaptureRun | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -67,10 +69,33 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   }, [apiBase]);
 
   useEffect(() => {
-    refresh().catch((caught) => {
-      onError(caught instanceof Error ? caught.message : "Unable to load capture history.");
-    });
-  }, [onError, refresh]);
+    if (loaded) return;
+
+    const load = () => {
+      if (loaded) return;
+      setLoaded(true);
+      setBusy(true);
+      refresh()
+        .catch((caught) => {
+          onError(caught instanceof Error ? caught.message : "Unable to load capture history.");
+        })
+        .finally(() => setBusy(false));
+    };
+
+    const details = sectionRef.current?.closest("details.operations-tools");
+    if (!(details instanceof HTMLDetailsElement)) {
+      load();
+      return;
+    }
+
+    const loadWhenOpened = () => {
+      if (details.open) load();
+    };
+
+    details.addEventListener("toggle", loadWhenOpened);
+    loadWhenOpened();
+    return () => details.removeEventListener("toggle", loadWhenOpened);
+  }, [loaded, onError, refresh]);
 
   async function inspect(runId: string) {
     setBusy(true);
@@ -86,7 +111,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   }
 
   return (
-    <section className="panel" aria-labelledby="capture-history-heading">
+    <section ref={sectionRef} className="panel" aria-labelledby="capture-history-heading">
       <div className="section-heading">
         <div>
           <h2 id="capture-history-heading">LinkedIn capture history</h2>
@@ -94,14 +119,14 @@ export function CaptureHistory({ apiBase, onError }: Props) {
         </div>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || !loaded}
           onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}
         >
           Refresh captures
         </button>
       </div>
 
-      {runs.length === 0 ? <p>No capture runs recorded yet.</p> : (
+      {!loaded || (busy && runs.length === 0) ? <p>Loading capture history…</p> : runs.length === 0 ? <p>No capture runs recorded yet.</p> : (
         <div className="queue capture-runs">
           {runs.map((run) => (
             <article key={run.capture_run_id}>
