@@ -15,7 +15,7 @@ MAX_SCROLL_STEPS = 200
 VIEW_SPECS = (
     ("opportunities", "Opportunities", "Opportunity review workbench"),
     ("applications", "Applications", "Application management"),
-    ("evidence", "Evidence", "Duplicate and source identity evidence"),
+    ("evidence", "Evidence", "Identity evidence"),
 )
 
 
@@ -85,7 +85,7 @@ def _wait_for_view_data(
         expected_text = (
             first_application_title
             if application_candidate_count > 0
-            else "No pursued or active applications are available."
+            else "No applications match this view"
         )
         timeout = 60_000
     else:

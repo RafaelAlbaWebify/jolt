@@ -5,6 +5,7 @@ import { Workbench } from "./Workbench";
 import "./styles.css";
 import "./CompactOpportunityWorkspace.css";
 import "./ApplicationWorkspace.css";
+import "./EvidenceWorkspace.css";
 
 const rootElement = document.getElementById("root");
 
