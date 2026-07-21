@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from jolt.main import create_app
 from jolt.url_identity import canonicalize_source_url, linkedin_job_id
 
-
 FIRST_URL = (
     "https://www.linkedin.com/jobs/view/application-support-engineer-4434482145"
     "?eBP=tracking-one&refId=abc&trackingId=first"
