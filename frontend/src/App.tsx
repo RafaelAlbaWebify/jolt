@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApplicationReadiness } from "./ApplicationReadiness";
@@ -77,6 +77,8 @@ export function App() {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
+  const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const refreshOpportunities = useCallback(async () => {
     const response = await fetch(`${API_BASE}/api/opportunities`);
@@ -87,6 +89,25 @@ export function App() {
   useEffect(() => {
     refreshOpportunities().catch(() => setError("The JOLT API is not available."));
   }, [refreshOpportunities]);
+
+  useEffect(() => {
+    if (!selectedOpportunityId) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    inspectorCloseRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedOpportunityId(null);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      window.requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
+    };
+  }, [selectedOpportunityId]);
 
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
@@ -351,7 +372,10 @@ export function App() {
                     type="button"
                     className="secondary inspect-opportunity"
                     aria-haspopup="dialog"
-                    onClick={() => setSelectedOpportunityId(opportunity.posting_id)}
+                    onClick={(event) => {
+                      inspectorTriggerRef.current = event.currentTarget;
+                      setSelectedOpportunityId(opportunity.posting_id);
+                    }}
                   >
                     Inspect
                   </button>
@@ -397,7 +421,12 @@ export function App() {
                 <h2 id="opportunity-inspector-title">{selectedOpportunity.title || "Untitled opportunity"}</h2>
                 <p>{[selectedOpportunity.company, selectedOpportunity.location].filter(Boolean).join(" · ")}</p>
               </div>
-              <button type="button" className="secondary" onClick={() => setSelectedOpportunityId(null)}>
+              <button
+                ref={inspectorCloseRef}
+                type="button"
+                className="secondary"
+                onClick={() => setSelectedOpportunityId(null)}
+              >
                 Close
               </button>
             </header>
