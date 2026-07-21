@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, SyntheticEvent } from "react";
 
 export type ApplicationStatus =
   | "preparing"
@@ -49,6 +49,7 @@ type Props = {
   title: string;
   reviewDecision: string | null;
   applicationId?: string | null;
+  applicationStatus?: ApplicationStatus | null;
   disabled: boolean;
   onChanged: () => Promise<void>;
   onError: (message: string) => void;
@@ -88,6 +89,7 @@ export function ApplicationWorkflow({
   title,
   reviewDecision,
   applicationId,
+  applicationStatus,
   disabled,
   onChanged,
   onError,
@@ -99,24 +101,41 @@ export function ApplicationWorkflow({
   const [transitionNotes, setTransitionNotes] = useState("");
   const [outcome, setOutcome] = useState<OutcomeType>("rejected_by_employer");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!applicationId) {
       setApplication(null);
       return;
     }
-    fetch(`${apiBase}/api/applications/${applicationId}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load application history.");
-        setApplication((await response.json()) as ApplicationData);
-      })
-      .catch((caught) => onError(caught instanceof Error ? caught.message : "Application history failed."));
-  }, [apiBase, applicationId, onError]);
+    if (application && application.application_id !== applicationId) {
+      setApplication(null);
+    }
+  }, [application, applicationId]);
 
   const transitions = useMemo(
     () => (application ? TRANSITIONS[application.status] : []),
     [application],
   );
+
+  async function loadApplication() {
+    if (!applicationId || application || loading) return;
+    setLoading(true);
+    onError("");
+    try {
+      const response = await fetch(`${apiBase}/api/applications/${applicationId}`);
+      if (!response.ok) throw new Error("Unable to load application history.");
+      setApplication((await response.json()) as ApplicationData);
+    } catch (caught) {
+      onError(caught instanceof Error ? caught.message : "Application history failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+    if (event.currentTarget.open) void loadApplication();
+  }
 
   async function post(url: string, body: object) {
     setBusy(true);
@@ -176,75 +195,81 @@ export function ApplicationWorkflow({
     );
   }
 
-  if (!application) return <p>Loading application history…</p>;
+  const displayedStatus = application?.status ?? applicationStatus;
 
   return (
-    <details className="application-workflow">
-      <summary>Application workflow · {label(application.status)}</summary>
-      <p><strong>Current stage:</strong> {label(application.status)}</p>
-      {application.application_url && <p><a href={application.application_url} target="_blank" rel="noreferrer">Open application page</a></p>}
-      {application.resume_used && <p><strong>CV used:</strong> {application.resume_used}</p>}
-      {application.notes && <p><strong>Preparation notes:</strong> {application.notes}</p>}
+    <details className="application-workflow" onToggle={handleToggle}>
+      <summary>Application workflow{displayedStatus ? ` · ${label(displayedStatus)}` : ""}</summary>
+      {loading && <p role="status">Loading application history…</p>}
+      {!loading && !application && <p>Open this workflow to load its application history.</p>}
+      {application && (
+        <>
+          <p><strong>Current stage:</strong> {label(application.status)}</p>
+          {application.application_url && <p><a href={application.application_url} target="_blank" rel="noreferrer">Open application page</a></p>}
+          {application.resume_used && <p><strong>CV used:</strong> {application.resume_used}</p>}
+          {application.notes && <p><strong>Preparation notes:</strong> {application.notes}</p>}
 
-      {!application.outcome_type && transitions.length > 0 && (
-        <div>
-          <label>
-            Stage notes <span>(optional)</span>
-            <input value={transitionNotes} onChange={(event) => setTransitionNotes(event.target.value)} />
-          </label>
-          <div className="review-actions application-actions" aria-label={`Advance ${title}`}>
-            {transitions.map((status) => (
+          {!application.outcome_type && transitions.length > 0 && (
+            <div>
+              <label>
+                Stage notes <span>(optional)</span>
+                <input value={transitionNotes} onChange={(event) => setTransitionNotes(event.target.value)} />
+              </label>
+              <div className="review-actions application-actions" aria-label={`Advance ${title}`}>
+                {transitions.map((status) => (
+                  <button
+                    disabled={disabled || busy}
+                    type="button"
+                    key={status}
+                    onClick={() => post(`/api/applications/${application.application_id}/transitions`, {
+                      status,
+                      notes: transitionNotes,
+                    })}
+                  >
+                    Mark {label(status)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!application.outcome_type && (
+            <div>
+              <label>
+                Final outcome
+                <select value={outcome} onChange={(event) => setOutcome(event.target.value as OutcomeType)}>
+                  {OUTCOMES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </label>
               <button
+                className="secondary"
                 disabled={disabled || busy}
                 type="button"
-                key={status}
-                onClick={() => post(`/api/applications/${application.application_id}/transitions`, {
-                  status,
+                onClick={() => post(`/api/applications/${application.application_id}/outcomes`, {
+                  outcome_type: outcome,
                   notes: transitionNotes,
                 })}
               >
-                Mark {label(status)}
+                Record outcome
               </button>
+            </div>
+          )}
+
+          {application.outcome_type && <p><strong>Outcome:</strong> {label(application.outcome_type)}</p>}
+
+          <h4>Application event history</h4>
+          <ol>
+            {application.events.map((event) => (
+              <li key={event.event_id}>
+                <strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}
+                {event.notes && <> · {event.notes}</>}
+                <br />
+                <small>{new Date(event.occurred_at).toLocaleString()}</small>
+              </li>
             ))}
-          </div>
-        </div>
+          </ol>
+        </>
       )}
-
-      {!application.outcome_type && (
-        <div>
-          <label>
-            Final outcome
-            <select value={outcome} onChange={(event) => setOutcome(event.target.value as OutcomeType)}>
-              {OUTCOMES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
-          <button
-            className="secondary"
-            disabled={disabled || busy}
-            type="button"
-            onClick={() => post(`/api/applications/${application.application_id}/outcomes`, {
-              outcome_type: outcome,
-              notes: transitionNotes,
-            })}
-          >
-            Record outcome
-          </button>
-        </div>
-      )}
-
-      {application.outcome_type && <p><strong>Outcome:</strong> {label(application.outcome_type)}</p>}
-
-      <h4>Application event history</h4>
-      <ol>
-        {application.events.map((event) => (
-          <li key={event.event_id}>
-            <strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}
-            {event.notes && <> · {event.notes}</>}
-            <br />
-            <small>{new Date(event.occurred_at).toLocaleString()}</small>
-          </li>
-        ))}
-      </ol>
     </details>
   );
 }

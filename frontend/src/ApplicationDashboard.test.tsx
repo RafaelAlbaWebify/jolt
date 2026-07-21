@@ -55,9 +55,9 @@ describe("ApplicationDashboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads an application, advances its stage, and displays immutable event history", async () => {
+  it("lazy-loads one application, advances its stage, and displays immutable event history", async () => {
     let currentApplication = application;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/api/opportunities")) {
         return jsonResponse([{
@@ -94,8 +94,11 @@ describe("ApplicationDashboard", () => {
 
     expect(await screen.findByRole("heading", { name: opportunity.title })).toBeInTheDocument();
     const workflowSummary = await screen.findByText("Application workflow · submitted");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
     fireEvent.click(workflowSummary);
     expect(await screen.findByText("Rafael_Application_Support_CV.pdf")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.getByText(/preparing → submitted/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Stage notes (optional)"), {
@@ -136,7 +139,7 @@ describe("ApplicationDashboard", () => {
     expect(await screen.findByText("Application workflow · preparing")).toBeInTheDocument();
   });
 
-  it("summarises, filters, and searches the application pipeline", async () => {
+  it("summarises, filters, and searches without loading collapsed histories", async () => {
     const ready = {
       ...opportunity,
       posting_id: "posting-2",
@@ -155,19 +158,16 @@ describe("ApplicationDashboard", () => {
       outcome_type: "rejected_by_employer",
     };
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity, ready, closed]);
-      if (url.endsWith("/api/applications/application-1")) return jsonResponse(application);
-      if (url.endsWith("/api/applications/application-3")) {
-        return jsonResponse({ ...application, application_id: "application-3", status: "closed", outcome_type: "rejected_by_employer" });
-      }
       throw new Error(`Unexpected request: ${url}`);
     });
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
 
     expect(await screen.findByText("Cloud Support Engineer")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "ready (1)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "active (1)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "closed (1)" })).toBeInTheDocument();
@@ -182,5 +182,6 @@ describe("ApplicationDashboard", () => {
     });
     expect(screen.getByText("Cloud Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Application Support Engineer")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
