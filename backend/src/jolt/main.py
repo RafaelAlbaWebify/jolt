@@ -11,7 +11,7 @@ from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
-from jolt.identity_evidence import opportunity_identity_evidence
+from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.opportunity_workbench import list_opportunity_workbench
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
@@ -127,6 +127,12 @@ def create_app(database_url: str | None = None) -> FastAPI:
             return record_review(session, posting_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/identity-evidence", tags=["identity"])
+    def identity_evidence_index(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[dict[str, object]]:
+        return list_identity_evidence(session)
 
     @app.get("/api/opportunities/{posting_id}/identity-evidence", tags=["identity"])
     def identity_evidence(
