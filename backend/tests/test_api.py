@@ -61,7 +61,7 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert compact_opportunity == {
         "posting_id": result["posting_id"],
         "evaluation_id": compact_opportunity["evaluation_id"],
-        "source_url": "https://example.com/jobs/123",
+        "source_url": payload["source_url"],
         "title": "Application Support Engineer",
         "company": "Example Systems",
         "location": "Remote Spain",
