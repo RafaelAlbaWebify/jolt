@@ -117,10 +117,10 @@ describe("App", () => {
     expect(screen.getByText("Rule score 83 · medium confidence")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "pursue" }));
-    expect(await screen.findByText("pursue", { selector: ".queue-status strong" })).toBeInTheDocument();
+    expect(await screen.findByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("pursue");
   });
 
-  it("shows automated decision evidence, readiness, and source provenance", async () => {
+  it("shows compact opportunity state and expands detailed evidence on demand", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/captures")) return jsonResponse([]);
@@ -130,11 +130,16 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Automated proposed decision")).toBeInTheDocument();
+    expect(await screen.findByText("medium confidence")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
+    expect(screen.getByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("");
+
+    fireEvent.click(screen.getByText("Inspect evidence and workflow"));
+
+    expect(screen.getByText("Automated proposed decision")).toBeInTheDocument();
     expect(screen.getByText(opportunity.fit_summary)).toBeInTheDocument();
     expect(screen.getByText(opportunity.strengths[0])).toBeInTheDocument();
     expect(screen.getByText(opportunity.uncertainties[0])).toBeInTheDocument();
-    expect(screen.getByText("medium confidence · profile-rules-v2")).toBeInTheDocument();
     expect(screen.getByText("Profile rafael-job-search:v2")).toBeInTheDocument();
     expect(screen.getByText("Application readiness · high priority · 91/100")).toBeInTheDocument();
 

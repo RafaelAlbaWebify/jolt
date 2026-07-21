@@ -1,0 +1,61 @@
+.workspace-header {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.workspace-header .hero {
+  margin-bottom: 0;
+}
+
+.workspace-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  width: fit-content;
+  border: 1px solid #d8dde7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(31, 41, 55, 0.05);
+}
+
+.workspace-nav button {
+  border-color: transparent;
+}
+
+.workspace-nav button.workspace-nav-active {
+  border-color: #172033;
+  background: #172033;
+  color: #fff;
+}
+
+.workspace-description {
+  margin: -8px 0 0;
+  color: #667085;
+}
+
+.workspace-view-opportunities > .shell {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.workspace-view-opportunities > .shell > .hero {
+  display: none;
+}
+
+.workspace-view > .panel:first-child,
+.workspace-view > section:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .workspace-nav {
+    width: 100%;
+  }
+
+  .workspace-nav button {
+    flex: 1;
+  }
+}
