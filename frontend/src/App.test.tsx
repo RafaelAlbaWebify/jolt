@@ -93,6 +93,68 @@ describe("App", () => {
     await waitFor(() => expect(inspectButton).toHaveFocus());
   });
 
+  it("collects preparation data instead of creating an empty application record", async () => {
+    const pursuedIndex = { ...indexOpportunity, review_decision: "pursue" };
+    const pursuedDetail = { ...opportunity, review_decision: "pursue" };
+    const preparedDetail = {
+      ...pursuedDetail,
+      application_id: "application-1",
+      application_status: "preparing",
+    };
+    const application = {
+      application_id: "application-1",
+      posting_id: "posting-1",
+      status: "preparing",
+      application_url: "https://company.example/apply/123",
+      resume_used: "Rafael_Application_Support_CV.pdf",
+      notes: "Tailor API troubleshooting examples.",
+      outcome_type: null,
+      events: [],
+    };
+
+    let prepared = false;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/opportunity-index")) return jsonResponse(prepared ? [] : [pursuedIndex]);
+      if (url.endsWith("/api/opportunity-detail/posting-1")) {
+        return jsonResponse(prepared ? preparedDetail : pursuedDetail);
+      }
+      if (url.endsWith("/api/opportunities/posting-1/applications")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          application_url: "https://company.example/apply/123",
+          resume_used: "Rafael_Application_Support_CV.pdf",
+          notes: "Tailor API troubleshooting examples.",
+        });
+        prepared = true;
+        return jsonResponse(application);
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect" }));
+    expect(await screen.findByText(opportunity.fit_summary)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Prepare application"));
+    fireEvent.change(screen.getByLabelText(/External application URL/), {
+      target: { value: "https://company.example/apply/123" },
+    });
+    fireEvent.change(screen.getByLabelText(/CV or resume version/), {
+      target: { value: "Rafael_Application_Support_CV.pdf" },
+    });
+    fireEvent.change(screen.getByLabelText(/Preparation notes/), {
+      target: { value: "Tailor API troubleshooting examples." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create preparation record" }));
+
+    await waitFor(() => expect(prepared).toBe(true));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/opportunities/posting-1/applications",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("searches and sorts the compact queue without another request", async () => {
     const second = { ...indexOpportunity, posting_id: "posting-2", evaluation_id: "evaluation-2", title: "Cloud Operations Analyst", company: "Beta Cloud", ranking_score: 95 };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([indexOpportunity, second]));
