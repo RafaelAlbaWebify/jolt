@@ -1,0 +1,7 @@
+.opportunity-inspector .application-workflow {
+  grid-column: 1 / -1;
+}
+
+.opportunity-inspector .application-preparation-form {
+  margin-top: 12px;
+}
