@@ -58,7 +58,7 @@ function nextAction(item: Opportunity) {
 
 export function ApplicationDashboard({ apiBase, active }: Props) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [filter, setFilter] = useState<ApplicationFilter>("attention");
+  const [filter, setFilter] = useState<ApplicationFilter>("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
