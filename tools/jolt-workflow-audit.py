@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+import json
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from playwright.sync_api import Page, Response, sync_playwright
+
+APP_URL = "http://127.0.0.1:5173"
+VIEWPORT = {"width": 1680, "height": 945}
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def safe_text(page: Page, selector: str) -> str:
+    locator = page.locator(selector)
+    if locator.count() == 0:
+        return ""
+    return locator.first.inner_text().strip()
+
+
+def snapshot(page: Page, output_dir: Path, name: str, summary: dict[str, object]) -> None:
+    path = output_dir / f"{name}.png"
+    page.screenshot(path=str(path), full_page=True)
+    summary.setdefault("screenshots", []).append(path.name)
+
+
+def main() -> int:
+    output_dir = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    summary: dict[str, object] = {
+        "started_at": now_iso(),
+        "app_url": APP_URL,
+        "viewport": VIEWPORT,
+        "console": [],
+        "page_errors": [],
+        "failed_requests": [],
+        "responses": [],
+        "timings_ms": {},
+        "screenshots": [],
+        "observations": {},
+    }
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(viewport=VIEWPORT)
+        context.tracing.start(screenshots=True, snapshots=True, sources=True)
+        page = context.new_page()
+
+        page.on(
+            "console",
+            lambda message: summary["console"].append(
+                {"type": message.type, "text": message.text, "timestamp": now_iso()}
+            ),
+        )
+        page.on(
+            "pageerror",
+            lambda error: summary["page_errors"].append(
+                {"message": str(error), "timestamp": now_iso()}
+            ),
+        )
+        page.on(
+            "requestfailed",
+            lambda request: summary["failed_requests"].append(
+                {
+                    "method": request.method,
+                    "url": request.url,
+                    "failure": request.failure,
+                    "timestamp": now_iso(),
+                }
+            ),
+        )
+
+        def record_response(response: Response) -> None:
+            if response.url.startswith("http://127.0.0.1:8000"):
+                summary["responses"].append(
+                    {
+                        "status": response.status,
+                        "method": response.request.method,
+                        "url": response.url,
+                    }
+                )
+
+        page.on("response", record_response)
+
+        started = time.perf_counter()
+        page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
+        summary["timings_ms"]["initial_load"] = round((time.perf_counter() - started) * 1000)
+        snapshot(page, output_dir, "01-opportunities", summary)
+
+        observations = summary["observations"]
+        observations["opportunities_heading"] = safe_text(page, "#queue-heading")
+        observations["opportunity_rows"] = page.locator(".opportunity-row").count()
+        observations["visible_error"] = safe_text(page, "[role='alert']")
+
+        inspect = page.get_by_role("button", name="Inspect").first
+        if inspect.count() > 0:
+            started = time.perf_counter()
+            inspect.click()
+            page.get_by_role("dialog").wait_for(state="visible", timeout=30_000)
+            page.locator(".inspector-loading").wait_for(state="hidden", timeout=60_000)
+            summary["timings_ms"]["inspector_open"] = round((time.perf_counter() - started) * 1000)
+            observations["inspector_title"] = safe_text(page, "#opportunity-inspector-title")
+            observations["inspector_buttons"] = page.get_by_role("dialog").get_by_role("button").all_inner_texts()
+            observations["inspector_links"] = page.get_by_role("dialog").get_by_role("link").all_inner_texts()
+            snapshot(page, output_dir, "02-inspector", summary)
+            page.get_by_role("button", name="Close").click()
+
+        started = time.perf_counter()
+        page.get_by_role("button", name="Applications").click()
+        page.locator("#application-dashboard-heading").wait_for(state="visible", timeout=30_000)
+        page.wait_for_timeout(1_500)
+        summary["timings_ms"]["applications_tab"] = round((time.perf_counter() - started) * 1000)
+        observations["applications_error"] = safe_text(page, "[role='alert']")
+        observations["application_rows"] = page.locator(".application-row").count()
+        observations["application_metrics"] = page.locator(".application-metrics button").all_inner_texts()
+        snapshot(page, output_dir, "03-applications", summary)
+
+        started = time.perf_counter()
+        page.get_by_role("button", name="Market").click()
+        page.get_by_role("heading", name="Market intelligence").wait_for(state="visible", timeout=30_000)
+        page.wait_for_timeout(1_000)
+        summary["timings_ms"]["market_tab"] = round((time.perf_counter() - started) * 1000)
+        observations["market_cards"] = page.locator(".market-summary-card").count()
+        observations["market_error"] = safe_text(page, "[role='alert']")
+        snapshot(page, output_dir, "04-market", summary)
+
+        page.get_by_role("button", name="Opportunities").click()
+        page.wait_for_timeout(500)
+        observations["opportunities_after_roundtrip"] = page.locator(".opportunity-row").count()
+        snapshot(page, output_dir, "05-opportunities-return", summary)
+
+        context.tracing.stop(path=str(output_dir / "playwright-trace.zip"))
+        browser.close()
+
+    summary["finished_at"] = now_iso()
+    (output_dir / "audit-summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
