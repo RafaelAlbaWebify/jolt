@@ -190,9 +190,7 @@ def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
     return [{"label": label, "count": count} for label, count in counter.most_common(limit)]
 
 
-def _scope_data(
-    postings: list[Posting], evaluations: dict[str, Evaluation]
-) -> dict[str, object]:
+def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> dict[str, object]:
     role_families: Counter[str] = Counter()
     work_modes: Counter[str] = Counter()
     seniority: Counter[str] = Counter()
@@ -252,8 +250,7 @@ def _scope_data(
     return {
         "total_roles": len(postings),
         "strong_roles": score_bands.get(ordered_bands[0], 0),
-        "viable_roles": score_bands.get(ordered_bands[0], 0)
-        + score_bands.get(ordered_bands[1], 0),
+        "viable_roles": score_bands.get(ordered_bands[0], 0) + score_bands.get(ordered_bands[1], 0),
         "role_families": _ranked(role_families),
         "work_modes": _ranked(work_modes),
         "seniority": _ranked(seniority),
@@ -266,9 +263,7 @@ def _scope_data(
         "top_gaps": _ranked(gaps, 12),
         "study_priorities": _ranked(study_topics, 12),
         "salary_mentions": salary_mentions[:20],
-        "salary_coverage": len(
-            {item["title"] + item["company"] for item in salary_mentions}
-        ),
+        "salary_coverage": len({item["title"] + item["company"] for item in salary_mentions}),
     }
 
 
