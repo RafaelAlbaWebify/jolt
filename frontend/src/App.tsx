@@ -3,15 +3,13 @@ import type { FormEvent } from "react";
 
 import { ApplicationReadiness } from "./ApplicationReadiness";
 import type { ApplicationReadinessData } from "./ApplicationReadiness";
+import { ApplicationWorkflow } from "./ApplicationWorkflow";
+import type { ApplicationStatus } from "./ApplicationWorkflow";
 import { AutomatedReview } from "./AutomatedReview";
 import { CaptureHistory } from "./CaptureHistory";
 import { ReadinessHistory } from "./ReadinessHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
-type ApplicationStatus =
-  | "preparing" | "submitted" | "acknowledged" | "recruiter_screen"
-  | "technical_interview" | "hiring_manager_interview" | "final_interview"
-  | "offer" | "rejected" | "withdrawn" | "no_response" | "closed";
 type QueueFilter = "all" | "pending" | "pursue" | "active";
 type SortOption = "score_desc" | "score_asc" | "title_asc" | "company_asc";
 
@@ -331,9 +329,17 @@ export function App() {
                   <ApplicationReadiness readiness={selectedDetail.readiness} />
                   <Sources postingId={selectedDetail.posting_id} />
                   <details className="inspector-collapsible"><summary>Readiness report history</summary><ReadinessHistory apiBase={API_BASE} postingId={selectedDetail.posting_id} title={selectedDetail.title || "Untitled opportunity"} disabled={busy} onRefreshed={refreshSelected} onError={setError} /></details>
-
-                  {selectedDetail.review_decision === "pursue" && !selectedDetail.application_id && <button disabled={busy} type="button" onClick={() => apiAction(`/api/opportunities/${selectedDetail.posting_id}/applications`, {})}>Start application</button>}
-                  {selectedDetail.application_id && !selectedDetail.outcome_type && <div className="review-actions application-actions">{selectedDetail.application_status === "preparing" && <button disabled={busy} type="button" onClick={() => apiAction(`/api/applications/${selectedDetail.application_id}/transitions`, { status: "submitted" })}>Mark submitted</button>}<button disabled={busy} type="button" className="secondary" onClick={() => apiAction(`/api/applications/${selectedDetail.application_id}/outcomes`, { outcome_type: "rejected_by_employer" })}>Record employer rejection</button></div>}
+                  <ApplicationWorkflow
+                    apiBase={API_BASE}
+                    postingId={selectedDetail.posting_id}
+                    title={selectedDetail.title || "Untitled opportunity"}
+                    reviewDecision={selectedDetail.review_decision}
+                    applicationId={selectedDetail.application_id}
+                    applicationStatus={selectedDetail.application_status}
+                    disabled={busy}
+                    onChanged={refreshSelected}
+                    onError={setError}
+                  />
                 </div>
               </>
             )}
