@@ -25,6 +25,14 @@ $FrontendErrLog = Join-Path $LogRoot "frontend.err.log"
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
 $ExpectedBackendVersion = "0.8.0"
+$RequiredBackendRoutes = @(
+    "/api/opportunity-index",
+    "/api/opportunity-detail/{posting_id}",
+    "/api/application-index",
+    "/api/market-intelligence",
+    "/api/captures",
+    "/api/captures/linkedin/live"
+)
 
 function Resolve-ApplicationCommand {
     param([Parameter(Mandatory)][string[]]$Names)
@@ -88,8 +96,16 @@ function Assert-FreshBackend {
     }
 
     $openApi = Invoke-RestMethod -Uri "$BackendUrl/openapi.json" -TimeoutSec 5
-    if ($null -eq $openApi.paths.PSObject.Properties['/api/captures/linkedin/live']) {
-        throw "The running backend does not expose /api/captures/linkedin/live. Refusing to start capture against a stale API."
+    $missingRoutes = @(
+        foreach ($route in $RequiredBackendRoutes) {
+            if ($null -eq $openApi.paths.PSObject.Properties[$route]) {
+                $route
+            }
+        }
+    )
+
+    if ($missingRoutes.Count -gt 0) {
+        throw "The running backend is missing required API routes: $($missingRoutes -join ', '). Refusing to start JOLT with a stale backend/frontend contract."
     }
 }
 
