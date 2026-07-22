@@ -55,32 +55,58 @@ type Props = {
   onError: (message: string) => void;
 };
 
-const TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
-  preparing: ["submitted"],
-  submitted: ["acknowledged", "recruiter_screen"],
-  acknowledged: ["recruiter_screen"],
-  recruiter_screen: ["technical_interview", "hiring_manager_interview"],
-  technical_interview: ["hiring_manager_interview", "final_interview"],
-  hiring_manager_interview: ["final_interview", "offer"],
-  final_interview: ["offer"],
-  offer: [],
-  rejected: ["closed"],
-  withdrawn: ["closed"],
-  no_response: ["closed"],
-  closed: [],
+type StageAction = { status: ApplicationStatus; label: string; guidance: string };
+
+const STAGE_ACTIONS: Partial<Record<ApplicationStatus, StageAction[]>> = {
+  preparing: [{ status: "submitted", label: "Record external submission", guidance: "Use this after you submit on LinkedIn or the employer site." }],
+  submitted: [
+    { status: "acknowledged", label: "Record acknowledgement", guidance: "The employer confirmed receipt." },
+    { status: "recruiter_screen", label: "Record recruiter screen", guidance: "A recruiter conversation is scheduled or completed." },
+  ],
+  acknowledged: [{ status: "recruiter_screen", label: "Record recruiter screen", guidance: "A recruiter conversation is scheduled or completed." }],
+  recruiter_screen: [
+    { status: "technical_interview", label: "Record technical interview", guidance: "A technical assessment or interview is scheduled or completed." },
+    { status: "hiring_manager_interview", label: "Record hiring-manager interview", guidance: "The process moved directly to the hiring manager." },
+  ],
+  technical_interview: [
+    { status: "hiring_manager_interview", label: "Record hiring-manager interview", guidance: "The next stage is with the hiring manager." },
+    { status: "final_interview", label: "Record final interview", guidance: "The next stage is the final interview." },
+  ],
+  hiring_manager_interview: [
+    { status: "final_interview", label: "Record final interview", guidance: "The process has reached its final interview." },
+    { status: "offer", label: "Record offer", guidance: "An offer has been made." },
+  ],
+  final_interview: [{ status: "offer", label: "Record offer", guidance: "An offer has been made." }],
 };
 
-const OUTCOMES: { value: OutcomeType; label: string }[] = [
+const GENERAL_OUTCOMES: { value: OutcomeType; label: string }[] = [
   { value: "rejected_by_employer", label: "Rejected by employer" },
   { value: "withdrawn_by_user", label: "Withdrawn by me" },
   { value: "no_response", label: "No response" },
-  { value: "offer_declined", label: "Offer declined" },
-  { value: "offer_accepted", label: "Offer accepted" },
   { value: "role_closed", label: "Role closed" },
+];
+
+const OFFER_OUTCOMES: { value: OutcomeType; label: string }[] = [
+  { value: "offer_accepted", label: "Offer accepted" },
+  { value: "offer_declined", label: "Offer declined" },
 ];
 
 function label(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function stageGuidance(status: ApplicationStatus | null | undefined) {
+  switch (status) {
+    case "preparing": return "Finish the application materials, submit externally, then record the submission here.";
+    case "submitted": return "The application is sent. Record acknowledgement, recruiter contact, or a final outcome.";
+    case "acknowledged": return "The employer confirmed receipt. Record recruiter contact when it happens.";
+    case "recruiter_screen": return "Capture the recruiter conversation and move to the next interview stage.";
+    case "technical_interview": return "Record the technical-stage result and the next interview.";
+    case "hiring_manager_interview": return "Record the hiring-manager result, final interview, or offer.";
+    case "final_interview": return "Record the final result or offer.";
+    case "offer": return "Record whether the offer is accepted or declined.";
+    default: return "Open the workflow to review the complete history.";
+  }
 }
 
 export function ApplicationWorkflow({
@@ -98,8 +124,8 @@ export function ApplicationWorkflow({
   const [applicationUrl, setApplicationUrl] = useState("");
   const [resumeUsed, setResumeUsed] = useState("");
   const [notes, setNotes] = useState("");
-  const [transitionNotes, setTransitionNotes] = useState("");
-  const [outcome, setOutcome] = useState<OutcomeType>("rejected_by_employer");
+  const [activityNotes, setActivityNotes] = useState("");
+  const [selectedOutcome, setSelectedOutcome] = useState<OutcomeType>("rejected_by_employer");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -108,15 +134,12 @@ export function ApplicationWorkflow({
       setApplication(null);
       return;
     }
-    if (application && application.application_id !== applicationId) {
-      setApplication(null);
-    }
+    if (application && application.application_id !== applicationId) setApplication(null);
   }, [application, applicationId]);
 
-  const transitions = useMemo(
-    () => (application ? TRANSITIONS[application.status] : []),
-    [application],
-  );
+  const displayedStatus = application?.status ?? applicationStatus;
+  const actions = useMemo(() => (application ? STAGE_ACTIONS[application.status] ?? [] : []), [application]);
+  const outcomes = displayedStatus === "offer" ? OFFER_OUTCOMES : GENERAL_OUTCOMES;
 
   async function loadApplication() {
     if (!applicationId || application || loading) return;
@@ -151,6 +174,7 @@ export function ApplicationWorkflow({
         throw new Error(payload?.detail || "The application workflow change could not be saved.");
       }
       setApplication((await response.json()) as ApplicationData);
+      setActivityNotes("");
       await onChanged();
     } catch (caught) {
       onError(caught instanceof Error ? caught.message : "Unexpected application workflow error.");
@@ -169,106 +193,144 @@ export function ApplicationWorkflow({
   }
 
   if (!applicationId && reviewDecision !== "pursue") {
-    return <p>Record a pursue decision before starting an application.</p>;
+    return <p>Record a pursue decision before preparing an application.</p>;
   }
 
   if (!applicationId) {
     return (
       <details className="application-workflow">
-        <summary>Start application workflow</summary>
-        <form onSubmit={start}>
+        <summary>Prepare application</summary>
+        <div className="workflow-guidance">
+          <strong>Preparation stage</strong>
+          <p>Create the local record before submitting externally. This does not apply to the role.</p>
+        </div>
+        <form className="application-preparation-form" onSubmit={start}>
           <label>
-            Application URL <span>(optional)</span>
+            External application URL <span>(optional)</span>
             <input type="url" value={applicationUrl} onChange={(event) => setApplicationUrl(event.target.value)} />
           </label>
           <label>
-            Resume or CV used <span>(optional)</span>
-            <input value={resumeUsed} onChange={(event) => setResumeUsed(event.target.value)} />
+            CV or resume version <span>(optional)</span>
+            <input value={resumeUsed} onChange={(event) => setResumeUsed(event.target.value)} placeholder="Example: Rafael_Application_Support_CV.pdf" />
           </label>
-          <label>
+          <label className="application-form-wide">
             Preparation notes <span>(optional)</span>
-            <textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+            <textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Tailoring, cover letter, questions to confirm, or blockers." />
           </label>
-          <button disabled={disabled || busy} type="submit">Create application record</button>
+          <button disabled={disabled || busy} type="submit">Create preparation record</button>
         </form>
       </details>
     );
   }
 
-  const displayedStatus = application?.status ?? applicationStatus;
-
   return (
     <details className="application-workflow" onToggle={handleToggle}>
-      <summary>Application workflow{displayedStatus ? ` · ${label(displayedStatus)}` : ""}</summary>
+      <summary>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
       {loading && <p role="status">Loading application history…</p>}
       {!loading && !application && <p>Open this workflow to load its application history.</p>}
       {application && (
-        <>
-          <p><strong>Current stage:</strong> {label(application.status)}</p>
-          {application.application_url && <p><a href={application.application_url} target="_blank" rel="noreferrer">Open application page</a></p>}
-          {application.resume_used && <p><strong>CV used:</strong> {application.resume_used}</p>}
-          {application.notes && <p><strong>Preparation notes:</strong> {application.notes}</p>}
-
-          {!application.outcome_type && transitions.length > 0 && (
+        <div className="application-workflow-body">
+          <section className="workflow-current-stage">
             <div>
-              <label>
-                Stage notes <span>(optional)</span>
-                <input value={transitionNotes} onChange={(event) => setTransitionNotes(event.target.value)} />
-              </label>
-              <div className="review-actions application-actions" aria-label={`Advance ${title}`}>
-                {transitions.map((status) => (
+              <p className="eyebrow">Current stage</p>
+              <h4>{label(application.status)}</h4>
+              <p>{stageGuidance(application.status)}</p>
+            </div>
+            <div className="workflow-record-details">
+              {application.application_url && <a href={application.application_url} target="_blank" rel="noreferrer">Open external application page</a>}
+              {application.resume_used && <span><strong>CV:</strong> {application.resume_used}</span>}
+              {application.notes && <span><strong>Preparation:</strong> {application.notes}</span>}
+            </div>
+          </section>
+
+          {!application.outcome_type && (
+            <label className="workflow-notes">
+              Activity notes <span>(recommended)</span>
+              <textarea
+                rows={2}
+                value={activityNotes}
+                onChange={(event) => setActivityNotes(event.target.value)}
+                placeholder="Date, contact, result, next action, interview details, or follow-up context."
+              />
+            </label>
+          )}
+
+          {!application.outcome_type && actions.length > 0 && (
+            <section className="workflow-actions-section">
+              <h4>Advance the application</h4>
+              <div className="workflow-action-grid" aria-label={`Advance ${title}`}>
+                {actions.map((action) => (
                   <button
                     disabled={disabled || busy}
                     type="button"
-                    key={status}
+                    key={action.status}
                     onClick={() => post(`/api/applications/${application.application_id}/transitions`, {
-                      status,
-                      notes: transitionNotes,
+                      status: action.status,
+                      notes: activityNotes,
                     })}
                   >
-                    Mark {label(status)}
+                    <strong>{action.label}</strong>
+                    <span>{action.guidance}</span>
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {!application.outcome_type && (
-            <div>
-              <label>
-                Final outcome
-                <select value={outcome} onChange={(event) => setOutcome(event.target.value as OutcomeType)}>
-                  {OUTCOMES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-              </label>
-              <button
-                className="secondary"
-                disabled={disabled || busy}
-                type="button"
-                onClick={() => post(`/api/applications/${application.application_id}/outcomes`, {
-                  outcome_type: outcome,
-                  notes: transitionNotes,
-                })}
-              >
-                Record outcome
-              </button>
+            <section className="workflow-outcome-section">
+              <h4>{application.status === "offer" ? "Close the offer" : "Close the application"}</h4>
+              <div className="workflow-outcome-controls">
+                <label>
+                  Outcome
+                  <select
+                    value={outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value}
+                    onChange={(event) => setSelectedOutcome(event.target.value as OutcomeType)}
+                  >
+                    {outcomes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                </label>
+                <button
+                  className="secondary"
+                  disabled={disabled || busy}
+                  type="button"
+                  onClick={() => {
+                    const effectiveOutcome = outcomes.some((item) => item.value === selectedOutcome)
+                      ? selectedOutcome
+                      : outcomes[0].value;
+                    void post(`/api/applications/${application.application_id}/outcomes`, {
+                      outcome_type: effectiveOutcome,
+                      notes: activityNotes,
+                    });
+                  }}
+                >
+                  Record final outcome
+                </button>
+              </div>
+            </section>
+          )}
+
+          {application.outcome_type && (
+            <div className="workflow-closed-state">
+              <strong>Final outcome: {label(application.outcome_type)}</strong>
+              <span>No further action is required. The complete history remains available below.</span>
             </div>
           )}
 
-          {application.outcome_type && <p><strong>Outcome:</strong> {label(application.outcome_type)}</p>}
-
-          <h4>Application event history</h4>
-          <ol>
-            {application.events.map((event) => (
-              <li key={event.event_id}>
-                <strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}
-                {event.notes && <> · {event.notes}</>}
-                <br />
-                <small>{new Date(event.occurred_at).toLocaleString()}</small>
-              </li>
-            ))}
-          </ol>
-        </>
+          <details className="application-event-history">
+            <summary>Complete application history ({application.events.length})</summary>
+            <ol>
+              {application.events.map((event) => (
+                <li key={event.event_id}>
+                  <strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}
+                  {event.notes && <> · {event.notes}</>}
+                  <br />
+                  <small>{new Date(event.occurred_at).toLocaleString()}</small>
+                </li>
+              ))}
+            </ol>
+          </details>
+        </div>
       )}
     </details>
   );
