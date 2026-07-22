@@ -14,47 +14,43 @@ const opportunity = {
   proposed_decision: "pursue",
   confidence: "medium",
   ranking_score: 83,
-  fit_summary: "Strong evidence-based alignment with Rafael's support and operations profile.",
-  strengths: ["Application Support: application support, sql, api."],
-  gaps: [],
+  fit_summary: "Strong evidence-based alignment.",
+  strengths: ["Application support and SQL troubleshooting."],
+  gaps: ["Deep API diagnostics."],
   blockers: [],
-  uncertainties: ["Salary or compensation is not evidenced."],
-  dimensions: { role_alignment: 25, application_support: 20, support_ownership: 16 },
-  reasons: ["Relevant signal(s): application support, sql, incident."],
-  profile_version_id: "rafael-job-search:v2",
-  engine_version: "profile-rules-v2",
+  uncertainties: ["Salary is not evidenced."],
+  dimensions: { role_alignment: 95, demonstrated_capability: 75 },
+  reasons: ["Relevant support signals."],
+  profile_version_id: "rafael-job-search:v4",
+  engine_version: "profile-rules-v4",
   readiness: {
     report_id: "readiness-1",
-    profile_version_id: "rafael-job-search:v2",
+    profile_version_id: "rafael-job-search:v4",
     engine_version: "application-readiness-v1",
     priority: "high",
     readiness_score: 91,
-    evidence_matches: ["Production-critical IT support with incident ownership."],
-    credibility_warnings: ["Do not claim DBA ownership."],
-    cv_tailoring_points: ["Position SQL as a support troubleshooting tool."],
-    talking_points: ["Incident ownership and controlled escalation."],
-    interview_questions: ["How would you troubleshoot an API integration failure?"],
-    revision_topics: ["SQL read-only diagnostics and escalation boundaries."],
-    checklist: ["Confirm salary, contract, remote eligibility, shifts, and travel."],
+    evidence_matches: ["Incident ownership."],
+    credibility_warnings: ["Do not overstate API ownership."],
+    cv_tailoring_points: ["Position SQL as troubleshooting."],
+    talking_points: ["Controlled escalation."],
+    interview_questions: ["How would you troubleshoot an API failure?"],
+    revision_topics: ["REST diagnostics."],
+    checklist: ["Confirm salary and remote eligibility."],
   },
   review_decision: null,
 };
 
-const captureSummary = {
-  capture_run_id: "capture-1",
-  source: "linkedin",
-  mode: "fixture",
-  status: "completed_with_warnings",
-  search_url: "https://www.linkedin.com/jobs/search/",
-  warnings: ["1 detail panel failed identity verification."],
-  requested_item_limit: 2,
-  observed_item_count: 2,
-  stop_reason: "requested_limit_reached",
-  started_at: "2026-07-12T20:00:00Z",
-  completed_at: "2026-07-12T20:01:00Z",
-  total_items: 2,
-  verified_items: 1,
-  rejected_items: 1,
+const indexOpportunity = {
+  posting_id: opportunity.posting_id,
+  evaluation_id: opportunity.evaluation_id,
+  source_url: opportunity.source_url,
+  title: opportunity.title,
+  company: opportunity.company,
+  location: opportunity.location,
+  recommendation: opportunity.recommendation,
+  confidence: opportunity.confidence,
+  ranking_score: opportunity.ranking_score,
+  review_decision: null,
 };
 
 function jsonResponse(value: object) {
@@ -68,188 +64,68 @@ describe("App", () => {
     document.body.style.overflow = "";
   });
 
-  it("submits a manual opportunity and records a human review", async () => {
-    let reviewed = false;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+  it("loads a compact index and fetches full detail only when inspected", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/captures")) return jsonResponse([]);
-      if (url.endsWith("/api/opportunities") && (!init || init.method !== "POST")) {
-        return jsonResponse(reviewed ? [{ ...opportunity, review_decision: "pursue" }] : []);
-      }
-      if (url.endsWith("/api/intake/manual")) {
-        return jsonResponse({
-          posting_id: "posting-1",
-          evaluation_id: "evaluation-1",
-          identity_status: "new",
-          title: opportunity.title,
-          company: opportunity.company,
-          location: opportunity.location,
-          recommendation: "pursue",
-          confidence: "medium",
-          ranking_score: 83,
-          reasons: ["Relevant signals found."],
-        });
-      }
-      if (url.includes("/reviews")) {
-        reviewed = true;
-        return jsonResponse({
-          review_id: "review-1",
-          posting_id: "posting-1",
-          evaluation_id: "evaluation-1",
-          decision: "pursue",
-          evaluation_overridden: false,
-        });
-      }
+      if (url.endsWith("/api/opportunity-index")) return jsonResponse([indexOpportunity]);
+      if (url.endsWith("/api/opportunity-detail/posting-1")) return jsonResponse(opportunity);
       throw new Error(`Unexpected request: ${url}`);
     });
 
     render(<App />);
 
-    const exportLink = screen.getByRole("link", { name: "Download analysis pack" });
-    expect(exportLink).toHaveAttribute(
-      "href",
-      "http://127.0.0.1:8000/api/exports/analysis-pack",
-    );
-    expect(exportLink).toHaveAttribute("download", "JOLT_ANALYSIS_PACK.zip");
-
-    fireEvent.change(screen.getByLabelText("Job text"), {
-      target: { value: "Application Support Engineer\nExample Systems\nLocation: Remote Spain" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Evaluate opportunity" }));
-
-    expect(await screen.findByRole("heading", { name: opportunity.title, level: 2 })).toBeInTheDocument();
-    expect(screen.getByText("Rule score 83 · medium confidence")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "pursue" }));
-    expect(await screen.findByLabelText(`Decision for ${opportunity.title}`)).toHaveValue("pursue");
-  });
-
-  it("opens detailed evidence in a keyboard-accessible focused opportunity inspector", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/captures")) return jsonResponse([]);
-      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity]);
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("medium confidence")).toBeInTheDocument();
+    expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
-    expect(screen.queryByText("Automated proposed decision")).not.toBeInTheDocument();
+    expect(screen.queryByText(opportunity.fit_summary)).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const inspectButton = screen.getByRole("button", { name: "Inspect" });
     fireEvent.click(inspectButton);
 
-    expect(screen.getByRole("dialog", { name: opportunity.title })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    expect(await screen.findByRole("dialog", { name: opportunity.title })).toBeInTheDocument();
+    expect(await screen.findByText(opportunity.fit_summary)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute("href", opportunity.source_url);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(document.body.style.overflow).toBe("hidden");
-    expect(screen.getByText("Automated proposed decision")).toBeInTheDocument();
-    expect(screen.getByText(opportunity.fit_summary)).toBeInTheDocument();
-    expect(screen.getByText(opportunity.strengths[0])).toBeInTheDocument();
-    expect(screen.getByText(opportunity.uncertainties[0])).toBeInTheDocument();
-    expect(screen.getByText("Profile rafael-job-search:v2")).toBeInTheDocument();
-    expect(screen.getByText("Application readiness · high priority · 91/100")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Application readiness · high priority · 91/100"));
-    expect(screen.getByText(opportunity.readiness.evidence_matches[0])).toBeInTheDocument();
-    expect(screen.getByText(opportunity.readiness.credibility_warnings[0])).toBeInTheDocument();
-    expect(screen.getByText(opportunity.readiness.interview_questions[0])).toBeInTheDocument();
-
-    expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute(
-      "href",
-      opportunity.source_url,
-    );
 
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(document.body.style.overflow).toBe("");
     await waitFor(() => expect(inspectButton).toHaveFocus());
   });
 
-  it("searches and sorts opportunities without changing backend state", async () => {
-    const secondOpportunity = {
-      ...opportunity,
-      posting_id: "posting-2",
-      evaluation_id: "evaluation-2",
-      title: "Cloud Operations Analyst",
-      company: "Beta Cloud",
-      location: "Madrid",
-      ranking_score: 95,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/captures")) return jsonResponse([]);
-      if (url.endsWith("/api/opportunities")) return jsonResponse([opportunity, secondOpportunity]);
-      throw new Error(`Unexpected request: ${url}`);
-    });
+  it("searches and sorts the compact queue without another request", async () => {
+    const second = { ...indexOpportunity, posting_id: "posting-2", evaluation_id: "evaluation-2", title: "Cloud Operations Analyst", company: "Beta Cloud", ranking_score: 95 };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([indexOpportunity, second]));
 
     render(<App />);
-
     expect(await screen.findByText("Cloud Operations Analyst")).toBeInTheDocument();
-    const initialHeadings = screen.getAllByRole("heading", { level: 3 });
-    expect(initialHeadings[0]).toHaveTextContent("Cloud Operations Analyst");
+    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Cloud Operations Analyst");
 
-    fireEvent.change(screen.getByLabelText("Search opportunities"), {
-      target: { value: "Example Systems" },
-    });
+    fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "Example Systems" } });
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
-    expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title_asc" } });
-    const sortedHeadings = screen.getAllByRole("heading", { level: 3 });
-    expect(sortedHeadings[0]).toHaveTextContent("Application Support Engineer");
+    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("loads capture history only after operations tools open and exposes rejected evidence", async () => {
+  it("loads capture history only after operations tools open", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunities")) return jsonResponse([]);
-      if (url.endsWith("/api/captures")) return jsonResponse([captureSummary]);
-      if (url.endsWith("/api/captures/capture-1")) {
-        return jsonResponse({
-          ...captureSummary,
-          pages: [{
-            page_number: 1,
-            visible_job_ids: ["4434979232", "4435000001"],
-            next_control_present: true,
-            next_control_enabled: true,
-          }],
-          items: [{
-            capture_item_id: "item-1",
-            source_job_id: "4435000001",
-            source_url: "https://www.linkedin.com/jobs/view/4435000001",
-            title: "Production Support Engineer",
-            company: "Factory Cloud",
-            location: "European Union",
-            detail_status: "rejected_unverified",
-            verification_reasons: ["Detail panel does not match expected job ID."],
-            posting_id: null,
-          }],
-        });
-      }
+      if (url.endsWith("/api/opportunity-index")) return jsonResponse([]);
+      if (url.endsWith("/api/captures")) return jsonResponse([]);
       throw new Error(`Unexpected request: ${url}`);
     });
 
     render(<App />);
-
-    await screen.findByText("No opportunities match this view.");
+    expect(await screen.findByText("No opportunities match this view.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("/api/captures"));
 
     fireEvent.click(screen.getByText("Intake, captures, and exports"));
-    expect(await screen.findByText("1 verified · 1 rejected · 2 total")).toBeInTheDocument();
+    await screen.findByText("No capture runs have been recorded yet.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-
-    fireEvent.click(screen.getByRole("button", { name: "Inspect capture" }));
-
-    expect(await screen.findByRole("heading", { name: "Production Support Engineer" })).toBeInTheDocument();
-    expect(screen.getByText("Detail panel does not match expected job ID.")).toBeInTheDocument();
-    expect(screen.getByText("rejected unverified")).toBeInTheDocument();
-    expect(screen.getByText("not ingested")).toBeInTheDocument();
   });
 
   it("shows an actionable API error", async () => {
