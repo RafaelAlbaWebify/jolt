@@ -120,6 +120,14 @@ def main() -> int:
                 [keeper_id, *duplicate_ids],
             )
             connection.execute(
+                f"""
+                UPDATE application_readiness_reports
+                   SET posting_id = ?
+                 WHERE posting_id IN ({placeholders})
+                """,
+                [keeper_id, *duplicate_ids],
+            )
+            connection.execute(
                 "UPDATE postings SET canonical_url = ? WHERE id = ?",
                 (stable_linkedin_url(job_id), keeper_id),
             )
