@@ -124,7 +124,7 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText("Intake, captures, and exports"));
-    await screen.findByText("No capture runs have been recorded yet.");
+    await screen.findByText("No capture runs recorded yet.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
