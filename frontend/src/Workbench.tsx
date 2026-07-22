@@ -48,7 +48,7 @@ export function Workbench() {
           <App />
         </div>
         <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
-          <ApplicationDashboard apiBase={API_BASE} />
+          <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
         </div>
         <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
           <MarketIntelligence apiBase={API_BASE} />
