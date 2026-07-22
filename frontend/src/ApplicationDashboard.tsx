@@ -16,6 +16,7 @@ type Opportunity = {
 
 type Props = {
   apiBase: string;
+  active: boolean;
 };
 
 type ApplicationFilter = "all" | "ready" | "active" | "closed";
@@ -24,7 +25,7 @@ function statusLabel(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ") : "ready to start";
 }
 
-export function ApplicationDashboard({ apiBase }: Props) {
+export function ApplicationDashboard({ apiBase, active }: Props) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [filter, setFilter] = useState<ApplicationFilter>("all");
   const [query, setQuery] = useState("");
@@ -38,10 +39,11 @@ export function ApplicationDashboard({ apiBase }: Props) {
   }, [apiBase]);
 
   useEffect(() => {
+    if (!active) return;
     refresh().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "Application dashboard failed.");
     });
-  }, [refresh]);
+  }, [active, refresh]);
 
   const candidates = useMemo(
     () => opportunities.filter(
