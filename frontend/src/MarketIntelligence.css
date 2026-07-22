@@ -1,0 +1,129 @@
+.market-workspace {
+  padding: 24px;
+}
+
+.market-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.market-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid #dfe4ec;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.market-summary strong {
+  font-size: 1.65rem;
+  color: #172033;
+}
+
+.market-summary span,
+.market-card-heading span {
+  color: #667085;
+  font-size: 0.82rem;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.market-card {
+  padding: 18px;
+  border: 1px solid #dfe4ec;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.market-card h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.market-ranking {
+  display: grid;
+  gap: 10px;
+}
+
+.market-ranking-row {
+  display: grid;
+  gap: 5px;
+}
+
+.market-ranking-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.86rem;
+}
+
+.market-ranking-row span {
+  color: #667085;
+}
+
+.market-bar {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f7;
+}
+
+.market-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #335bd6;
+}
+
+.market-salary {
+  margin-top: 14px;
+}
+
+.market-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.market-salary-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.market-salary-list > div {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.market-salary-list span {
+  color: #667085;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .market-summary,
+  .market-grid,
+  .market-salary-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .market-summary,
+  .market-grid,
+  .market-salary-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -31,8 +31,14 @@ class OpportunityIndexItem(BaseModel):
     outcome_type: str | None = None
 
 
-def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
-    """Return queue/application metadata without constructing full review detail."""
+def list_opportunity_index(
+    session: Session, *, include_applied: bool = False
+) -> list[OpportunityIndexItem]:
+    """Return compact queue metadata without constructing full review detail.
+
+    The opportunity queue excludes postings that already have an application record.
+    Application management requests the same compact projection with applied records included.
+    """
     ensure_automated_reviews(session)
 
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
@@ -65,8 +71,10 @@ def list_opportunity_index(session: Session) -> list[OpportunityIndexItem]:
         evaluation = latest_evaluations.get(posting.id)
         if evaluation is None:
             continue
-        review = latest_reviews.get(posting.id)
         application = applications.get(posting.id)
+        if application is not None and not include_applied:
+            continue
+        review = latest_reviews.get(posting.id)
         outcome = outcomes.get(application.id) if application else None
         source_document = source_documents.get(posting.source_document_id)
 

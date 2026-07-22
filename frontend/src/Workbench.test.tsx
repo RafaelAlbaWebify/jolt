@@ -9,50 +9,40 @@ vi.mock("./ApplicationDashboard", () => ({
   ApplicationDashboard: () => <section>Application tracking content</section>,
 }));
 
-vi.mock("./IdentityEvidenceDashboard", () => ({
-  IdentityEvidenceDashboard: () => <section>Identity evidence content</section>,
+vi.mock("./MarketIntelligence", () => ({
+  MarketIntelligence: () => <section>Market intelligence content</section>,
 }));
 
 import { Workbench } from "./Workbench";
 
 describe("Workbench", () => {
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(() => cleanup());
 
-  it("shows one primary workspace view at a time", () => {
+  it("keeps workspaces mounted while showing one primary view", () => {
     render(<Workbench />);
 
-    expect(screen.getByText("Opportunity review content")).toBeInTheDocument();
-    expect(screen.queryByText("Application tracking content")).not.toBeInTheDocument();
-    expect(screen.queryByText("Identity evidence content")).not.toBeInTheDocument();
+    const opportunities = screen.getByText("Opportunity review content").parentElement;
+    const applications = screen.getByText("Application tracking content").parentElement;
+    const market = screen.getByText("Market intelligence content").parentElement;
+
+    expect(opportunities).not.toHaveAttribute("hidden");
+    expect(applications).toHaveAttribute("hidden");
+    expect(market).toHaveAttribute("hidden");
 
     fireEvent.click(screen.getByRole("button", { name: "Applications" }));
-    expect(screen.getByText("Application tracking content")).toBeInTheDocument();
-    expect(screen.queryByText("Opportunity review content")).not.toBeInTheDocument();
+    expect(opportunities).toHaveAttribute("hidden");
+    expect(applications).not.toHaveAttribute("hidden");
 
-    fireEvent.click(screen.getByRole("button", { name: "Evidence" }));
-    expect(screen.getByText("Identity evidence content")).toBeInTheDocument();
-    expect(screen.queryByText("Application tracking content")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Market" }));
+    expect(applications).toHaveAttribute("hidden");
+    expect(market).not.toHaveAttribute("hidden");
   });
 
   it("exposes the active view through accessible pressed state", () => {
     render(<Workbench />);
-
-    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
+    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: "Applications" }));
-
-    expect(screen.getByRole("button", { name: "Applications" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    expect(screen.getByRole("button", { name: "Applications" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "false");
   });
 });

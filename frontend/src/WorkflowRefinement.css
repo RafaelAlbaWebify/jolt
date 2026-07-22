@@ -1,0 +1,131 @@
+.inspector-backdrop {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.opportunity-inspector {
+  width: min(1320px, calc(100vw - 72px));
+  height: min(880px, calc(100vh - 48px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9e0eb;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspector-header {
+  flex: 0 0 auto;
+  padding: 14px 20px 12px;
+  background: #f8fafc;
+  position: relative;
+  z-index: 3;
+}
+
+.inspector-header h2 {
+  font-size: 1.22rem;
+  margin: 2px 0 4px;
+}
+
+.inspector-sticky-actions {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 20px;
+  border-bottom: 1px solid #dfe4ec;
+  background: #fff;
+  position: relative;
+  z-index: 2;
+}
+
+.compact-detail-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  grid-template-columns: minmax(0, 2.15fr) minmax(300px, 0.85fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 20px 20px;
+}
+
+.compact-detail-grid > :first-child {
+  grid-column: 1;
+  grid-row: 1 / span 8;
+  min-width: 0;
+}
+
+.compact-detail-grid > :not(:first-child) {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.compact-detail-grid .automated-review {
+  height: auto;
+}
+
+.compact-detail-grid .review-evidence-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.compact-detail-grid .dimension-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-heading {
+  align-items: flex-end;
+}
+
+.market-scope {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.market-guidance {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #c9d7fb;
+  border-radius: 12px;
+  background: #f5f8ff;
+}
+
+.market-guidance p {
+  margin: 5px 0 0;
+  color: #475467;
+}
+
+.market-workspace > .market-card {
+  margin-top: 14px;
+}
+
+@media (max-width: 980px) {
+  .inspector-backdrop {
+    padding: 0;
+  }
+
+  .opportunity-inspector {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .compact-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-detail-grid > :first-child,
+  .compact-detail-grid > :not(:first-child) {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .market-heading {
+    align-items: flex-start;
+  }
+
+  .market-scope {
+    justify-content: flex-start;
+  }
+}

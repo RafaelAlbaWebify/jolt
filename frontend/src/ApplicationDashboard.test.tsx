@@ -12,6 +12,7 @@ function jsonResponse(value: object) {
 
 const opportunity = {
   posting_id: "posting-1",
+  source_url: "https://www.linkedin.com/jobs/view/123",
   title: "Application Support Engineer",
   company: "Example Systems",
   location: "Remote Spain",
@@ -55,20 +56,18 @@ describe("ApplicationDashboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("lazy-loads one application, advances its stage, and displays immutable event history", async () => {
+  it("loads the action queue and advances a submitted application with activity notes", async () => {
     let currentApplication = application;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) {
+      if (url.endsWith("/api/application-index")) {
         return jsonResponse([{
           ...opportunity,
           application_status: currentApplication.status,
           outcome_type: currentApplication.outcome_type,
         }]);
       }
-      if (url.endsWith("/api/applications/application-1") && !init) {
-        return jsonResponse(currentApplication);
-      }
+      if (url.endsWith("/api/applications/application-1") && !init) return jsonResponse(currentApplication);
       if (url.endsWith("/api/applications/application-1/transitions")) {
         currentApplication = {
           ...currentApplication,
@@ -90,99 +89,91 @@ describe("ApplicationDashboard", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByRole("heading", { name: opportunity.title })).toBeInTheDocument();
-    const workflowSummary = await screen.findByText("Application workflow · submitted");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenLastCalledWith("http://127.0.0.1:8000/api/opportunity-index");
+    expect(screen.getByRole("button", { name: "attention (1)" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("http://127.0.0.1:8000/api/application-index");
 
-    fireEvent.click(workflowSummary);
+    fireEvent.click(screen.getByText("Manage application · submitted"));
     expect(await screen.findByText("Rafael_Application_Support_CV.pdf")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(screen.getByText(/preparing → submitted/)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Stage notes (optional)"), {
+    fireEvent.change(screen.getByLabelText("Activity notes (recommended)"), {
       target: { value: "Recruiter call booked." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Mark recruiter screen" }));
+    fireEvent.click(screen.getByRole("button", { name: /Record recruiter screen/ }));
 
-    expect(await screen.findByText("Application workflow · recruiter screen")).toBeInTheDocument();
-    expect(screen.getByText(/submitted → recruiter screen/)).toBeInTheDocument();
+    expect(await screen.findByText("Manage application · recruiter screen")).toBeInTheDocument();
   });
 
-  it("creates a local application record only after a pursue decision", async () => {
+  it("creates a preparation record without pretending the external application was submitted", async () => {
     let created = false;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) {
-        return jsonResponse([{ ...opportunity, application_id: created ? "application-1" : null }]);
+      if (url.endsWith("/api/application-index")) {
+        return jsonResponse([{
+          ...opportunity,
+          application_id: created ? "application-1" : null,
+          application_status: created ? "preparing" : null,
+        }]);
       }
       if (url.endsWith("/api/opportunities/posting-1/applications") && init?.method === "POST") {
         created = true;
         return jsonResponse({ ...application, status: "preparing", events: [application.events[0]] });
       }
-      if (url.endsWith("/api/applications/application-1")) {
-        return jsonResponse({ ...application, status: "preparing", events: [application.events[0]] });
-      }
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByText("Start application workflow")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Start application workflow"));
-    fireEvent.change(screen.getByLabelText("Resume or CV used (optional)"), {
+    fireEvent.click(await screen.findByText("Prepare application"));
+    fireEvent.change(screen.getByLabelText("CV or resume version (optional)"), {
       target: { value: "Rafael_Application_Support_CV.pdf" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create application record" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create preparation record" }));
 
-    expect(await screen.findByText("Application workflow · preparing")).toBeInTheDocument();
+    expect(await screen.findByText("Manage application · preparing")).toBeInTheDocument();
+    expect(screen.getByText("Finish documents and record external submission")).toBeInTheDocument();
   });
 
-  it("summarises, filters, and searches without loading collapsed histories", async () => {
-    const ready = {
+  it("groups preparation, attention, interviews, and closed applications", async () => {
+    const preparation = {
       ...opportunity,
       posting_id: "posting-2",
       title: "Cloud Support Engineer",
-      company: "Beta Cloud",
-      application_id: null,
-      application_status: null,
+      application_id: "application-2",
+      application_status: "preparing",
     };
-    const closed = {
+    const interview = {
       ...opportunity,
       posting_id: "posting-3",
       title: "Production Support Analyst",
-      company: "Gamma Systems",
       application_id: "application-3",
-      application_status: "closed",
+      application_status: "technical_interview",
+    };
+    const closed = {
+      ...opportunity,
+      posting_id: "posting-4",
+      title: "Technical Support Engineer",
+      application_id: "application-4",
+      application_status: "rejected",
       outcome_type: "rejected_by_employer",
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse([opportunity, ready, closed]);
-      throw new Error(`Unexpected request: ${url}`);
-    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([opportunity, preparation, interview, closed]),
+    );
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByText("Cloud Support Engineer")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "ready (1)" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "active (1)" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "closed (1)" })).toBeInTheDocument();
+    expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Action required").previousSibling).toHaveTextContent("1");
+    expect(screen.getByText("Preparation").previousSibling).toHaveTextContent("1");
+    expect(screen.getByText("Interviews").previousSibling).toHaveTextContent("1");
+    expect(screen.getByText("Closed").previousSibling).toHaveTextContent("1");
 
-    fireEvent.click(screen.getByRole("button", { name: "closed (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "active (1)" }));
     expect(screen.getByText("Production Support Analyst")).toBeInTheDocument();
-    expect(screen.queryByText("Cloud Support Engineer")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "all (3)" }));
-    fireEvent.change(screen.getByLabelText("Search applications"), {
-      target: { value: "Beta Cloud" },
-    });
-    expect(screen.getByText("Cloud Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Application Support Engineer")).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

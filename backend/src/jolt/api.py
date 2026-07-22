@@ -228,6 +228,14 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return list_opportunity_index(session)
 
     @app.get(
+        "/api/application-index", response_model=list[OpportunityIndexItem], tags=["applications"]
+    )
+    def application_index(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[OpportunityIndexItem]:
+        return list_opportunity_index(session, include_applied=True)
+
+    @app.get(
         "/api/opportunity-detail/{posting_id}",
         response_model=OpportunitySummary,
         tags=["opportunities"],

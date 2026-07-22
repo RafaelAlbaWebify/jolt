@@ -4,8 +4,10 @@ import { createRoot } from "react-dom/client";
 import { Workbench } from "./Workbench";
 import "./styles.css";
 import "./CompactOpportunityWorkspace.css";
+import "./CompactInspectorOverrides.css";
 import "./ApplicationWorkspace.css";
-import "./EvidenceWorkspace.css";
+import "./MarketIntelligence.css";
+import "./WorkflowRefinement.css";
 
 const rootElement = document.getElementById("root");
 
