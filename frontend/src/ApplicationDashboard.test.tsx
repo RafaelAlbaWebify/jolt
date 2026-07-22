@@ -59,7 +59,7 @@ describe("ApplicationDashboard", () => {
     let currentApplication = application;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) {
+      if (url.endsWith("/api/application-index")) {
         return jsonResponse([{
           ...opportunity,
           application_status: currentApplication.status,
@@ -90,12 +90,12 @@ describe("ApplicationDashboard", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByRole("heading", { name: opportunity.title })).toBeInTheDocument();
     const workflowSummary = await screen.findByText("Application workflow · submitted");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenLastCalledWith("http://127.0.0.1:8000/api/opportunity-index");
+    expect(fetchMock).toHaveBeenLastCalledWith("http://127.0.0.1:8000/api/application-index");
 
     fireEvent.click(workflowSummary);
     expect(await screen.findByText("Rafael_Application_Support_CV.pdf")).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("ApplicationDashboard", () => {
     let created = false;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) {
+      if (url.endsWith("/api/application-index")) {
         return jsonResponse([{ ...opportunity, application_id: created ? "application-1" : null }]);
       }
       if (url.endsWith("/api/opportunities/posting-1/applications") && init?.method === "POST") {
@@ -128,7 +128,7 @@ describe("ApplicationDashboard", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByText("Start application workflow")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Start application workflow"));
@@ -161,11 +161,11 @@ describe("ApplicationDashboard", () => {
 
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse([opportunity, ready, closed]);
+      if (url.endsWith("/api/application-index")) return jsonResponse([opportunity, ready, closed]);
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" />);
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByText("Cloud Support Engineer")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
