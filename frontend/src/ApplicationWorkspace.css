@@ -13,13 +13,20 @@
   gap: 12px;
 }
 
-.application-metrics > div {
+.application-metrics > button {
   display: grid;
   gap: 2px;
   padding: 16px;
   border: 1px solid #d8dde7;
   border-radius: 12px;
   background: #f8fafc;
+  text-align: left;
+  color: inherit;
+}
+
+.application-metrics > button:hover {
+  border-color: #315bd6;
+  background: #f3f6ff;
 }
 
 .application-metrics strong {
@@ -81,7 +88,7 @@
 
 .application-row-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
   align-items: start;
   gap: 18px;
 }
@@ -94,19 +101,30 @@
   margin: 0;
 }
 
+.application-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
 .application-stage {
   display: grid;
-  min-width: 170px;
-  gap: 2px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 12px 14px;
   border-radius: 10px;
   background: #eef4ff;
-  text-align: right;
+  text-align: left;
 }
 
 .application-stage strong {
   text-transform: capitalize;
   color: #2447a8;
+}
+
+.application-stage span {
+  line-height: 1.35;
 }
 
 .application-stage-closed {
@@ -123,6 +141,128 @@
   padding-top: 12px;
 }
 
+.application-workflow > summary,
+.application-event-history > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #2447a8;
+}
+
+.application-workflow-body {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.workflow-guidance,
+.workflow-current-stage,
+.workflow-actions-section,
+.workflow-outcome-section,
+.workflow-closed-state {
+  padding: 14px;
+  border: 1px solid #d8dde7;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.workflow-guidance p,
+.workflow-current-stage p,
+.workflow-closed-state span {
+  margin: 4px 0 0;
+}
+
+.application-preparation-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.application-preparation-form label,
+.workflow-notes,
+.workflow-outcome-controls label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.application-form-wide,
+.application-preparation-form button {
+  grid-column: 1 / -1;
+}
+
+.workflow-current-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+  gap: 18px;
+}
+
+.workflow-current-stage h4,
+.workflow-actions-section h4,
+.workflow-outcome-section h4 {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.workflow-record-details {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.workflow-notes textarea,
+.application-preparation-form textarea {
+  resize: vertical;
+}
+
+.workflow-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.workflow-action-grid button {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.workflow-action-grid button span {
+  font-size: 0.82rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.workflow-outcome-section {
+  background: #fff;
+}
+
+.workflow-outcome-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.workflow-closed-state {
+  display: grid;
+  gap: 4px;
+  background: #f2f4f7;
+}
+
+.application-event-history {
+  padding: 12px 14px;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+}
+
+.application-event-history ol {
+  margin-bottom: 0;
+}
+
 .application-empty {
   padding: 36px;
   border: 1px dashed #c7ced9;
@@ -133,6 +273,17 @@
 
 .application-empty h3 {
   margin: 0 0 6px;
+}
+
+@media (max-width: 900px) {
+  .application-row-summary,
+  .workflow-current-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 820px) {
@@ -151,16 +302,14 @@
 }
 
 @media (max-width: 620px) {
-  .application-metrics {
+  .application-metrics,
+  .application-preparation-form,
+  .workflow-outcome-controls {
     grid-template-columns: 1fr;
   }
 
-  .application-row-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .application-stage {
-    min-width: 0;
-    text-align: left;
+  .application-form-wide,
+  .application-preparation-form button {
+    grid-column: auto;
   }
 }
