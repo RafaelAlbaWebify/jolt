@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,8 +8,10 @@ from sqlalchemy.orm import Session
 from jolt.application_readiness import ensure_readiness_report, readiness_payload
 from jolt.automated_review import analyze_posting, ensure_automated_reviews
 from jolt.database import Application, Evaluation, Outcome, Posting, ReviewDecision
+from jolt.evaluation_strategy import StrategyAssessment
 from jolt.schemas import ApplicationReadinessSummary, OpportunitySummary, StrategyGapSummary
 from jolt.strategy_runtime import (
+    ensure_strategy_review,
     ensure_strategy_reviews,
     latest_strategy_evaluation,
     load_active_strategy_profile,
@@ -21,7 +22,7 @@ from jolt.strategy_runtime import (
 def _build_summary(
     session: Session,
     posting: Posting,
-    assessment: Any | None,
+    assessment: StrategyAssessment | None,
 ) -> OpportunitySummary | None:
     legacy_evaluation = session.scalar(
         select(Evaluation)
@@ -143,8 +144,8 @@ def get_opportunity_workbench(session: Session, posting_id: str) -> OpportunityS
         raise LookupError(f"Opportunity {posting_id} was not found.")
 
     profile = load_active_strategy_profile()
-    assessments = ensure_strategy_reviews(session, profile) if profile else {}
-    summary = _build_summary(session, posting, assessments.get(posting.id))
+    assessment = ensure_strategy_review(session, profile, posting) if profile else None
+    summary = _build_summary(session, posting, assessment)
     if summary is None:
         raise LookupError(f"Opportunity {posting_id} has no evaluation.")
     return summary
