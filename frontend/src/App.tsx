@@ -15,7 +15,7 @@ type ApplicationStatus =
 type QueueFilter = "all" | "pending" | "pursue" | "active";
 type SortOption = "score_desc" | "score_asc" | "title_asc" | "company_asc";
 
-export type Opportunity = {
+type OpportunityIndex = {
   posting_id: string;
   evaluation_id: string;
   source_url: string;
@@ -23,9 +23,16 @@ export type Opportunity = {
   company: string;
   location: string;
   recommendation: "pursue" | "consider" | "reject";
-  proposed_decision: ReviewChoice;
   confidence: string;
   ranking_score: number;
+  review_decision: ReviewChoice | null;
+  application_id?: string | null;
+  application_status?: ApplicationStatus | null;
+  outcome_type?: string | null;
+};
+
+type OpportunityDetail = OpportunityIndex & {
+  proposed_decision: ReviewChoice;
   fit_summary: string;
   strengths: string[];
   gaps: string[];
@@ -36,44 +43,78 @@ export type Opportunity = {
   profile_version_id: string;
   engine_version: string;
   readiness: ApplicationReadinessData;
-  review_decision: ReviewChoice | null;
-  application_id?: string | null;
-  application_status?: ApplicationStatus | null;
-  outcome_type?: string | null;
 };
 
-type IntakeResult = {
-  posting_id: string;
-  evaluation_id: string;
+type IntakeResult = OpportunityIndex & { identity_status: string; reasons: string[] };
+
+type SourceEvidence = {
   identity_status: string;
-  title: string;
-  company: string;
-  location: string;
-  recommendation: "pursue" | "consider" | "reject";
-  confidence: string;
-  ranking_score: number;
-  reasons: string[];
+  evidence_count: number;
+  duplicate_evidence_count: number;
+  canonical_url: string;
+  evidence: Array<{ source_document_id: string; captured_at: string; source_type: string; source_url: string }>;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const PAGE_SIZE = 20;
-const REVIEW_CHOICES: ReviewChoice[] = [
-  "pursue", "consider", "defer", "reject", "needs_more_information",
-];
+const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject", "needs_more_information"];
 
 function decisionLabel(value: ReviewChoice | null) {
   return value ? value.replaceAll("_", " ") : "Pending review";
+}
+
+function Sources({ postingId }: { postingId: string }) {
+  const [data, setData] = useState<SourceEvidence | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    if (data || loading) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/opportunities/${postingId}/identity-evidence`);
+      if (response.ok) setData((await response.json()) as SourceEvidence);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <details className="inspector-collapsible" onToggle={(event) => {
+      if (event.currentTarget.open) void load();
+    }}>
+      <summary>Sources and capture history</summary>
+      {loading && <p>Loading sources…</p>}
+      {data && (
+        <div className="source-compact">
+          <p><strong>{data.evidence_count}</strong> captures · <strong>{data.duplicate_evidence_count}</strong> repeated observations</p>
+          {data.canonical_url && <a href={data.canonical_url} target="_blank" rel="noreferrer">Open canonical job</a>}
+          <ul>
+            {data.evidence.map((item) => (
+              <li key={item.source_document_id}>
+                <span>{new Date(item.captured_at).toLocaleString()} · {item.source_type}</span>
+                {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">source</a>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </details>
+  );
 }
 
 export function App() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [rawText, setRawText] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityIndex[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("score_desc");
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<OpportunityDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -81,33 +122,51 @@ export function App() {
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const refreshOpportunities = useCallback(async () => {
-    const response = await fetch(`${API_BASE}/api/opportunities`);
-    if (!response.ok) throw new Error("Unable to load opportunities.");
-    setOpportunities((await response.json()) as Opportunity[]);
+    setRefreshing(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/opportunity-index`);
+      if (!response.ok) throw new Error("Unable to load opportunities.");
+      setOpportunities((await response.json()) as OpportunityIndex[]);
+      setHasLoaded(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  const loadDetail = useCallback(async (postingId: string) => {
+    setDetailLoading(true);
+    setSelectedDetail(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/opportunity-detail/${postingId}`);
+      if (!response.ok) throw new Error("Unable to load opportunity details.");
+      setSelectedDetail((await response.json()) as OpportunityDetail);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Opportunity detail failed.");
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    refreshOpportunities().catch(() => setError("The JOLT API is not available."));
-  }, [refreshOpportunities]);
+    if (!hasLoaded) refreshOpportunities().catch(() => setError("The JOLT API is not available."));
+  }, [hasLoaded, refreshOpportunities]);
 
   useEffect(() => {
     if (!selectedOpportunityId) return;
-
+    void loadDetail(selectedOpportunityId);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    inspectorCloseRef.current?.focus();
-
+    window.requestAnimationFrame(() => inspectorCloseRef.current?.focus());
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setSelectedOpportunityId(null);
     }
-
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
       window.requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
     };
-  }, [selectedOpportunityId]);
+  }, [loadDetail, selectedOpportunityId]);
 
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
@@ -116,12 +175,8 @@ export function App() {
       if (queueFilter === "pursue" && opportunity.review_decision !== "pursue") return false;
       if (queueFilter === "active" && !(opportunity.application_id && !opportunity.outcome_type)) return false;
       if (!normalizedQuery) return true;
-      return [opportunity.title, opportunity.company, opportunity.location]
-        .join(" ")
-        .toLocaleLowerCase()
-        .includes(normalizedQuery);
+      return [opportunity.title, opportunity.company, opportunity.location].join(" ").toLocaleLowerCase().includes(normalizedQuery);
     });
-
     return [...filtered].sort((left, right) => {
       if (sortOption === "score_asc") return left.ranking_score - right.ranking_score;
       if (sortOption === "title_asc") return left.title.localeCompare(right.title);
@@ -137,17 +192,14 @@ export function App() {
     active: opportunities.filter((item) => item.application_id && !item.outcome_type).length,
   }), [opportunities]);
 
-  const selectedOpportunity = useMemo(
-    () => opportunities.find((item) => item.posting_id === selectedOpportunityId) ?? null,
-    [opportunities, selectedOpportunityId],
-  );
-
   const pageCount = Math.max(1, Math.ceil(visibleOpportunities.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pagedOpportunities = visibleOpportunities.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const pagedOpportunities = visibleOpportunities.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  async function refreshSelected() {
+    await refreshOpportunities();
+    if (selectedOpportunityId) await loadDetail(selectedOpportunityId);
+  }
 
   async function apiAction(url: string, body: object) {
     setBusy(true);
@@ -159,12 +211,16 @@ export function App() {
         body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error("The workflow change could not be saved.");
-      await refreshOpportunities();
+      await refreshSelected();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected workflow error.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function reviewOpportunity(postingId: string, evaluationId: string, decision: ReviewChoice) {
+    await apiAction(`/api/opportunities/${postingId}/reviews`, { evaluation_id: evaluationId, decision });
   }
 
   async function submitIntake(event: FormEvent<HTMLFormElement>) {
@@ -187,26 +243,13 @@ export function App() {
     }
   }
 
-  async function reviewOpportunity(postingId: string, evaluationId: string, decision: ReviewChoice) {
-    await apiAction(`/api/opportunities/${postingId}/reviews`, {
-      evaluation_id: evaluationId,
-      decision,
-    });
-  }
-
   function changeFilter(filter: QueueFilter) {
     setQueueFilter(filter);
     setPage(1);
   }
 
   return (
-    <main className="shell">
-      <header className="hero">
-        <p className="eyebrow">Job Opportunity Learning & Tracking</p>
-        <h1>JOLT</h1>
-        <p>Turn job evidence into an auditable decision, application workflow, and outcome history.</p>
-      </header>
-
+    <main className="opportunity-main">
       {error && <p className="error" role="alert">{error}</p>}
 
       <details className="panel operations-tools">
@@ -214,282 +257,86 @@ export function App() {
         <div className="operations-grid">
           <section aria-labelledby="export-heading">
             <h2 id="export-heading">Analysis and feedback</h2>
-            <p>Export the complete evidence chain as JSON, CSV, and a readable Markdown summary.</p>
-            <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
-              Download analysis pack
-            </a>
+            <p>Export the complete evidence chain as JSON, CSV, and Markdown.</p>
+            <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">Download analysis pack</a>
           </section>
-
           <section aria-labelledby="intake-heading">
             <h2 id="intake-heading">Manual opportunity intake</h2>
             <form onSubmit={submitIntake}>
-              <label>
-                Source URL <span>(optional)</span>
-                <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" />
-              </label>
-              <label>
-                Job text
-                <textarea
-                  value={rawText}
-                  onChange={(event) => setRawText(event.target.value)}
-                  required rows={8}
-                  placeholder={"Job title\nCompany\nLocation: Remote Spain\nFull description..."}
-                />
-              </label>
-              <button disabled={busy || !rawText.trim()} type="submit">
-                {busy ? "Processing…" : "Evaluate opportunity"}
-              </button>
+              <label>Source URL <span>(optional)</span><input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" /></label>
+              <label>Job text<textarea value={rawText} onChange={(event) => setRawText(event.target.value)} required rows={5} placeholder={"Job title\nCompany\nLocation\nFull description..."} /></label>
+              <button disabled={busy || !rawText.trim()} type="submit">{busy ? "Processing…" : "Evaluate opportunity"}</button>
             </form>
           </section>
         </div>
-
         <CaptureHistory apiBase={API_BASE} onError={setError} />
       </details>
 
-      {intake && (
-        <section className="panel result" aria-labelledby="result-heading">
-          <div>
-            <p className="eyebrow">{intake.identity_status.replaceAll("_", " ")}</p>
-            <h2 id="result-heading">{intake.title || "Untitled opportunity"}</h2>
-            <p>{[intake.company, intake.location].filter(Boolean).join(" · ")}</p>
-          </div>
-          <div className="recommendation">
-            <strong>{intake.recommendation}</strong>
-            <span>Rule score {intake.ranking_score} · {intake.confidence} confidence</span>
-          </div>
-          <ul>{intake.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
-          <div className="review-actions" aria-label="Record your decision">
-            {REVIEW_CHOICES.map((choice) => (
-              <button type="button" disabled={busy} onClick={() => reviewOpportunity(intake.posting_id, intake.evaluation_id, choice)} key={choice}>
-                {choice.replaceAll("_", " ")}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      {intake && <section className="panel result"><div><p className="eyebrow">{intake.identity_status.replaceAll("_", " ")}</p><h2>{intake.title}</h2><p>{intake.company} · {intake.location}</p></div></section>}
 
       <section className="panel opportunity-workspace" aria-labelledby="queue-heading">
         <div className="section-heading opportunity-toolbar">
-          <div>
-            <h2 id="queue-heading">Opportunity review workbench</h2>
-            <p>Review the highest-value opportunities first. Inspect one opportunity without expanding the queue.</p>
-          </div>
-          <button type="button" className="secondary" disabled={busy} onClick={() => refreshOpportunities()}>
-            Refresh queue
-          </button>
+          <div><h2 id="queue-heading">Opportunity review workbench</h2><p>Review the highest-value opportunities first.</p></div>
+          <button type="button" className="secondary" disabled={refreshing} onClick={() => void refreshOpportunities()}>{refreshing ? "Refreshing…" : "Refresh queue"}</button>
         </div>
 
         <div className="queue-filters" aria-label="Filter opportunities">
-          {(["all", "pending", "pursue", "active"] as QueueFilter[]).map((filter) => (
-            <button
-              type="button"
-              className={queueFilter === filter ? "filter-active" : "secondary"}
-              onClick={() => changeFilter(filter)}
-              key={filter}
-            >
-              {filter} ({counts[filter]})
-            </button>
-          ))}
+          {(["all", "pending", "pursue", "active"] as QueueFilter[]).map((filter) => <button type="button" className={queueFilter === filter ? "filter-active" : "secondary"} onClick={() => changeFilter(filter)} key={filter}>{filter} ({counts[filter]})</button>)}
         </div>
 
         <div className="opportunity-query-tools">
-          <label>
-            <span>Search opportunities</span>
-            <input
-              type="search"
-              value={searchQuery}
-              placeholder="Title, company, or location"
-              onChange={(event) => {
-                setSearchQuery(event.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
-          <label>
-            <span>Sort</span>
-            <select
-              value={sortOption}
-              onChange={(event) => {
-                setSortOption(event.target.value as SortOption);
-                setPage(1);
-              }}
-            >
-              <option value="score_desc">Highest score</option>
-              <option value="score_asc">Lowest score</option>
-              <option value="title_asc">Title A–Z</option>
-              <option value="company_asc">Company A–Z</option>
-            </select>
-          </label>
+          <label><span>Search opportunities</span><input type="search" value={searchQuery} placeholder="Title, company, or location" onChange={(event) => { setSearchQuery(event.target.value); setPage(1); }} /></label>
+          <label><span>Sort</span><select value={sortOption} onChange={(event) => { setSortOption(event.target.value as SortOption); setPage(1); }}><option value="score_desc">Highest score</option><option value="score_asc">Lowest score</option><option value="title_asc">Title A–Z</option><option value="company_asc">Company A–Z</option></select></label>
         </div>
 
-        <div className="queue-summary">
-          <span>
-            Showing {pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
-            {"–"}{Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of {visibleOpportunities.length}
-          </span>
-          <span>Page {currentPage} of {pageCount}</span>
-        </div>
+        <div className="queue-summary"><span>{hasLoaded ? `Showing ${pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of ${visibleOpportunities.length}` : "Loading opportunities…"}</span><span>{hasLoaded ? `Page ${currentPage} of ${pageCount}` : ""}</span></div>
 
-        {visibleOpportunities.length === 0 ? <p className="empty-queue">No opportunities match this view.</p> : (
+        {hasLoaded && visibleOpportunities.length === 0 ? <p className="empty-queue">No opportunities match this view.</p> : (
           <div className="opportunity-list">
             {pagedOpportunities.map((opportunity) => (
-              <article className="opportunity-row" key={opportunity.posting_id}>
-                <div className="opportunity-row-primary">
-                  <div className="opportunity-row-title">
-                    <h3>{opportunity.title || "Untitled opportunity"}</h3>
-                    <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
-                  </div>
-
-                  <div className={`score score-${opportunity.recommendation}`}>
-                    <strong>{opportunity.ranking_score}</strong>
-                    <span>{opportunity.recommendation}</span>
-                  </div>
-
-                  <div className="opportunity-state">
-                    <strong>{opportunity.outcome_type ?? opportunity.application_status ?? decisionLabel(opportunity.review_decision)}</strong>
-                    <span>{opportunity.confidence} confidence</span>
-                  </div>
-
-                  <label className="decision-control">
-                    <span>Decision</span>
-                    <select
-                      aria-label={`Decision for ${opportunity.title}`}
-                      value={opportunity.review_decision ?? ""}
-                      disabled={busy}
-                      onChange={(event) => {
-                        const decision = event.target.value as ReviewChoice;
-                        if (decision) void reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, decision);
-                      }}
-                    >
-                      <option value="">Pending review</option>
-                      {REVIEW_CHOICES.map((choice) => (
-                        <option value={choice} key={choice}>{choice.replaceAll("_", " ")}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <button
-                    type="button"
-                    className="secondary inspect-opportunity"
-                    aria-haspopup="dialog"
-                    onClick={(event) => {
-                      inspectorTriggerRef.current = event.currentTarget;
-                      setSelectedOpportunityId(opportunity.posting_id);
-                    }}
-                  >
-                    Inspect
-                  </button>
-                </div>
-              </article>
+              <article className="opportunity-row" key={opportunity.posting_id}><div className="opportunity-row-primary">
+                <div className="opportunity-row-title"><h3>{opportunity.title || "Untitled opportunity"}</h3><p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p></div>
+                <div className={`score score-${opportunity.recommendation}`}><strong>{opportunity.ranking_score}</strong><span>{opportunity.recommendation}</span></div>
+                <div className="opportunity-state"><strong>{opportunity.outcome_type ?? opportunity.application_status ?? decisionLabel(opportunity.review_decision)}</strong><span>{opportunity.confidence} confidence</span></div>
+                <label className="decision-control"><span>Decision</span><select aria-label={`Decision for ${opportunity.title}`} value={opportunity.review_decision ?? ""} disabled={busy} onChange={(event) => { const decision = event.target.value as ReviewChoice; if (decision) void reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, decision); }}><option value="">Pending review</option>{REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{choice.replaceAll("_", " ")}</option>)}</select></label>
+                <button type="button" className="secondary inspect-opportunity" aria-haspopup="dialog" onClick={(event) => { inspectorTriggerRef.current = event.currentTarget; setSelectedOpportunityId(opportunity.posting_id); }}>Inspect</button>
+              </div></article>
             ))}
           </div>
         )}
 
-        <div className="pagination" aria-label="Opportunity pages">
-          <button
-            type="button"
-            className="secondary"
-            disabled={currentPage <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </button>
-          <span>Page {currentPage} of {pageCount}</span>
-          <button
-            type="button"
-            className="secondary"
-            disabled={currentPage >= pageCount}
-            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
-          >
-            Next
-          </button>
-        </div>
+        <div className="pagination"><button type="button" className="secondary" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" className="secondary" disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>Next</button></div>
       </section>
 
-      {selectedOpportunity && (
+      {selectedOpportunityId && (
         <div className="inspector-backdrop" role="presentation" onMouseDown={() => setSelectedOpportunityId(null)}>
-          <aside
-            className="opportunity-inspector"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="opportunity-inspector-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+          <aside className="opportunity-inspector" role="dialog" aria-modal="true" aria-labelledby="opportunity-inspector-title" onMouseDown={(event) => event.stopPropagation()}>
             <header className="inspector-header">
-              <div>
-                <p className="eyebrow">Opportunity inspector</p>
-                <h2 id="opportunity-inspector-title">{selectedOpportunity.title || "Untitled opportunity"}</h2>
-                <p>{[selectedOpportunity.company, selectedOpportunity.location].filter(Boolean).join(" · ")}</p>
-              </div>
-              <button
-                ref={inspectorCloseRef}
-                type="button"
-                className="secondary"
-                onClick={() => setSelectedOpportunityId(null)}
-              >
-                Close
-              </button>
+              <div><p className="eyebrow">Opportunity inspector</p><h2 id="opportunity-inspector-title">{selectedDetail?.title ?? "Loading opportunity…"}</h2><p>{selectedDetail ? [selectedDetail.company, selectedDetail.location].filter(Boolean).join(" · ") : ""}</p></div>
+              <button ref={inspectorCloseRef} type="button" className="secondary" onClick={() => setSelectedOpportunityId(null)}>Close</button>
             </header>
 
-            <div className="inspector-summary">
-              <div className={`score score-${selectedOpportunity.recommendation}`}>
-                <strong>{selectedOpportunity.ranking_score}</strong>
-                <span>{selectedOpportunity.recommendation}</span>
-              </div>
-              <div>
-                <strong>{selectedOpportunity.outcome_type ?? selectedOpportunity.application_status ?? decisionLabel(selectedOpportunity.review_decision)}</strong>
-                <span>{selectedOpportunity.confidence} confidence</span>
-              </div>
-            </div>
-
-            <div className="opportunity-detail-grid">
-              <AutomatedReview review={selectedOpportunity} />
-              <ApplicationReadiness readiness={selectedOpportunity.readiness} />
-              <ReadinessHistory
-                apiBase={API_BASE}
-                postingId={selectedOpportunity.posting_id}
-                title={selectedOpportunity.title || "Untitled opportunity"}
-                disabled={busy}
-                onRefreshed={refreshOpportunities}
-                onError={setError}
-              />
-
-              <div className="card-links">
-                {selectedOpportunity.source_url && <a href={selectedOpportunity.source_url} target="_blank" rel="noreferrer">Open source job</a>}
-                <a
-                  href={`${API_BASE}/api/opportunities/${selectedOpportunity.posting_id}/preparation-pack`}
-                  download={`JOLT_PREPARATION_${selectedOpportunity.posting_id}.zip`}
-                >
-                  Download preparation pack
-                </a>
-                <span>Profile {selectedOpportunity.profile_version_id}</span>
-              </div>
-
-              {selectedOpportunity.review_decision === "pursue" && !selectedOpportunity.application_id && (
-                <button disabled={busy} type="button" onClick={() => apiAction(
-                  `/api/opportunities/${selectedOpportunity.posting_id}/applications`, {}
-                )}>Start application</button>
-              )}
-
-              {selectedOpportunity.application_id && !selectedOpportunity.outcome_type && (
-                <div className="review-actions application-actions" aria-label={`Update ${selectedOpportunity.title}`}>
-                  {selectedOpportunity.application_status === "preparing" && (
-                    <button disabled={busy} type="button" onClick={() => apiAction(
-                      `/api/applications/${selectedOpportunity.application_id}/transitions`, { status: "submitted" }
-                    )}>Mark submitted</button>
-                  )}
-                  {["submitted", "acknowledged"].includes(selectedOpportunity.application_status ?? "") && (
-                    <button disabled={busy} type="button" onClick={() => apiAction(
-                      `/api/applications/${selectedOpportunity.application_id}/transitions`, { status: "recruiter_screen" }
-                    )}>Recruiter screen</button>
-                  )}
-                  <button disabled={busy} type="button" className="secondary" onClick={() => apiAction(
-                    `/api/applications/${selectedOpportunity.application_id}/outcomes`,
-                    { outcome_type: "rejected_by_employer" }
-                  )}>Record employer rejection</button>
+            {detailLoading && <div className="inspector-loading" role="status">Loading full analysis…</div>}
+            {selectedDetail && (
+              <>
+                <div className="inspector-sticky-actions">
+                  <div className={`score score-${selectedDetail.recommendation}`}><strong>{selectedDetail.ranking_score}</strong><span>{selectedDetail.recommendation}</span></div>
+                  <label className="decision-control"><span>Decision</span><select value={selectedDetail.review_decision ?? ""} disabled={busy} onChange={(event) => { const decision = event.target.value as ReviewChoice; if (decision) void reviewOpportunity(selectedDetail.posting_id, selectedDetail.evaluation_id, decision); }}><option value="">Pending review</option>{REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{choice.replaceAll("_", " ")}</option>)}</select></label>
+                  {selectedDetail.source_url && <a className="primary-link" href={selectedDetail.source_url} target="_blank" rel="noreferrer">Open source job</a>}
+                  <a href={`${API_BASE}/api/opportunities/${selectedDetail.posting_id}/preparation-pack`} download>Preparation pack</a>
                 </div>
-              )}
-            </div>
+
+                <div className="opportunity-detail-grid compact-detail-grid">
+                  <AutomatedReview review={selectedDetail} />
+                  <ApplicationReadiness readiness={selectedDetail.readiness} />
+                  <Sources postingId={selectedDetail.posting_id} />
+                  <details className="inspector-collapsible"><summary>Readiness report history</summary><ReadinessHistory apiBase={API_BASE} postingId={selectedDetail.posting_id} title={selectedDetail.title || "Untitled opportunity"} disabled={busy} onRefreshed={refreshSelected} onError={setError} /></details>
+
+                  {selectedDetail.review_decision === "pursue" && !selectedDetail.application_id && <button disabled={busy} type="button" onClick={() => apiAction(`/api/opportunities/${selectedDetail.posting_id}/applications`, {})}>Start application</button>}
+                  {selectedDetail.application_id && !selectedDetail.outcome_type && <div className="review-actions application-actions">{selectedDetail.application_status === "preparing" && <button disabled={busy} type="button" onClick={() => apiAction(`/api/applications/${selectedDetail.application_id}/transitions`, { status: "submitted" })}>Mark submitted</button>}<button disabled={busy} type="button" className="secondary" onClick={() => apiAction(`/api/applications/${selectedDetail.application_id}/outcomes`, { outcome_type: "rejected_by_employer" })}>Record employer rejection</button></div>}
+                </div>
+              </>
+            )}
           </aside>
         </div>
       )}
