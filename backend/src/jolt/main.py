@@ -45,7 +45,7 @@ LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    app = FastAPI(title="JOLT API", version="0.9.0")
+    app = FastAPI(title="JOLT API", version="0.8.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=LOCAL_FRONTEND_ORIGINS,
@@ -64,7 +64,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "jolt-backend", "version": "0.9.0"}
+        return {"status": "ok", "service": "jolt-backend", "version": "0.8.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
@@ -73,7 +73,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> IntakeResponse:
         return ingest_manual(session, request)
 
-    @app.post("/api/captures/linkedin/fixture", response_model=CaptureRunResponse, tags=["captures"])
+    @app.post(
+        "/api/captures/linkedin/fixture", response_model=CaptureRunResponse, tags=["captures"]
+    )
     def linkedin_fixture_capture(
         request: LinkedInFixtureCaptureRequest,
         session: Annotated[Session, Depends(get_session)],
@@ -103,7 +105,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post("/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"])
+    @app.post(
+        "/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"]
+    )
     def create_review(
         posting_id: str,
         request: ReviewRequest,
@@ -150,7 +154,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post("/api/opportunities/{posting_id}/applications", response_model=ApplicationResponse, tags=["applications"])
+    @app.post(
+        "/api/opportunities/{posting_id}/applications",
+        response_model=ApplicationResponse,
+        tags=["applications"],
+    )
     def start_application(
         posting_id: str,
         request: ApplicationCreateRequest,
@@ -163,7 +171,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get("/api/applications/{application_id}", response_model=ApplicationResponse, tags=["applications"])
+    @app.get(
+        "/api/applications/{application_id}",
+        response_model=ApplicationResponse,
+        tags=["applications"],
+    )
     def application(
         application_id: str,
         session: Annotated[Session, Depends(get_session)],
@@ -173,7 +185,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post("/api/applications/{application_id}/transitions", response_model=ApplicationResponse, tags=["applications"])
+    @app.post(
+        "/api/applications/{application_id}/transitions",
+        response_model=ApplicationResponse,
+        tags=["applications"],
+    )
     def change_application_status(
         application_id: str,
         request: ApplicationTransitionRequest,
@@ -186,7 +202,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.post("/api/applications/{application_id}/outcomes", response_model=ApplicationResponse, tags=["applications"])
+    @app.post(
+        "/api/applications/{application_id}/outcomes",
+        response_model=ApplicationResponse,
+        tags=["applications"],
+    )
     def save_outcome(
         application_id: str,
         request: OutcomeRequest,
@@ -199,13 +219,19 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get("/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"])
+    @app.get(
+        "/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"]
+    )
     def opportunity_index(
         session: Annotated[Session, Depends(get_session)],
     ) -> list[OpportunityIndexItem]:
         return list_opportunity_index(session)
 
-    @app.get("/api/opportunity-detail/{posting_id}", response_model=OpportunitySummary, tags=["opportunities"])
+    @app.get(
+        "/api/opportunity-detail/{posting_id}",
+        response_model=OpportunitySummary,
+        tags=["opportunities"],
+    )
     def opportunity_detail(
         posting_id: str,
         session: Annotated[Session, Depends(get_session)],
