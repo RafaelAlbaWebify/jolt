@@ -115,12 +115,24 @@ def build_market_intelligence(session: Session) -> dict[str, object]:
         searchable = f"{posting.title}\n{posting.description}".lower()
         for skill in SKILL_TERMS:
             if skill in searchable:
-                skills[skill.upper() if skill in {"sql", "aws", "dns", "dhcp", "api"} else skill.title()] += 1
+                skills[
+                    skill.upper()
+                    if skill in {"sql", "aws", "dns", "dhcp", "api"}
+                    else skill.title()
+                ] += 1
 
         evaluation = latest_evaluations.get(posting.id)
         if evaluation:
             score = evaluation.ranking_score
-            band = "80–100" if score >= 80 else "60–79" if score >= 60 else "40–59" if score >= 40 else "0–39"
+            band = (
+                "80–100"
+                if score >= 80
+                else "60–79"
+                if score >= 60
+                else "40–59"
+                if score >= 40
+                else "0–39"
+            )
             score_bands[band] += 1
 
         for mention in _salary_mentions(posting.description):
