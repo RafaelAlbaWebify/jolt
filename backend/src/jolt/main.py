@@ -13,8 +13,9 @@ from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linked
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.live_capture_workflow import run_linkedin_live_capture
+from jolt.market_intelligence import build_market_intelligence
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
-from jolt.opportunity_workbench import list_opportunity_workbench
+from jolt.opportunity_workbench import get_opportunity_workbench, list_opportunity_workbench
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
 from jolt.schemas import (
     ApplicationCreateRequest,
@@ -44,7 +45,7 @@ LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    app = FastAPI(title="JOLT API", version="0.8.0")
+    app = FastAPI(title="JOLT API", version="0.9.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=LOCAL_FRONTEND_ORIGINS,
@@ -63,7 +64,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "jolt-backend", "version": "0.8.0"}
+        return {"status": "ok", "service": "jolt-backend", "version": "0.9.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
@@ -72,22 +73,14 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> IntakeResponse:
         return ingest_manual(session, request)
 
-    @app.post(
-        "/api/captures/linkedin/fixture",
-        response_model=CaptureRunResponse,
-        tags=["captures"],
-    )
+    @app.post("/api/captures/linkedin/fixture", response_model=CaptureRunResponse, tags=["captures"])
     def linkedin_fixture_capture(
         request: LinkedInFixtureCaptureRequest,
         session: Annotated[Session, Depends(get_session)],
     ) -> CaptureRunResponse:
         return run_linkedin_fixture_capture(session, request)
 
-    @app.post(
-        "/api/captures/linkedin/live",
-        response_model=CaptureRunResponse,
-        tags=["captures"],
-    )
+    @app.post("/api/captures/linkedin/live", response_model=CaptureRunResponse, tags=["captures"])
     def linkedin_live_capture(
         request: LinkedInLiveCaptureRequest,
         session: Annotated[Session, Depends(get_session)],
@@ -100,11 +93,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> list[CaptureRunSummary]:
         return list_capture_runs(session)
 
-    @app.get(
-        "/api/captures/{capture_run_id}",
-        response_model=CaptureRunResponse,
-        tags=["captures"],
-    )
+    @app.get("/api/captures/{capture_run_id}", response_model=CaptureRunResponse, tags=["captures"])
     def capture_run(
         capture_run_id: str,
         session: Annotated[Session, Depends(get_session)],
@@ -114,11 +103,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/opportunities/{posting_id}/reviews",
-        response_model=ReviewResponse,
-        tags=["review"],
-    )
+    @app.post("/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"])
     def create_review(
         posting_id: str,
         request: ReviewRequest,
@@ -165,11 +150,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/opportunities/{posting_id}/applications",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
+    @app.post("/api/opportunities/{posting_id}/applications", response_model=ApplicationResponse, tags=["applications"])
     def start_application(
         posting_id: str,
         request: ApplicationCreateRequest,
@@ -182,11 +163,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get(
-        "/api/applications/{application_id}",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
+    @app.get("/api/applications/{application_id}", response_model=ApplicationResponse, tags=["applications"])
     def application(
         application_id: str,
         session: Annotated[Session, Depends(get_session)],
@@ -196,11 +173,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/applications/{application_id}/transitions",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
+    @app.post("/api/applications/{application_id}/transitions", response_model=ApplicationResponse, tags=["applications"])
     def change_application_status(
         application_id: str,
         request: ApplicationTransitionRequest,
@@ -213,11 +186,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/applications/{application_id}/outcomes",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
+    @app.post("/api/applications/{application_id}/outcomes", response_model=ApplicationResponse, tags=["applications"])
     def save_outcome(
         application_id: str,
         request: OutcomeRequest,
@@ -230,15 +199,27 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get(
-        "/api/opportunity-index",
-        response_model=list[OpportunityIndexItem],
-        tags=["opportunities"],
-    )
+    @app.get("/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"])
     def opportunity_index(
         session: Annotated[Session, Depends(get_session)],
     ) -> list[OpportunityIndexItem]:
         return list_opportunity_index(session)
+
+    @app.get("/api/opportunity-detail/{posting_id}", response_model=OpportunitySummary, tags=["opportunities"])
+    def opportunity_detail(
+        posting_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> OpportunitySummary:
+        try:
+            return get_opportunity_workbench(session, posting_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/market-intelligence", tags=["analysis"])
+    def market_intelligence(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, object]:
+        return build_market_intelligence(session)
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
     def opportunities(
