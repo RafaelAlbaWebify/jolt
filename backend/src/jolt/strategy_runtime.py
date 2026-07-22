@@ -107,25 +107,20 @@ def ensure_private_profile_version(session: Session, profile: StrategyProfile) -
     return record
 
 
-def ensure_strategy_reviews(
-    session: Session, profile: StrategyProfile
-) -> dict[str, StrategyAssessment]:
+def ensure_strategy_review(
+    session: Session, profile: StrategyProfile, posting: Posting
+) -> StrategyAssessment:
+    """Assess and persist one posting without recalculating the complete dataset."""
     profile_record = ensure_private_profile_version(session, profile)
-    assessments: dict[str, StrategyAssessment] = {}
-    changed = False
-
-    for posting in session.scalars(select(Posting)).all():
-        assessment = assess_posting(profile, posting.title, posting.location, posting.description)
-        assessments[posting.id] = assessment
-        existing = session.scalar(
-            select(Evaluation).where(
-                Evaluation.posting_id == posting.id,
-                Evaluation.profile_version_id == profile_record.id,
-                Evaluation.engine_version == ENGINE_VERSION,
-            )
+    assessment = assess_posting(profile, posting.title, posting.location, posting.description)
+    existing = session.scalar(
+        select(Evaluation).where(
+            Evaluation.posting_id == posting.id,
+            Evaluation.profile_version_id == profile_record.id,
+            Evaluation.engine_version == ENGINE_VERSION,
         )
-        if existing is not None:
-            continue
+    )
+    if existing is None:
         session.add(
             Evaluation(
                 id=str(uuid4()),
@@ -139,10 +134,16 @@ def ensure_strategy_reviews(
                 created_at=utc_now(),
             )
         )
-        changed = True
-
-    if changed:
         session.commit()
+    return assessment
+
+
+def ensure_strategy_reviews(
+    session: Session, profile: StrategyProfile
+) -> dict[str, StrategyAssessment]:
+    assessments: dict[str, StrategyAssessment] = {}
+    for posting in session.scalars(select(Posting)).all():
+        assessments[posting.id] = ensure_strategy_review(session, profile, posting)
     return assessments
 
 
