@@ -7,6 +7,7 @@ import "./CompactOpportunityWorkspace.css";
 import "./CompactInspectorOverrides.css";
 import "./ApplicationWorkspace.css";
 import "./MarketIntelligence.css";
+import "./WorkflowRefinement.css";
 
 const rootElement = document.getElementById("root");
 
