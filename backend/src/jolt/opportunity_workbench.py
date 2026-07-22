@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ from jolt.strategy_runtime import (
 def _build_summary(
     session: Session,
     posting: Posting,
-    assessment: object | None,
+    assessment: Any | None,
 ) -> OpportunitySummary | None:
     legacy_evaluation = session.scalar(
         select(Evaluation)
