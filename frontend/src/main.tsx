@@ -7,6 +7,7 @@ import "./CompactOpportunityWorkspace.css";
 import "./CompactInspectorOverrides.css";
 import "./ApplicationWorkspace.css";
 import "./ApplicationPipelineBoard.css";
+import "./OpportunityApplicationHandoff.css";
 import "./MarketIntelligence.css";
 import "./WorkflowRefinement.css";
 
