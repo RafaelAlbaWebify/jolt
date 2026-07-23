@@ -159,7 +159,7 @@ try {
     $stage = "starting backend"
     Write-Host "Starting JOLT backend..."
     $backendProcess = Start-Process -FilePath $uvCommand `
-        -ArgumentList @("run", "uvicorn", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
+        -ArgumentList @("run", "uvicorn", "--app-dir", "src", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
         -WorkingDirectory $BackendRoot `
         -RedirectStandardOutput $BackendOutLog `
         -RedirectStandardError $BackendErrLog `
