@@ -59,7 +59,10 @@ def transition_application_reversibly(
     existing_outcome = session.scalar(
         select(Outcome).where(Outcome.application_id == application_id)
     )
-    reopening = previous in TERMINAL_APPLICATION_STATUSES and request.status not in TERMINAL_APPLICATION_STATUSES
+    reopening = (
+        previous in TERMINAL_APPLICATION_STATUSES
+        and request.status not in TERMINAL_APPLICATION_STATUSES
+    )
     if reopening:
         event_type = "application_reopened"
         if existing_outcome is not None:
