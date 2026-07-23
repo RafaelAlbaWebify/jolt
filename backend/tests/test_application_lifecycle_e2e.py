@@ -86,12 +86,23 @@ def test_application_lifecycle_from_intake_to_accepted_offer(tmp_path: Path) -> 
         assert application["status"] == status
         assert [event["to_status"] for event in application["events"]] == expected_statuses
 
-    invalid_transition = client.post(
+    backward_transition = client.post(
         f"/api/applications/{application_id}/transitions",
-        json={"status": "submitted", "notes": "Invalid backward transition."},
+        json={"status": "submitted", "notes": "Corrected an incorrectly recorded stage."},
     )
-    assert invalid_transition.status_code == 409
-    assert "Invalid transition" in invalid_transition.json()["detail"]
+    assert backward_transition.status_code == 200
+    backward_application = backward_transition.json()
+    assert backward_application["status"] == "submitted"
+    assert backward_application["events"][-1]["from_status"] == "offer"
+    assert backward_application["events"][-1]["to_status"] == "submitted"
+    assert backward_application["events"][-1]["notes"] == "Corrected an incorrectly recorded stage."
+
+    restored_offer = client.post(
+        f"/api/applications/{application_id}/transitions",
+        json={"status": "offer", "notes": "Restored the verified current stage."},
+    )
+    assert restored_offer.status_code == 200
+    assert restored_offer.json()["status"] == "offer"
 
     outcome = client.post(
         f"/api/applications/{application_id}/outcomes",

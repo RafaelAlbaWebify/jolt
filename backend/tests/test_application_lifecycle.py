@@ -48,11 +48,14 @@ def test_pursued_opportunity_becomes_application_with_history_and_outcome(tmp_pa
     )
     assert screened.status_code == 200
 
-    invalid = client.post(
+    skipped_to_offer = client.post(
         f"/api/applications/{application['application_id']}/transitions",
-        json={"status": "offer"},
+        json={"status": "offer", "notes": "Employer moved directly to offer."},
     )
-    assert invalid.status_code == 409
+    assert skipped_to_offer.status_code == 200
+    assert skipped_to_offer.json()["status"] == "offer"
+    assert skipped_to_offer.json()["events"][-1]["from_status"] == "recruiter_screen"
+    assert skipped_to_offer.json()["events"][-1]["to_status"] == "offer"
 
     outcome = client.post(
         f"/api/applications/{application['application_id']}/outcomes",
@@ -68,6 +71,7 @@ def test_pursued_opportunity_becomes_application_with_history_and_outcome(tmp_pa
     assert result["outcome_type"] == "rejected_by_employer"
     assert [event["event_type"] for event in result["events"]] == [
         "application_created",
+        "status_changed",
         "status_changed",
         "status_changed",
         "outcome_recorded",

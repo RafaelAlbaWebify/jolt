@@ -98,7 +98,7 @@ describe("ApplicationDashboard", () => {
     fireEvent.click(screen.getByText("Manage application · submitted"));
     expect(await screen.findByText("Rafael_Application_Support_CV.pdf")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Activity notes (recommended)"), {
+    fireEvent.change(screen.getByLabelText("Activity or correction notes (recommended)"), {
       target: { value: "Recruiter call booked." },
     });
     fireEvent.click(screen.getByRole("button", { name: /Record recruiter screen/ }));

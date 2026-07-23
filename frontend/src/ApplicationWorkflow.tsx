@@ -57,6 +57,21 @@ type Props = {
 
 type StageAction = { status: ApplicationStatus; label: string; guidance: string };
 
+const APPLICATION_STAGES: { value: ApplicationStatus; label: string }[] = [
+  { value: "preparing", label: "Preparing" },
+  { value: "submitted", label: "Applied" },
+  { value: "acknowledged", label: "Acknowledged" },
+  { value: "recruiter_screen", label: "Recruiter screen" },
+  { value: "technical_interview", label: "Technical interview" },
+  { value: "hiring_manager_interview", label: "Hiring-manager interview" },
+  { value: "final_interview", label: "Final interview" },
+  { value: "offer", label: "Offer" },
+  { value: "rejected", label: "Rejected" },
+  { value: "withdrawn", label: "Withdrawn" },
+  { value: "no_response", label: "No response" },
+  { value: "closed", label: "Closed" },
+];
+
 const STAGE_ACTIONS: Partial<Record<ApplicationStatus, StageAction[]>> = {
   preparing: [{ status: "submitted", label: "Record external submission", guidance: "Use this after you submit on LinkedIn or the employer site." }],
   submitted: [
@@ -126,6 +141,7 @@ export function ApplicationWorkflow({
   const [notes, setNotes] = useState("");
   const [activityNotes, setActivityNotes] = useState("");
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeType>("rejected_by_employer");
+  const [selectedStage, setSelectedStage] = useState<ApplicationStatus | "">(applicationStatus ?? "");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -136,6 +152,11 @@ export function ApplicationWorkflow({
     }
     if (application && application.application_id !== applicationId) setApplication(null);
   }, [application, applicationId]);
+
+  useEffect(() => {
+    const status = application?.status ?? applicationStatus;
+    if (status) setSelectedStage(status);
+  }, [application?.status, applicationStatus]);
 
   const displayedStatus = application?.status ?? applicationStatus;
   const actions = useMemo(() => (application ? STAGE_ACTIONS[application.status] ?? [] : []), [application]);
@@ -148,7 +169,9 @@ export function ApplicationWorkflow({
     try {
       const response = await fetch(`${apiBase}/api/applications/${applicationId}`);
       if (!response.ok) throw new Error("Unable to load application history.");
-      setApplication((await response.json()) as ApplicationData);
+      const loaded = (await response.json()) as ApplicationData;
+      setApplication(loaded);
+      setSelectedStage(loaded.status);
     } catch (caught) {
       onError(caught instanceof Error ? caught.message : "Application history failed.");
     } finally {
@@ -173,7 +196,9 @@ export function ApplicationWorkflow({
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(payload?.detail || "The application workflow change could not be saved.");
       }
-      setApplication((await response.json()) as ApplicationData);
+      const changed = (await response.json()) as ApplicationData;
+      setApplication(changed);
+      setSelectedStage(changed.status);
       setActivityNotes("");
       await onChanged();
     } catch (caught) {
@@ -243,21 +268,48 @@ export function ApplicationWorkflow({
             </div>
           </section>
 
-          {!application.outcome_type && (
-            <label className="workflow-notes">
-              Activity notes <span>(recommended)</span>
-              <textarea
-                rows={2}
-                value={activityNotes}
-                onChange={(event) => setActivityNotes(event.target.value)}
-                placeholder="Date, contact, result, next action, interview details, or follow-up context."
-              />
-            </label>
-          )}
+          <label className="workflow-notes">
+            Activity or correction notes <span>(recommended)</span>
+            <textarea
+              rows={2}
+              value={activityNotes}
+              onChange={(event) => setActivityNotes(event.target.value)}
+              placeholder="Date, contact, result, correction reason, next action, interview details, or follow-up context."
+            />
+          </label>
+
+          <section className="workflow-outcome-section">
+            <h4>Change stage</h4>
+            <div className="workflow-outcome-controls">
+              <label>
+                Stage
+                <select
+                  value={selectedStage || application.status}
+                  onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}
+                >
+                  {APPLICATION_STAGES.map((stage) => (
+                    <option key={stage.value} value={stage.value}>{stage.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="secondary"
+                disabled={disabled || busy || !selectedStage || selectedStage === application.status}
+                type="button"
+                onClick={() => post(`/api/applications/${application.application_id}/transitions`, {
+                  status: selectedStage,
+                  notes: activityNotes,
+                })}
+              >
+                Save stage
+              </button>
+            </div>
+            <p>Stages can move backward or forward. Reopening keeps the previous outcome in the timeline.</p>
+          </section>
 
           {!application.outcome_type && actions.length > 0 && (
             <section className="workflow-actions-section">
-              <h4>Advance the application</h4>
+              <h4>Suggested next actions</h4>
               <div className="workflow-action-grid" aria-label={`Advance ${title}`}>
                 {actions.map((action) => (
                   <button
@@ -313,7 +365,7 @@ export function ApplicationWorkflow({
           {application.outcome_type && (
             <div className="workflow-closed-state">
               <strong>Final outcome: {label(application.outcome_type)}</strong>
-              <span>No further action is required. The complete history remains available below.</span>
+              <span>Use Change stage above to reopen this application. The previous outcome remains in the timeline.</span>
             </div>
           )}
 
