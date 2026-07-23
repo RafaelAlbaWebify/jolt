@@ -95,6 +95,7 @@ def test_application_lifecycle_from_intake_to_accepted_offer(tmp_path: Path) -> 
     assert backward_application["status"] == "submitted"
     assert backward_application["events"][-1]["from_status"] == "offer"
     assert backward_application["events"][-1]["to_status"] == "submitted"
+    assert backward_application["events"][-1]["notes"] == "Corrected an incorrectly recorded stage."
 
     restored_offer = client.post(
         f"/api/applications/{application_id}/transitions",
