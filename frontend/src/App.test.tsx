@@ -73,7 +73,6 @@ describe("App", () => {
     });
 
     render(<App />);
-
     expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument();
     expect(screen.queryByText(opportunity.fit_summary)).not.toBeInTheDocument();
@@ -81,7 +80,6 @@ describe("App", () => {
 
     const inspectButton = screen.getByRole("button", { name: "Inspect" });
     fireEvent.click(inspectButton);
-
     expect(await screen.findByRole("dialog", { name: opportunity.title })).toBeInTheDocument();
     expect(await screen.findByText(opportunity.fit_summary)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open source job" })).toHaveAttribute("href", opportunity.source_url);
@@ -93,66 +91,24 @@ describe("App", () => {
     await waitFor(() => expect(inspectButton).toHaveFocus());
   });
 
-  it("collects preparation data instead of creating an empty application record", async () => {
+  it("hands pursued opportunities to Applications without creating records in the inspector", async () => {
     const pursuedIndex = { ...indexOpportunity, review_decision: "pursue" };
     const pursuedDetail = { ...opportunity, review_decision: "pursue" };
-    const preparedDetail = {
-      ...pursuedDetail,
-      application_id: "application-1",
-      application_status: "preparing",
-    };
-    const application = {
-      application_id: "application-1",
-      posting_id: "posting-1",
-      status: "preparing",
-      application_url: "https://company.example/apply/123",
-      resume_used: "Rafael_Application_Support_CV.pdf",
-      notes: "Tailor API troubleshooting examples.",
-      outcome_type: null,
-      events: [],
-    };
-
-    let prepared = false;
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse(prepared ? [] : [pursuedIndex]);
-      if (url.endsWith("/api/opportunity-detail/posting-1")) {
-        return jsonResponse(prepared ? preparedDetail : pursuedDetail);
-      }
-      if (url.endsWith("/api/opportunities/posting-1/applications")) {
-        expect(init?.method).toBe("POST");
-        expect(JSON.parse(String(init?.body))).toEqual({
-          application_url: "https://company.example/apply/123",
-          resume_used: "Rafael_Application_Support_CV.pdf",
-          notes: "Tailor API troubleshooting examples.",
-        });
-        prepared = true;
-        return jsonResponse(application);
-      }
+      if (url.endsWith("/api/opportunity-index")) return jsonResponse([pursuedIndex]);
+      if (url.endsWith("/api/opportunity-detail/posting-1")) return jsonResponse(pursuedDetail);
       throw new Error(`Unexpected request: ${url}`);
     });
 
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "Inspect" }));
     expect(await screen.findByText(opportunity.fit_summary)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Prepare application"));
-    fireEvent.change(screen.getByLabelText(/External application URL/), {
-      target: { value: "https://company.example/apply/123" },
-    });
-    fireEvent.change(screen.getByLabelText(/CV or resume version/), {
-      target: { value: "Rafael_Application_Support_CV.pdf" },
-    });
-    fireEvent.change(screen.getByLabelText(/Preparation notes/), {
-      target: { value: "Tailor API troubleshooting examples." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create preparation record" }));
-
-    await waitFor(() => expect(prepared).toBe(true));
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/opportunities/posting-1/applications",
-      expect.objectContaining({ method: "POST" }),
-    );
+    expect(screen.getByRole("heading", { name: "Manage this process in Applications" })).toBeInTheDocument();
+    expect(screen.getByText(/ready in the Preparing lane/)).toBeInTheDocument();
+    expect(screen.queryByText("Prepare application")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create preparation record" })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("searches and sorts the compact queue without another request", async () => {
@@ -162,11 +118,9 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Cloud Operations Analyst")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Cloud Operations Analyst");
-
     fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "Example Systems" } });
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
-
     fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title_asc" } });
     expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
@@ -184,7 +138,6 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("No opportunities match this view.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-
     fireEvent.click(screen.getByText("Intake, captures, and exports"));
     await screen.findByText("No capture runs recorded yet.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
