@@ -98,3 +98,24 @@ def test_closed_application_can_reopen_and_preserve_outcome_in_history(monkeypat
     assert "Reason: skills_gap." in event.notes
     assert "Employer closed the process." in event.notes
     assert session.committed is True
+
+
+def test_selecting_the_current_stage_is_a_safe_no_op(monkeypatch) -> None:
+    application = FakeApplication(status="submitted")
+    session = FakeSession(application)
+    monkeypatch.setattr(
+        reversible,
+        "_application_response",
+        lambda _session, value: SimpleNamespace(status=value.status),
+    )
+
+    response = reversible.transition_application_reversibly(
+        session,
+        application.id,
+        ApplicationTransitionRequest(status="submitted", notes="No change."),
+    )
+
+    assert response.status == "submitted"
+    assert session.added == []
+    assert session.deleted == []
+    assert session.committed is False
