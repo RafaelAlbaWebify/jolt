@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -112,7 +113,7 @@ def main() -> int:
         observations["visible_error"] = safe_text(page, "[role='alert']")
         ux_checks["opportunities_horizontal_overflow_px"] = horizontal_overflow(page)
 
-        active_filter = page.get_by_role("button", name=lambda name: name.startswith("active (")).first
+        active_filter = page.get_by_role("button", name=re.compile(r"^active \(")).first
         if active_filter.count() > 0 and "active (0)" not in active_filter.inner_text():
             active_filter.click()
             page.wait_for_timeout(250)
