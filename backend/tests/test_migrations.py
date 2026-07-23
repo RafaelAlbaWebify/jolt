@@ -27,5 +27,7 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "review_decisions",
         "applications",
         "application_events",
+        "application_tasks",
+        "application_interviews",
         "outcomes",
     }.issubset(tables)
