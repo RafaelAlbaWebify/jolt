@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from playwright.sync_api import Page, Response, sync_playwright
+from playwright.sync_api import Locator, Page, Response, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
@@ -29,6 +29,17 @@ def snapshot(page: Page, output_dir: Path, name: str, summary: dict[str, object]
     summary.setdefault("screenshots", []).append(path.name)
 
 
+def box(locator: Locator) -> dict[str, float] | None:
+    value = locator.bounding_box()
+    if value is None:
+        return None
+    return {key: round(float(value[key]), 1) for key in ("x", "y", "width", "height")}
+
+
+def horizontal_overflow(page: Page) -> int:
+    return page.evaluate("Math.max(0, document.documentElement.scrollWidth - window.innerWidth)")
+
+
 def main() -> int:
     output_dir = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -44,6 +55,7 @@ def main() -> int:
         "timings_ms": {},
         "screenshots": [],
         "observations": {},
+        "ux_checks": {},
     }
 
     with sync_playwright() as playwright:
@@ -94,50 +106,101 @@ def main() -> int:
         snapshot(page, output_dir, "01-opportunities", summary)
 
         observations = summary["observations"]
+        ux_checks = summary["ux_checks"]
         observations["opportunities_heading"] = safe_text(page, "#queue-heading")
         observations["opportunity_rows"] = page.locator(".opportunity-row").count()
         observations["visible_error"] = safe_text(page, "[role='alert']")
+        ux_checks["opportunities_horizontal_overflow_px"] = horizontal_overflow(page)
 
         inspect = page.get_by_role("button", name="Inspect").first
         if inspect.count() > 0:
             started = time.perf_counter()
             inspect.click()
-            page.get_by_role("dialog").wait_for(state="visible", timeout=30_000)
+            inspector = page.get_by_role("dialog")
+            inspector.wait_for(state="visible", timeout=30_000)
             page.locator(".inspector-loading").wait_for(state="hidden", timeout=60_000)
             summary["timings_ms"]["inspector_open"] = round((time.perf_counter() - started) * 1000)
             observations["inspector_title"] = safe_text(page, "#opportunity-inspector-title")
-            observations["inspector_buttons"] = page.get_by_role("dialog").get_by_role("button").all_inner_texts()
-            observations["inspector_links"] = page.get_by_role("dialog").get_by_role("link").all_inner_texts()
+            observations["inspector_buttons"] = inspector.get_by_role("button").all_inner_texts()
+            observations["inspector_links"] = inspector.get_by_role("link").all_inner_texts()
+            observations["inspector_application_workflows"] = inspector.locator(
+                ".application-workflow"
+            ).count()
+            ux_checks["inspector_box"] = box(inspector)
+            ux_checks["inspector_horizontal_overflow_px"] = horizontal_overflow(page)
             snapshot(page, output_dir, "02-inspector", summary)
-            page.get_by_role("button", name="Close").click()
+            inspector.get_by_role("button", name="Close").click()
 
         started = time.perf_counter()
         page.get_by_role("button", name="Applications").click()
         page.locator("#application-dashboard-heading").wait_for(state="visible", timeout=30_000)
-        page.wait_for_timeout(1_500)
+        page.wait_for_timeout(1_000)
         summary["timings_ms"]["applications_tab"] = round((time.perf_counter() - started) * 1000)
         observations["applications_error"] = safe_text(page, "[role='alert']")
-        observations["application_rows"] = page.locator(".application-row").count()
-        observations["application_metrics"] = page.locator(".application-metrics button").all_inner_texts()
-        snapshot(page, output_dir, "03-applications", summary)
+        observations["application_lanes"] = page.locator(".application-lane").count()
+        observations["application_lane_titles"] = page.locator(
+            ".application-lane-header h3"
+        ).all_inner_texts()
+        observations["application_cards"] = page.locator(".application-card").count()
+        observations["application_lane_counts"] = page.locator(
+            ".application-lane-header > strong"
+        ).all_inner_texts()
+        ux_checks["application_board_box"] = box(page.locator(".application-board"))
+        ux_checks["application_board_horizontal_overflow_px"] = horizontal_overflow(page)
+        ux_checks["all_five_lanes_visible"] = observations["application_lanes"] == 5
+        snapshot(page, output_dir, "03-applications-board", summary)
+
+        first_card = page.locator(".application-card-open").first
+        if first_card.count() > 0:
+            started = time.perf_counter()
+            first_card.click()
+            workspace = page.get_by_role("dialog")
+            workspace.wait_for(state="visible", timeout=30_000)
+            summary["timings_ms"]["application_workspace_open"] = round(
+                (time.perf_counter() - started) * 1000
+            )
+            observations["workspace_title"] = safe_text(page, "#application-detail-title")
+            observations["workspace_tabs"] = page.locator(
+                ".application-detail-tabs button"
+            ).all_inner_texts()
+            observations["workspace_workflow_count"] = workspace.locator(
+                ".application-workflow"
+            ).count()
+            ux_checks["workspace_box"] = box(workspace)
+            ux_checks["workspace_horizontal_overflow_px"] = horizontal_overflow(page)
+            ux_checks["workspace_fits_viewport"] = bool(
+                (workspace_box := workspace.bounding_box())
+                and workspace_box["width"] <= VIEWPORT["width"]
+                and workspace_box["height"] <= VIEWPORT["height"]
+            )
+            snapshot(page, output_dir, "04-application-workspace", summary)
+            workspace.get_by_role("button", name="Close").click()
 
         started = time.perf_counter()
         page.get_by_role("button", name="Market").click()
-        page.get_by_role("heading", name="Market intelligence").wait_for(state="visible", timeout=30_000)
-        page.wait_for_timeout(1_000)
+        page.get_by_role("heading", name="Market intelligence").wait_for(
+            state="visible", timeout=30_000
+        )
+        page.wait_for_timeout(750)
         summary["timings_ms"]["market_tab"] = round((time.perf_counter() - started) * 1000)
         observations["market_cards"] = page.locator(".market-summary-card").count()
         observations["market_error"] = safe_text(page, "[role='alert']")
-        snapshot(page, output_dir, "04-market", summary)
+        ux_checks["market_horizontal_overflow_px"] = horizontal_overflow(page)
+        snapshot(page, output_dir, "05-market", summary)
 
         page.get_by_role("button", name="Opportunities").click()
-        page.wait_for_timeout(500)
-        observations["opportunities_after_roundtrip"] = page.locator(".opportunity-row").count()
-        snapshot(page, output_dir, "05-opportunities-return", summary)
+        page.wait_for_timeout(400)
+        observations["opportunities_after_roundtrip"] = page.locator(
+            ".opportunity-row"
+        ).count()
+        snapshot(page, output_dir, "06-opportunities-return", summary)
 
         context.tracing.stop(path=str(output_dir / "playwright-trace.zip"))
         browser.close()
 
+    summary["http_errors"] = [
+        response for response in summary["responses"] if int(response["status"]) >= 400
+    ]
     summary["finished_at"] = now_iso()
     (output_dir / "audit-summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
