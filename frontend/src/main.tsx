@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "./ApplicationOverviewAutoExpand";
 import { Workbench } from "./Workbench";
 import "./styles.css";
 import "./CompactOpportunityWorkspace.css";
