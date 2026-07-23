@@ -1,0 +1,43 @@
+.opportunity-application-handoff {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #cfd6e2;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.opportunity-application-handoff h3,
+.opportunity-application-handoff p {
+  margin: 0;
+}
+
+.opportunity-application-handoff h3 {
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.opportunity-application-handoff > div > p:last-child {
+  margin-top: 8px;
+  color: #596579;
+  line-height: 1.5;
+}
+
+.opportunity-application-status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e8edf5;
+  color: #344054;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+@media (max-width: 760px) {
+  .opportunity-application-handoff {
+    flex-direction: column;
+  }
+}
