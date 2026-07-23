@@ -2,6 +2,37 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationDashboard } from "./ApplicationDashboard";
+import type { ApplicationStatus } from "./ApplicationWorkflow";
+
+type TestOpportunity = {
+  posting_id: string;
+  source_url: string;
+  title: string;
+  company: string;
+  location: string;
+  review_decision: string | null;
+  application_id: string | null;
+  application_status: ApplicationStatus | null;
+  outcome_type: string | null;
+};
+
+type TestApplication = {
+  application_id: string;
+  posting_id: string;
+  status: ApplicationStatus;
+  application_url: string;
+  resume_used: string;
+  notes: string;
+  outcome_type: string | null;
+  events: Array<{
+    event_id: string;
+    event_type: string;
+    from_status: string;
+    to_status: string;
+    notes: string;
+    occurred_at: string;
+  }>;
+};
 
 function jsonResponse(value: object) {
   return new Response(JSON.stringify(value), {
@@ -10,7 +41,7 @@ function jsonResponse(value: object) {
   });
 }
 
-const baseOpportunity = {
+const baseOpportunity: TestOpportunity = {
   posting_id: "posting-preparing",
   source_url: "https://www.linkedin.com/jobs/view/100",
   title: "Cloud Support Engineer",
@@ -22,7 +53,7 @@ const baseOpportunity = {
   outcome_type: null,
 };
 
-const submittedOpportunity = {
+const submittedOpportunity: TestOpportunity = {
   ...baseOpportunity,
   posting_id: "posting-applied",
   title: "Application Support Engineer",
@@ -31,7 +62,7 @@ const submittedOpportunity = {
   application_status: "submitted",
 };
 
-const pipeline = [
+const pipeline: TestOpportunity[] = [
   baseOpportunity,
   submittedOpportunity,
   {
@@ -58,7 +89,7 @@ const pipeline = [
   },
 ];
 
-const application = {
+const application: TestApplication = {
   application_id: "application-1",
   posting_id: "posting-applied",
   status: "submitted",
@@ -140,8 +171,8 @@ describe("ApplicationDashboard", () => {
   });
 
   it("saves an audited stage change from the selected application workspace", async () => {
-    let currentApplication = application;
-    let currentPipeline = pipeline;
+    let currentApplication: TestApplication = application;
+    let currentPipeline: TestOpportunity[] = pipeline;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/api/application-index")) return jsonResponse(currentPipeline);
@@ -162,7 +193,7 @@ describe("ApplicationDashboard", () => {
             },
           ],
         };
-        currentPipeline = currentPipeline.map((item) => item.posting_id === "posting-applied"
+        currentPipeline = currentPipeline.map((item): TestOpportunity => item.posting_id === "posting-applied"
           ? { ...item, application_status: "technical_interview" }
           : item);
         return jsonResponse(currentApplication);
