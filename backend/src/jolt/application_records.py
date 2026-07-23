@@ -17,7 +17,9 @@ class ApplicationTask(Base):
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(20), default="open", nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
