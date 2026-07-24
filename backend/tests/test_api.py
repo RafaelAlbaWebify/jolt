@@ -72,6 +72,11 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
         "application_id": None,
         "application_status": None,
         "outcome_type": None,
+        "last_activity_at": None,
+        "next_due_at": None,
+        "next_due_kind": None,
+        "document_state": "not started",
+        "overdue": False,
     }
     assert "readiness" not in compact_opportunity
     assert "strengths" not in compact_opportunity
