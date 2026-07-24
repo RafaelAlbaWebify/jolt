@@ -106,6 +106,7 @@ def list_opportunity_index(
         outcome = outcomes.get(application.id) if application else None
         source_document = source_documents.get(posting.source_document_id)
 
+        activity_at = latest_activity.get(application.id) if application else None
         task = next_tasks.get(application.id) if application else None
         interview = next_interviews.get(application.id) if application else None
         due_at: datetime | None = None
@@ -138,8 +139,8 @@ def list_opportunity_index(
                 application_status=application.status if application else None,
                 outcome_type=outcome.outcome_type if outcome else None,
                 last_activity_at=(
-                    latest_activity.get(application.id).isoformat()
-                    if application and latest_activity.get(application.id)
+                    activity_at.isoformat()
+                    if activity_at
                     else application.updated_at.isoformat()
                     if application
                     else None
