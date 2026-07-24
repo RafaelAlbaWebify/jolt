@@ -1,7 +1,4 @@
-from pathlib import Path
-
-
-REPO_ROOT = Path(__file__).parents[2]
+REPO_ROOT = __import__("pathlib").Path(__file__).parents[2]
 PYTHON_AUDIT = REPO_ROOT / "tools" / "jolt-work-items-audit.py"
 POWERSHELL_RUNNER = REPO_ROOT / "tools" / "run-jolt-work-items-audit.ps1"
 
