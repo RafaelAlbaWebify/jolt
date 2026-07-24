@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ApplicationContacts } from "./ApplicationContacts";
+import { ApplicationDocuments } from "./ApplicationDocuments";
 import { ApplicationInterviews } from "./ApplicationInterviews";
 import { ApplicationTasks } from "./ApplicationTasks";
 import { ApplicationWorkflow } from "./ApplicationWorkflow";
@@ -149,8 +151,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
         {activeTab === "overview" && <ApplicationWorkflow apiBase={apiBase} postingId={selected.posting_id} title={selected.title || "Untitled opportunity"} reviewDecision={selected.review_decision} applicationId={selected.application_id} applicationStatus={selected.application_status} disabled={busy} onChanged={refreshAfterChange} onError={setError} />}
         {activeTab === "tasks" && <ApplicationTasks apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
         {activeTab === "interviews" && <ApplicationInterviews apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
-        {activeTab === "contacts" && <Placeholder title="Contacts are not persisted yet" copy="Recruiters, hiring managers, and referral contacts will be attached to this application in a later structured-data slice." />}
-        {activeTab === "documents" && <Placeholder title="Document records are not persisted yet" copy="Resume, cover letter, preparation pack, and supporting evidence will be managed here after the document contract is implemented." />}
+        {activeTab === "contacts" && <ApplicationContacts apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
+        {activeTab === "documents" && <ApplicationDocuments apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
         {activeTab === "timeline" && <Timeline detail={applicationDetail} loading={detailLoading} />}
       </div>
     </section></div>}
