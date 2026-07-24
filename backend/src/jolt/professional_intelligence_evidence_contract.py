@@ -77,11 +77,10 @@ def professional_execution_readiness() -> ProfessionalExecutionReadiness:
             "supervised_browser_runner_not_implemented",
             "browser_session_boundary_not_configured",
             "local_evidence_root_not_verified",
-            "explicit_per_run_user_confirmation_not_implemented",
         ],
         required_user_actions=[
+            "record_and_authorize_each_run_explicitly",
             "choose_local_evidence_root",
-            "start_each_capture_explicitly",
             "remain_present_during_capture",
             "review_artifacts_before_analysis",
         ],

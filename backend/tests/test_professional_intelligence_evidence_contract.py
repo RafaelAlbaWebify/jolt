@@ -17,7 +17,8 @@ def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Pa
     assert readiness["ready"] is False
     assert readiness["execution_available"] is False
     assert "supervised_browser_runner_not_implemented" in readiness["blockers"]
-    assert "explicit_per_run_user_confirmation_not_implemented" in readiness["blockers"]
+    assert "explicit_per_run_user_confirmation_not_implemented" not in readiness["blockers"]
+    assert "record_and_authorize_each_run_explicitly" in readiness["required_user_actions"]
     assert (
         "visible_rendered_dom_text_is_primary"
         in readiness["evidence_policy"]["text_extraction_policy"]

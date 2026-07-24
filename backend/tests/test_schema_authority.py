@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 
 from jolt.database import Base, create_session_factory
 
-HEAD_REVISION = "20260724_0010"
+HEAD_REVISION = "20260724_0011"
 
 
 def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeypatch) -> None:
@@ -33,6 +33,13 @@ def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeyp
     assert inspector.has_table("professional_capture_runs")
     assert inspector.has_table("professional_capture_artifacts")
     assert inspector.has_table("alembic_version")
+
+    run_columns = {column["name"] for column in inspector.get_columns("professional_capture_runs")}
+    assert {
+        "authorized_at",
+        "authorization_expires_at",
+        "user_present_confirmed",
+    }.issubset(run_columns)
 
     with sqlite3.connect(database_path) as connection:
         revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
