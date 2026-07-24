@@ -44,8 +44,12 @@ const TABS: Array<{ id: WorkspaceTab; label: string }> = [
 ];
 const INTERVIEW_STATUSES = new Set<ApplicationStatus>(["recruiter_screen", "technical_interview", "hiring_manager_interview", "final_interview"]);
 const CLOSED_STATUSES = new Set<ApplicationStatus>(["rejected", "withdrawn", "no_response", "closed"]);
+const OUTCOME_CODES = ["rejected_by_employer", "withdrawn_by_user", "no_response", "offer_declined", "offer_accepted", "role_closed"];
 
 function label(value: string | null | undefined) { return value ? value.replaceAll("_", " ") : "ready to prepare"; }
+function formatEventNotes(notes: string) {
+  return OUTCOME_CODES.reduce((formatted, code) => formatted.replaceAll(code, label(code)), notes);
+}
 function laneFor(item: Opportunity): PipelineLane {
   if (item.outcome_type || (item.application_status && CLOSED_STATUSES.has(item.application_status))) return "closed";
   if (!item.application_id || !item.application_status || item.application_status === "preparing") return "preparing";
@@ -78,7 +82,7 @@ function Timeline({ detail, loading }: { detail: ApplicationDetail | null; loadi
     {events.length === 0 ? <p className="application-timeline-empty">No application events have been recorded.</p> : <ol>{events.map((event) => <li key={event.event_id}>
       <time dateTime={event.occurred_at}>{new Date(event.occurred_at).toLocaleString()}</time><div><strong>{label(event.event_type)}</strong>
         {(event.from_status || event.to_status) && <p className="application-timeline-transition">{event.from_status ? label(event.from_status) : "Started"} → {event.to_status ? label(event.to_status) : "Recorded"}</p>}
-        {event.notes && <p>{event.notes}</p>}</div></li>)}</ol>}
+        {event.notes && <p>{formatEventNotes(event.notes)}</p>}</div></li>)}</ol>}
   </section>;
 }
 
