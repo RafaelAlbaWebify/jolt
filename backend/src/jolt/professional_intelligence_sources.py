@@ -143,7 +143,9 @@ def _validate_registry() -> None:
         try:
             validate_professional_source_url(source.url)
         except ValueError as exc:
-            raise RuntimeError(f"Unsupported Professional Intelligence source URL: {source.url}") from exc
+            raise RuntimeError(
+                f"Unsupported Professional Intelligence source URL: {source.url}"
+            ) from exc
 
 
 _validate_registry()
