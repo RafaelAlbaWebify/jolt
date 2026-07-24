@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from jolt.application_records import ApplicationContact, ApplicationDocument
 from jolt.database import Application, ApplicationEvent, utc_now
 
-DocumentType = Literal["resume", "cover_letter", "preparation_pack", "portfolio", "certificate", "other"]
+DocumentType = Literal[
+    "resume", "cover_letter", "preparation_pack", "portfolio", "certificate", "other"
+]
 DocumentStatus = Literal["draft", "ready", "submitted", "superseded"]
 
 
@@ -108,7 +110,9 @@ def list_contacts(session: Session, application_id: str) -> list[ContactResponse
     return [_contact_response(contact) for contact in contacts]
 
 
-def create_contact(session: Session, application_id: str, request: ContactRequest) -> ContactResponse:
+def create_contact(
+    session: Session, application_id: str, request: ContactRequest
+) -> ContactResponse:
     _application(session, application_id)
     now = utc_now()
     contact = ApplicationContact(
@@ -157,7 +161,9 @@ def list_documents(session: Session, application_id: str) -> list[DocumentRespon
     return [_document_response(document) for document in documents]
 
 
-def create_document(session: Session, application_id: str, request: DocumentRequest) -> DocumentResponse:
+def create_document(
+    session: Session, application_id: str, request: DocumentRequest
+) -> DocumentResponse:
     _application(session, application_id)
     now = utc_now()
     document = ApplicationDocument(
@@ -178,7 +184,9 @@ def create_document(session: Session, application_id: str, request: DocumentRequ
     return _document_response(document)
 
 
-def update_document(session: Session, document_id: str, request: DocumentRequest) -> DocumentResponse:
+def update_document(
+    session: Session, document_id: str, request: DocumentRequest
+) -> DocumentResponse:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
         raise LookupError("Application document was not found.")
