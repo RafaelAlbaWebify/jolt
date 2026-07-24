@@ -31,13 +31,15 @@ def horizontal_overflow(page: Page) -> int:
 def open_workflow(workspace: Locator, observations: dict[str, object], key: str) -> Locator:
     details = workspace.locator("details.application-workflow")
     details.locator(":scope > summary").click()
+    details.wait_for(state="visible", timeout=30_000)
+    details.page.wait_for_function(
+        "element => element.open === true",
+        arg=details.element_handle(),
+        timeout=30_000,
+    )
     current_stage = details.locator(".workflow-current-stage h4")
-    current_stage.wait_for(state="attached", timeout=30_000)
-    collapsed_after_load = details.evaluate("element => !element.open")
-    observations[key] = bool(collapsed_after_load)
-    if collapsed_after_load:
-        details.evaluate("element => { element.open = true; }")
     current_stage.wait_for(state="visible", timeout=30_000)
+    observations[key] = not bool(details.evaluate("element => element.open"))
     return current_stage
 
 
