@@ -5,7 +5,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from playwright.sync_api import Page, Response, sync_playwright
+from playwright.sync_api import Locator, Page, Response, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
 API_URL = "http://127.0.0.1:8000"
@@ -26,6 +26,20 @@ def snapshot(page: Page, output_dir: Path, name: str, summary: dict[str, object]
 
 def horizontal_overflow(page: Page) -> int:
     return int(page.evaluate("Math.max(0, document.documentElement.scrollWidth - window.innerWidth)"))
+
+
+def open_workflow(workspace: Locator, observations: dict[str, object], key: str) -> Locator:
+    details = workspace.locator("details.application-workflow")
+    summary = details.locator(":scope > summary")
+    summary.click()
+    current_stage = details.locator(".workflow-current-stage h4")
+    current_stage.wait_for(state="attached", timeout=30_000)
+    collapsed_after_load = details.evaluate("element => !element.open")
+    observations[key] = bool(collapsed_after_load)
+    if collapsed_after_load:
+        details.evaluate("element => { element.open = true; }")
+    current_stage.wait_for(state="visible", timeout=30_000)
+    return current_stage
 
 
 def main() -> int:
@@ -143,9 +157,7 @@ def main() -> int:
         audit_card.locator(".application-card-open").click()
         workspace = page.get_by_role("dialog")
         workspace.wait_for(state="visible", timeout=30_000)
-        workspace.locator(".application-workflow > summary").click()
-        current_stage = workspace.locator(".workflow-current-stage h4")
-        current_stage.wait_for(state="visible", timeout=30_000)
+        current_stage = open_workflow(workspace, observations, "workflow_collapsed_after_initial_load")
         observations["initial_stage"] = current_stage.inner_text()
         snapshot(page, output_dir, "02-workspace-preparing", summary)
 
@@ -196,8 +208,9 @@ def main() -> int:
         interviewing_card.locator(".application-card-open").click()
         workspace = page.get_by_role("dialog")
         workspace.wait_for(state="visible", timeout=30_000)
-        workspace.locator(".application-workflow > summary").click()
-        persisted_stage = workspace.locator(".workflow-current-stage h4")
+        persisted_stage = open_workflow(
+            workspace, observations, "workflow_collapsed_after_reopen_load"
+        )
         persisted_stage.get_by_text("recruiter screen", exact=True).wait_for(
             state="visible", timeout=30_000
         )
@@ -225,6 +238,10 @@ def main() -> int:
             observations["expected_timeline_fragments"].values()
         )
         ux_checks["reopened_card_in_interviewing_lane"] = interviewing_card.count() == 1
+        ux_checks["workflow_disclosure_stable"] = not bool(
+            observations["workflow_collapsed_after_initial_load"]
+            or observations["workflow_collapsed_after_reopen_load"]
+        )
 
         context.tracing.stop(path=str(output_dir / "playwright-trace.zip"))
         browser.close()
