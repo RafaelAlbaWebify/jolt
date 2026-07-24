@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, SyntheticEvent } from "react";
+import type { FormEvent } from "react";
 
 export type ApplicationStatus =
   | "preparing"
@@ -134,11 +134,12 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
   const [selectedStage, setSelectedStage] = useState<ApplicationStatus | "">(applicationStatus ?? "");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
 
   useEffect(() => {
-    if (!applicationId) { setApplication(null); return; }
-    if (application && application.application_id !== applicationId) setApplication(null);
-  }, [application, applicationId]);
+    setWorkflowOpen(false);
+    setApplication(null);
+  }, [applicationId]);
   useEffect(() => {
     const status = application?.status ?? applicationStatus;
     if (status) setSelectedStage(status);
@@ -163,8 +164,10 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     } finally { setLoading(false); }
   }
 
-  function handleWorkflowToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-    if (event.currentTarget.open) void loadApplication();
+  function toggleWorkflow() {
+    const nextOpen = !workflowOpen;
+    setWorkflowOpen(nextOpen);
+    if (nextOpen) void loadApplication();
   }
 
   async function post(url: string, body: object) {
@@ -207,47 +210,58 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     </form>
   </details>;
 
-  return <details className="application-workflow" onToggle={handleWorkflowToggle}>
-    <summary>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
-    {loading && <p role="status">Loading application history…</p>}
-    {!loading && !application && <p>Open this workflow to load its application history.</p>}
-    {application && <div className="application-workflow-body">
-      <section className="workflow-current-stage">
-        <div><p className="eyebrow">Current stage</p><h4>{label(application.status)}</h4><p>{stageGuidance(application.status)}</p></div>
-        <div className="workflow-record-details">
-          {application.application_url && <a href={application.application_url} target="_blank" rel="noreferrer">Open external application page</a>}
-          {application.resume_used && <span><strong>CV:</strong> {application.resume_used}</span>}
-          {application.notes && <span><strong>Preparation:</strong> {application.notes}</span>}
-        </div>
-      </section>
-      <label className="workflow-notes">Activity or correction notes <span>(recommended)</span><textarea rows={2} value={activityNotes} onChange={(event) => setActivityNotes(event.target.value)} placeholder="Date, contact, result, correction reason, next action, interview details, or follow-up context." /></label>
-      <section className="workflow-outcome-section">
-        <h4>Change stage</h4>
-        <div className="workflow-outcome-controls">
-          <label>Stage<select value={selectedStage || application.status} onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}>{APPLICATION_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
-          <button className="secondary" disabled={disabled || busy || !selectedStage || selectedStage === application.status} type="button" onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: selectedStage, notes: activityNotes })}>Save stage</button>
-        </div>
-        <p>Stages can move backward or forward. Reopening keeps the previous outcome in the timeline.</p>
-      </section>
-      {!application.outcome_type && actions.length > 0 && <section className="workflow-actions-section">
-        <h4>Suggested next actions</h4>
-        <div className="workflow-action-grid" aria-label={`Advance ${title}`}>{actions.map((action) => <button disabled={disabled || busy} type="button" key={action.status} onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: action.status, notes: activityNotes })}><strong>{action.label}</strong><span>{action.guidance}</span></button>)}</div>
-      </section>}
-      {!application.outcome_type && <section className="workflow-outcome-section">
-        <h4>{application.status === "offer" ? "Close the offer" : "Close the application"}</h4>
-        <div className="workflow-outcome-controls">
-          <label>Outcome<select value={outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value} onChange={(event) => setSelectedOutcome(event.target.value as OutcomeType)}>{outcomes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-          <button className="secondary" disabled={disabled || busy} type="button" onClick={() => {
-            const effectiveOutcome = outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value;
-            void post(`/api/applications/${application.application_id}/outcomes`, { outcome_type: effectiveOutcome, notes: activityNotes });
-          }}>Record final outcome</button>
-        </div>
-      </section>}
-      {application.outcome_type && <div className="workflow-closed-state"><strong>Final outcome: {label(application.outcome_type)}</strong><span>Use Change stage above to reopen this application. The previous outcome remains in the timeline.</span></div>}
-      <details className="application-event-history">
-        <summary>Complete application history ({application.events.length})</summary>
-        <ol>{application.events.map((event) => <li key={event.event_id}><strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}{event.notes && <> · {formatEventNotes(event.notes)}</>}<br /><small>{new Date(event.occurred_at).toLocaleString()}</small></li>)}</ol>
-      </details>
+  const panelId = `application-workflow-panel-${applicationId}`;
+  return <section className="application-workflow">
+    <button
+      aria-controls={panelId}
+      aria-expanded={workflowOpen}
+      className="application-workflow-toggle"
+      type="button"
+      onClick={toggleWorkflow}
+    >
+      Manage application · {displayedStatus ? label(displayedStatus) : "loading"}
+    </button>
+    {workflowOpen && <div className="application-workflow-panel" id={panelId}>
+      {loading && <p role="status">Loading application history…</p>}
+      {!loading && !application && <p>Application history could not be loaded.</p>}
+      {application && <div className="application-workflow-body">
+        <section className="workflow-current-stage">
+          <div><p className="eyebrow">Current stage</p><h4>{label(application.status)}</h4><p>{stageGuidance(application.status)}</p></div>
+          <div className="workflow-record-details">
+            {application.application_url && <a href={application.application_url} target="_blank" rel="noreferrer">Open external application page</a>}
+            {application.resume_used && <span><strong>CV:</strong> {application.resume_used}</span>}
+            {application.notes && <span><strong>Preparation:</strong> {application.notes}</span>}
+          </div>
+        </section>
+        <label className="workflow-notes">Activity or correction notes <span>(recommended)</span><textarea rows={2} value={activityNotes} onChange={(event) => setActivityNotes(event.target.value)} placeholder="Date, contact, result, correction reason, next action, interview details, or follow-up context." /></label>
+        <section className="workflow-outcome-section">
+          <h4>Change stage</h4>
+          <div className="workflow-outcome-controls">
+            <label>Stage<select value={selectedStage || application.status} onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}>{APPLICATION_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
+            <button className="secondary" disabled={disabled || busy || !selectedStage || selectedStage === application.status} type="button" onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: selectedStage, notes: activityNotes })}>Save stage</button>
+          </div>
+          <p>Stages can move backward or forward. Reopening keeps the previous outcome in the timeline.</p>
+        </section>
+        {!application.outcome_type && actions.length > 0 && <section className="workflow-actions-section">
+          <h4>Suggested next actions</h4>
+          <div className="workflow-action-grid" aria-label={`Advance ${title}`}>{actions.map((action) => <button disabled={disabled || busy} type="button" key={action.status} onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: action.status, notes: activityNotes })}><strong>{action.label}</strong><span>{action.guidance}</span></button>)}</div>
+        </section>}
+        {!application.outcome_type && <section className="workflow-outcome-section">
+          <h4>{application.status === "offer" ? "Close the offer" : "Close the application"}</h4>
+          <div className="workflow-outcome-controls">
+            <label>Outcome<select value={outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value} onChange={(event) => setSelectedOutcome(event.target.value as OutcomeType)}>{outcomes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+            <button className="secondary" disabled={disabled || busy} type="button" onClick={() => {
+              const effectiveOutcome = outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value;
+              void post(`/api/applications/${application.application_id}/outcomes`, { outcome_type: effectiveOutcome, notes: activityNotes });
+            }}>Record final outcome</button>
+          </div>
+        </section>}
+        {application.outcome_type && <div className="workflow-closed-state"><strong>Final outcome: {label(application.outcome_type)}</strong><span>Use Change stage above to reopen this application. The previous outcome remains in the timeline.</span></div>}
+        <details className="application-event-history">
+          <summary>Complete application history ({application.events.length})</summary>
+          <ol>{application.events.map((event) => <li key={event.event_id}><strong>{label(event.event_type)}</strong>: {event.from_status ? `${label(event.from_status)} → ` : ""}{label(event.to_status)}{event.notes && <> · {formatEventNotes(event.notes)}</>}<br /><small>{new Date(event.occurred_at).toLocaleString()}</small></li>)}</ol>
+        </details>
+      </div>}
     </div>}
-  </details>;
+  </section>;
 }
