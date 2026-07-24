@@ -9,6 +9,7 @@ def test_confirmed_professional_intelligence_registry_is_exact_and_safe() -> Non
     assert len({source.url for source in sources}) == 14
     assert all(source.url.startswith("https://www.linkedin.com/") for source in sources)
     assert all(source.capture_mode == "supervised_read_only" for source in sources)
+    assert all(source.enabled for source in sources)
 
     initial_scope = [source for source in sources if source.initial_scope]
     assert [source.label for source in initial_scope] == [
