@@ -55,6 +55,13 @@ def _document_state(application: Application | None, documents: list[Application
     return " · ".join(parts)
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalize SQLite's timezone-naive datetimes before comparisons."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def list_opportunity_index(
     session: Session, *, include_applied: bool = False
 ) -> list[OpportunityIndexItem]:
@@ -128,17 +135,19 @@ def list_opportunity_index(
         activity_at = latest_activity.get(application.id) if application else None
         task = next_tasks.get(application.id) if application else None
         interview = next_interviews.get(application.id) if application else None
+        task_due = _as_utc(task.due_at) if task and task.due_at else None
+        interview_due = _as_utc(interview.scheduled_at) if interview else None
         due_at: datetime | None = None
         due_kind: str | None = None
-        if task and interview:
-            if task.due_at and task.due_at <= interview.scheduled_at:
-                due_at, due_kind = task.due_at, "task"
+        if task_due and interview_due:
+            if task_due <= interview_due:
+                due_at, due_kind = task_due, "task"
             else:
-                due_at, due_kind = interview.scheduled_at, "interview"
-        elif task:
-            due_at, due_kind = task.due_at, "task"
-        elif interview:
-            due_at, due_kind = interview.scheduled_at, "interview"
+                due_at, due_kind = interview_due, "interview"
+        elif task_due:
+            due_at, due_kind = task_due, "task"
+        elif interview_due:
+            due_at, due_kind = interview_due, "interview"
 
         application_documents = (
             documents_by_application.get(application.id, []) if application else []
