@@ -124,7 +124,9 @@ def list_opportunity_index(
             OpportunityIndexItem(
                 posting_id=posting.id,
                 evaluation_id=evaluation.id,
-                source_url=(source_document.source_url if source_document else posting.canonical_url),
+                source_url=(
+                    source_document.source_url if source_document else posting.canonical_url
+                ),
                 title=posting.title,
                 company=posting.company,
                 location=posting.location,
@@ -135,10 +137,22 @@ def list_opportunity_index(
                 application_id=application.id if application else None,
                 application_status=application.status if application else None,
                 outcome_type=outcome.outcome_type if outcome else None,
-                last_activity_at=(latest_activity.get(application.id).isoformat() if application and latest_activity.get(application.id) else application.updated_at.isoformat() if application else None),
+                last_activity_at=(
+                    latest_activity.get(application.id).isoformat()
+                    if application and latest_activity.get(application.id)
+                    else application.updated_at.isoformat()
+                    if application
+                    else None
+                ),
                 next_due_at=due_at.isoformat() if due_at else None,
                 next_due_kind=due_kind,
-                document_state=("resume attached" if application and application.resume_used.strip() else "resume missing") if application else "not started",
+                document_state=(
+                    "resume attached"
+                    if application and application.resume_used.strip()
+                    else "resume missing"
+                )
+                if application
+                else "not started",
                 overdue=bool(due_at and due_at < now),
             )
         )
