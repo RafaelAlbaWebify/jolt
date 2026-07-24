@@ -8,7 +8,9 @@ from jolt.professional_intelligence_capture_plan import (
     build_professional_capture_plan,
 )
 from jolt.professional_intelligence_capture_runs import (
+    ProfessionalCaptureAuthorizationRequest,
     ProfessionalCaptureRunResponse,
+    authorize_professional_capture_run,
     cancel_professional_capture_run,
     create_professional_capture_preview_run,
     get_professional_capture_run,
@@ -98,6 +100,22 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             return get_professional_capture_run(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/authorize",
+        response_model=ProfessionalCaptureRunResponse,
+    )
+    def authorize_professional_capture_preview(
+        run_id: str,
+        request: ProfessionalCaptureAuthorizationRequest,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureRunResponse:
+        try:
+            return authorize_professional_capture_run(session, run_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @router.post(
         "/api/professional-intelligence/capture-runs/{run_id}/cancel",
