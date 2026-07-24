@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
+
 export type ProfessionalIntelligenceSource = {
   source_id: string;
   label: string;
   category: "profile" | "network" | "career";
   url: string;
   initial_scope: boolean;
+  enabled: boolean;
   capture_mode: "supervised_read_only";
 };
+
+type SourceUpdate = Pick<
+  ProfessionalIntelligenceSource,
+  "label" | "url" | "initial_scope" | "enabled"
+>;
 
 type Props = {
   apiBase: string;
@@ -24,6 +32,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [sources, setSources] = useState<ProfessionalIntelligenceSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -46,6 +55,45 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const initialSources = useMemo(() => sources.filter((source) => source.initial_scope), [sources]);
   const deferredSources = useMemo(() => sources.filter((source) => !source.initial_scope), [sources]);
 
+  function replaceSource(changed: ProfessionalIntelligenceSource) {
+    setSources((current) => current.map((source) => (
+      source.source_id === changed.source_id ? changed : source
+    )));
+  }
+
+  async function runSourceAction(sourceId: string, path: string, body?: SourceUpdate) {
+    setBusySourceId(sourceId);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}${path}`, {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The source registry change could not be saved.");
+      }
+      replaceSource((await response.json()) as ProfessionalIntelligenceSource);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unexpected source registry error.");
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  async function saveSource(sourceId: string, update: SourceUpdate) {
+    await runSourceAction(
+      sourceId,
+      `/api/professional-intelligence/sources/${sourceId}/update`,
+      update,
+    );
+  }
+
+  async function resetSource(sourceId: string) {
+    await runSourceAction(sourceId, `/api/professional-intelligence/sources/${sourceId}/reset`);
+  }
+
   function renderSources(items: ProfessionalIntelligenceSource[]) {
     const categories: ProfessionalIntelligenceSource["category"][] = ["profile", "career", "network"];
     return categories.map((category) => {
@@ -56,12 +104,26 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
           <h3>{CATEGORY_LABELS[category]}</h3>
           <div className="professional-source-grid">
             {categorySources.map((source) => (
-              <article className="professional-source-card" key={source.source_id}>
-                <div>
-                  <p className="eyebrow">{source.capture_mode.replaceAll("_", " ")}</p>
-                  <h4>{source.label}</h4>
+              <article
+                className={`professional-source-card${source.enabled ? "" : " professional-source-disabled"}`}
+                key={source.source_id}
+              >
+                <div className="professional-source-card-heading">
+                  <div>
+                    <p className="eyebrow">{source.capture_mode.replaceAll("_", " ")}</p>
+                    <h4>{source.label}</h4>
+                  </div>
+                  <span className="professional-source-status">
+                    {source.enabled ? "Enabled" : "Disabled"}
+                  </span>
                 </div>
                 <a href={source.url} target="_blank" rel="noreferrer">Open approved source</a>
+                <ProfessionalSourceEditor
+                  source={source}
+                  busy={busySourceId === source.source_id}
+                  onSave={saveSource}
+                  onReset={resetSource}
+                />
               </article>
             ))}
           </div>
@@ -76,7 +138,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         <div>
           <p className="eyebrow">Professional Intelligence</p>
           <h2 id="professional-intelligence-heading">Approved LinkedIn source registry</h2>
-          <p>Review the exact user-approved sources before any supervised evidence capture is introduced.</p>
+          <p>Edit only the confirmed source set before any supervised evidence capture is introduced. Every change is stored locally and can be reset to its verified default.</p>
         </div>
         <div className="professional-safety-boundary" role="note">
           <strong>Read-only boundary</strong>
