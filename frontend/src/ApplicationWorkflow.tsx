@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, SyntheticEvent } from "react";
+import type { FormEvent, MouseEvent } from "react";
 
 export type ApplicationStatus =
   | "preparing"
@@ -165,10 +165,11 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     } finally { setLoading(false); }
   }
 
-  function handleToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-    const open = event.currentTarget.open;
-    setWorkflowOpen(open);
-    if (open) void loadApplication();
+  function handleSummaryClick(event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    const nextOpen = !workflowOpen;
+    setWorkflowOpen(nextOpen);
+    if (nextOpen) void loadApplication();
   }
 
   async function post(url: string, body: object) {
@@ -211,8 +212,8 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     </form>
   </details>;
 
-  return <details className="application-workflow" open={workflowOpen} onToggle={handleToggle}>
-    <summary>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
+  return <details className="application-workflow" open={workflowOpen}>
+    <summary onClick={handleSummaryClick}>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
     {loading && <p role="status">Loading application history…</p>}
     {!loading && !application && <p>Open this workflow to load its application history.</p>}
     {application && <div className="application-workflow-body">
