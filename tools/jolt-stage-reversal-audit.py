@@ -5,7 +5,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from playwright.sync_api import Locator, Page, Response, TimeoutError as PlaywrightTimeoutError, sync_playwright
+from playwright.sync_api import Locator, Page, Response, sync_playwright
 
 APP_URL = "http://127.0.0.1:5173"
 API_URL = "http://127.0.0.1:8000"
@@ -29,33 +29,18 @@ def horizontal_overflow(page: Page) -> int:
 
 
 def open_workflow(workspace: Locator, observations: dict[str, object], key: str) -> Locator:
-    details = workspace.locator("details.application-workflow")
-    details.locator(":scope > summary").click()
-    details.wait_for(state="visible", timeout=30_000)
-
-    try:
-        workspace.locator("details.application-workflow[open]").wait_for(
-            state="visible", timeout=5_000
-        )
-        observations[key] = False
-    except PlaywrightTimeoutError:
-        observations[key] = True
-        observations[f"{key}_diagnostic"] = (
-            "The summary click did not leave the native details element open. "
-            "The audit continued by opening it programmatically so the remaining "
-            "workflow evidence could still be collected."
-        )
-        details.evaluate(
-            "element => { element.open = true; element.dispatchEvent(new Event('toggle')); }"
-        )
-
-    current_stage = details.locator(".workflow-current-stage h4")
+    toggle = workspace.get_by_role("button", name="Manage application", exact=False)
+    toggle.wait_for(state="visible", timeout=30_000)
+    toggle.click()
+    workspace.locator(".application-workflow-panel").wait_for(state="visible", timeout=30_000)
+    current_stage = workspace.locator(".workflow-current-stage h4")
     current_stage.wait_for(state="visible", timeout=30_000)
+    observations[key] = toggle.get_attribute("aria-expanded") != "true"
     return current_stage
 
 
 def workflow_controls(workspace: Locator) -> tuple[Locator, Locator, Locator]:
-    workflow = workspace.locator("details.application-workflow")
+    workflow = workspace.locator(".application-workflow-panel")
     stage_select = workflow.locator(".workflow-outcome-section").filter(has_text="Change stage").locator("select")
     notes = workflow.locator("label.workflow-notes textarea")
     outcome_select = workflow.locator(".workflow-outcome-section").filter(has_text="Final outcome").locator("select")
