@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ApplicationInterviews } from "./ApplicationInterviews";
+import { ApplicationTasks } from "./ApplicationTasks";
 import { ApplicationWorkflow } from "./ApplicationWorkflow";
 import type { ApplicationStatus } from "./ApplicationWorkflow";
 
@@ -243,8 +245,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             </nav>
             <div className="application-detail-body" id={`application-panel-${activeTab}`} role="tabpanel">
               {activeTab === "overview" && <ApplicationWorkflow apiBase={apiBase} postingId={selected.posting_id} title={selected.title || "Untitled opportunity"} reviewDecision={selected.review_decision} applicationId={selected.application_id} applicationStatus={selected.application_status} disabled={busy} onChanged={refreshAfterChange} onError={setError} />}
-              {activeTab === "tasks" && <Placeholder title="Tasks are the next persisted workflow slice" copy="This panel will hold dated next actions, ownership, completion state, and overdue indicators. It is intentionally not storing temporary browser-only tasks." />}
-              {activeTab === "interviews" && <Placeholder title="Interview records are not persisted yet" copy="The next backend slice will capture interview type, date, participants, preparation notes, outcome, and follow-up." />}
+              {activeTab === "tasks" && <ApplicationTasks apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
+              {activeTab === "interviews" && <ApplicationInterviews apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />}
               {activeTab === "contacts" && <Placeholder title="Contacts are not persisted yet" copy="Recruiters, hiring managers, and referral contacts will be attached to this application in a later structured-data slice." />}
               {activeTab === "documents" && <Placeholder title="Document records are not persisted yet" copy="Resume, cover letter, preparation pack, and supporting evidence will be managed here after the document contract is implemented." />}
               {activeTab === "timeline" && <Timeline detail={applicationDetail} loading={detailLoading} />}

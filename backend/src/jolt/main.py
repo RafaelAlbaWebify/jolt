@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.application_preparation_pack import build_application_preparation_pack
+from jolt.application_work_items_api import build_application_work_items_router
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
@@ -61,6 +62,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
             yield session
         finally:
             session.close()
+
+    app.include_router(build_application_work_items_router(get_session))
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
