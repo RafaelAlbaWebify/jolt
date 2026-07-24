@@ -1,7 +1,4 @@
-from pathlib import Path
-
-
-REPO_ROOT = Path(__file__).parents[2]
+REPO_ROOT = __import__("pathlib").Path(__file__).parents[2]
 WORKFLOW = REPO_ROOT / "frontend" / "src" / "ApplicationWorkflow.tsx"
 DASHBOARD = REPO_ROOT / "frontend" / "src" / "ApplicationDashboard.tsx"
 
