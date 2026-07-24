@@ -19,6 +19,43 @@
   background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
 }
 
+.professional-capture-plan {
+  display: grid;
+  gap: 1rem;
+}
+
+.professional-plan-status {
+  align-self: flex-start;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.professional-plan-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.professional-plan-columns section {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.professional-plan-columns h3 {
+  margin-top: 0;
+}
+
+.professional-plan-columns ol,
+.professional-plan-columns ul {
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+}
+
 .professional-source-group + .professional-source-group {
   margin-top: 1.25rem;
 }
@@ -111,7 +148,8 @@
 }
 
 @media (max-width: 900px) {
-  .professional-intelligence-overview {
+  .professional-intelligence-overview,
+  .professional-plan-columns {
     grid-template-columns: 1fr;
   }
 
