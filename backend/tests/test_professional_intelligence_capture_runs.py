@@ -35,9 +35,7 @@ def test_preview_run_snapshots_plan_persists_and_can_be_cancelled(tmp_path: Path
     assert detail.status_code == 200
     assert detail.json()["planned_sources"] == run["planned_sources"]
 
-    cancelled = restarted.post(
-        f"/api/professional-intelligence/capture-runs/{run['id']}/cancel"
-    )
+    cancelled = restarted.post(f"/api/professional-intelligence/capture-runs/{run['id']}/cancel")
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "cancelled"
     assert cancelled.json()["stop_reason"] == "cancelled_by_user"
@@ -87,15 +85,11 @@ def test_preview_run_requires_exact_user_present_authorization(tmp_path: Path) -
     assert repeated.status_code == 409
 
     restarted = TestClient(create_app(database_url))
-    persisted = restarted.get(
-        f"/api/professional-intelligence/capture-runs/{run['id']}"
-    ).json()
+    persisted = restarted.get(f"/api/professional-intelligence/capture-runs/{run['id']}").json()
     assert persisted["status"] == "authorized"
     assert persisted["user_present_confirmed"] is True
 
-    cancelled = restarted.post(
-        f"/api/professional-intelligence/capture-runs/{run['id']}/cancel"
-    )
+    cancelled = restarted.post(f"/api/professional-intelligence/capture-runs/{run['id']}/cancel")
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "cancelled"
 
@@ -114,13 +108,9 @@ def test_preview_run_snapshot_is_immutable_after_registry_change(tmp_path: Path)
         },
     )
 
-    detail = client.get(
-        f"/api/professional-intelligence/capture-runs/{created['id']}"
-    ).json()
+    detail = client.get(f"/api/professional-intelligence/capture-runs/{created['id']}").json()
     profile = next(
-        source
-        for source in detail["planned_sources"]
-        if source["source_id"] == "linkedin-profile"
+        source for source in detail["planned_sources"] if source["source_id"] == "linkedin-profile"
     )
     assert profile["label"] == "Main profile"
     assert profile["initial_scope"] is True
