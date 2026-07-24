@@ -24,16 +24,36 @@ const sources = [
   },
 ];
 
+function capturePlan(plannedSources = [sources[0]], excludedSources = [{ source: sources[1], reason: "deferred_scope" }]) {
+  return {
+    mode: "preview_only",
+    execution_available: false,
+    planned_sources: plannedSources,
+    excluded_sources: excludedSources,
+    safety_constraints: [
+      "supervised_read_only",
+      "no_credentials_or_session_storage",
+      "no_account_actions",
+      "browser_execution_not_available",
+    ],
+  };
+}
+
 describe("ProfessionalIntelligence", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("loads only when active and separates initial from deferred sources", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(sources), { status: 200 }),
-    );
+  it("loads only when active and shows the deterministic capture preview", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
+      if (url.endsWith("/capture-plan")) {
+        return new Response(JSON.stringify(capturePlan()), { status: 200 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
 
     const { rerender } = render(
       <ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active={false} />,
@@ -48,12 +68,19 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
     expect(screen.getByText(/No login handling/)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Open approved source" })).toHaveLength(2);
+    expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
+    expect(screen.getByText("Browser not launched")).toBeInTheDocument();
+    expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
+    expect(screen.getByText("browser execution not available")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/sources",
     );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/professional-intelligence/capture-plan",
+    );
   });
 
-  it("saves a supervised source override and resets the verified default", async () => {
+  it("refreshes the preview after saving and resetting a source override", async () => {
     const updated = {
       ...sources[0],
       label: "Profile positioning review",
@@ -61,11 +88,26 @@ describe("ProfessionalIntelligence", () => {
       initial_scope: false,
       enabled: false,
     };
+    let planCalls = 0;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (!init?.method) return new Response(JSON.stringify(sources), { status: 200 });
+      if (url.endsWith("/sources") && !init?.method) {
+        return new Response(JSON.stringify(sources), { status: 200 });
+      }
+      if (url.endsWith("/capture-plan")) {
+        planCalls += 1;
+        const payload = planCalls === 1
+          ? capturePlan()
+          : planCalls === 2
+            ? capturePlan([], [
+                { source: updated, reason: "disabled_by_user" },
+                { source: sources[1], reason: "deferred_scope" },
+              ])
+            : capturePlan();
+        return new Response(JSON.stringify(payload), { status: 200 });
+      }
       if (url.endsWith("/linkedin-profile/update")) {
-        expect(JSON.parse(String(init.body))).toEqual({
+        expect(JSON.parse(String(init?.body))).toEqual({
           label: "Profile positioning review",
           url: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt",
           initial_scope: false,
@@ -96,7 +138,7 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByText("Profile positioning review")).toBeInTheDocument();
     expect(screen.getByText("Disabled")).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Profile positioning review · disabled by user")).toBeInTheDocument();
 
     const updatedCard = screen.getByText("Profile positioning review").closest("article");
     expect(updatedCard).not.toBeNull();
@@ -106,6 +148,7 @@ describe("ProfessionalIntelligence", () => {
     );
 
     expect(await screen.findByText("Main profile")).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(planCalls).toBe(3));
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 });
