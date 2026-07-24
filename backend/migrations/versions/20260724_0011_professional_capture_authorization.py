@@ -26,7 +26,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "professional_capture_runs",
-        sa.Column("user_present_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "user_present_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
     )
 
 
