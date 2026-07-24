@@ -147,9 +147,7 @@ def list_tasks(session: Session, application_id: str) -> list[TaskResponse]:
     return [_task_response(task) for task in tasks]
 
 
-def create_task(
-    session: Session, application_id: str, request: TaskCreateRequest
-) -> TaskResponse:
+def create_task(session: Session, application_id: str, request: TaskCreateRequest) -> TaskResponse:
     _application(session, application_id)
     now = utc_now()
     task = ApplicationTask(
