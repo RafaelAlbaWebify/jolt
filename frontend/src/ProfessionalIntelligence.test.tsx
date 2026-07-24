@@ -62,8 +62,8 @@ describe("ProfessionalIntelligence", () => {
 
     rerender(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByText("Main profile")).toBeInTheDocument();
-    expect(screen.getByText("Feed")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Initial supervised scope" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
     expect(screen.getByText(/No login handling/)).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("ProfessionalIntelligence", () => {
     });
 
     render(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
-    const profileHeading = await screen.findByText("Main profile");
+    const profileHeading = await screen.findByRole("heading", { name: "Main profile" });
     const profileCard = profileHeading.closest("article");
     expect(profileCard).not.toBeNull();
     fireEvent.click(within(profileCard as HTMLElement).getByText("Edit approved source"));
@@ -136,18 +136,18 @@ describe("ProfessionalIntelligence", () => {
     fireEvent.click(screen.getByLabelText("Enabled for linkedin-profile"));
     fireEvent.click(within(profileCard as HTMLElement).getByRole("button", { name: "Save source" }));
 
-    expect(await screen.findByText("Profile positioning review")).toBeInTheDocument();
+    const updatedHeading = await screen.findByRole("heading", { name: "Profile positioning review" });
     expect(screen.getByText("Disabled")).toBeInTheDocument();
     expect(await screen.findByText("Profile positioning review · disabled by user")).toBeInTheDocument();
 
-    const updatedCard = screen.getByText("Profile positioning review").closest("article");
+    const updatedCard = updatedHeading.closest("article");
     expect(updatedCard).not.toBeNull();
     fireEvent.click(within(updatedCard as HTMLElement).getByText("Edit approved source"));
     fireEvent.click(
       within(updatedCard as HTMLElement).getByRole("button", { name: "Reset verified default" }),
     );
 
-    expect(await screen.findByText("Main profile")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     await waitFor(() => expect(planCalls).toBe(3));
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
