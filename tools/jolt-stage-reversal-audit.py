@@ -32,10 +32,8 @@ def open_workflow(workspace: Locator, observations: dict[str, object], key: str)
     details = workspace.locator("details.application-workflow")
     details.locator(":scope > summary").click()
     details.wait_for(state="visible", timeout=30_000)
-    details.page.wait_for_function(
-        "element => element.open === true",
-        arg=details.element_handle(),
-        timeout=30_000,
+    workspace.locator("details.application-workflow[open]").wait_for(
+        state="visible", timeout=30_000
     )
     current_stage = details.locator(".workflow-current-stage h4")
     current_stage.wait_for(state="visible", timeout=30_000)
