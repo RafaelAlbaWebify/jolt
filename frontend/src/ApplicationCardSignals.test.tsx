@@ -32,7 +32,7 @@ describe("application card operational signals", () => {
       next_due_at: "2026-07-23T09:00:00Z",
       next_due_kind: "task",
       document_state: "resume attached",
-      overdue: true,
+      overdue: true
     }]));
 
     const { container } = render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
@@ -41,7 +41,7 @@ describe("application card operational signals", () => {
     expect(screen.getByText("Overdue")).toBeInTheDocument();
     expect(screen.getByText("Last activity")).toBeInTheDocument();
     expect(screen.getByText("Next task")).toBeInTheDocument();
-    expect(screen.getByText("Documents")).toBeInTheDocument();
+    expect(screen.getByText("Resume")).toBeInTheDocument();
     expect(screen.getByText("resume attached")).toBeInTheDocument();
     expect(container.querySelector(".application-card-overdue")).not.toBeNull();
   });
