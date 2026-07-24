@@ -30,9 +30,7 @@ def test_preview_run_snapshots_plan_persists_and_can_be_cancelled(tmp_path: Path
     assert detail.status_code == 200
     assert detail.json()["planned_sources"] == run["planned_sources"]
 
-    cancelled = restarted.post(
-        f"/api/professional-intelligence/capture-runs/{run['id']}/cancel"
-    )
+    cancelled = restarted.post(f"/api/professional-intelligence/capture-runs/{run['id']}/cancel")
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "cancelled"
     assert cancelled.json()["stop_reason"] == "cancelled_by_user"
@@ -58,9 +56,7 @@ def test_preview_run_snapshot_is_immutable_after_registry_change(tmp_path: Path)
         },
     )
 
-    detail = client.get(
-        f"/api/professional-intelligence/capture-runs/{created['id']}"
-    ).json()
+    detail = client.get(f"/api/professional-intelligence/capture-runs/{created['id']}").json()
     profile = next(
         source for source in detail["planned_sources"] if source["source_id"] == "linkedin-profile"
     )
