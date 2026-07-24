@@ -18,7 +18,10 @@ def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Pa
     assert readiness["execution_available"] is False
     assert "supervised_browser_runner_not_implemented" in readiness["blockers"]
     assert "explicit_per_run_user_confirmation_not_implemented" in readiness["blockers"]
-    assert "visible_rendered_dom_text_is_primary" in readiness["evidence_policy"]["text_extraction_policy"]
+    assert (
+        "visible_rendered_dom_text_is_primary"
+        in readiness["evidence_policy"]["text_extraction_policy"]
+    )
     assert "browser_storage_state" in readiness["evidence_policy"]["prohibited_evidence"]
 
 
@@ -44,7 +47,9 @@ def test_artifact_manifest_accepts_safe_run_scoped_entry(tmp_path: Path) -> None
     assert response.json()["sha256"] == "a" * 64
 
 
-def test_artifact_manifest_rejects_path_traversal_unknown_source_and_bad_hash(tmp_path: Path) -> None:
+def test_artifact_manifest_rejects_path_traversal_unknown_source_and_bad_hash(
+    tmp_path: Path,
+) -> None:
     client = _client(tmp_path)
     run = client.post("/api/professional-intelligence/capture-runs").json()
     source_id = run["planned_sources"][0]["source_id"]
@@ -93,7 +98,10 @@ def test_artifact_manifest_rejects_retention_and_extension_mismatch(tmp_path: Pa
 
     bad_extension = client.post(
         "/api/professional-intelligence/artifact-manifest/validate",
-        json={**base, "relative_path": f"professional-intelligence/{run['id']}/{source_id}/page.json"},
+        json={
+            **base,
+            "relative_path": f"professional-intelligence/{run['id']}/{source_id}/page.json",
+        },
     )
     assert bad_extension.status_code == 422
 
