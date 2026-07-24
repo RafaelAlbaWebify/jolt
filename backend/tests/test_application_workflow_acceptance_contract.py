@@ -9,7 +9,7 @@ def test_application_workflow_uses_native_disclosure_state() -> None:
     assert "function handleWorkflowToggle" in source
     assert "event.currentTarget.open" in source
     assert "if (event.currentTarget.open) void loadApplication();" in source
-    assert 'onToggle={handleWorkflowToggle}' in source
+    assert "onToggle={handleWorkflowToggle}" in source
     assert "const [workflowOpen, setWorkflowOpen]" not in source
     assert "event.preventDefault();" not in source
     assert "open={workflowOpen}" not in source
