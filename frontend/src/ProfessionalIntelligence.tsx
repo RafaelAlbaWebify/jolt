@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
 
 export type ProfessionalIntelligenceSource = {
@@ -33,6 +34,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         throw new Error(payload?.detail || "The source registry change could not be saved.");
       }
       replaceSource((await response.json()) as ProfessionalIntelligenceSource);
+      setPlanRefreshKey((current) => current + 1);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected source registry error.");
     } finally {
@@ -146,6 +149,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         </div>
       </section>
 
+      {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
       {loading && <p role="status">Loading source registry…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {loaded && (
