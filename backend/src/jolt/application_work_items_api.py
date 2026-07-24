@@ -28,6 +28,7 @@ SessionProvider = Callable[[], Iterator[Session]]
 
 def build_application_work_items_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["application-work-items"])
+    session_dependency = Depends(get_session)
 
     @router.get(
         "/api/applications/{application_id}/tasks",
@@ -35,7 +36,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     )
     def application_tasks(
         application_id: str,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> list[TaskResponse]:
         try:
             return list_tasks(session, application_id)
@@ -49,7 +50,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def add_application_task(
         application_id: str,
         request: TaskCreateRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> TaskResponse:
         try:
             return create_task(session, application_id, request)
@@ -60,7 +61,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def edit_application_task(
         task_id: str,
         request: TaskUpdateRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> TaskResponse:
         try:
             return update_task(session, task_id, request)
@@ -70,7 +71,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     @router.post("/api/application-tasks/{task_id}/complete", response_model=TaskResponse)
     def complete_application_task(
         task_id: str,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> TaskResponse:
         try:
             return set_task_status(session, task_id, "completed")
@@ -80,7 +81,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     @router.post("/api/application-tasks/{task_id}/reopen", response_model=TaskResponse)
     def reopen_application_task(
         task_id: str,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> TaskResponse:
         try:
             return set_task_status(session, task_id, "open")
@@ -93,7 +94,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     )
     def application_interviews(
         application_id: str,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> list[InterviewResponse]:
         try:
             return list_interviews(session, application_id)
@@ -107,7 +108,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def add_application_interview(
         application_id: str,
         request: InterviewCreateRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> InterviewResponse:
         try:
             return create_interview(session, application_id, request)
@@ -121,7 +122,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def edit_application_interview(
         interview_id: str,
         request: InterviewUpdateRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> InterviewResponse:
         try:
             return update_interview(session, interview_id, request)
@@ -135,7 +136,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def complete_application_interview(
         interview_id: str,
         request: InterviewCompleteRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> InterviewResponse:
         try:
             return set_interview_status(session, interview_id, "completed", request.outcome_notes)
@@ -149,7 +150,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     def cancel_application_interview(
         interview_id: str,
         request: InterviewCompleteRequest,
-        session: Session = Depends(get_session),
+        session: Session = session_dependency,
     ) -> InterviewResponse:
         try:
             return set_interview_status(session, interview_id, "cancelled", request.outcome_notes)
