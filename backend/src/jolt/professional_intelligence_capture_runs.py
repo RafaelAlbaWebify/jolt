@@ -28,7 +28,10 @@ class ProfessionalCaptureRunResponse(BaseModel):
 
 
 def _to_response(run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
-    sources = [ProfessionalIntelligenceSource.model_validate(item) for item in json.loads(run.source_snapshot_json)]
+    sources = [
+        ProfessionalIntelligenceSource.model_validate(item)
+        for item in json.loads(run.source_snapshot_json)
+    ]
     return ProfessionalCaptureRunResponse(
         id=run.id,
         mode=run.mode,
@@ -48,7 +51,9 @@ def create_professional_capture_preview_run(session: Session) -> ProfessionalCap
         id=str(uuid4()),
         mode="preview_only",
         status="planned",
-        source_snapshot_json=json.dumps([source.model_dump(mode="json") for source in plan.planned_sources]),
+        source_snapshot_json=json.dumps(
+            [source.model_dump(mode="json") for source in plan.planned_sources]
+        ),
         safety_constraints_json=json.dumps(plan.safety_constraints),
         requested_at=utc_now(),
         started_at=None,
@@ -74,7 +79,9 @@ def get_professional_capture_run(session: Session, run_id: str) -> ProfessionalC
     return _to_response(run)
 
 
-def cancel_professional_capture_run(session: Session, run_id: str) -> ProfessionalCaptureRunResponse:
+def cancel_professional_capture_run(
+    session: Session, run_id: str
+) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
