@@ -14,6 +14,14 @@ from jolt.professional_intelligence_capture_runs import (
     get_professional_capture_run,
     list_professional_capture_runs,
 )
+from jolt.professional_intelligence_evidence_contract import (
+    ProfessionalArtifactManifestEntry,
+    ProfessionalEvidencePolicy,
+    ProfessionalExecutionReadiness,
+    professional_evidence_policy,
+    professional_execution_readiness,
+    validate_professional_artifact_manifest_entry,
+)
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -30,6 +38,35 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         session: Session = session_dependency,
     ) -> ProfessionalCapturePlan:
         return build_professional_capture_plan(session)
+
+    @router.get(
+        "/api/professional-intelligence/evidence-policy",
+        response_model=ProfessionalEvidencePolicy,
+    )
+    def professional_intelligence_evidence_policy() -> ProfessionalEvidencePolicy:
+        return professional_evidence_policy()
+
+    @router.get(
+        "/api/professional-intelligence/execution-readiness",
+        response_model=ProfessionalExecutionReadiness,
+    )
+    def professional_intelligence_execution_readiness() -> ProfessionalExecutionReadiness:
+        return professional_execution_readiness()
+
+    @router.post(
+        "/api/professional-intelligence/artifact-manifest/validate",
+        response_model=ProfessionalArtifactManifestEntry,
+    )
+    def validate_professional_intelligence_artifact_manifest(
+        entry: ProfessionalArtifactManifestEntry,
+        session: Session = session_dependency,
+    ) -> ProfessionalArtifactManifestEntry:
+        try:
+            return validate_professional_artifact_manifest_entry(session, entry)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.post(
         "/api/professional-intelligence/capture-runs",
