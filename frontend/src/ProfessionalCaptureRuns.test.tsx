@@ -10,6 +10,9 @@ const plannedRun = {
   planned_sources: [],
   safety_constraints: ["no_unattended_capture"],
   requested_at: "2026-07-24T18:00:00Z",
+  authorized_at: null,
+  authorization_expires_at: null,
+  user_present_confirmed: false,
   started_at: null,
   completed_at: null,
   stop_reason: "",
@@ -22,11 +25,18 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("records and cancels a preview-only run without execution", async () => {
-    const cancelled = {
+  it("records, explicitly authorizes, and cancels without execution", async () => {
+    const authorized = {
       ...plannedRun,
+      status: "authorized",
+      authorized_at: "2026-07-24T18:01:00Z",
+      authorization_expires_at: "2026-07-24T18:16:00Z",
+      user_present_confirmed: true,
+    };
+    const cancelled = {
+      ...authorized,
       status: "cancelled",
-      completed_at: "2026-07-24T18:01:00Z",
+      completed_at: "2026-07-24T18:02:00Z",
       stop_reason: "cancelled_by_user",
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -34,6 +44,13 @@ describe("ProfessionalCaptureRuns", () => {
       if (!init?.method) return new Response(JSON.stringify([]), { status: 200 });
       if (url.endsWith("/capture-runs")) {
         return new Response(JSON.stringify(plannedRun), { status: 200 });
+      }
+      if (url.endsWith("/run-1/authorize")) {
+        expect(JSON.parse(String(init.body))).toEqual({
+          confirmation_phrase: "I UNDERSTAND THIS WILL OPEN LINKEDIN",
+          user_present: true,
+        });
+        return new Response(JSON.stringify(authorized), { status: 200 });
       }
       if (url.endsWith("/run-1/cancel")) {
         return new Response(JSON.stringify(cancelled), { status: 200 });
@@ -54,10 +71,20 @@ describe("ProfessionalCaptureRuns", () => {
 
     expect(await screen.findByText("planned")).toBeInTheDocument();
     expect(screen.getByText("0 planned sources · 0 artifacts")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Authorize supervised run" }));
+    fireEvent.change(screen.getByLabelText("Authorization phrase for run-1"), {
+      target: { value: "I UNDERSTAND THIS WILL OPEN LINKEDIN" },
+    });
+    fireEvent.click(screen.getByLabelText("User present for run-1"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm authorization" }));
+
+    expect(await screen.findByText("authorized")).toBeInTheDocument();
+    expect(screen.getByText(/Authorization expires:/)).toBeInTheDocument();
+    expect(screen.getByText(/Browser execution and evidence writing remain unavailable/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel preview" }));
 
     expect(await screen.findByText("cancelled")).toBeInTheDocument();
     expect(screen.getByText("cancelled by user")).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   });
 });
