@@ -17,6 +17,7 @@ from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
 from jolt.opportunity_workbench import get_opportunity_workbench, list_opportunity_workbench
+from jolt.professional_intelligence_plan_api import build_professional_intelligence_plan_router
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
 from jolt.schemas import (
     ApplicationCreateRequest,
@@ -64,6 +65,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             session.close()
 
     app.include_router(build_application_work_items_router(get_session))
+    app.include_router(build_professional_intelligence_plan_router(get_session))
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
