@@ -27,7 +27,9 @@ class ProfessionalCaptureRun(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     source_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
     safety_constraints_json: Mapped[str] = mapped_column(Text, nullable=False)
-    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     stop_reason: Mapped[str] = mapped_column(String(80), nullable=False, default="")
