@@ -106,7 +106,9 @@ def validate_professional_artifact_manifest_entry(
         "professional-intelligence", entry.capture_run_id, entry.source_id
     )
     if path.is_absolute() or ".." in path.parts or path.parent != expected_prefix:
-        raise ValueError("Artifact path must be a direct safe relative path under the run and source.")
+        raise ValueError(
+            "Artifact path must be a direct safe relative path under the run and source."
+        )
     if path.suffix.lower() != expected_extension:
         raise ValueError("Artifact file extension does not match its declared type.")
 
