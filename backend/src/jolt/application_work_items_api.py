@@ -34,6 +34,10 @@ from jolt.application_work_items import (
     update_interview,
     update_task,
 )
+from jolt.professional_intelligence_sources import (
+    ProfessionalIntelligenceSource,
+    list_professional_intelligence_sources,
+)
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -41,6 +45,14 @@ SessionProvider = Callable[[], Iterator[Session]]
 def build_application_work_items_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["application-work-items"])
     session_dependency = Depends(get_session)
+
+    @router.get(
+        "/api/professional-intelligence/sources",
+        response_model=list[ProfessionalIntelligenceSource],
+        tags=["professional-intelligence"],
+    )
+    def professional_intelligence_sources() -> list[ProfessionalIntelligenceSource]:
+        return list_professional_intelligence_sources()
 
     @router.get("/api/applications/{application_id}/tasks", response_model=list[TaskResponse])
     def application_tasks(
