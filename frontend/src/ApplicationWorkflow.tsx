@@ -138,9 +138,8 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
 
   useEffect(() => {
     setWorkflowOpen(false);
-    if (!applicationId) { setApplication(null); return; }
-    if (application && application.application_id !== applicationId) setApplication(null);
-  }, [application, applicationId]);
+    setApplication(null);
+  }, [applicationId]);
   useEffect(() => {
     const status = application?.status ?? applicationStatus;
     if (status) setSelectedStage(status);
