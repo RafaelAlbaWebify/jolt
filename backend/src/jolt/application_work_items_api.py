@@ -139,9 +139,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         session: Annotated[Session, Depends(get_session)],
     ) -> InterviewResponse:
         try:
-            return set_interview_status(
-                session, interview_id, "completed", request.outcome_notes
-            )
+            return set_interview_status(session, interview_id, "completed", request.outcome_notes)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -155,9 +153,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         session: Annotated[Session, Depends(get_session)],
     ) -> InterviewResponse:
         try:
-            return set_interview_status(
-                session, interview_id, "cancelled", request.outcome_notes
-            )
+            return set_interview_status(session, interview_id, "cancelled", request.outcome_notes)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
