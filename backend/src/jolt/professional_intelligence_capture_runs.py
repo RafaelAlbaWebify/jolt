@@ -132,9 +132,7 @@ def authorize_professional_capture_run(
     authorized_at = utc_now()
     run.status = "authorized"
     run.authorized_at = authorized_at
-    run.authorization_expires_at = authorized_at + timedelta(
-        minutes=AUTHORIZATION_LIFETIME_MINUTES
-    )
+    run.authorization_expires_at = authorized_at + timedelta(minutes=AUTHORIZATION_LIFETIME_MINUTES)
     run.user_present_confirmed = True
     session.commit()
     return _to_response(run)
