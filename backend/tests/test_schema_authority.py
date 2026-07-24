@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 
 from jolt.database import Base, create_session_factory
 
-HEAD_REVISION = "20260724_0008"
+HEAD_REVISION = "20260724_0009"
 
 
 def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeypatch) -> None:
@@ -29,6 +29,7 @@ def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeyp
     assert inspector.has_table("application_readiness_reports")
     assert inspector.has_table("application_contacts")
     assert inspector.has_table("application_documents")
+    assert inspector.has_table("professional_source_overrides")
     assert inspector.has_table("alembic_version")
 
     with sqlite3.connect(database_path) as connection:
