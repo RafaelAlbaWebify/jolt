@@ -19,7 +19,8 @@
   background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
 }
 
-.professional-capture-plan {
+.professional-capture-plan,
+.professional-run-ledger {
   display: grid;
   gap: 1rem;
 }
@@ -54,6 +55,40 @@
 .professional-plan-columns ul {
   margin-bottom: 0;
   padding-left: 1.25rem;
+}
+
+.professional-ledger-note {
+  margin: 0;
+}
+
+.professional-run-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.75rem;
+}
+
+.professional-run-card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.professional-run-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.professional-run-card p,
+.professional-run-card code {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.professional-run-card button {
+  width: fit-content;
 }
 
 .professional-source-group + .professional-source-group {
@@ -153,7 +188,8 @@
     grid-template-columns: 1fr;
   }
 
-  .professional-source-card-heading {
+  .professional-source-card-heading,
+  .professional-run-card > div {
     flex-direction: column;
   }
 }
