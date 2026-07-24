@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.application_records import ApplicationInterview, ApplicationTask
+from jolt.application_records import ApplicationDocument, ApplicationInterview, ApplicationTask
 from jolt.automated_review import ensure_automated_reviews
 from jolt.database import (
     Application,
@@ -38,6 +39,20 @@ class OpportunityIndexItem(BaseModel):
     next_due_kind: str | None = None
     document_state: str | None = None
     overdue: bool = False
+
+
+def _document_state(application: Application | None, documents: list[ApplicationDocument]) -> str:
+    if application is None:
+        return "not started"
+    if not documents:
+        return "resume attached" if application.resume_used.strip() else "no records"
+    counts = Counter(document.status for document in documents)
+    parts = [
+        f"{counts[status]} {status}"
+        for status in ("submitted", "ready", "draft", "superseded")
+        if counts[status]
+    ]
+    return " · ".join(parts)
 
 
 def list_opportunity_index(
@@ -93,6 +108,10 @@ def list_opportunity_index(
     ).all():
         next_interviews.setdefault(interview.application_id, interview)
 
+    documents_by_application: dict[str, list[ApplicationDocument]] = {}
+    for document in session.scalars(select(ApplicationDocument)).all():
+        documents_by_application.setdefault(document.application_id, []).append(document)
+
     now = datetime.now(UTC)
     results: list[OpportunityIndexItem] = []
     for posting in postings:
@@ -121,6 +140,7 @@ def list_opportunity_index(
         elif interview:
             due_at, due_kind = interview.scheduled_at, "interview"
 
+        application_documents = documents_by_application.get(application.id, []) if application else []
         results.append(
             OpportunityIndexItem(
                 posting_id=posting.id,
@@ -147,13 +167,7 @@ def list_opportunity_index(
                 ),
                 next_due_at=due_at.isoformat() if due_at else None,
                 next_due_kind=due_kind,
-                document_state=(
-                    "resume attached"
-                    if application and application.resume_used.strip()
-                    else "resume missing"
-                )
-                if application
-                else "not started",
+                document_state=_document_state(application, application_documents),
                 overdue=bool(due_at and due_at < now),
             )
         )
