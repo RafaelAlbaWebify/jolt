@@ -34,10 +34,13 @@ from jolt.application_work_items import (
     update_interview,
     update_task,
 )
-from jolt.professional_intelligence_sources import (
-    ProfessionalIntelligenceSource,
-    list_professional_intelligence_sources,
+from jolt.professional_intelligence_registry import (
+    ProfessionalSourceUpdateRequest,
+    list_configured_professional_sources,
+    reset_professional_source,
+    update_professional_source,
 )
+from jolt.professional_intelligence_sources import ProfessionalIntelligenceSource
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -51,8 +54,41 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         response_model=list[ProfessionalIntelligenceSource],
         tags=["professional-intelligence"],
     )
-    def professional_intelligence_sources() -> list[ProfessionalIntelligenceSource]:
-        return list_professional_intelligence_sources()
+    def professional_intelligence_sources(
+        session: Session = session_dependency,
+    ) -> list[ProfessionalIntelligenceSource]:
+        return list_configured_professional_sources(session)
+
+    @router.post(
+        "/api/professional-intelligence/sources/{source_id}/update",
+        response_model=ProfessionalIntelligenceSource,
+        tags=["professional-intelligence"],
+    )
+    def edit_professional_intelligence_source(
+        source_id: str,
+        request: ProfessionalSourceUpdateRequest,
+        session: Session = session_dependency,
+    ) -> ProfessionalIntelligenceSource:
+        try:
+            return update_professional_source(session, source_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/sources/{source_id}/reset",
+        response_model=ProfessionalIntelligenceSource,
+        tags=["professional-intelligence"],
+    )
+    def reset_professional_intelligence_source(
+        source_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalIntelligenceSource:
+        try:
+            return reset_professional_source(session, source_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get("/api/applications/{application_id}/tasks", response_model=list[TaskResponse])
     def application_tasks(

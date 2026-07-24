@@ -18,6 +18,7 @@ class ProfessionalIntelligenceSource(BaseModel):
     category: ProfessionalSourceCategory
     url: str
     initial_scope: bool
+    enabled: bool = True
     capture_mode: str = "supervised_read_only"
 
 
@@ -123,6 +124,14 @@ _CONFIRMED_SOURCES = (
 )
 
 
+def validate_professional_source_url(url: str) -> str:
+    normalized = url.strip()
+    parsed = urlparse(normalized)
+    if parsed.scheme != "https" or parsed.hostname not in {"linkedin.com", "www.linkedin.com"}:
+        raise ValueError("Professional Intelligence sources must use an HTTPS LinkedIn URL.")
+    return normalized
+
+
 def _validate_registry() -> None:
     source_ids = [source.source_id for source in _CONFIRMED_SOURCES]
     urls = [source.url for source in _CONFIRMED_SOURCES]
@@ -131,9 +140,12 @@ def _validate_registry() -> None:
     if len(urls) != len(set(urls)):
         raise RuntimeError("Professional Intelligence source URLs must be unique.")
     for source in _CONFIRMED_SOURCES:
-        parsed = urlparse(source.url)
-        if parsed.scheme != "https" or parsed.hostname not in {"linkedin.com", "www.linkedin.com"}:
-            raise RuntimeError(f"Unsupported Professional Intelligence source URL: {source.url}")
+        try:
+            validate_professional_source_url(source.url)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"Unsupported Professional Intelligence source URL: {source.url}"
+            ) from exc
 
 
 _validate_registry()
@@ -146,3 +158,7 @@ def list_professional_intelligence_sources() -> list[ProfessionalIntelligenceSou
     or perform any LinkedIn account action.
     """
     return [source.model_copy() for source in _CONFIRMED_SOURCES]
+
+
+def professional_intelligence_source_defaults() -> dict[str, ProfessionalIntelligenceSource]:
+    return {source.source_id: source.model_copy() for source in _CONFIRMED_SOURCES}

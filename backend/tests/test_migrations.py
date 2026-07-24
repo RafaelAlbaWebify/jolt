@@ -31,5 +31,6 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "application_interviews",
         "application_contacts",
         "application_documents",
+        "professional_source_overrides",
         "outcomes",
     }.issubset(tables)
