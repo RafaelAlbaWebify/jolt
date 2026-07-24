@@ -34,9 +34,7 @@ def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeyp
     assert inspector.has_table("professional_capture_artifacts")
     assert inspector.has_table("alembic_version")
 
-    run_columns = {
-        column["name"] for column in inspector.get_columns("professional_capture_runs")
-    }
+    run_columns = {column["name"] for column in inspector.get_columns("professional_capture_runs")}
     assert {
         "authorized_at",
         "authorization_expires_at",
