@@ -140,7 +140,9 @@ def list_opportunity_index(
         elif interview:
             due_at, due_kind = interview.scheduled_at, "interview"
 
-        application_documents = documents_by_application.get(application.id, []) if application else []
+        application_documents = (
+            documents_by_application.get(application.id, []) if application else []
+        )
         results.append(
             OpportunityIndexItem(
                 posting_id=posting.id,
