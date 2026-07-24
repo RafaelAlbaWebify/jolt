@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, MouseEvent } from "react";
+import type { FormEvent, SyntheticEvent } from "react";
 
 export type ApplicationStatus =
   | "preparing"
@@ -132,7 +132,6 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
   const [activityNotes, setActivityNotes] = useState("");
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeType>("rejected_by_employer");
   const [selectedStage, setSelectedStage] = useState<ApplicationStatus | "">(applicationStatus ?? "");
-  const [workflowOpen, setWorkflowOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -140,7 +139,6 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     if (!applicationId) { setApplication(null); return; }
     if (application && application.application_id !== applicationId) setApplication(null);
   }, [application, applicationId]);
-  useEffect(() => { setWorkflowOpen(false); }, [applicationId]);
   useEffect(() => {
     const status = application?.status ?? applicationStatus;
     if (status) setSelectedStage(status);
@@ -165,11 +163,8 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     } finally { setLoading(false); }
   }
 
-  function handleSummaryClick(event: MouseEvent<HTMLElement>) {
-    event.preventDefault();
-    const nextOpen = !workflowOpen;
-    setWorkflowOpen(nextOpen);
-    if (nextOpen) void loadApplication();
+  function handleWorkflowToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+    if (event.currentTarget.open) void loadApplication();
   }
 
   async function post(url: string, body: object) {
@@ -212,8 +207,8 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
     </form>
   </details>;
 
-  return <details className="application-workflow" open={workflowOpen}>
-    <summary onClick={handleSummaryClick}>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
+  return <details className="application-workflow" onToggle={handleWorkflowToggle}>
+    <summary>Manage application · {displayedStatus ? label(displayedStatus) : "loading"}</summary>
     {loading && <p role="status">Loading application history…</p>}
     {!loading && !application && <p>Open this workflow to load its application history.</p>}
     {application && <div className="application-workflow-body">
