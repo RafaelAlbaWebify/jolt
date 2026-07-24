@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
+import { ProfessionalExecutionReadiness } from "./ProfessionalExecutionReadiness";
 import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
 
 export type ProfessionalIntelligenceSource = {
@@ -150,6 +151,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         </div>
       </section>
 
+      {active && <ProfessionalExecutionReadiness apiBase={apiBase} active={active} />}
       {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
       {active && <ProfessionalCaptureRuns apiBase={apiBase} active={active} planRefreshKey={planRefreshKey} />}
       {loading && <p role="status">Loading source registry…</p>}

@@ -39,13 +39,38 @@ function capturePlan(plannedSources = [sources[0]], excludedSources = [{ source:
   };
 }
 
+function executionReadiness() {
+  return {
+    ready: false,
+    execution_available: false,
+    blockers: [
+      "supervised_browser_runner_not_implemented",
+      "browser_session_boundary_not_configured",
+    ],
+    required_user_actions: ["choose_local_evidence_root", "start_each_capture_explicitly"],
+    evidence_policy: {
+      allowed_artifact_types: [
+        "capture_metadata_json",
+        "page_diagnostics_json",
+        "rendered_text_json",
+        "screenshot_png",
+      ],
+      page_completeness_statuses: ["complete", "partial", "failed"],
+      default_retention_days: 30,
+      maximum_retention_days: 365,
+      text_extraction_policy: ["visible_rendered_dom_text_is_primary"],
+      prohibited_evidence: ["credentials", "cookies", "tokens", "browser_storage_state"],
+    },
+  };
+}
+
 describe("ProfessionalIntelligence", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("loads only when active and shows the deterministic capture preview", async () => {
+  it("loads only when active and shows capture preview and blocked readiness", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
@@ -54,6 +79,9 @@ describe("ProfessionalIntelligence", () => {
       }
       if (url.endsWith("/capture-runs")) {
         return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/execution-readiness")) {
+        return new Response(JSON.stringify(executionReadiness()), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -71,6 +99,10 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
     expect(screen.getByText(/No login handling/)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Open approved source" })).toHaveLength(2);
+    expect(await screen.findByRole("heading", { name: "Supervised capture readiness" })).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    expect(screen.getByText("supervised browser runner not implemented")).toBeInTheDocument();
+    expect(screen.getByText("Default retention: 30 days.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Preview run history" })).toBeInTheDocument();
     expect(screen.getByText("No preview runs recorded.")).toBeInTheDocument();
@@ -78,13 +110,7 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
     expect(screen.getByText("browser execution not available")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/sources",
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/capture-plan",
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs",
+      "http://127.0.0.1:8000/api/professional-intelligence/execution-readiness",
     );
   });
 
@@ -104,6 +130,9 @@ describe("ProfessionalIntelligence", () => {
       }
       if (url.endsWith("/capture-runs") && !init?.method) {
         return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/execution-readiness")) {
+        return new Response(JSON.stringify(executionReadiness()), { status: 200 });
       }
       if (url.endsWith("/capture-plan")) {
         planCalls += 1;
@@ -160,6 +189,6 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     await waitFor(() => expect(planCalls).toBe(3));
-    expect(fetchMock).toHaveBeenCalledTimes(7);
+    expect(fetchMock).toHaveBeenCalledTimes(8);
   });
 });
