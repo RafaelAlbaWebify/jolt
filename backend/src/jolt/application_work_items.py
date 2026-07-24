@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -93,7 +93,7 @@ def _task_response(task: ApplicationTask) -> TaskResponse:
         title=task.title,
         notes=task.notes,
         due_at=task.due_at.isoformat() if task.due_at else None,
-        status=task.status,
+        status=cast(TaskStatus, task.status),
         completed_at=task.completed_at.isoformat() if task.completed_at else None,
         created_at=task.created_at.isoformat(),
         updated_at=task.updated_at.isoformat(),
@@ -104,14 +104,14 @@ def _interview_response(interview: ApplicationInterview) -> InterviewResponse:
     return InterviewResponse(
         interview_id=interview.id,
         application_id=interview.application_id,
-        interview_type=interview.interview_type,
+        interview_type=cast(InterviewType, interview.interview_type),
         scheduled_at=interview.scheduled_at.isoformat(),
         timezone=interview.timezone,
         format_location=interview.format_location,
         participants=interview.participants,
         preparation_notes=interview.preparation_notes,
         outcome_notes=interview.outcome_notes,
-        status=interview.status,
+        status=cast(InterviewStatus, interview.status),
         completed_at=interview.completed_at.isoformat() if interview.completed_at else None,
         created_at=interview.created_at.isoformat(),
         updated_at=interview.updated_at.isoformat(),
