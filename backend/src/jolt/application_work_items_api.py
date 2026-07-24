@@ -43,7 +43,9 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     session_dependency = Depends(get_session)
 
     @router.get("/api/applications/{application_id}/tasks", response_model=list[TaskResponse])
-    def application_tasks(application_id: str, session: Session = session_dependency) -> list[TaskResponse]:
+    def application_tasks(
+        application_id: str, session: Session = session_dependency
+    ) -> list[TaskResponse]:
         try:
             return list_tasks(session, application_id)
         except LookupError as exc:
@@ -77,7 +79,9 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/application-tasks/{task_id}/reopen", response_model=TaskResponse)
-    def reopen_application_task(task_id: str, session: Session = session_dependency) -> TaskResponse:
+    def reopen_application_task(
+        task_id: str, session: Session = session_dependency
+    ) -> TaskResponse:
         try:
             return set_task_status(session, task_id, "open")
         except LookupError as exc:
@@ -95,9 +99,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.post(
-        "/api/applications/{application_id}/interviews", response_model=InterviewResponse
-    )
+    @router.post("/api/applications/{application_id}/interviews", response_model=InterviewResponse)
     def add_application_interview(
         application_id: str,
         request: InterviewCreateRequest,
@@ -150,9 +152,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.get(
-        "/api/applications/{application_id}/contacts", response_model=list[ContactResponse]
-    )
+    @router.get("/api/applications/{application_id}/contacts", response_model=list[ContactResponse])
     def application_contacts(
         application_id: str, session: Session = session_dependency
     ) -> list[ContactResponse]:
@@ -190,9 +190,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.post(
-        "/api/applications/{application_id}/documents", response_model=DocumentResponse
-    )
+    @router.post("/api/applications/{application_id}/documents", response_model=DocumentResponse)
     def add_application_document(
         application_id: str, request: DocumentRequest, session: Session = session_dependency
     ) -> DocumentResponse:
@@ -201,9 +199,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.post(
-        "/api/application-documents/{document_id}/update", response_model=DocumentResponse
-    )
+    @router.post("/api/application-documents/{document_id}/update", response_model=DocumentResponse)
     def edit_application_document(
         document_id: str, request: DocumentRequest, session: Session = session_dependency
     ) -> DocumentResponse:
