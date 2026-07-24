@@ -14,7 +14,8 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
 
     command.upgrade(config, "head")
 
-    tables = set(inspect(create_engine(f"sqlite:///{database_path.as_posix()}")).get_table_names())
+    inspector = inspect(create_engine(f"sqlite:///{database_path.as_posix()}"))
+    tables = set(inspector.get_table_names())
     assert {
         "alembic_version",
         "source_documents",
@@ -36,3 +37,12 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "professional_capture_artifacts",
         "outcomes",
     }.issubset(tables)
+
+    run_columns = {
+        column["name"] for column in inspector.get_columns("professional_capture_runs")
+    }
+    assert {
+        "authorized_at",
+        "authorization_expires_at",
+        "user_present_confirmed",
+    }.issubset(run_columns)
