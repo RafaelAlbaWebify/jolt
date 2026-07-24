@@ -38,14 +38,21 @@ class ProfessionalCaptureRunResponse(BaseModel):
     artifact_count: int = 0
 
 
+def _comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
+    if left.tzinfo is None and right.tzinfo is not None:
+        right = right.replace(tzinfo=None)
+    elif left.tzinfo is not None and right.tzinfo is None:
+        left = left.replace(tzinfo=None)
+    return left, right
+
+
 def _effective_status(run: ProfessionalCaptureRun, now: datetime | None = None) -> str:
     current = now or utc_now()
-    if (
-        run.status == "authorized"
-        and run.authorization_expires_at is not None
-        and run.authorization_expires_at <= current
-    ):
-        return "expired"
+    expires_at = run.authorization_expires_at
+    if run.status == "authorized" and expires_at is not None:
+        comparable_expiry, comparable_current = _comparable_datetimes(expires_at, current)
+        if comparable_expiry <= comparable_current:
+            return "expired"
     return run.status
 
 
