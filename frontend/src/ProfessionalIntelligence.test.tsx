@@ -42,8 +42,10 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByText("Main profile")).toBeInTheDocument();
     expect(screen.getByText("Feed")).toBeInTheDocument();
-    expect(screen.getByText(/8 sources|1 sources/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Initial supervised scope" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
     expect(screen.getByText(/No login handling/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Open approved source" })).toHaveLength(2);
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/sources",
     );
