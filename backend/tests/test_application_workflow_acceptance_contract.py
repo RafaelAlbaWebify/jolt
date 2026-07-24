@@ -7,7 +7,7 @@ def test_application_workflow_controls_disclosure_state() -> None:
     source = WORKFLOW.read_text(encoding="utf-8")
 
     assert "const [workflowOpen, setWorkflowOpen] = useState(false);" in source
-    assert 'open={workflowOpen} onToggle={handleToggle}' in source
+    assert "open={workflowOpen} onToggle={handleToggle}" in source
     assert "setWorkflowOpen(open);" in source
 
 
