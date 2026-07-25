@@ -1,0 +1,60 @@
+name: Apply workspace heading alignment
+
+on:
+  push:
+    branches: [test/playwright-sidebar-kanban-acceptance]
+
+permissions:
+  contents: write
+
+jobs:
+  align-headings:
+    if: ${{ !contains(github.event.head_commit.message, '[heading-aligned]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/playwright-sidebar-kanban-acceptance
+          fetch-depth: 0
+      - name: Align workspace headings with navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('frontend/src/App.tsx'): [
+                  (
+                      '<h2 id="queue-heading">Opportunity review workbench</h2>',
+                      '<p className="eyebrow">Opportunity review workbench</p>\n            <h2 id="queue-heading">Opportunities</h2>',
+                  ),
+              ],
+              Path('frontend/src/MarketIntelligence.tsx'): [
+                  (
+                      '<p className="eyebrow">Capture-derived intelligence</p>\n          <h2 id="market-heading">Market intelligence</h2>',
+                      '<p className="eyebrow">Market intelligence</p>\n          <h2 id="market-heading">Market</h2>',
+                  ),
+              ],
+              Path('frontend/src/ProfessionalIntelligence.tsx'): [
+                  (
+                      '<p className="eyebrow">Professional Intelligence</p>\n          <h2 id="professional-intelligence-heading">Approved LinkedIn source registry</h2>',
+                      '<p className="eyebrow">Approved LinkedIn source registry</p>\n          <h2 id="professional-intelligence-heading">Professional</h2>',
+                  ),
+              ],
+          }
+
+          for path, pairs in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  if old not in text:
+                      raise SystemExit(f'Expected heading pattern not found in {path}: {old}')
+                  text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+          rm .github/workflows/apply-heading-alignment.yml
+      - name: Commit aligned headings
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/App.tsx frontend/src/MarketIntelligence.tsx frontend/src/ProfessionalIntelligence.tsx .github/workflows/apply-heading-alignment.yml
+          git commit -m "Align workspace headings with navigation [heading-aligned]"
+          git push origin HEAD:test/playwright-sidebar-kanban-acceptance
