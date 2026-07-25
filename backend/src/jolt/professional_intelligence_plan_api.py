@@ -24,6 +24,13 @@ from jolt.professional_intelligence_evidence_contract import (
     professional_execution_readiness,
     validate_professional_artifact_manifest_entry,
 )
+from jolt.professional_intelligence_evidence_root import (
+    ProfessionalEvidenceRootRequest,
+    ProfessionalEvidenceRootResponse,
+    clear_professional_evidence_root,
+    configure_professional_evidence_root,
+    get_professional_evidence_root,
+)
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -54,6 +61,37 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     )
     def professional_intelligence_execution_readiness() -> ProfessionalExecutionReadiness:
         return professional_execution_readiness()
+
+    @router.get(
+        "/api/professional-intelligence/evidence-root",
+        response_model=ProfessionalEvidenceRootResponse,
+    )
+    def professional_intelligence_evidence_root(
+        session: Session = session_dependency,
+    ) -> ProfessionalEvidenceRootResponse:
+        return get_professional_evidence_root(session)
+
+    @router.post(
+        "/api/professional-intelligence/evidence-root",
+        response_model=ProfessionalEvidenceRootResponse,
+    )
+    def configure_professional_intelligence_evidence_root(
+        request: ProfessionalEvidenceRootRequest,
+        session: Session = session_dependency,
+    ) -> ProfessionalEvidenceRootResponse:
+        try:
+            return configure_professional_evidence_root(session, request)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.delete(
+        "/api/professional-intelligence/evidence-root",
+        response_model=ProfessionalEvidenceRootResponse,
+    )
+    def clear_professional_intelligence_evidence_root(
+        session: Session = session_dependency,
+    ) -> ProfessionalEvidenceRootResponse:
+        return clear_professional_evidence_root(session)
 
     @router.post(
         "/api/professional-intelligence/artifact-manifest/validate",
