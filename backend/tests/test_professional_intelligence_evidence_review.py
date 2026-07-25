@@ -32,7 +32,9 @@ def _completed_run_with_evidence(tmp_path: Path) -> tuple[TestClient, str, Path]
     payloads = {
         "rendered_text_json": (
             "rendered-text.json",
-            json.dumps({"source_id": source_id, "text": "Visible professional evidence"}).encode(),
+            json.dumps(
+                {"source_id": source_id, "text": "Visible professional evidence"}
+            ).encode(),
         ),
         "capture_metadata_json": (
             "capture-metadata.json",
@@ -40,7 +42,9 @@ def _completed_run_with_evidence(tmp_path: Path) -> tuple[TestClient, str, Path]
         ),
         "page_diagnostics_json": (
             "page-diagnostics.json",
-            json.dumps({"source_id": source_id, "completeness_status": "complete"}).encode(),
+            json.dumps(
+                {"source_id": source_id, "completeness_status": "complete"}
+            ).encode(),
         ),
         "screenshot_png": ("page.png", b"fixture-png"),
     }
@@ -48,6 +52,7 @@ def _completed_run_with_evidence(tmp_path: Path) -> tuple[TestClient, str, Path]
     with factory() as session:
         stored_run = session.get(ProfessionalCaptureRun, run_id)
         assert stored_run is not None
+        stored_run.source_snapshot_json = json.dumps([source])
         stored_run.status = "completed"
         stored_run.mode = "supervised_read_only"
         stored_run.started_at = utc_now()
@@ -73,7 +78,9 @@ def _completed_run_with_evidence(tmp_path: Path) -> tuple[TestClient, str, Path]
     return client, run_id, source_root
 
 
-def test_evidence_review_verifies_integrity_and_exposes_json_only(tmp_path: Path) -> None:
+def test_evidence_review_verifies_integrity_and_exposes_json_only(
+    tmp_path: Path,
+) -> None:
     client, run_id, _source_root = _completed_run_with_evidence(tmp_path)
 
     response = client.get(
@@ -87,8 +94,12 @@ def test_evidence_review_verifies_integrity_and_exposes_json_only(tmp_path: Path
     assert review["review_available"] is True
     assert review["ready_for_analysis"] is True
     artifacts = review["sources"][0]["artifacts"]
-    screenshot = next(item for item in artifacts if item["artifact_type"] == "screenshot_png")
-    rendered = next(item for item in artifacts if item["artifact_type"] == "rendered_text_json")
+    screenshot = next(
+        item for item in artifacts if item["artifact_type"] == "screenshot_png"
+    )
+    rendered = next(
+        item for item in artifacts if item["artifact_type"] == "rendered_text_json"
+    )
     assert screenshot["reviewable"] is False
     assert screenshot["content"] is None
     assert rendered["reviewable"] is True
