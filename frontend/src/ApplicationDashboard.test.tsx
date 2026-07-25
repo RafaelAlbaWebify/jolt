@@ -205,20 +205,29 @@ describe("ApplicationDashboard", () => {
     expect(screen.getByLabelText("Applied count")).toHaveTextContent("1");
   });
 
-  it("disables terminal and unsupported lane moves instead of offering rejected transitions", async () => {
+  it("offers reversible active-lane corrections and reopening targets", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     const closedMove = await screen.findByLabelText("Move Support Operations Engineer to lane");
-    expect(closedMove).toBeDisabled();
-    expect(closedMove.querySelectorAll("option")).toHaveLength(1);
-    expect(closedMove).toHaveValue("closed");
+    expect(closedMove).not.toBeDisabled();
+    expect(Array.from(closedMove.querySelectorAll("option")).map((option) => option.value)).toEqual([
+      "closed",
+      "preparing",
+      "applied",
+      "interviewing",
+      "offer",
+    ]);
 
     const technicalMove = screen.getByLabelText("Move Production Support Analyst to lane");
-    expect(technicalMove).toBeDisabled();
-    expect(technicalMove.querySelectorAll("option")).toHaveLength(1);
-    expect(technicalMove).toHaveValue("interviewing");
+    expect(technicalMove).not.toBeDisabled();
+    expect(Array.from(technicalMove.querySelectorAll("option")).map((option) => option.value)).toEqual([
+      "preparing",
+      "applied",
+      "interviewing",
+      "offer",
+    ]);
   });
 
   it("opens one application in a dedicated workspace instead of expanding it inline", async () => {
