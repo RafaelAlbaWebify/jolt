@@ -66,10 +66,6 @@ const APPLICATION_STAGES: { value: ApplicationStatus; label: string }[] = [
   { value: "hiring_manager_interview", label: "Hiring-manager interview" },
   { value: "final_interview", label: "Final interview" },
   { value: "offer", label: "Offer" },
-  { value: "rejected", label: "Rejected" },
-  { value: "withdrawn", label: "Withdrawn" },
-  { value: "no_response", label: "No response" },
-  { value: "closed", label: "Closed" },
 ];
 
 const STAGE_ACTIONS: Partial<Record<ApplicationStatus, StageAction[]>> = {
@@ -240,7 +236,7 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
             <label>Stage<select value={selectedStage || application.status} onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}>{APPLICATION_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
             <button className="secondary" disabled={disabled || busy || !selectedStage || selectedStage === application.status} type="button" onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: selectedStage, notes: activityNotes })}>Save stage</button>
           </div>
-          <p>Stages can move backward or forward. Reopening keeps the previous outcome in the timeline.</p>
+          <p>Active stages can move backward or forward as audited corrections. Use a final outcome to close an application; reopening preserves that outcome event in the timeline.</p>
         </section>
         {!application.outcome_type && actions.length > 0 && <section className="workflow-actions-section">
           <h4>Suggested next actions</h4>

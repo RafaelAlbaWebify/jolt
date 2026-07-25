@@ -345,18 +345,44 @@ def transition_application(
     application = session.get(Application, application_id)
     if application is None:
         raise LookupError("Application was not found.")
+    if request.status == application.status:
+        raise ValueError(f"Application is already in {request.status}.")
+
+    active_statuses = {
+        "preparing",
+        "submitted",
+        "acknowledged",
+        "recruiter_screen",
+        "technical_interview",
+        "hiring_manager_interview",
+        "final_interview",
+        "offer",
+    }
     allowed = ALLOWED_TRANSITIONS.get(application.status, set())
-    if request.status not in allowed:
+    is_correction = request.status in active_statuses and request.status not in allowed
+    if request.status not in allowed and not is_correction:
         raise ValueError(f"Invalid transition from {application.status} to {request.status}.")
+
     previous = application.status
     now = utc_now()
+    outcome = session.scalar(select(Outcome).where(Outcome.application_id == application.id))
+    reopening = outcome is not None and request.status in active_statuses
+    if reopening:
+        session.delete(outcome)
+
     application.status = request.status
     application.updated_at = now
     session.add(
         ApplicationEvent(
             id=str(uuid4()),
             application_id=application.id,
-            event_type="status_changed",
+            event_type=(
+                "application_reopened"
+                if reopening
+                else "status_corrected"
+                if is_correction
+                else "status_changed"
+            ),
             from_status=previous,
             to_status=request.status,
             notes=request.notes,
