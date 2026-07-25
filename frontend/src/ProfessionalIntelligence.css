@@ -20,9 +20,23 @@
 }
 
 .professional-capture-plan,
-.professional-run-ledger {
+.professional-run-ledger,
+.professional-evidence-root {
   display: grid;
   gap: 1rem;
+}
+
+.professional-evidence-root form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.professional-evidence-root input {
+  width: 100%;
+}
+
+.professional-evidence-root code {
+  overflow-wrap: anywhere;
 }
 
 .professional-plan-status {
