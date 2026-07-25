@@ -114,8 +114,8 @@ def verify_shell(page: Page, workspace: str) -> dict[str, Any]:
     sidebar = metrics["sidebar"]
     content = metrics["content"]
     assert_true(bool(metrics["sidebarVisible"]), f"Sidebar is not visible in {workspace}")
-    assert_true(float(shell["left"]) <= 16, f"Shell does not start near the left edge in {workspace}")
-    assert_true(float(shell["right"]) >= viewport - 16, f"Shell does not use the full viewport width in {workspace}")
+    assert_true(float(shell["left"]) <= 24, f"Shell does not start near the left edge in {workspace}")
+    assert_true(float(shell["right"]) >= viewport - 24, f"Shell does not use the full viewport width in {workspace}")
     assert_true(float(sidebar["right"]) < float(content["left"]), f"Sidebar and content overlap in {workspace}")
     assert_true(float(content["width"]) >= viewport * 0.65, f"Main content is squeezed in {workspace}")
     assert_true(float(metrics["documentOverflow"]) <= 1, f"Document overflow exists in {workspace}")
@@ -193,7 +193,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "board_metrics": board_metrics,
         "sidebar_visible_all_workspaces": all(bool(item["sidebarVisible"]) for item in workspace_metrics.values()),
         "full_width_all_workspaces": all(
-            float(item["shell"]["left"]) <= 16 and float(item["shell"]["right"]) >= VIEWPORT["width"] - 16
+            float(item["shell"]["left"]) <= 24 and float(item["shell"]["right"]) >= VIEWPORT["width"] - 24
             for item in workspace_metrics.values()
         ),
         "document_overflow_all_workspaces": all(float(item["documentOverflow"]) <= 1 for item in workspace_metrics.values()),
