@@ -123,11 +123,13 @@ def test_supervised_capture_marks_engine_failure_instead_of_staying_running(
         "jolt.professional_intelligence_supervised_capture._write_artifact",
         fail_write,
     )
-    with factory() as session:
-        with pytest.raises(OSError, match="fixture storage failure"):
-            start_professional_supervised_capture(
-                session, run_id, capture_source=_fixture_page
-            )
+    with (
+        factory() as session,
+        pytest.raises(OSError, match="fixture storage failure"),
+    ):
+        start_professional_supervised_capture(
+            session, run_id, capture_source=_fixture_page
+        )
 
     client = TestClient(create_app(database_url))
     failed = client.get(
@@ -144,10 +146,9 @@ def test_supervised_capture_rejects_missing_authorization_or_root(tmp_path: Path
     run = client.post("/api/professional-intelligence/capture-runs").json()
     factory = create_session_factory(database_url)
 
-    with factory() as session:
-        with pytest.raises(ValueError, match="authorization"):
-            start_professional_supervised_capture(
-                session,
-                run["id"],
-                capture_source=_fixture_page,
-            )
+    with factory() as session, pytest.raises(ValueError, match="authorization"):
+        start_professional_supervised_capture(
+            session,
+            run["id"],
+            capture_source=_fixture_page,
+        )
