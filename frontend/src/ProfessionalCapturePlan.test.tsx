@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 
 const plan = {
-  mode: "preview_only",
-  execution_available: false,
+  mode: "supervised_read_only",
+  execution_available: true,
   planned_sources: [
     {
       source_id: "linkedin-profile",
@@ -31,7 +31,11 @@ const plan = {
       reason: "deferred_scope",
     },
   ],
-  safety_constraints: ["no_credentials_or_session_storage", "no_account_actions"],
+  safety_constraints: [
+    "visible_fresh_browser_context_per_source",
+    "no_credentials_cookies_or_tokens_in_evidence",
+    "no_unattended_capture",
+  ],
 };
 
 describe("ProfessionalCapturePlan", () => {
@@ -40,7 +44,7 @@ describe("ProfessionalCapturePlan", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not fetch while inactive and renders a preview-only plan when activated", async () => {
+  it("does not fetch while inactive and renders the supervised plan when activated", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(plan), { status: 200 }),
     );
@@ -56,7 +60,7 @@ describe("ProfessionalCapturePlan", () => {
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
     expect(screen.getByText("Main profile")).toBeInTheDocument();
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
-    expect(screen.getByText("Browser not launched")).toBeInTheDocument();
-    expect(screen.getByText("no credentials or session storage")).toBeInTheDocument();
+    expect(screen.getByText("Explicit start available")).toBeInTheDocument();
+    expect(screen.getByText("visible fresh browser context per source")).toBeInTheDocument();
   });
 });
