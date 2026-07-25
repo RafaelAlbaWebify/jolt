@@ -18,7 +18,12 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "professional_capture_artifacts",
-        sa.Column("completeness_status", sa.String(length=20), nullable=False, server_default="partial"),
+        sa.Column(
+            "completeness_status",
+            sa.String(length=20),
+            nullable=False,
+            server_default="partial",
+        ),
     )
     op.add_column(
         "professional_capture_artifacts",
