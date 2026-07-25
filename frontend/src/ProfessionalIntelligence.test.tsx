@@ -24,6 +24,14 @@ const sources = [
   },
 ];
 
+const emptyEvidenceRoot = {
+  configured: false,
+  root_path: null,
+  exists: false,
+  writable: false,
+  verified_at: null,
+};
+
 function capturePlan(plannedSources = [sources[0]], excludedSources = [{ source: sources[1], reason: "deferred_scope" }]) {
   return {
     mode: "preview_only",
@@ -46,6 +54,7 @@ function executionReadiness() {
     blockers: [
       "supervised_browser_runner_not_implemented",
       "browser_session_boundary_not_configured",
+      "local_evidence_root_not_verified",
     ],
     required_user_actions: ["choose_local_evidence_root", "start_each_capture_explicitly"],
     evidence_policy: {
@@ -74,6 +83,9 @@ describe("ProfessionalIntelligence", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
+      if (url.endsWith("/evidence-root")) {
+        return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
+      }
       if (url.endsWith("/capture-plan")) {
         return new Response(JSON.stringify(capturePlan()), { status: 200 });
       }
@@ -95,6 +107,8 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Initial supervised scope" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
     expect(screen.getByText(/No login handling/)).toBeInTheDocument();
@@ -102,6 +116,7 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByRole("heading", { name: "Supervised capture readiness" })).toBeInTheDocument();
     expect(screen.getByText("Blocked")).toBeInTheDocument();
     expect(screen.getByText("supervised browser runner not implemented")).toBeInTheDocument();
+    expect(screen.getByText("local evidence root not verified")).toBeInTheDocument();
     expect(screen.getByText("Default retention: 30 days.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Preview run history" })).toBeInTheDocument();
@@ -109,9 +124,6 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByText("Browser not launched")).toBeInTheDocument();
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
     expect(screen.getByText("browser execution not available")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/execution-readiness",
-    );
   });
 
   it("refreshes the preview after saving and resetting a source override", async () => {
@@ -127,6 +139,9 @@ describe("ProfessionalIntelligence", () => {
       const url = String(input);
       if (url.endsWith("/sources") && !init?.method) {
         return new Response(JSON.stringify(sources), { status: 200 });
+      }
+      if (url.endsWith("/evidence-root") && !init?.method) {
+        return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
       }
       if (url.endsWith("/capture-runs") && !init?.method) {
         return new Response(JSON.stringify([]), { status: 200 });
@@ -189,6 +204,6 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     await waitFor(() => expect(planCalls).toBe(3));
-    expect(fetchMock).toHaveBeenCalledTimes(8);
+    expect(fetchMock).toHaveBeenCalledTimes(9);
   });
 });
