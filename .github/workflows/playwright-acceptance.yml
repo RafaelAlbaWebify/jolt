@@ -27,7 +27,9 @@ jobs:
           uv run playwright install --with-deps chromium
       - name: Prepare database
         working-directory: backend
-        run: uv run alembic upgrade head
+        run: |
+          mkdir -p data
+          uv run alembic upgrade head
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci --ignore-scripts --no-fund
