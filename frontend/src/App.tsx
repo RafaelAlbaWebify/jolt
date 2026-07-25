@@ -333,7 +333,8 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
       <section className="panel opportunity-workspace" aria-labelledby="queue-heading">
         <div className="section-heading opportunity-toolbar">
           <div>
-            <h2 id="queue-heading">Opportunity review workbench</h2>
+            <p className="eyebrow">Opportunity review workbench</p>
+            <h2 id="queue-heading">Opportunities</h2>
             <p>Review the highest-value opportunities first.</p>
           </div>
           <button

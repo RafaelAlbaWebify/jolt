@@ -75,8 +75,8 @@ export function MarketIntelligence({ apiBase }: Props) {
     <section className="panel market-workspace" aria-labelledby="market-heading">
       <div className="section-heading market-heading">
         <div>
-          <p className="eyebrow">Capture-derived intelligence</p>
-          <h2 id="market-heading">Market intelligence</h2>
+          <p className="eyebrow">Market intelligence</p>
+          <h2 id="market-heading">Market</h2>
           <p>Separate your target market from search noise, then focus applications and study effort.</p>
         </div>
         {data && (
