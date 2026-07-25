@@ -35,6 +35,10 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_structured_extraction import (
+    ProfessionalStructuredExtraction,
+    extract_professional_intelligence,
+)
 from jolt.professional_intelligence_supervised_capture import (
     start_professional_supervised_capture,
 )
@@ -163,6 +167,21 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalEvidenceRunReview:
         try:
             return review_professional_capture_evidence(session, run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.get(
+        "/api/professional-intelligence/capture-runs/{run_id}/structured-extraction",
+        response_model=ProfessionalStructuredExtraction,
+    )
+    def professional_capture_structured_extraction(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalStructuredExtraction:
+        try:
+            return extract_professional_intelligence(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
