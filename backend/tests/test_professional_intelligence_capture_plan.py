@@ -37,10 +37,7 @@ def test_capture_plan_selects_enabled_initial_sources_for_supervised_execution(
     planned_ids = {source["source_id"] for source in plan["planned_sources"]}
     assert "linkedin-feed" in planned_ids
     assert "linkedin-skills" not in planned_ids
-    exclusions = {
-        item["source"]["source_id"]: item["reason"]
-        for item in plan["excluded_sources"]
-    }
+    exclusions = {item["source"]["source_id"]: item["reason"] for item in plan["excluded_sources"]}
     assert exclusions["linkedin-skills"] == "disabled_by_user"
     assert exclusions["linkedin-connections"] == "deferred_scope"
     assert "explicit_user_start_required" in plan["safety_constraints"]
