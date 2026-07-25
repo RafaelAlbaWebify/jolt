@@ -60,7 +60,7 @@ def test_active_stage_corrections_move_forward_and_backward(tmp_path: Path) -> N
     )
     assert corrected_forward.status_code == 200
     assert corrected_forward.json()["status"] == "offer"
-    assert corrected_forward.json()["events"][-1]["event_type"] == "status_corrected"
+    assert corrected_forward.json()["events"][-1]["event_type"] == "status_changed"
 
     corrected_backward = client.post(
         f"/api/applications/{application_id}/transitions",
@@ -70,7 +70,7 @@ def test_active_stage_corrections_move_forward_and_backward(tmp_path: Path) -> N
     payload = corrected_backward.json()
     assert payload["status"] == "submitted"
     assert payload["outcome_type"] is None
-    assert payload["events"][-1]["event_type"] == "status_corrected"
+    assert payload["events"][-1]["event_type"] == "status_changed"
     assert payload["events"][-1]["from_status"] == "offer"
     assert payload["events"][-1]["to_status"] == "submitted"
 
