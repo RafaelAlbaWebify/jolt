@@ -63,9 +63,9 @@ def test_structured_extraction_preserves_explicit_source_and_snippet(monkeypatch
     assert result.integrity_verified is True
     assert result.extraction_method == "deterministic_bounded_v1"
     assert [item.value for item in result.role_signals] == [
+        "Local IT Engineer",
         "Application Support",
         "Service Manager",
-        "Local IT Engineer",
     ]
     assert {item.value for item in result.location_signals} >= {"Vigo", "Galicia", "Spain"}
     assert {item.value for item in result.skills} >= {
