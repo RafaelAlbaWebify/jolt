@@ -14,10 +14,10 @@ API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
 WORKSPACES = {
-    "Opportunities": "Opportunity review workbench",
+    "Opportunities": "Opportunities",
     "Applications": "Applications",
-    "Market": "Market intelligence",
-    "Professional": "Approved LinkedIn source registry",
+    "Market": "Market",
+    "Professional": "Professional",
 }
 
 
