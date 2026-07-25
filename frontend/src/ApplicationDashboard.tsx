@@ -120,18 +120,10 @@ function deduplicateOpportunities(items: Opportunity[]) {
 
 function availableTargetLanes(item: Opportunity): PipelineLane[] {
   const currentLane = laneFor(item);
-  if (!item.application_id || !item.application_status || item.outcome_type) return [currentLane];
-  const directTargets: Partial<Record<ApplicationStatus, PipelineLane[]>> = {
-    preparing: ["applied", "closed"],
-    submitted: ["interviewing"],
-    acknowledged: ["interviewing"],
-    hiring_manager_interview: ["offer"],
-    final_interview: ["offer"],
-    offer: ["closed"],
-  };
-  return [currentLane, ...(directTargets[item.application_status] ?? [])].filter(
-    (lane, index, lanes) => lanes.indexOf(lane) === index,
-  );
+  if (!item.application_id || !item.application_status) return [currentLane];
+  const activeLanes: PipelineLane[] = ["preparing", "applied", "interviewing", "offer"];
+  if (currentLane === "closed" || item.outcome_type) return ["closed", ...activeLanes];
+  return activeLanes;
 }
 
 function nextAction(item: Opportunity) {
@@ -384,7 +376,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <p className="application-boundary">Drag cards between lanes or use each card’s Move control. Every move is recorded in history.</p>
+        <p className="application-boundary">Move cards forward or backward to correct the pipeline. Closing still requires a recorded outcome, and every correction is preserved in history.</p>
       </div>
       {error && (
         <p className="error" role="alert">
@@ -403,20 +395,24 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             key={lane.id}
             aria-labelledby={`lane-${lane.id}`}
             onDragEnter={(event) => {
-              if (draggedItem && laneFor(draggedItem) !== lane.id) {
+              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && laneFor(draggedItem) !== lane.id) {
                 event.preventDefault();
                 setDragOverLane(lane.id);
               }
             }}
             onDragOver={(event) => {
-              if (draggedItem && laneFor(draggedItem) !== lane.id) event.preventDefault();
+              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && laneFor(draggedItem) !== lane.id) {
+                event.preventDefault();
+              }
             }}
             onDragLeave={(event) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOverLane(null);
             }}
             onDrop={(event) => {
               event.preventDefault();
-              if (draggedItem) void moveApplication(draggedItem, lane.id);
+              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id)) {
+                void moveApplication(draggedItem, lane.id);
+              }
             }}
           >
             <header className="application-lane-header">
