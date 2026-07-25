@@ -8,8 +8,8 @@ type CaptureExclusion = {
 };
 
 type CapturePlan = {
-  mode: "preview_only";
-  execution_available: false;
+  mode: "supervised_read_only";
+  execution_available: boolean;
   planned_sources: ProfessionalIntelligenceSource[];
   excluded_sources: CaptureExclusion[];
   safety_constraints: string[];
@@ -34,7 +34,7 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
     setError("");
     fetch(`${apiBase}/api/professional-intelligence/capture-plan`)
       .then((response) => {
-        if (!response.ok) throw new Error("Unable to build the capture plan preview.");
+        if (!response.ok) throw new Error("Unable to build the supervised capture plan.");
         return response.json() as Promise<CapturePlan>;
       })
       .then(setPlan)
@@ -42,17 +42,22 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
   }, [active, apiBase, refreshKey]);
 
   if (error) return <p className="error" role="alert">{error}</p>;
-  if (!plan) return <p role="status">Building capture plan preview…</p>;
+  if (!plan) return <p role="status">Building supervised capture plan…</p>;
 
   return (
     <section className="panel professional-capture-plan" aria-labelledby="professional-capture-plan-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Preview only</p>
+          <p className="eyebrow">Supervised read-only</p>
           <h2 id="professional-capture-plan-heading">Supervised capture plan</h2>
-          <p>{plan.planned_sources.length} approved sources would be included. Execution is not available in this slice.</p>
+          <p>
+            {plan.planned_sources.length} approved sources are included. A browser opens only after
+            an explicit run is recorded, authorized, and started while the user remains present.
+          </p>
         </div>
-        <span className="professional-plan-status">Browser not launched</span>
+        <span className="professional-plan-status">
+          {plan.execution_available ? "Explicit start available" : "Execution blocked"}
+        </span>
       </div>
       <div className="professional-plan-columns">
         <section>
