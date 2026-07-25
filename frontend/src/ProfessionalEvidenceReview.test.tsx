@@ -60,7 +60,7 @@ describe("ProfessionalEvidenceReview", () => {
     expect(await screen.findByText("Integrity verified")).toBeInTheDocument();
     expect(screen.getByText("Ready for analysis")).toBeInTheDocument();
     fireEvent.click(screen.getByText("linkedin-profile · complete · 2 artifacts"));
-    expect(screen.getByText("Hash verified", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getAllByText("Hash verified", { selector: "span" })).toHaveLength(2);
     expect(screen.getByText(/Visible professional evidence/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-1/evidence-review",
