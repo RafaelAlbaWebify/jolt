@@ -59,8 +59,15 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         "/api/professional-intelligence/execution-readiness",
         response_model=ProfessionalExecutionReadiness,
     )
-    def professional_intelligence_execution_readiness() -> ProfessionalExecutionReadiness:
-        return professional_execution_readiness()
+    def professional_intelligence_execution_readiness(
+        session: Session = session_dependency,
+    ) -> ProfessionalExecutionReadiness:
+        evidence_root = get_professional_evidence_root(session)
+        return professional_execution_readiness(
+            evidence_root_verified=evidence_root.configured
+            and evidence_root.exists
+            and evidence_root.writable
+        )
 
     @router.get(
         "/api/professional-intelligence/evidence-root",
