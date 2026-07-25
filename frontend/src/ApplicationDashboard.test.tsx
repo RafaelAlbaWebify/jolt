@@ -129,7 +129,7 @@ describe("ApplicationDashboard", () => {
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByRole("heading", { name: "Application management" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Applications" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Preparing" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Applied" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Interviewing" })).toBeInTheDocument();
@@ -141,6 +141,57 @@ describe("ApplicationDashboard", () => {
     expect(screen.getByLabelText("Interviewing count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Offer count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Closed count")).toHaveTextContent("1");
+  });
+
+  it("moves an application through the audited transition endpoint", async () => {
+    let currentPipeline = pipeline;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/application-index")) return jsonResponse(currentPipeline);
+      if (url.endsWith("/api/applications/application-1/transitions") && init?.method === "POST") {
+        currentPipeline = currentPipeline.map((item) =>
+          item.posting_id === "posting-applied"
+            ? { ...item, application_status: "recruiter_screen" as ApplicationStatus }
+            : item,
+        );
+        return jsonResponse({ ...application, status: "recruiter_screen" });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    const moveControl = await screen.findByLabelText("Move Application Support Engineer to lane");
+    fireEvent.change(moveControl, { target: { value: "interviewing" } });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/transitions",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            status: "recruiter_screen",
+            notes: "Moved on application board from applied to interviewing.",
+          }),
+        }),
+      ),
+    );
+
+    expect(await screen.findByText("Application Support Engineer moved to Interviewing.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Interviewing count")).toHaveTextContent("2");
+  });
+
+  it("only makes applications with preparation records draggable", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    const unpreparedCard = (await screen.findByRole("button", { name: "Open Cloud Support Engineer" })).closest("article");
+    const preparedCard = screen.getByRole("button", { name: "Open Application Support Engineer" }).closest("article");
+
+    expect(unpreparedCard).toHaveAttribute("draggable", "false");
+    expect(screen.getByLabelText("Move Cloud Support Engineer to lane")).toBeDisabled();
+    expect(preparedCard).toHaveAttribute("draggable", "true");
   });
 
   it("opens one application in a dedicated workspace instead of expanding it inline", async () => {
@@ -193,9 +244,9 @@ describe("ApplicationDashboard", () => {
             },
           ],
         };
-        currentPipeline = currentPipeline.map((item): TestOpportunity => item.posting_id === "posting-applied"
-          ? { ...item, application_status: "technical_interview" }
-          : item);
+        currentPipeline = currentPipeline.map((item): TestOpportunity =>
+          item.posting_id === "posting-applied" ? { ...item, application_status: "technical_interview" } : item,
+        );
         return jsonResponse(currentApplication);
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -213,16 +264,18 @@ describe("ApplicationDashboard", () => {
     fireEvent.change(screen.getByLabelText("Stage"), { target: { value: "technical_interview" } });
     fireEvent.click(screen.getByRole("button", { name: "Save stage" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/applications/application-1/transitions",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          status: "technical_interview",
-          notes: "Technical interview booked.",
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/transitions",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            status: "technical_interview",
+            notes: "Technical interview booked.",
+          }),
         }),
-      }),
-    ));
+      ),
+    );
 
     expect(await screen.findByText("Manage application · technical interview")).toBeInTheDocument();
   });
