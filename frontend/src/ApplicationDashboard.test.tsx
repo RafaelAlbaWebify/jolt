@@ -178,7 +178,9 @@ describe("ApplicationDashboard", () => {
     );
 
     expect(await screen.findByText("Application Support Engineer moved to Interviewing.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Applied count")).toHaveTextContent("0");
     expect(screen.getByLabelText("Interviewing count")).toHaveTextContent("2");
+    expect(screen.getAllByRole("button", { name: "Open Application Support Engineer" })).toHaveLength(1);
   });
 
   it("only makes applications with preparation records draggable", async () => {
@@ -192,6 +194,31 @@ describe("ApplicationDashboard", () => {
     expect(unpreparedCard).toHaveAttribute("draggable", "false");
     expect(screen.getByLabelText("Move Cloud Support Engineer to lane")).toBeDisabled();
     expect(preparedCard).toHaveAttribute("draggable", "true");
+  });
+
+  it("renders one card per stable application identity when the API repeats a row", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([...pipeline, { ...submittedOpportunity }]));
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    expect(await screen.findAllByRole("button", { name: "Open Application Support Engineer" })).toHaveLength(1);
+    expect(screen.getByLabelText("Applied count")).toHaveTextContent("1");
+  });
+
+  it("disables terminal and unsupported lane moves instead of offering rejected transitions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    const closedMove = await screen.findByLabelText("Move Support Operations Engineer to lane");
+    expect(closedMove).toBeDisabled();
+    expect(closedMove.querySelectorAll("option")).toHaveLength(1);
+    expect(closedMove).toHaveValue("closed");
+
+    const technicalMove = screen.getByLabelText("Move Production Support Analyst to lane");
+    expect(technicalMove).toBeDisabled();
+    expect(technicalMove.querySelectorAll("option")).toHaveLength(1);
+    expect(technicalMove).toHaveValue("interviewing");
   });
 
   it("opens one application in a dedicated workspace instead of expanding it inline", async () => {

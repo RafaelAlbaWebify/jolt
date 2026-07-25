@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApplicationContacts } from "./ApplicationContacts";
 import { ApplicationDocuments } from "./ApplicationDocuments";
@@ -105,6 +105,35 @@ function laneFor(item: Opportunity): PipelineLane {
   return "applied";
 }
 
+function opportunityIdentity(item: Opportunity) {
+  return item.application_id ? `application:${item.application_id}` : `posting:${item.posting_id}`;
+}
+
+function deduplicateOpportunities(items: Opportunity[]) {
+  const unique = new Map<string, Opportunity>();
+  for (const item of items) {
+    const identity = opportunityIdentity(item);
+    if (!unique.has(identity)) unique.set(identity, item);
+  }
+  return [...unique.values()];
+}
+
+function availableTargetLanes(item: Opportunity): PipelineLane[] {
+  const currentLane = laneFor(item);
+  if (!item.application_id || !item.application_status || item.outcome_type) return [currentLane];
+  const directTargets: Partial<Record<ApplicationStatus, PipelineLane[]>> = {
+    preparing: ["applied", "closed"],
+    submitted: ["interviewing"],
+    acknowledged: ["interviewing"],
+    hiring_manager_interview: ["offer"],
+    final_interview: ["offer"],
+    offer: ["closed"],
+  };
+  return [currentLane, ...(directTargets[item.application_status] ?? [])].filter(
+    (lane, index, lanes) => lanes.indexOf(lane) === index,
+  );
+}
+
 function nextAction(item: Opportunity) {
   if (!item.application_id) return "Create preparation record";
   switch (item.application_status) {
@@ -198,11 +227,13 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [draggedPostingId, setDraggedPostingId] = useState<string | null>(null);
   const [dragOverLane, setDragOverLane] = useState<PipelineLane | null>(null);
   const [moveNotice, setMoveNotice] = useState("");
+  const movingApplicationIds = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/application-index`);
     if (!response.ok) throw new Error("Unable to load application opportunities.");
-    setOpportunities((await response.json()) as Opportunity[]);
+    const rows = (await response.json()) as Opportunity[];
+    setOpportunities(deduplicateOpportunities(rows));
   }, [apiBase]);
 
   useEffect(() => {
@@ -290,6 +321,12 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
 
   async function moveApplication(item: Opportunity, targetLane: PipelineLane) {
     if (!item.application_id || laneFor(item) === targetLane || busy) return;
+    if (!availableTargetLanes(item).includes(targetLane)) {
+      setError(`The application cannot move directly from ${laneFor(item)} to ${targetLane}.`);
+      return;
+    }
+    if (movingApplicationIds.current.has(item.application_id)) return;
+    movingApplicationIds.current.add(item.application_id);
     setBusy(true);
     setError("");
     setMoveNotice("");
@@ -311,6 +348,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The application could not be moved.");
     } finally {
+      if (item.application_id) movingApplicationIds.current.delete(item.application_id);
       setBusy(false);
       setDraggedPostingId(null);
       setDragOverLane(null);
@@ -397,10 +435,12 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                     className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}${
                       draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""
                     }`}
-                    key={opportunity.posting_id}
-                    draggable={Boolean(opportunity.application_id) && !busy}
+                    key={opportunityIdentity(opportunity)}
+                    data-application-id={opportunity.application_id ?? undefined}
+                    data-posting-id={opportunity.posting_id}
+                    draggable={availableTargetLanes(opportunity).length > 1 && !busy}
                     onDragStart={(event) => {
-                      if (!opportunity.application_id) {
+                      if (!opportunity.application_id || availableTargetLanes(opportunity).length <= 1) {
                         event.preventDefault();
                         return;
                       }
@@ -449,14 +489,17 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         <select
                           aria-label={`Move ${opportunity.title || "untitled opportunity"} to lane`}
                           value={laneFor(opportunity)}
-                          disabled={!opportunity.application_id || busy}
+                          disabled={availableTargetLanes(opportunity).length <= 1 || busy}
                           onChange={(event) => void moveApplication(opportunity, event.target.value as PipelineLane)}
                         >
-                          {LANES.map((target) => (
-                            <option key={target.id} value={target.id}>
-                              {target.label}
-                            </option>
-                          ))}
+                          {availableTargetLanes(opportunity).map((targetLane) => {
+                            const target = LANES.find((lane) => lane.id === targetLane)!;
+                            return (
+                              <option key={target.id} value={target.id}>
+                                {target.label}
+                              </option>
+                            );
+                          })}
                         </select>
                       </label>
                     </div>
