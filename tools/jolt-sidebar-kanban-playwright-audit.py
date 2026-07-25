@@ -13,17 +13,18 @@ from playwright.sync_api import Page, sync_playwright
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
+WORKSPACES = {
+    "Opportunities": "Opportunity review workbench",
+    "Applications": "Applications",
+    "Market": "Market intelligence",
+    "Professional": "Approved LinkedIn source registry",
+}
 
 
 def request_json(method: str, path: str, payload: dict[str, object] | None = None) -> dict[str, Any]:
-    data = None
-    headers: dict[str, str] = {}
-    if payload is not None:
-        data = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(
-        f"{API_BASE}{path}", data=data, headers=headers, method=method
-    )
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {"Content-Type": "application/json"} if payload is not None else {}
+    request = urllib.request.Request(f"{API_BASE}{path}", data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
             loaded = json.loads(response.read().decode("utf-8"))
@@ -44,9 +45,7 @@ def seed_application() -> dict[str, str]:
         {
             "source_url": f"https://example.test/jobs/{stamp}",
             "raw_text": (
-                f"{title}\n"
-                "Audit Systems\n"
-                "Remote Spain\n"
+                f"{title}\nAudit Systems\nRemote Spain\n"
                 "Application support engineer responsible for Windows, Active Directory, "
                 "incident management, SQL troubleshooting, APIs, logs, and customer support."
             ),
@@ -56,7 +55,6 @@ def seed_application() -> dict[str, str]:
     evaluation_id = str(intake.get("evaluation_id") or "")
     if not posting_id or not evaluation_id:
         raise RuntimeError("Manual intake did not return posting_id and evaluation_id")
-
     request_json(
         "POST",
         f"/api/opportunities/{posting_id}/reviews",
@@ -79,11 +77,7 @@ def seed_application() -> dict[str, str]:
         f"/api/applications/{application_id}/transitions",
         {"status": "submitted", "notes": "Seeded in Applied for Playwright acceptance."},
     )
-    return {
-        "title": title,
-        "posting_id": posting_id,
-        "application_id": application_id,
-    }
+    return {"title": title, "posting_id": posting_id, "application_id": application_id}
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -121,22 +115,10 @@ def verify_shell(page: Page, workspace: str) -> dict[str, Any]:
     content = metrics["content"]
     assert_true(bool(metrics["sidebarVisible"]), f"Sidebar is not visible in {workspace}")
     assert_true(float(shell["left"]) <= 16, f"Shell does not start near the left edge in {workspace}")
-    assert_true(
-        float(shell["right"]) >= viewport - 16,
-        f"Shell does not use the full viewport width in {workspace}",
-    )
-    assert_true(
-        float(sidebar["right"]) < float(content["left"]),
-        f"Sidebar and content overlap or escape the shell in {workspace}",
-    )
-    assert_true(
-        float(content["width"]) >= viewport * 0.65,
-        f"Main content is still squeezed in {workspace}",
-    )
-    assert_true(
-        float(metrics["documentOverflow"]) <= 1,
-        f"The document has horizontal overflow in {workspace}",
-    )
+    assert_true(float(shell["right"]) >= viewport - 16, f"Shell does not use the full viewport width in {workspace}")
+    assert_true(float(sidebar["right"]) < float(content["left"]), f"Sidebar and content overlap in {workspace}")
+    assert_true(float(content["width"]) >= viewport * 0.65, f"Main content is squeezed in {workspace}")
+    assert_true(float(metrics["documentOverflow"]) <= 1, f"Document overflow exists in {workspace}")
     return metrics
 
 
@@ -147,41 +129,25 @@ def audit(output_dir: Path) -> dict[str, Any]:
     page_errors: list[str] = []
     failed_requests: list[str] = []
     workspace_metrics: dict[str, Any] = {}
+    heading_matches: dict[str, bool] = {}
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(viewport=VIEWPORT)
         page = context.new_page()
-        page.on(
-            "console",
-            lambda message: console_errors.append(message.text)
-            if message.type == "error"
-            else None,
-        )
+        page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
         page.on("pageerror", lambda error: page_errors.append(str(error)))
-        page.on(
-            "requestfailed",
-            lambda request: failed_requests.append(
-                f"{request.method} {request.url}: {request.failure}"
-            ),
-        )
+        page.on("requestfailed", lambda request: failed_requests.append(f"{request.method} {request.url}: {request.failure}"))
 
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.get_by_role("button", name="Opportunities", exact=True).wait_for()
-        page.get_by_role("heading", name="Opportunities", exact=True).wait_for()
-        workspace_metrics["Opportunities"] = verify_shell(page, "Opportunities")
-        page.screenshot(path=output_dir / "01-opportunities-full-width.png", full_page=True)
 
-        headings = {
-            "Applications": "Applications",
-            "Market": "Market",
-            "Professional": "Professional",
-            "Opportunities": "Opportunities",
-        }
-        for label, heading in headings.items():
+        for label, current_heading in WORKSPACES.items():
             page.get_by_role("button", name=label, exact=True).click()
-            page.get_by_role("heading", name=heading, exact=True).wait_for(timeout=30_000)
+            page.get_by_role("heading", name=current_heading, exact=True).wait_for(timeout=30_000)
             workspace_metrics[label] = verify_shell(page, label)
+            heading_matches[label] = page.get_by_role("heading", name=label, exact=True).count() > 0
+            page.screenshot(path=output_dir / f"workspace-{label.lower()}.png", full_page=True)
 
         page.get_by_role("button", name="Applications", exact=True).click()
         page.get_by_role("heading", name="Applications", exact=True).wait_for()
@@ -193,14 +159,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
                 documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             })"""
         )
-        assert_true(
-            board_metrics["overflowX"] in {"auto", "scroll"},
-            "Application board does not own its horizontal scrolling",
-        )
-        assert_true(
-            int(board_metrics["documentOverflow"]) <= 1,
-            "Application board causes document-level horizontal overflow",
-        )
+        assert_true(board_metrics["overflowX"] in {"auto", "scroll"}, "Board does not own horizontal scrolling")
+        assert_true(int(board_metrics["documentOverflow"]) <= 1, "Board causes document-level overflow")
 
         title = fixture["title"]
         card = page.locator("article.application-card").filter(has_text=title)
@@ -210,55 +170,44 @@ def audit(output_dir: Path) -> dict[str, Any]:
         card.drag_to(interviewing_lane)
         page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
         interviewing_lane.locator("article.application-card").filter(has_text=title).wait_for()
-        page.screenshot(path=output_dir / "02-applications-after-drag.png", full_page=True)
+        page.screenshot(path=output_dir / "applications-after-drag.png", full_page=True)
 
         page.reload(wait_until="networkidle")
         page.get_by_role("button", name="Applications", exact=True).click()
         page.get_by_role("heading", name="Applications", exact=True).wait_for()
-        persisted_card = page.locator("section.application-lane-interviewing article.application-card").filter(
-            has_text=title
-        )
+        persisted_card = page.locator("section.application-lane-interviewing article.application-card").filter(has_text=title)
         persisted_card.wait_for(timeout=30_000)
-
         persisted_card.get_by_role("button", name=f"Open {title}").click()
         page.get_by_role("dialog", name=title).wait_for()
         page.get_by_role("tab", name="Timeline", exact=True).click()
         page.get_by_text("submitted → recruiter screen", exact=True).wait_for(timeout=30_000)
-        page.get_by_text(
-            "Moved on application board from applied to interviewing.", exact=True
-        ).wait_for(timeout=30_000)
-        page.screenshot(path=output_dir / "03-timeline-audited-move.png", full_page=True)
-
+        page.get_by_text("Moved on application board from applied to interviewing.", exact=True).wait_for(timeout=30_000)
+        page.screenshot(path=output_dir / "timeline-audited-move.png", full_page=True)
         browser.close()
 
     summary = {
         "fixture": fixture,
         "viewport": VIEWPORT,
         "workspace_metrics": workspace_metrics,
+        "workspace_heading_matches_navigation": heading_matches,
         "board_metrics": board_metrics,
-        "sidebar_visible_all_workspaces": all(
-            bool(metrics["sidebarVisible"]) for metrics in workspace_metrics.values()
-        ),
+        "sidebar_visible_all_workspaces": all(bool(item["sidebarVisible"]) for item in workspace_metrics.values()),
         "full_width_all_workspaces": all(
-            float(metrics["shell"]["left"]) <= 16
-            and float(metrics["shell"]["right"]) >= VIEWPORT["width"] - 16
-            for metrics in workspace_metrics.values()
+            float(item["shell"]["left"]) <= 16 and float(item["shell"]["right"]) >= VIEWPORT["width"] - 16
+            for item in workspace_metrics.values()
         ),
-        "document_overflow_all_workspaces": all(
-            float(metrics["documentOverflow"]) <= 1 for metrics in workspace_metrics.values()
-        ),
+        "document_overflow_all_workspaces": all(float(item["documentOverflow"]) <= 1 for item in workspace_metrics.values()),
         "drag_persisted_after_reload": True,
         "timeline_contains_audited_move": True,
         "console_errors": console_errors,
         "page_errors": page_errors,
         "failed_requests": failed_requests,
     }
-    (output_dir / "audit-summary.json").write_text(
-        json.dumps(summary, indent=2), encoding="utf-8"
-    )
+    (output_dir / "audit-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     assert_true(not console_errors, f"Browser console errors: {console_errors}")
     assert_true(not page_errors, f"Page errors: {page_errors}")
     assert_true(not failed_requests, f"Failed browser requests: {failed_requests}")
+    assert_true(all(heading_matches.values()), f"Workspace headings do not match navigation: {heading_matches}")
     return summary
 
 
@@ -266,8 +215,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    summary = audit(args.output_dir)
-    print(json.dumps(summary, indent=2))
+    print(json.dumps(audit(args.output_dir), indent=2))
     return 0
 
 
