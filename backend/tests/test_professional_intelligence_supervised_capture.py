@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -35,22 +36,22 @@ def _authorized_run(tmp_path: Path) -> tuple[str, str, Path]:
     return database_url, run["id"], evidence_root
 
 
+def _fixture_page(url: str) -> CapturedProfessionalPage:
+    return CapturedProfessionalPage(
+        screenshot_png=b"fixture-png-bytes",
+        visible_text=(f"Visible rendered profile evidence from {url}. " * 5),
+        title="Fixture LinkedIn page",
+        final_url=url,
+        http_status=200,
+    )
+
+
 def test_supervised_capture_writes_contained_verified_artifacts(tmp_path: Path) -> None:
     database_url, run_id, evidence_root = _authorized_run(tmp_path)
-
-    def capture_source(url: str) -> CapturedProfessionalPage:
-        return CapturedProfessionalPage(
-            screenshot_png=b"fixture-png-bytes",
-            visible_text=(f"Visible rendered profile evidence from {url}. " * 5),
-            title="Fixture LinkedIn page",
-            final_url=url,
-            http_status=200,
-        )
-
     factory = create_session_factory(database_url)
     with factory() as session:
         completed = start_professional_supervised_capture(
-            session, run_id, capture_source=capture_source
+            session, run_id, capture_source=_fixture_page
         )
         assert completed.status == "completed"
         assert completed.artifact_count == 32
@@ -86,13 +87,7 @@ def test_supervised_capture_records_source_failure_and_continues(tmp_path: Path)
         calls += 1
         if calls == 1:
             raise RuntimeError("fixture navigation failed")
-        return CapturedProfessionalPage(
-            screenshot_png=b"fixture-png-bytes",
-            visible_text=(f"Visible rendered profile evidence from {url}. " * 5),
-            title="Fixture LinkedIn page",
-            final_url=url,
-            http_status=200,
-        )
+        return _fixture_page(url)
 
     factory = create_session_factory(database_url)
     with factory() as session:
@@ -109,7 +104,38 @@ def test_supervised_capture_records_source_failure_and_continues(tmp_path: Path)
         )
     )
     assert len(diagnostics) == 8
-    assert any("fixture navigation failed" in path.read_text(encoding="utf-8") for path in diagnostics)
+    assert any(
+        "fixture navigation failed" in path.read_text(encoding="utf-8")
+        for path in diagnostics
+    )
+
+
+def test_supervised_capture_marks_engine_failure_instead_of_staying_running(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url, run_id, _evidence_root = _authorized_run(tmp_path)
+    factory = create_session_factory(database_url)
+
+    def fail_write(*args, **kwargs) -> None:
+        raise OSError("fixture storage failure")
+
+    monkeypatch.setattr(
+        "jolt.professional_intelligence_supervised_capture._write_artifact",
+        fail_write,
+    )
+    with factory() as session:
+        with pytest.raises(OSError, match="fixture storage failure"):
+            start_professional_supervised_capture(
+                session, run_id, capture_source=_fixture_page
+            )
+
+    client = TestClient(create_app(database_url))
+    failed = client.get(
+        f"/api/professional-intelligence/capture-runs/{run_id}"
+    ).json()
+    assert failed["status"] == "failed"
+    assert failed["stop_reason"] == "capture_engine_failure"
+    assert failed["completed_at"] is not None
 
 
 def test_supervised_capture_rejects_missing_authorization_or_root(tmp_path: Path) -> None:
@@ -119,19 +145,9 @@ def test_supervised_capture_rejects_missing_authorization_or_root(tmp_path: Path
     factory = create_session_factory(database_url)
 
     with factory() as session:
-        try:
+        with pytest.raises(ValueError, match="authorization"):
             start_professional_supervised_capture(
                 session,
                 run["id"],
-                capture_source=lambda _url: CapturedProfessionalPage(
-                    screenshot_png=b"png",
-                    visible_text="text",
-                    title="title",
-                    final_url="https://www.linkedin.com/",
-                    http_status=200,
-                ),
+                capture_source=_fixture_page,
             )
-        except ValueError as exc:
-            assert "authorization" in str(exc).lower()
-        else:
-            raise AssertionError("Capture started without authorization.")
