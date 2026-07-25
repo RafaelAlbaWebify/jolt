@@ -66,7 +66,9 @@ def _resolve_artifact_path(root_path: str, artifact: ProfessionalCaptureArtifact
     )
 
 
-def _review_content(path: Path, artifact_type: str) -> dict[str, object] | list[object] | str | None:
+def _review_content(
+    path: Path, artifact_type: str
+) -> dict[str, object] | list[object] | str | None:
     if artifact_type not in _REVIEWABLE_ARTIFACT_TYPES or not path.is_file():
         return None
     if path.stat().st_size > _MAX_REVIEW_BYTES:
@@ -102,7 +104,11 @@ def review_professional_capture_evidence(
     all_integrity_valid = bool(artifacts)
     has_reviewable_text = False
     for source in run.planned_sources:
-        source_artifacts = [artifact for artifact in artifacts if artifact.source_id == source.source_id]
+        source_artifacts = [
+            artifact for artifact in artifacts if artifact.source_id == source.source_id
+        ]
+        if not source_artifacts:
+            all_integrity_valid = False
         reviewed_artifacts: list[ProfessionalEvidenceArtifactReview] = []
         source_statuses: set[str] = set()
         for artifact in source_artifacts:
@@ -110,9 +116,13 @@ def review_professional_capture_evidence(
             exists = path.is_file()
             integrity_valid = False
             if exists:
-                integrity_valid = hashlib.sha256(path.read_bytes()).hexdigest() == artifact.sha256
+                integrity_valid = (
+                    hashlib.sha256(path.read_bytes()).hexdigest() == artifact.sha256
+                )
             reviewable = artifact.artifact_type in _REVIEWABLE_ARTIFACT_TYPES
-            content = _review_content(path, artifact.artifact_type) if integrity_valid else None
+            content = (
+                _review_content(path, artifact.artifact_type) if integrity_valid else None
+            )
             if artifact.artifact_type == "rendered_text_json" and integrity_valid:
                 has_reviewable_text = True
             all_integrity_valid = all_integrity_valid and exists and integrity_valid
