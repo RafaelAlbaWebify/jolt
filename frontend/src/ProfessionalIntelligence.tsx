@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
+import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
 import { ProfessionalExecutionReadiness } from "./ProfessionalExecutionReadiness";
 import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
 
@@ -37,6 +38,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
+  const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -151,7 +153,20 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         </div>
       </section>
 
-      {active && <ProfessionalExecutionReadiness apiBase={apiBase} active={active} />}
+      {active && (
+        <ProfessionalEvidenceRoot
+          apiBase={apiBase}
+          active={active}
+          onChanged={() => setReadinessRefreshKey((current) => current + 1)}
+        />
+      )}
+      {active && (
+        <ProfessionalExecutionReadiness
+          key={readinessRefreshKey}
+          apiBase={apiBase}
+          active={active}
+        />
+      )}
       {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
       {active && <ProfessionalCaptureRuns apiBase={apiBase} active={active} planRefreshKey={planRefreshKey} />}
       {loading && <p role="status">Loading source registry…</p>}

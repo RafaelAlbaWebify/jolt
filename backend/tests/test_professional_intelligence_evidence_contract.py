@@ -10,20 +10,36 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Path) -> None:
-    response = _client(tmp_path).get("/api/professional-intelligence/execution-readiness")
+    client = _client(tmp_path)
+    response = client.get("/api/professional-intelligence/execution-readiness")
 
     assert response.status_code == 200
     readiness = response.json()
     assert readiness["ready"] is False
     assert readiness["execution_available"] is False
     assert "supervised_browser_runner_not_implemented" in readiness["blockers"]
+    assert "local_evidence_root_not_verified" in readiness["blockers"]
     assert "explicit_per_run_user_confirmation_not_implemented" not in readiness["blockers"]
     assert "record_and_authorize_each_run_explicitly" in readiness["required_user_actions"]
+    assert "choose_local_evidence_root" in readiness["required_user_actions"]
     assert (
         "visible_rendered_dom_text_is_primary"
         in readiness["evidence_policy"]["text_extraction_policy"]
     )
     assert "browser_storage_state" in readiness["evidence_policy"]["prohibited_evidence"]
+
+    evidence_root = tmp_path / "evidence"
+    evidence_root.mkdir()
+    configured = client.post(
+        "/api/professional-intelligence/evidence-root",
+        json={"root_path": str(evidence_root)},
+    )
+    assert configured.status_code == 200
+
+    refreshed = client.get("/api/professional-intelligence/execution-readiness").json()
+    assert "local_evidence_root_not_verified" not in refreshed["blockers"]
+    assert "choose_local_evidence_root" not in refreshed["required_user_actions"]
+    assert "supervised_browser_runner_not_implemented" in refreshed["blockers"]
 
 
 def test_artifact_manifest_accepts_safe_run_scoped_entry(tmp_path: Path) -> None:

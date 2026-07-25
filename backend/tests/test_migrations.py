@@ -35,6 +35,7 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "professional_source_overrides",
         "professional_capture_runs",
         "professional_capture_artifacts",
+        "professional_evidence_settings",
         "outcomes",
     }.issubset(tables)
 

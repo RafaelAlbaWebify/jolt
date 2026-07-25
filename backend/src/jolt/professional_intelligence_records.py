@@ -52,3 +52,11 @@ class ProfessionalCaptureArtifact(Base):
     relative_path: Mapped[str] = mapped_column(Text, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ProfessionalEvidenceSettings(Base):
+    __tablename__ = "professional_evidence_settings"
+
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    root_path: Mapped[str] = mapped_column(Text, nullable=False)
+    verified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
