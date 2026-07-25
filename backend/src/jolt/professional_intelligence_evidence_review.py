@@ -116,13 +116,9 @@ def review_professional_capture_evidence(
             exists = path.is_file()
             integrity_valid = False
             if exists:
-                integrity_valid = (
-                    hashlib.sha256(path.read_bytes()).hexdigest() == artifact.sha256
-                )
+                integrity_valid = hashlib.sha256(path.read_bytes()).hexdigest() == artifact.sha256
             reviewable = artifact.artifact_type in _REVIEWABLE_ARTIFACT_TYPES
-            content = (
-                _review_content(path, artifact.artifact_type) if integrity_valid else None
-            )
+            content = _review_content(path, artifact.artifact_type) if integrity_valid else None
             if artifact.artifact_type == "rendered_text_json" and integrity_valid:
                 has_reviewable_text = True
             all_integrity_valid = all_integrity_valid and exists and integrity_valid
