@@ -74,10 +74,7 @@ def professional_evidence_policy() -> ProfessionalEvidencePolicy:
 def professional_execution_readiness(
     *, evidence_root_verified: bool = False
 ) -> ProfessionalExecutionReadiness:
-    blockers = [
-        "supervised_browser_runner_not_implemented",
-        "browser_session_boundary_not_configured",
-    ]
+    blockers: list[str] = []
     required_user_actions = [
         "record_and_authorize_each_run_explicitly",
         "remain_present_during_capture",
@@ -87,6 +84,8 @@ def professional_execution_readiness(
         blockers.append("local_evidence_root_not_verified")
         required_user_actions.insert(1, "choose_local_evidence_root")
     return ProfessionalExecutionReadiness(
+        ready=not blockers,
+        execution_available=not blockers,
         blockers=blockers,
         required_user_actions=required_user_actions,
         evidence_policy=professional_evidence_policy(),

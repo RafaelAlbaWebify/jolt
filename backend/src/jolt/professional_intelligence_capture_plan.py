@@ -13,8 +13,8 @@ class ProfessionalCaptureExclusion(BaseModel):
 
 
 class ProfessionalCapturePlan(BaseModel):
-    mode: str = "preview_only"
-    execution_available: bool = False
+    mode: str = "supervised_read_only"
+    execution_available: bool = True
     planned_sources: list[ProfessionalIntelligenceSource]
     excluded_sources: list[ProfessionalCaptureExclusion]
     safety_constraints: list[str]
@@ -38,6 +38,7 @@ def build_professional_capture_plan(session: Session) -> ProfessionalCapturePlan
         safety_constraints=[
             "explicit_user_start_required",
             "supervised_read_only_navigation",
+            "visible_fresh_browser_context_per_source",
             "approved_registry_urls_only",
             "no_credentials_cookies_or_tokens_in_evidence",
             "no_connect_follow_like_comment_apply_send_or_invitation_actions",

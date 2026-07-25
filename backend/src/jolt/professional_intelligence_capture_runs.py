@@ -5,12 +5,15 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
 from jolt.professional_intelligence_capture_plan import build_professional_capture_plan
-from jolt.professional_intelligence_records import ProfessionalCaptureRun
+from jolt.professional_intelligence_records import (
+    ProfessionalCaptureArtifact,
+    ProfessionalCaptureRun,
+)
 from jolt.professional_intelligence_sources import ProfessionalIntelligenceSource
 
 AUTHORIZATION_CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN"
@@ -38,7 +41,7 @@ class ProfessionalCaptureRunResponse(BaseModel):
     artifact_count: int = 0
 
 
-def _comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
+def comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
     if left.tzinfo is None and right.tzinfo is not None:
         right = right.replace(tzinfo=None)
     elif left.tzinfo is not None and right.tzinfo is None:
@@ -46,25 +49,30 @@ def _comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, da
     return left, right
 
 
-def _effective_status(run: ProfessionalCaptureRun, now: datetime | None = None) -> str:
+def effective_capture_run_status(run: ProfessionalCaptureRun, now: datetime | None = None) -> str:
     current = now or utc_now()
     expires_at = run.authorization_expires_at
     if run.status == "authorized" and expires_at is not None:
-        comparable_expiry, comparable_current = _comparable_datetimes(expires_at, current)
+        comparable_expiry, comparable_current = comparable_datetimes(expires_at, current)
         if comparable_expiry <= comparable_current:
             return "expired"
     return run.status
 
 
-def _to_response(run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
+def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
     sources = [
         ProfessionalIntelligenceSource.model_validate(item)
         for item in json.loads(run.source_snapshot_json)
     ]
+    artifact_count = session.scalar(
+        select(func.count(ProfessionalCaptureArtifact.id)).where(
+            ProfessionalCaptureArtifact.capture_run_id == run.id
+        )
+    )
     return ProfessionalCaptureRunResponse(
         id=run.id,
         mode=run.mode,
-        status=_effective_status(run),
+        status=effective_capture_run_status(run),
         planned_sources=sources,
         safety_constraints=list(json.loads(run.safety_constraints_json)),
         requested_at=run.requested_at,
@@ -74,6 +82,7 @@ def _to_response(run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
         started_at=run.started_at,
         completed_at=run.completed_at,
         stop_reason=run.stop_reason,
+        artifact_count=int(artifact_count or 0),
     )
 
 
@@ -97,21 +106,21 @@ def create_professional_capture_preview_run(session: Session) -> ProfessionalCap
     )
     session.add(run)
     session.commit()
-    return _to_response(run)
+    return _to_response(session, run)
 
 
 def list_professional_capture_runs(session: Session) -> list[ProfessionalCaptureRunResponse]:
     runs = session.scalars(
         select(ProfessionalCaptureRun).order_by(ProfessionalCaptureRun.requested_at.desc())
     ).all()
-    return [_to_response(run) for run in runs]
+    return [_to_response(session, run) for run in runs]
 
 
 def get_professional_capture_run(session: Session, run_id: str) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
-    return _to_response(run)
+    return _to_response(session, run)
 
 
 def authorize_professional_capture_run(
@@ -135,7 +144,7 @@ def authorize_professional_capture_run(
     run.authorization_expires_at = authorized_at + timedelta(minutes=AUTHORIZATION_LIFETIME_MINUTES)
     run.user_present_confirmed = True
     session.commit()
-    return _to_response(run)
+    return _to_response(session, run)
 
 
 def cancel_professional_capture_run(
@@ -150,4 +159,4 @@ def cancel_professional_capture_run(
     run.completed_at = utc_now()
     run.stop_reason = "cancelled_by_user"
     session.commit()
-    return _to_response(run)
+    return _to_response(session, run)

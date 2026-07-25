@@ -31,6 +31,9 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_supervised_capture import (
+    start_professional_supervised_capture,
+)
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -157,6 +160,21 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRunResponse:
         try:
             return authorize_professional_capture_run(session, run_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/start",
+        response_model=ProfessionalCaptureRunResponse,
+    )
+    def start_professional_capture(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureRunResponse:
+        try:
+            return start_professional_supervised_capture(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:

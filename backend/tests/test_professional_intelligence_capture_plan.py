@@ -5,7 +5,9 @@ from fastapi.testclient import TestClient
 from jolt.main import create_app
 
 
-def test_capture_plan_previews_enabled_initial_sources_without_execution(tmp_path: Path) -> None:
+def test_capture_plan_selects_enabled_initial_sources_for_supervised_execution(
+    tmp_path: Path,
+) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
     client.post(
         "/api/professional-intelligence/sources/linkedin-skills/update",
@@ -30,8 +32,8 @@ def test_capture_plan_previews_enabled_initial_sources_without_execution(tmp_pat
 
     assert response.status_code == 200
     plan = response.json()
-    assert plan["mode"] == "preview_only"
-    assert plan["execution_available"] is False
+    assert plan["mode"] == "supervised_read_only"
+    assert plan["execution_available"] is True
     planned_ids = {source["source_id"] for source in plan["planned_sources"]}
     assert "linkedin-feed" in planned_ids
     assert "linkedin-skills" not in planned_ids
@@ -39,4 +41,5 @@ def test_capture_plan_previews_enabled_initial_sources_without_execution(tmp_pat
     assert exclusions["linkedin-skills"] == "disabled_by_user"
     assert exclusions["linkedin-connections"] == "deferred_scope"
     assert "explicit_user_start_required" in plan["safety_constraints"]
+    assert "visible_fresh_browser_context_per_source" in plan["safety_constraints"]
     assert "no_unattended_capture" in plan["safety_constraints"]

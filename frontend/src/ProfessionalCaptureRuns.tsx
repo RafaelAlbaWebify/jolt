@@ -6,8 +6,16 @@ const CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
 
 type ProfessionalCaptureRun = {
   id: string;
-  mode: "preview_only";
-  status: "planned" | "authorized" | "expired" | "cancelled";
+  mode: "preview_only" | "supervised_read_only";
+  status:
+    | "planned"
+    | "authorized"
+    | "expired"
+    | "running"
+    | "completed"
+    | "completed_with_gaps"
+    | "failed"
+    | "cancelled";
   planned_sources: ProfessionalIntelligenceSource[];
   safety_constraints: string[];
   requested_at: string;
@@ -94,6 +102,26 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
     }
   }
 
+  async function startRun(runId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/start`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The supervised capture could not start.");
+      }
+      replaceRun((await response.json()) as ProfessionalCaptureRun);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Supervised capture failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function cancelRun(runId: string) {
     setBusy(true);
     setError("");
@@ -116,25 +144,25 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
       <div className="section-heading">
         <div>
           <p className="eyebrow">Audit ledger</p>
-          <h2 id="professional-run-ledger-heading">Preview run history</h2>
-          <p>Record and explicitly authorize the current plan. Authorization expires after 15 minutes and still does not launch a browser.</p>
+          <h2 id="professional-run-ledger-heading">Supervised run history</h2>
+          <p>Record and authorize the current plan. Starting an authorized run opens a visible fresh browser and writes local evidence only.</p>
         </div>
         <button type="button" disabled={busy || !active} onClick={() => void recordPreviewRun()}>
-          {busy ? "Saving…" : "Record preview run"}
+          {busy ? "Working…" : "Record preview run"}
         </button>
       </div>
       <p className="professional-ledger-note">
-        Current plan revision: {planRefreshKey}. Browser execution and evidence writing remain unavailable.
+        Current plan revision: {planRefreshKey}. No credentials, cookies, tokens, or browser storage are persisted.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
-      {!loaded && active && <p role="status">Loading preview run history…</p>}
+      {!loaded && active && <p role="status">Loading supervised run history…</p>}
       {loaded && runs.length === 0 && <p>No preview runs recorded.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (
             <article className="professional-run-card" key={run.id}>
               <div>
-                <strong>{run.status}</strong>
+                <strong>{run.status.replaceAll("_", " ")}</strong>
                 <span>{new Date(run.requested_at).toLocaleString()}</span>
               </div>
               <p>{run.planned_sources.length} planned sources · {run.artifact_count} artifacts</p>
@@ -176,9 +204,17 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
                   </button>
                 </div>
               )}
+              {run.status === "authorized" && (
+                <div className="professional-run-start">
+                  <p>A visible Chromium window will open and visit only this run's approved URLs.</p>
+                  <button type="button" disabled={busy} onClick={() => void startRun(run.id)}>
+                    Start supervised capture
+                  </button>
+                </div>
+              )}
               {(run.status === "planned" || run.status === "authorized") && (
                 <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                  Cancel preview
+                  Cancel run
                 </button>
               )}
               {run.stop_reason && <p>{run.stop_reason.replaceAll("_", " ")}</p>}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from jolt.database import Base
@@ -51,6 +51,8 @@ class ProfessionalCaptureArtifact(Base):
     artifact_type: Mapped[str] = mapped_column(String(40), nullable=False)
     relative_path: Mapped[str] = mapped_column(Text, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    completeness_status: Mapped[str] = mapped_column(String(20), nullable=False, default="partial")
+    retention_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

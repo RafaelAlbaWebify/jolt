@@ -25,7 +25,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("records, explicitly authorizes, and cancels without execution", async () => {
+  it("records, authorizes, and explicitly starts a supervised capture", async () => {
     const authorized = {
       ...plannedRun,
       status: "authorized",
@@ -33,11 +33,13 @@ describe("ProfessionalCaptureRuns", () => {
       authorization_expires_at: "2026-07-24T18:16:00Z",
       user_present_confirmed: true,
     };
-    const cancelled = {
+    const completed = {
       ...authorized,
-      status: "cancelled",
-      completed_at: "2026-07-24T18:02:00Z",
-      stop_reason: "cancelled_by_user",
+      mode: "supervised_read_only",
+      status: "completed",
+      started_at: "2026-07-24T18:02:00Z",
+      completed_at: "2026-07-24T18:03:00Z",
+      artifact_count: 32,
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
@@ -52,8 +54,8 @@ describe("ProfessionalCaptureRuns", () => {
         });
         return new Response(JSON.stringify(authorized), { status: 200 });
       }
-      if (url.endsWith("/run-1/cancel")) {
-        return new Response(JSON.stringify(cancelled), { status: 200 });
+      if (url.endsWith("/run-1/start")) {
+        return new Response(JSON.stringify(completed), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -80,11 +82,11 @@ describe("ProfessionalCaptureRuns", () => {
 
     expect(await screen.findByText("authorized")).toBeInTheDocument();
     expect(screen.getByText(/Authorization expires:/)).toBeInTheDocument();
-    expect(screen.getByText(/Browser execution and evidence writing remain unavailable/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel preview" }));
+    expect(screen.getByText(/visible Chromium window will open/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start supervised capture" }));
 
-    expect(await screen.findByText("cancelled")).toBeInTheDocument();
-    expect(screen.getByText("cancelled by user")).toBeInTheDocument();
+    expect(await screen.findByText("completed")).toBeInTheDocument();
+    expect(screen.getByText("0 planned sources · 32 artifacts")).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   });
 });
