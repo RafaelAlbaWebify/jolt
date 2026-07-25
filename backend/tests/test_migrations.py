@@ -39,17 +39,13 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "outcomes",
     }.issubset(tables)
 
-    run_columns = {
-        column["name"]
-        for column in inspector.get_columns("professional_capture_runs")
-    }
+    run_columns = {column["name"] for column in inspector.get_columns("professional_capture_runs")}
     assert {
         "authorized_at",
         "authorization_expires_at",
         "user_present_confirmed",
     }.issubset(run_columns)
     artifact_columns = {
-        column["name"]
-        for column in inspector.get_columns("professional_capture_artifacts")
+        column["name"] for column in inspector.get_columns("professional_capture_artifacts")
     }
     assert {"completeness_status", "retention_days"}.issubset(artifact_columns)
