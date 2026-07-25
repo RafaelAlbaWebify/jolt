@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { ProfessionalEvidenceReview } from "./ProfessionalEvidenceReview";
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
 
 const CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
@@ -216,6 +217,9 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
                 <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
                   Cancel run
                 </button>
+              )}
+              {(run.status === "completed" || run.status === "completed_with_gaps") && (
+                <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
               )}
               {run.stop_reason && <p>{run.stop_reason.replaceAll("_", " ")}</p>}
             </article>

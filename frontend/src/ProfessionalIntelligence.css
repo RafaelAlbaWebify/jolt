@@ -105,6 +105,69 @@
   width: fit-content;
 }
 
+.professional-evidence-review-launch {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.professional-evidence-review {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.professional-evidence-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.professional-evidence-review details {
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+}
+
+.professional-evidence-review summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.professional-evidence-artifacts {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.65rem;
+}
+
+.professional-evidence-artifacts article {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-subtle, rgba(255, 255, 255, 0.03));
+}
+
+.professional-evidence-artifacts article > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.professional-evidence-artifacts pre {
+  max-height: 18rem;
+  margin: 0;
+  padding: 0.65rem;
+  overflow: auto;
+  border-radius: 0.45rem;
+  background: #f3f5f8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .professional-source-group + .professional-source-group {
   margin-top: 1.25rem;
 }
@@ -203,7 +266,8 @@
   }
 
   .professional-source-card-heading,
-  .professional-run-card > div {
+  .professional-run-card > div,
+  .professional-evidence-review-summary {
     flex-direction: column;
   }
 }

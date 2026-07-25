@@ -24,6 +24,10 @@ from jolt.professional_intelligence_evidence_contract import (
     professional_execution_readiness,
     validate_professional_artifact_manifest_entry,
 )
+from jolt.professional_intelligence_evidence_review import (
+    ProfessionalEvidenceRunReview,
+    review_professional_capture_evidence,
+)
 from jolt.professional_intelligence_evidence_root import (
     ProfessionalEvidenceRootRequest,
     ProfessionalEvidenceRootResponse,
@@ -148,6 +152,21 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             return get_professional_capture_run(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.get(
+        "/api/professional-intelligence/capture-runs/{run_id}/evidence-review",
+        response_model=ProfessionalEvidenceRunReview,
+    )
+    def professional_capture_evidence_review(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalEvidenceRunReview:
+        try:
+            return review_professional_capture_evidence(session, run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.post(
         "/api/professional-intelligence/capture-runs/{run_id}/authorize",
