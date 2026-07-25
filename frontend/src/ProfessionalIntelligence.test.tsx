@@ -32,17 +32,20 @@ const emptyEvidenceRoot = {
   verified_at: null,
 };
 
-function capturePlan(plannedSources = [sources[0]], excludedSources = [{ source: sources[1], reason: "deferred_scope" }]) {
+function capturePlan(
+  plannedSources = [sources[0]],
+  excludedSources = [{ source: sources[1], reason: "deferred_scope" }],
+) {
   return {
-    mode: "preview_only",
-    execution_available: false,
+    mode: "supervised_read_only",
+    execution_available: true,
     planned_sources: plannedSources,
     excluded_sources: excludedSources,
     safety_constraints: [
-      "supervised_read_only",
-      "no_credentials_or_session_storage",
-      "no_account_actions",
-      "browser_execution_not_available",
+      "explicit_user_start_required",
+      "visible_fresh_browser_context_per_source",
+      "no_credentials_cookies_or_tokens_in_evidence",
+      "no_unattended_capture",
     ],
   };
 }
@@ -50,13 +53,14 @@ function capturePlan(plannedSources = [sources[0]], excludedSources = [{ source:
 function executionReadiness() {
   return {
     ready: false,
-    execution_available: false,
-    blockers: [
-      "supervised_browser_runner_not_implemented",
-      "browser_session_boundary_not_configured",
-      "local_evidence_root_not_verified",
+    execution_available: true,
+    blockers: ["local_evidence_root_not_verified"],
+    required_user_actions: [
+      "choose_local_evidence_root",
+      "record_and_authorize_each_run_explicitly",
+      "remain_present_during_capture",
+      "review_artifacts_before_analysis",
     ],
-    required_user_actions: ["choose_local_evidence_root", "start_each_capture_explicitly"],
     evidence_policy: {
       allowed_artifact_types: [
         "capture_metadata_json",
@@ -79,7 +83,7 @@ describe("ProfessionalIntelligence", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads only when active and shows capture preview and blocked readiness", async () => {
+  it("loads only when active and shows the supervised execution contract", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
@@ -109,24 +113,19 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Initial supervised scope" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Deferred sources" })).toBeInTheDocument();
-    expect(screen.getByText(/No login handling/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Open approved source" })).toHaveLength(2);
     expect(await screen.findByRole("heading", { name: "Supervised capture readiness" })).toBeInTheDocument();
     expect(screen.getByText("Blocked")).toBeInTheDocument();
-    expect(screen.getByText("supervised browser runner not implemented")).toBeInTheDocument();
     expect(screen.getByText("local evidence root not verified")).toBeInTheDocument();
     expect(screen.getByText("Default retention: 30 days.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Preview run history" })).toBeInTheDocument();
+    expect(screen.getByText("Explicit start available")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Supervised run history" })).toBeInTheDocument();
     expect(screen.getByText("No preview runs recorded.")).toBeInTheDocument();
-    expect(screen.getByText("Browser not launched")).toBeInTheDocument();
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
-    expect(screen.getByText("browser execution not available")).toBeInTheDocument();
+    expect(screen.getByText("visible fresh browser context per source")).toBeInTheDocument();
   });
 
-  it("refreshes the preview after saving and resetting a source override", async () => {
+  it("refreshes the supervised plan after saving and resetting a source override", async () => {
     const updated = {
       ...sources[0],
       label: "Profile positioning review",
