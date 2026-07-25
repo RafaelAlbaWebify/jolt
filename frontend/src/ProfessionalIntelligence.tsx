@@ -143,8 +143,8 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
     <main className="professional-intelligence" aria-labelledby="professional-intelligence-heading">
       <section className="panel professional-intelligence-overview">
         <div>
-          <p className="eyebrow">Professional Intelligence</p>
-          <h2 id="professional-intelligence-heading">Approved LinkedIn source registry</h2>
+          <p className="eyebrow">Approved LinkedIn source registry</p>
+          <h2 id="professional-intelligence-heading">Professional</h2>
           <p>Edit only the confirmed source set before any supervised evidence capture is introduced. Every change is stored locally and can be reset to its verified default.</p>
         </div>
         <div className="professional-safety-boundary" role="note">
