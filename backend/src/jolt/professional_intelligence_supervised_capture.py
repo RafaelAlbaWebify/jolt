@@ -21,7 +21,10 @@ from jolt.professional_intelligence_evidence_contract import (
     ProfessionalArtifactManifestEntry,
     validate_professional_artifact_manifest_entry,
 )
-from jolt.professional_intelligence_evidence_root import get_professional_evidence_root
+from jolt.professional_intelligence_evidence_root import (
+    get_professional_evidence_root,
+    resolve_professional_evidence_path,
+)
 from jolt.professional_intelligence_records import (
     ProfessionalCaptureArtifact,
     ProfessionalCaptureRun,
@@ -75,7 +78,9 @@ def _write_artifact(
     relative_path = PurePosixPath(
         "professional-intelligence", run_id, source_id, filename
     )
-    absolute_path = (root / Path(*relative_path.parts)).resolve(strict=False)
+    absolute_path = resolve_professional_evidence_path(
+        str(root / "professional-intelligence"), run_id, source_id, filename
+    )
     absolute_path.parent.mkdir(parents=True, exist_ok=True)
     absolute_path.write_bytes(content)
     sha256 = hashlib.sha256(content).hexdigest()
@@ -231,25 +236,46 @@ def start_professional_supervised_capture(
         ProfessionalIntelligenceSource.model_validate(item)
         for item in json.loads(run.source_snapshot_json)
     ]
+    if not sources:
+        raise ValueError("The immutable run snapshot contains no sources to capture.")
+
     run.mode = "supervised_read_only"
     run.status = "running"
     run.started_at = utc_now()
+    run.completed_at = None
     run.stop_reason = ""
     session.commit()
 
-    statuses = [
-        _capture_source(
-            session,
-            root=Path(evidence_root.root_path),
-            run_id=run.id,
-            source=source,
-            capture_source=capture_source,
+    try:
+        statuses = [
+            _capture_source(
+                session,
+                root=Path(evidence_root.root_path),
+                run_id=run.id,
+                source=source,
+                capture_source=capture_source,
+            )
+            for source in sources
+        ]
+        session.commit()
+        run.status = (
+            "completed"
+            if all(status == "complete" for status in statuses)
+            else "completed_with_gaps"
         )
-        for source in sources
-    ]
-    session.commit()
-    run.status = "completed" if all(status == "complete" for status in statuses) else "completed_with_gaps"
-    run.completed_at = utc_now()
-    run.stop_reason = "" if run.status == "completed" else "one_or_more_sources_partial_or_failed"
-    session.commit()
+        run.completed_at = utc_now()
+        run.stop_reason = (
+            "" if run.status == "completed" else "one_or_more_sources_partial_or_failed"
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        run = session.get(ProfessionalCaptureRun, run_id)
+        if run is not None:
+            run.status = "failed"
+            run.completed_at = utc_now()
+            run.stop_reason = "capture_engine_failure"
+            session.commit()
+        raise
+
     return get_professional_capture_run(session, run.id)
