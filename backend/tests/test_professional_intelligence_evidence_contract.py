@@ -9,7 +9,7 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
 
 
-def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Path) -> None:
+def test_execution_readiness_requires_only_verified_local_root(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.get("/api/professional-intelligence/execution-readiness")
 
@@ -17,9 +17,7 @@ def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Pa
     readiness = response.json()
     assert readiness["ready"] is False
     assert readiness["execution_available"] is False
-    assert "supervised_browser_runner_not_implemented" in readiness["blockers"]
-    assert "local_evidence_root_not_verified" in readiness["blockers"]
-    assert "explicit_per_run_user_confirmation_not_implemented" not in readiness["blockers"]
+    assert readiness["blockers"] == ["local_evidence_root_not_verified"]
     assert "record_and_authorize_each_run_explicitly" in readiness["required_user_actions"]
     assert "choose_local_evidence_root" in readiness["required_user_actions"]
     assert (
@@ -37,9 +35,10 @@ def test_execution_readiness_remains_blocked_without_browser_runner(tmp_path: Pa
     assert configured.status_code == 200
 
     refreshed = client.get("/api/professional-intelligence/execution-readiness").json()
-    assert "local_evidence_root_not_verified" not in refreshed["blockers"]
+    assert refreshed["ready"] is True
+    assert refreshed["execution_available"] is True
+    assert refreshed["blockers"] == []
     assert "choose_local_evidence_root" not in refreshed["required_user_actions"]
-    assert "supervised_browser_runner_not_implemented" in refreshed["blockers"]
 
 
 def test_artifact_manifest_accepts_safe_run_scoped_entry(tmp_path: Path) -> None:
