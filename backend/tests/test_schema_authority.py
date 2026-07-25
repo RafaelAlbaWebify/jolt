@@ -42,8 +42,7 @@ def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeyp
         "user_present_confirmed",
     }.issubset(run_columns)
     artifact_columns = {
-        column["name"]
-        for column in inspector.get_columns("professional_capture_artifacts")
+        column["name"] for column in inspector.get_columns("professional_capture_artifacts")
     }
     assert {"completeness_status", "retention_days"}.issubset(artifact_columns)
 
