@@ -1,0 +1,66 @@
+.professional-extraction-launch {
+  margin-top: 0.85rem;
+}
+
+.professional-structured-extraction {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.professional-structured-extraction > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.professional-structured-extraction > div:first-child span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.professional-extraction-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+}
+
+.professional-extraction-sections section {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+}
+
+.professional-extraction-sections h4,
+.professional-extraction-sections p {
+  margin-top: 0;
+}
+
+.professional-extraction-sections ul {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.professional-extraction-sections li {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.professional-extraction-sections li > span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.professional-extraction-sections blockquote {
+  margin: 0;
+  padding-left: 0.65rem;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { ProfessionalStructuredExtraction } from "./ProfessionalStructuredExtraction";
+
 type ArtifactReview = {
   id: string;
   source_id: string;
@@ -103,6 +105,7 @@ export function ProfessionalEvidenceReview({ apiBase, runId }: Props) {
           </div>
         </details>
       ))}
+      {review.ready_for_analysis && <ProfessionalStructuredExtraction apiBase={apiBase} runId={runId} />}
     </section>
   );
 }
