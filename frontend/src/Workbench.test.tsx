@@ -48,11 +48,17 @@ describe("Workbench", () => {
     expect(professional).not.toHaveAttribute("hidden");
   });
 
-  it("exposes the active view through accessible pressed state", () => {
+  it("shows persistent navigation and updates its active description", () => {
     render(<Workbench />);
+
+    const sidebar = screen.getByRole("complementary", { name: "JOLT workspace navigation" });
+    expect(sidebar).toHaveTextContent("Job Opportunity Learning & Tracking");
+    expect(sidebar).toHaveTextContent("Review, prioritise, and prepare opportunities.");
     expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "true");
+
     fireEvent.click(screen.getByRole("button", { name: "Professional" }));
     expect(screen.getByRole("button", { name: "Professional" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "false");
+    expect(sidebar).toHaveTextContent("Review approved professional sources and supervised evidence boundaries.");
   });
 });
