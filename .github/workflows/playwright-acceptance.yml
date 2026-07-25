@@ -48,7 +48,9 @@ jobs:
           exit 1
       - name: Run Playwright acceptance
         working-directory: backend
-        run: uv run python ../tools/jolt-sidebar-kanban-playwright-audit.py --output-dir ../artifacts/playwright-acceptance/evidence
+        run: |
+          set -o pipefail
+          uv run python ../tools/jolt-sidebar-kanban-playwright-audit.py --output-dir ../artifacts/playwright-acceptance/evidence 2>&1 | tee ../artifacts/playwright-acceptance/audit.log
       - name: Upload Playwright acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
