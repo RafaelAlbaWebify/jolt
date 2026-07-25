@@ -99,14 +99,11 @@ def test_supervised_capture_records_source_failure_and_continues(tmp_path: Path)
         assert completed.artifact_count == 29
 
     diagnostics = list(
-        (evidence_root / "professional-intelligence" / run_id).glob(
-            "*/page-diagnostics.json"
-        )
+        (evidence_root / "professional-intelligence" / run_id).glob("*/page-diagnostics.json")
     )
     assert len(diagnostics) == 8
     assert any(
-        "fixture navigation failed" in path.read_text(encoding="utf-8")
-        for path in diagnostics
+        "fixture navigation failed" in path.read_text(encoding="utf-8") for path in diagnostics
     )
 
 
@@ -127,14 +124,10 @@ def test_supervised_capture_marks_engine_failure_instead_of_staying_running(
         factory() as session,
         pytest.raises(OSError, match="fixture storage failure"),
     ):
-        start_professional_supervised_capture(
-            session, run_id, capture_source=_fixture_page
-        )
+        start_professional_supervised_capture(session, run_id, capture_source=_fixture_page)
 
     client = TestClient(create_app(database_url))
-    failed = client.get(
-        f"/api/professional-intelligence/capture-runs/{run_id}"
-    ).json()
+    failed = client.get(f"/api/professional-intelligence/capture-runs/{run_id}").json()
     assert failed["status"] == "failed"
     assert failed["stop_reason"] == "capture_engine_failure"
     assert failed["completed_at"] is not None
