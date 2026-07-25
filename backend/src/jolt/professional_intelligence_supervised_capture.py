@@ -75,9 +75,7 @@ def _write_artifact(
     content: bytes,
     completeness_status: str,
 ) -> None:
-    relative_path = PurePosixPath(
-        "professional-intelligence", run_id, source_id, filename
-    )
+    relative_path = PurePosixPath("professional-intelligence", run_id, source_id, filename)
     absolute_path = resolve_professional_evidence_path(
         str(root / "professional-intelligence"), run_id, source_id, filename
     )
