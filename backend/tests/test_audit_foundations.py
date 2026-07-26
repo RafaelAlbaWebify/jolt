@@ -14,8 +14,8 @@ from jolt.application_work_items import (
     TaskUpdateRequest,
 )
 from jolt.database import create_session_factory, default_database_url
-from jolt.workflow import transition_application
 from jolt.reversible_application_workflow import transition_application_reversibly
+from jolt.workflow import transition_application
 
 
 def test_transition_boundary_is_explicit_wrapper_not_package_monkeypatch() -> None:
