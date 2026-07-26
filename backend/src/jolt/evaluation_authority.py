@@ -17,7 +17,10 @@ def authoritative_evaluations(session: Session) -> dict[str, Evaluation]:
         fallback.setdefault(evaluation.posting_id, evaluation)
         if evaluation.engine_version == STRATEGY_ENGINE_VERSION:
             strategy.setdefault(evaluation.posting_id, evaluation)
-    return {posting_id: strategy.get(posting_id, evaluation) for posting_id, evaluation in fallback.items()}
+    return {
+        posting_id: strategy.get(posting_id, evaluation)
+        for posting_id, evaluation in fallback.items()
+    }
 
 
 def authoritative_evaluation(session: Session, posting_id: str) -> Evaluation | None:
