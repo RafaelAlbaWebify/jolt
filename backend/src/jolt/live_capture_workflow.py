@@ -76,6 +76,7 @@ def run_linkedin_live_capture(
             completed_at=None,
         )
         session.add(run)
+        session.flush()
 
         page_responses = _page_requests(request)
         for page in page_responses:
@@ -136,6 +137,7 @@ def run_linkedin_live_capture(
                 posting_id=posting_id,
             )
             session.add(item)
+            session.flush()
             artifact = stage_capture_artifact(
                 session,
                 capture_item_id=item.id,

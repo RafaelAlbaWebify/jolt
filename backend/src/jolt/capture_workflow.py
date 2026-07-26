@@ -85,6 +85,7 @@ def run_linkedin_fixture_capture(
             completed_at=None,
         )
         session.add(run)
+        session.flush()
 
         stored_pages: list[CapturePage] = []
         for page in evidence.pages:
@@ -140,6 +141,7 @@ def run_linkedin_fixture_capture(
                 posting_id=posting_id,
             )
             session.add(item)
+            session.flush()
             stage_capture_artifact(
                 session,
                 capture_item_id=item.id,

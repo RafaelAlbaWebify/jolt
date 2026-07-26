@@ -4,7 +4,6 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -33,6 +32,7 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
+from jolt.url_identity import canonicalize_source_url
 
 PROFILE_ID = "default-job-search"
 PROFILE_VERSION_ID = "default-job-search:v1"
@@ -90,15 +90,8 @@ class ParsedPosting:
 
 
 def normalize_url(value: str) -> str:
-    if not value.strip():
-        return ""
-    parts = urlsplit(value.strip())
-    query = [
-        (key, val)
-        for key, val in parse_qsl(parts.query, keep_blank_values=True)
-        if not key.lower().startswith("utm_") and key.lower() not in {"trk", "ref", "refid"}
-    ]
-    return urlunsplit(parts._replace(query=urlencode(query), fragment="")).rstrip("/")
+    """Compatibility boundary for canonical posting identity."""
+    return canonicalize_source_url(value)
 
 
 def parse_manual_text(raw_text: str) -> ParsedPosting:
@@ -342,55 +335,10 @@ def create_application(
 def transition_application(
     session: Session, application_id: str, request: ApplicationTransitionRequest
 ) -> ApplicationResponse:
-    application = session.get(Application, application_id)
-    if application is None:
-        raise LookupError("Application was not found.")
-    if request.status == application.status:
-        raise ValueError(f"Application is already in {request.status}.")
+    """Delegate explicitly to the single reversible transition engine."""
+    from jolt.reversible_application_workflow import transition_application_reversibly
 
-    active_statuses = {
-        "preparing",
-        "submitted",
-        "acknowledged",
-        "recruiter_screen",
-        "technical_interview",
-        "hiring_manager_interview",
-        "final_interview",
-        "offer",
-    }
-    allowed = ALLOWED_TRANSITIONS.get(application.status, set())
-    is_correction = request.status in active_statuses and request.status not in allowed
-    if request.status not in allowed and not is_correction:
-        raise ValueError(f"Invalid transition from {application.status} to {request.status}.")
-
-    previous = application.status
-    now = utc_now()
-    outcome = session.scalar(select(Outcome).where(Outcome.application_id == application.id))
-    reopening = outcome is not None and request.status in active_statuses
-    if reopening:
-        session.delete(outcome)
-
-    application.status = request.status
-    application.updated_at = now
-    session.add(
-        ApplicationEvent(
-            id=str(uuid4()),
-            application_id=application.id,
-            event_type=(
-                "application_reopened"
-                if reopening
-                else "status_corrected"
-                if is_correction
-                else "status_changed"
-            ),
-            from_status=previous,
-            to_status=request.status,
-            notes=request.notes,
-            occurred_at=now,
-        )
-    )
-    session.commit()
-    return _application_response(session, application)
+    return transition_application_reversibly(session, application_id, request)
 
 
 def record_outcome(

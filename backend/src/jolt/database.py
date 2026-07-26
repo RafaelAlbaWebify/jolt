@@ -7,7 +7,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine
+from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine, event
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -177,7 +177,8 @@ def default_database_url() -> str:
     configured = os.getenv("JOLT_DATABASE_URL")
     if configured:
         return configured
-    data_dir = Path.cwd() / "data"
+    project_root = Path(__file__).resolve().parents[3]
+    data_dir = project_root / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{(data_dir / 'jolt.db').as_posix()}"
 
@@ -196,6 +197,17 @@ def create_session_factory(database_url: str | None = None) -> sessionmaker[Sess
     url = migrate_database(database_url)
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
+    if url.startswith("sqlite"):
+
+        @event.listens_for(engine, "connect")
+        def _configure_sqlite(dbapi_connection, _connection_record) -> None:
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.execute("PRAGMA busy_timeout=5000")
+            finally:
+                cursor.close()
+
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
@@ -207,5 +219,8 @@ def session_scope(factory: sessionmaker[Session]) -> Generator[Session, None, No
     session = factory()
     try:
         yield session
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
