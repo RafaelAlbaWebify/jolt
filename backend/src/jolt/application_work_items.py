@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal, cast
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,14 @@ class TaskCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=240)
     notes: str = ""
     due_at: datetime | None = None
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Task title is required.")
+        return normalized
 
 
 class TaskUpdateRequest(BaseModel):
@@ -53,6 +61,14 @@ class InterviewCreateRequest(BaseModel):
     format_location: str = ""
     participants: str = ""
     preparation_notes: str = ""
+
+    @field_validator("timezone")
+    @classmethod
+    def normalize_timezone(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Interview timezone is required.")
+        return normalized
 
 
 class InterviewUpdateRequest(InterviewCreateRequest):

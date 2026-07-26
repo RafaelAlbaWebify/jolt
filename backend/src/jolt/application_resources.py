@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, cast
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,14 @@ class ContactRequest(BaseModel):
     linkedin_url: str = ""
     notes: str = ""
 
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Contact name is required.")
+        return normalized
+
 
 class ContactResponse(ContactRequest):
     contact_id: str
@@ -40,6 +48,14 @@ class DocumentRequest(BaseModel):
     source_url: str = ""
     status: DocumentStatus = "draft"
     notes: str = ""
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Document title is required.")
+        return normalized
 
 
 class DocumentResponse(DocumentRequest):
