@@ -198,6 +198,7 @@ def create_session_factory(database_url: str | None = None) -> sessionmaker[Sess
     connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
     engine = create_engine(url, connect_args=connect_args)
     if url.startswith("sqlite"):
+
         @event.listens_for(engine, "connect")
         def _configure_sqlite(dbapi_connection, _connection_record) -> None:
             cursor = dbapi_connection.cursor()
@@ -206,6 +207,7 @@ def create_session_factory(database_url: str | None = None) -> sessionmaker[Sess
                 cursor.execute("PRAGMA busy_timeout=5000")
             finally:
                 cursor.close()
+
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
