@@ -138,9 +138,7 @@ def _build_summary(session: Session, posting: Posting) -> OpportunitySummary | N
 def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     return [
-        summary
-        for posting in postings
-        if (summary := _build_summary(session, posting)) is not None
+        summary for posting in postings if (summary := _build_summary(session, posting)) is not None
     ]
 
 
