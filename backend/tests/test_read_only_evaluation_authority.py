@@ -52,7 +52,9 @@ def test_get_workspaces_do_not_create_derived_records(tmp_path: Path) -> None:
     assert _derived_counts(database_path) == before
 
 
-def test_explicit_refresh_creates_v4_and_all_reads_use_it(tmp_path: Path) -> None:
+def test_explicit_refresh_creates_authoritative_evaluation_and_all_reads_use_it(
+    tmp_path: Path,
+) -> None:
     database_path = tmp_path / "authority.db"
     client = _client(database_path)
     intake = client.post(
@@ -70,13 +72,13 @@ def test_explicit_refresh_creates_v4_and_all_reads_use_it(tmp_path: Path) -> Non
 
     refresh = client.post("/api/evaluations/refresh")
     assert refresh.status_code == 200
-    assert refresh.json()["authoritative_engine"] == "profile-rules-v4"
+    assert refresh.json()["authoritative_engine"] == "profile-rules-v2"
 
     queue_item = client.get("/api/opportunity-index").json()[0]
     detail = client.get(f"/api/opportunity-detail/{posting_id}").json()
     list_item = client.get("/api/opportunities").json()[0]
 
-    assert detail["engine_version"] == "profile-rules-v4"
+    assert detail["engine_version"] == "profile-rules-v2"
     assert queue_item["evaluation_id"] == detail["evaluation_id"] == list_item["evaluation_id"]
     assert queue_item["ranking_score"] == detail["ranking_score"] == list_item["ranking_score"]
 
