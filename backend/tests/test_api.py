@@ -84,7 +84,7 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
 
     refresh = restarted_client.post("/api/evaluations/refresh")
     assert refresh.status_code == 200
-    assert refresh.json()["authoritative_engine"] == "profile-rules-v4"
+    assert refresh.json()["authoritative_engine"] == "profile-rules-v2"
 
     opportunities = restarted_client.get("/api/opportunities")
     assert opportunities.status_code == 200
@@ -98,8 +98,8 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert opportunity["proposed_decision"] in {"pursue", "consider"}
     assert opportunity["ranking_score"] >= 50
     assert opportunity["review_decision"] == "pursue"
-    assert opportunity["profile_version_id"].startswith("rafael-job-search:")
-    assert opportunity["engine_version"] == "profile-rules-v4"
+    assert opportunity["profile_version_id"] == "rafael-job-search:v2"
+    assert opportunity["engine_version"] == "profile-rules-v2"
     assert opportunity["strengths"]
     assert opportunity["fit_summary"]
     assert "application_support" in opportunity["dimensions"]
