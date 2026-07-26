@@ -22,9 +22,9 @@ def test_readiness_refresh_preserves_history(tmp_path) -> None:
     assert intake.status_code == 200
     posting_id = intake.json()["posting_id"]
 
-    opportunities = client.get("/api/opportunities")
-    assert opportunities.status_code == 200
-    original_report_id = opportunities.json()[0]["readiness"]["report_id"]
+    original = client.post(f"/api/opportunities/{posting_id}/readiness/refresh")
+    assert original.status_code == 200
+    original_report_id = original.json()["report_id"]
 
     refreshed = client.post(f"/api/opportunities/{posting_id}/readiness/refresh")
     assert refreshed.status_code == 200
