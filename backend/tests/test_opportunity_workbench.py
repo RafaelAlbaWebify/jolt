@@ -20,6 +20,13 @@ def test_opportunity_workbench_exposes_evaluation_evidence(tmp_path) -> None:
         },
     )
     assert intake.status_code == 200
+    posting_id = intake.json()["posting_id"]
+
+    refresh = client.post("/api/evaluations/refresh")
+    assert refresh.status_code == 200
+    assert refresh.json()["authoritative_engine"] == "profile-rules-v2"
+    readiness_refresh = client.post(f"/api/opportunities/{posting_id}/readiness/refresh")
+    assert readiness_refresh.status_code == 200
 
     response = client.get("/api/opportunities")
     assert response.status_code == 200

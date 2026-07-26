@@ -86,6 +86,10 @@ def test_private_strategy_is_persisted_without_profile_contents(
     )
     assert intake.status_code == 200
 
+    refresh = client.post("/api/evaluations/refresh")
+    assert refresh.status_code == 200
+    assert refresh.json()["authoritative_engine"] == ENGINE_VERSION
+
     response = client.get("/api/opportunities")
     assert response.status_code == 200
     opportunity = response.json()[0]
@@ -139,6 +143,10 @@ def test_missing_private_profile_preserves_legacy_workbench(tmp_path: Path, monk
         },
     )
     assert intake.status_code == 200
+
+    refresh = client.post("/api/evaluations/refresh")
+    assert refresh.status_code == 200
+    assert refresh.json()["authoritative_engine"] == "profile-rules-v2"
 
     response = client.get("/api/opportunities")
     assert response.status_code == 200

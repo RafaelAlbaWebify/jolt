@@ -8,16 +8,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.application_records import ApplicationDocument, ApplicationInterview, ApplicationTask
-from jolt.automated_review import ensure_automated_reviews
 from jolt.database import (
     Application,
     ApplicationEvent,
-    Evaluation,
     Outcome,
     Posting,
     ReviewDecision,
     SourceDocument,
 )
+from jolt.evaluation_authority import authoritative_evaluations
 
 
 class OpportunityIndexItem(BaseModel):
@@ -66,16 +65,10 @@ def list_opportunity_index(
     session: Session, *, include_applied: bool = False
 ) -> list[OpportunityIndexItem]:
     """Return compact queue metadata without constructing full review detail."""
-    ensure_automated_reviews(session)
-
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
 
-    latest_evaluations: dict[str, Evaluation] = {}
-    for evaluation in session.scalars(
-        select(Evaluation).order_by(Evaluation.created_at.desc())
-    ).all():
-        latest_evaluations.setdefault(evaluation.posting_id, evaluation)
+    latest_evaluations = authoritative_evaluations(session)
 
     latest_reviews: dict[str, ReviewDecision] = {}
     for review in session.scalars(
