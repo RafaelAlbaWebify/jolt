@@ -23,7 +23,9 @@ def test_transition_boundary_is_explicit_wrapper_not_package_monkeypatch() -> No
     assert transition_application.__module__ == "jolt.workflow"
 
 
-def test_default_database_path_is_project_stable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_default_database_path_is_project_stable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("JOLT_DATABASE_URL", raising=False)
     monkeypatch.chdir(tmp_path)
     url = default_database_url()
@@ -55,7 +57,11 @@ def test_sqlite_foreign_keys_are_enabled(tmp_path: Path) -> None:
         (DocumentRequest, {"document_type": "resume", "title": "   "}),
         (
             InterviewCreateRequest,
-            {"interview_type": "recruiter_screen", "scheduled_at": "2026-07-26T12:00:00Z", "timezone": "   "},
+            {
+                "interview_type": "recruiter_screen",
+                "scheduled_at": "2026-07-26T12:00:00Z",
+                "timezone": "   ",
+            },
         ),
     ],
 )
