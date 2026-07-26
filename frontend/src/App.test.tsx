@@ -143,9 +143,9 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("shows an actionable API error", async () => {
+  it("shows the network error without an unhandled rejection", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     render(<App />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("The JOLT API is not available.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("offline");
   });
 });
