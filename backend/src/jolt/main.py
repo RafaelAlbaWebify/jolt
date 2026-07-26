@@ -235,7 +235,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         assessments = ensure_strategy_reviews(session, profile) if profile is not None else {}
         return {
             "status": "refreshed",
-            "authoritative_engine": "profile-rules-v4" if profile is not None else "profile-rules-v2",
+            "authoritative_engine": "profile-rules-v4"
+            if profile is not None
+            else "profile-rules-v2",
             "strategy_evaluation_count": len(assessments),
         }
 
