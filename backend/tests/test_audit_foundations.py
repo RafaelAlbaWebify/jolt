@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from jolt.application_resources import ContactRequest, DocumentRequest
-from jolt.application_work_items import InterviewCreateRequest, TaskCreateRequest
+from jolt.application_work_items import (
+    InterviewCreateRequest,
+    TaskCreateRequest,
+    TaskUpdateRequest,
+)
 from jolt.database import create_session_factory, default_database_url
 from jolt.workflow import transition_application
 from jolt.reversible_application_workflow import transition_application_reversibly
@@ -31,7 +35,7 @@ def test_sqlite_foreign_keys_are_enabled(tmp_path: Path) -> None:
     factory = create_session_factory(f"sqlite:///{(tmp_path / 'integrity.db').as_posix()}")
     with factory() as session:
         assert session.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
-        with pytest.raises(sqlite3.IntegrityError):
+        with pytest.raises(IntegrityError):
             session.execute(
                 text(
                     "INSERT INTO application_events "
@@ -46,6 +50,7 @@ def test_sqlite_foreign_keys_are_enabled(tmp_path: Path) -> None:
     ("factory", "payload"),
     [
         (TaskCreateRequest, {"title": "   "}),
+        (TaskUpdateRequest, {"title": "   "}),
         (ContactRequest, {"name": "   "}),
         (DocumentRequest, {"document_type": "resume", "title": "   "}),
         (

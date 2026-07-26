@@ -4,7 +4,6 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -21,7 +20,6 @@ from jolt.database import (
     SourceDocument,
     utc_now,
 )
-from jolt.url_identity import canonicalize_source_url
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationEventResponse,
@@ -34,6 +32,7 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
+from jolt.url_identity import canonicalize_source_url
 
 PROFILE_ID = "default-job-search"
 PROFILE_VERSION_ID = "default-job-search:v1"

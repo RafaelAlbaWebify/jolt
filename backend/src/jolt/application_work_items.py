@@ -36,10 +36,8 @@ class TaskCreateRequest(BaseModel):
         return normalized
 
 
-class TaskUpdateRequest(BaseModel):
-    title: str = Field(min_length=1, max_length=240)
-    notes: str = ""
-    due_at: datetime | None = None
+class TaskUpdateRequest(TaskCreateRequest):
+    pass
 
 
 class TaskResponse(BaseModel):
