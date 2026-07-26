@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
@@ -41,22 +41,25 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!active || loaded || loading) return;
+  const loadSources = useCallback(async () => {
     setLoading(true);
     setError("");
-    fetch(`${apiBase}/api/professional-intelligence/sources`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Unable to load Professional Intelligence sources.");
-        return response.json() as Promise<ProfessionalIntelligenceSource[]>;
-      })
-      .then((items) => {
-        setSources(items);
-        setLoaded(true);
-      })
-      .catch((caught) => setError(caught instanceof Error ? caught.message : "Source registry failed."))
-      .finally(() => setLoading(false));
-  }, [active, apiBase, loaded, loading]);
+    try {
+      const response = await fetch(`${apiBase}/api/professional-intelligence/sources`);
+      if (!response.ok) throw new Error("Unable to load Professional Intelligence sources.");
+      setSources((await response.json()) as ProfessionalIntelligenceSource[]);
+      setLoaded(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Source registry failed.");
+    } finally {
+      setLoading(false);
+    }
+  }, [apiBase]);
+
+  useEffect(() => {
+    if (!active || loaded) return;
+    void loadSources();
+  }, [active, loadSources, loaded]);
 
   const initialSources = useMemo(() => sources.filter((source) => source.initial_scope), [sources]);
   const deferredSources = useMemo(() => sources.filter((source) => !source.initial_scope), [sources]);
@@ -171,6 +174,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
       {active && <ProfessionalCaptureRuns apiBase={apiBase} active={active} planRefreshKey={planRefreshKey} />}
       {loading && <p role="status">Loading source registry…</p>}
       {error && <p className="error" role="alert">{error}</p>}
+      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadSources()}>Retry source registry</button>}
       {loaded && (
         <>
           <section className="panel" aria-labelledby="initial-professional-sources-heading">

@@ -69,13 +69,18 @@ function decisionLabel(value: ReviewChoice | null) {
 function Sources({ postingId }: { postingId: string }) {
   const [data, setData] = useState<SourceEvidence | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
     if (data || loading) return;
     setLoading(true);
+    setError("");
     try {
       const response = await fetch(`${API_BASE}/api/opportunities/${postingId}/identity-evidence`);
-      if (response.ok) setData((await response.json()) as SourceEvidence);
+      if (!response.ok) throw new Error("Unable to load source evidence.");
+      setData((await response.json()) as SourceEvidence);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Source evidence failed.");
     } finally {
       setLoading(false);
     }
@@ -90,6 +95,8 @@ function Sources({ postingId }: { postingId: string }) {
     >
       <summary>Sources and capture history</summary>
       {loading && <p>Loading sources…</p>}
+      {error && <p className="error" role="alert">{error}</p>}
+      {error && <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>Retry sources</button>}
       {data && (
         <div className="source-compact">
           <p>
@@ -139,6 +146,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const [error, setError] = useState("");
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const detailRequestRef = useRef<AbortController | null>(null);
 
   const refreshOpportunities = useCallback(async (recalculate = false) => {
     setRefreshing(true);
@@ -155,32 +163,44 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Unable to load opportunities.";
       setError(message);
-      throw caught;
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   const loadDetail = useCallback(async (postingId: string) => {
+    detailRequestRef.current?.abort();
+    const controller = new AbortController();
+    detailRequestRef.current = controller;
     setDetailLoading(true);
     setSelectedDetail(null);
+    setError("");
     try {
-      const response = await fetch(`${API_BASE}/api/opportunity-detail/${postingId}`);
+      const response = await fetch(`${API_BASE}/api/opportunity-detail/${postingId}`, { signal: controller.signal });
       if (!response.ok) throw new Error("Unable to load opportunity details.");
-      setSelectedDetail((await response.json()) as OpportunityDetail);
+      const detail = (await response.json()) as OpportunityDetail;
+      if (detailRequestRef.current === controller) setSelectedDetail(detail);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Opportunity detail failed.");
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (detailRequestRef.current === controller) {
+        setError(caught instanceof Error ? caught.message : "Opportunity detail failed.");
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailRequestRef.current === controller) setDetailLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!hasLoaded) refreshOpportunities().catch(() => setError("The JOLT API is not available."));
+    if (!hasLoaded) void refreshOpportunities();
   }, [hasLoaded, refreshOpportunities]);
 
   useEffect(() => {
-    if (!selectedOpportunityId) return;
+    if (!selectedOpportunityId) {
+      detailRequestRef.current?.abort();
+      setDetailLoading(false);
+      setSelectedDetail(null);
+      return;
+    }
     void loadDetail(selectedOpportunityId);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
