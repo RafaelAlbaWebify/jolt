@@ -140,13 +140,22 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
 
-  const refreshOpportunities = useCallback(async () => {
+  const refreshOpportunities = useCallback(async (recalculate = false) => {
     setRefreshing(true);
+    setError("");
     try {
+      if (recalculate) {
+        const refreshResponse = await fetch(`${API_BASE}/api/evaluations/refresh`, { method: "POST" });
+        if (!refreshResponse.ok) throw new Error("Unable to refresh opportunity evaluations.");
+      }
       const response = await fetch(`${API_BASE}/api/opportunity-index`);
       if (!response.ok) throw new Error("Unable to load opportunities.");
       setOpportunities((await response.json()) as OpportunityIndex[]);
       setHasLoaded(true);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Unable to load opportunities.";
+      setError(message);
+      throw caught;
     } finally {
       setRefreshing(false);
     }
@@ -341,7 +350,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
             type="button"
             className="secondary"
             disabled={refreshing}
-            onClick={() => void refreshOpportunities()}
+            onClick={() => void refreshOpportunities(true)}
           >
             {refreshing ? "Refreshing…" : "Refresh queue"}
           </button>

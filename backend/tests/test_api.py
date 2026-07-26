@@ -82,6 +82,10 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert "strengths" not in compact_opportunity
     assert "preparation_plan" not in compact_opportunity
 
+    refresh = restarted_client.post("/api/evaluations/refresh")
+    assert refresh.status_code == 200
+    assert refresh.json()["authoritative_engine"] == "profile-rules-v4"
+
     opportunities = restarted_client.get("/api/opportunities")
     assert opportunities.status_code == 200
     items = opportunities.json()
@@ -94,8 +98,8 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert opportunity["proposed_decision"] in {"pursue", "consider"}
     assert opportunity["ranking_score"] >= 50
     assert opportunity["review_decision"] == "pursue"
-    assert opportunity["profile_version_id"] == "rafael-job-search:v2"
-    assert opportunity["engine_version"] == "profile-rules-v2"
+    assert opportunity["profile_version_id"].startswith("rafael-job-search:")
+    assert opportunity["engine_version"] == "profile-rules-v4"
     assert opportunity["strengths"]
     assert opportunity["fit_summary"]
     assert "application_support" in opportunity["dimensions"]
@@ -129,6 +133,8 @@ def test_automated_review_rejects_verified_language_blocker(tmp_path: Path) -> N
     )
     assert intake.status_code == 200
 
+    refresh = client.post("/api/evaluations/refresh")
+    assert refresh.status_code == 200
     opportunities = client.get("/api/opportunities")
     assert opportunities.status_code == 200
     opportunity = opportunities.json()[0]

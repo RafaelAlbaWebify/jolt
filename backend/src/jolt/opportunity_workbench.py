@@ -5,39 +5,46 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.application_readiness import ensure_readiness_report, readiness_payload
-from jolt.automated_review import analyze_posting, ensure_automated_reviews
-from jolt.database import Application, Evaluation, Outcome, Posting, ReviewDecision
-from jolt.evaluation_strategy import StrategyAssessment
+from jolt.application_readiness import (
+    PROFILE_VERSION_ID as READINESS_PROFILE_VERSION_ID,
+    READINESS_ENGINE_VERSION,
+    analyze_readiness,
+    readiness_payload,
+)
+from jolt.automated_review import analyze_posting
+from jolt.database import Application, Outcome, Posting, ReviewDecision
+from jolt.evaluation_authority import authoritative_evaluation, latest_readiness_report
+from jolt.evaluation_strategy import StrategyAssessment, assess_posting
 from jolt.schemas import ApplicationReadinessSummary, OpportunitySummary, StrategyGapSummary
 from jolt.strategy_runtime import (
-    ensure_strategy_review,
-    ensure_strategy_reviews,
-    latest_strategy_evaluation,
+    ENGINE_VERSION as STRATEGY_ENGINE_VERSION,
     load_active_strategy_profile,
     proposed_decision,
 )
 
 
-def _build_summary(
-    session: Session,
-    posting: Posting,
-    assessment: StrategyAssessment | None,
-) -> OpportunitySummary | None:
-    legacy_evaluation = session.scalar(
-        select(Evaluation)
-        .where(Evaluation.posting_id == posting.id)
-        .order_by(Evaluation.created_at.desc())
-    )
-    if legacy_evaluation is None:
+def _build_summary(session: Session, posting: Posting) -> OpportunitySummary | None:
+    evaluation = authoritative_evaluation(session, posting.id)
+    if evaluation is None:
         return None
 
-    strategy_evaluation = latest_strategy_evaluation(session, posting.id) if assessment else None
-    evaluation = strategy_evaluation or legacy_evaluation
+    profile = load_active_strategy_profile()
+    assessment: StrategyAssessment | None = None
+    if profile is not None and evaluation.engine_version == STRATEGY_ENGINE_VERSION:
+        assessment = assess_posting(profile, posting.title, posting.location, posting.description)
     legacy_analysis = analyze_posting(posting.title, posting.location, posting.description)
 
-    readiness_report = ensure_readiness_report(session, posting)
-    readiness = ApplicationReadinessSummary.model_validate(readiness_payload(readiness_report))
+    readiness_report = latest_readiness_report(session, posting.id)
+    if readiness_report is not None:
+        readiness = ApplicationReadinessSummary.model_validate(readiness_payload(readiness_report))
+    else:
+        readiness_analysis = analyze_readiness(posting)
+        readiness = ApplicationReadinessSummary(
+            report_id="",
+            profile_version_id=READINESS_PROFILE_VERSION_ID,
+            engine_version=READINESS_ENGINE_VERSION,
+            **readiness_analysis.as_dict(),
+        )
     review = session.scalar(
         select(ReviewDecision)
         .where(ReviewDecision.posting_id == posting.id)
@@ -125,27 +132,20 @@ def _build_summary(
 
 
 def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
-    ensure_automated_reviews(session)
-    profile = load_active_strategy_profile()
-    strategy_assessments = ensure_strategy_reviews(session, profile) if profile else {}
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     return [
         summary
         for posting in postings
-        if (summary := _build_summary(session, posting, strategy_assessments.get(posting.id)))
-        is not None
+        if (summary := _build_summary(session, posting)) is not None
     ]
 
 
 def get_opportunity_workbench(session: Session, posting_id: str) -> OpportunitySummary:
-    ensure_automated_reviews(session)
     posting = session.get(Posting, posting_id)
     if posting is None:
         raise LookupError(f"Opportunity {posting_id} was not found.")
 
-    profile = load_active_strategy_profile()
-    assessment = ensure_strategy_review(session, profile, posting) if profile else None
-    summary = _build_summary(session, posting, assessment)
+    summary = _build_summary(session, posting)
     if summary is None:
         raise LookupError(f"Opportunity {posting_id} has no evaluation.")
     return summary

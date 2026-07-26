@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.application_preparation_pack import build_application_preparation_pack
+from jolt.automated_review import ensure_automated_reviews
 from jolt.application_work_items_api import build_application_work_items_router
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
@@ -34,6 +35,7 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
+from jolt.strategy_runtime import ensure_strategy_reviews, load_active_strategy_profile
 from jolt.workflow import (
     create_application,
     get_application,
@@ -223,6 +225,19 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post("/api/evaluations/refresh", tags=["opportunities"])
+    def refresh_evaluations(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, object]:
+        ensure_automated_reviews(session)
+        profile = load_active_strategy_profile()
+        assessments = ensure_strategy_reviews(session, profile) if profile is not None else {}
+        return {
+            "status": "refreshed",
+            "authoritative_engine": "profile-rules-v4" if profile is not None else "profile-rules-v2",
+            "strategy_evaluation_count": len(assessments),
+        }
 
     @app.get(
         "/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"]
