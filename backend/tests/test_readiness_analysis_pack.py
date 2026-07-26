@@ -24,6 +24,10 @@ def test_analysis_pack_includes_application_readiness(tmp_path) -> None:
         },
     )
     assert intake.status_code == 200
+    posting_id = intake.json()["posting_id"]
+
+    readiness = client.post(f"/api/opportunities/{posting_id}/readiness/refresh")
+    assert readiness.status_code == 200
 
     response = client.get("/api/exports/analysis-pack")
     assert response.status_code == 200
@@ -36,7 +40,7 @@ def test_analysis_pack_includes_application_readiness(tmp_path) -> None:
         reports = dataset["data"]["application_readiness_reports"]
         assert len(reports) == 1
         report = reports[0]
-        assert report["posting_id"] == intake.json()["posting_id"]
+        assert report["posting_id"] == posting_id
         assert report["profile_version_id"] == "rafael-job-search:v2"
         assert report["engine_version"] == "application-readiness-v1"
         assert report["readiness_score"] > 0
