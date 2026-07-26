@@ -38,6 +38,7 @@ type Props = {
 export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Props) {
   const [runs, setRuns] = useState<ProfessionalCaptureRun[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authorizingRunId, setAuthorizingRunId] = useState<string | null>(null);
   const [confirmationPhrase, setConfirmationPhrase] = useState("");
@@ -45,17 +46,23 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
   const [error, setError] = useState("");
 
   const loadRuns = useCallback(async () => {
-    const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs`);
-    if (!response.ok) throw new Error("Unable to load the Professional Intelligence run ledger.");
-    setRuns((await response.json()) as ProfessionalCaptureRun[]);
-    setLoaded(true);
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs`);
+      if (!response.ok) throw new Error("Unable to load the Professional Intelligence run ledger.");
+      setRuns((await response.json()) as ProfessionalCaptureRun[]);
+      setLoaded(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Run ledger failed.");
+    } finally {
+      setLoading(false);
+    }
   }, [apiBase]);
 
   useEffect(() => {
     if (!active || loaded) return;
-    void loadRuns().catch((caught) => {
-      setError(caught instanceof Error ? caught.message : "Run ledger failed.");
-    });
+    void loadRuns();
   }, [active, loadRuns, loaded]);
 
   function replaceRun(changed: ProfessionalCaptureRun) {
@@ -156,7 +163,8 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
         Current plan revision: {planRefreshKey}. No credentials, cookies, tokens, or browser storage are persisted.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
-      {!loaded && active && <p role="status">Loading supervised run history…</p>}
+      {loading && active && <p role="status">Loading supervised run history…</p>}
+      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry run history</button>}
       {loaded && runs.length === 0 && <p>No preview runs recorded.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">

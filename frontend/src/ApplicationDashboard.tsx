@@ -220,6 +220,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [dragOverLane, setDragOverLane] = useState<PipelineLane | null>(null);
   const [moveNotice, setMoveNotice] = useState("");
   const movingApplicationIds = useRef(new Set<string>());
+  const detailRequestRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/application-index`);
@@ -273,18 +274,28 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const loadApplicationDetail = useCallback(
     async (applicationId: string | null | undefined) => {
       if (!applicationId) {
+        detailRequestRef.current?.abort();
         setApplicationDetail(null);
+        setDetailLoading(false);
         return;
       }
+      detailRequestRef.current?.abort();
+      const controller = new AbortController();
+      detailRequestRef.current = controller;
       setDetailLoading(true);
+      setError("");
       try {
-        const response = await fetch(`${apiBase}/api/applications/${applicationId}`);
+        const response = await fetch(`${apiBase}/api/applications/${applicationId}`, { signal: controller.signal });
         if (!response.ok) throw new Error("Unable to load application history.");
-        setApplicationDetail((await response.json()) as ApplicationDetail);
+        const detail = (await response.json()) as ApplicationDetail;
+        if (detailRequestRef.current === controller) setApplicationDetail(detail);
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Application history failed.");
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+        if (detailRequestRef.current === controller) {
+          setError(caught instanceof Error ? caught.message : "Application history failed.");
+        }
       } finally {
-        setDetailLoading(false);
+        if (detailRequestRef.current === controller) setDetailLoading(false);
       }
     },
     [apiBase],

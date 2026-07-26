@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
@@ -28,7 +28,7 @@ type MarketData = {
   fit_explanation: string;
 };
 
-type Props = { apiBase: string };
+type Props = { apiBase: string; active: boolean };
 type Scope = "target" | "all";
 
 function Ranking({ title, items, empty }: { title: string; items: Metric[]; empty?: string }) {
@@ -50,24 +50,45 @@ function Ranking({ title, items, empty }: { title: string; items: Metric[]; empt
   );
 }
 
-export function MarketIntelligence({ apiBase }: Props) {
+export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
   const [scope, setScope] = useState<Scope>("target");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const hasActivatedRef = useRef(false);
+
+  const load = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/market-intelligence`, { signal: controller.signal });
+      if (!response.ok) throw new Error("Unable to load market intelligence.");
+      const loaded = (await response.json()) as MarketData;
+      if (requestRef.current !== controller) return;
+      setData(loaded);
+      setLastRefreshedAt(new Date().toISOString());
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (requestRef.current === controller) {
+        setError(caught instanceof Error ? caught.message : "Market intelligence failed.");
+      }
+    } finally {
+      if (requestRef.current === controller) setLoading(false);
+    }
+  }, [apiBase]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch(`${apiBase}/api/market-intelligence`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Unable to load market intelligence.");
-        return response.json() as Promise<MarketData>;
-      })
-      .then((loaded) => { if (!cancelled) setData(loaded); })
-      .catch((caught) => { if (!cancelled) setError(caught instanceof Error ? caught.message : "Market intelligence failed."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [apiBase]);
+    if (!active || hasActivatedRef.current) return;
+    hasActivatedRef.current = true;
+    void load();
+  }, [active, load]);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   const selected = data?.[scope] ?? null;
 
@@ -78,17 +99,28 @@ export function MarketIntelligence({ apiBase }: Props) {
           <p className="eyebrow">Market intelligence</p>
           <h2 id="market-heading">Market</h2>
           <p>Separate your target market from search noise, then focus applications and study effort.</p>
+          {lastRefreshedAt && <p className="market-refreshed">Last refreshed {new Date(lastRefreshedAt).toLocaleString()}</p>}
         </div>
-        {data && (
-          <div className="market-scope" aria-label="Market scope">
-            <button type="button" className={scope === "target" ? "filter-active" : "secondary"} onClick={() => setScope("target")}>Target roles ({data.target_role_count})</button>
-            <button type="button" className={scope === "all" ? "filter-active" : "secondary"} onClick={() => setScope("all")}>All captured ({data.total_unique_roles})</button>
-          </div>
-        )}
+        <div className="market-heading-actions">
+          <button type="button" className="secondary" disabled={!active || loading} onClick={() => void load()}>
+            {loading ? "Refreshing…" : data ? "Refresh market" : "Load market"}
+          </button>
+          {data && (
+            <div className="market-scope" aria-label="Market scope">
+              <button type="button" className={scope === "target" ? "filter-active" : "secondary"} onClick={() => setScope("target")}>Target roles ({data.target_role_count})</button>
+              <button type="button" className={scope === "all" ? "filter-active" : "secondary"} onClick={() => setScope("all")}>All captured ({data.total_unique_roles})</button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {loading && <p role="status">Loading market intelligence…</p>}
-      {error && <p className="error" role="alert">{error}</p>}
+      {loading && !data && <p role="status">Loading market intelligence…</p>}
+      {error && (
+        <div className="market-load-error">
+          <p className="error" role="alert">{error}</p>
+          <button type="button" className="secondary" disabled={loading || !active} onClick={() => void load()}>Retry market load</button>
+        </div>
+      )}
       {data && selected && (
         <>
           <div className="market-summary">
@@ -117,11 +149,7 @@ export function MarketIntelligence({ apiBase }: Props) {
           </div>
 
           {scope === "target" && (
-            <Ranking
-              title="Outside-target titles to remove from future searches"
-              items={data.outside_title_examples}
-              empty="No outside-target captures were detected."
-            />
+            <Ranking title="Outside-target titles to remove from future searches" items={data.outside_title_examples} empty="No outside-target captures were detected." />
           )}
 
           <section className="market-card market-salary">
