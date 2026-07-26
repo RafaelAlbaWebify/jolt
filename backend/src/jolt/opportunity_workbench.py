@@ -47,7 +47,15 @@ def _build_summary(session: Session, posting: Posting) -> OpportunitySummary | N
             report_id="",
             profile_version_id=READINESS_PROFILE_VERSION_ID,
             engine_version=READINESS_ENGINE_VERSION,
-            **readiness_analysis.as_dict(),
+            priority=readiness_analysis.priority,
+            readiness_score=readiness_analysis.readiness_score,
+            evidence_matches=readiness_analysis.evidence_matches,
+            credibility_warnings=readiness_analysis.credibility_warnings,
+            cv_tailoring_points=readiness_analysis.cv_tailoring_points,
+            talking_points=readiness_analysis.talking_points,
+            interview_questions=readiness_analysis.interview_questions,
+            revision_topics=readiness_analysis.revision_topics,
+            checklist=readiness_analysis.checklist,
         )
     review = session.scalar(
         select(ReviewDecision)
