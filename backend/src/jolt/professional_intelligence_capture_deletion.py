@@ -57,7 +57,9 @@ def delete_professional_capture_run(
         try:
             run_directory.relative_to(root)
         except ValueError as exc:
-            raise ValueError("Capture evidence must remain contained under the configured root.") from exc
+            raise ValueError(
+                "Capture evidence must remain contained under the configured root."
+            ) from exc
         if run_directory.exists():
             shutil.rmtree(run_directory)
             deleted_evidence_directory = True
