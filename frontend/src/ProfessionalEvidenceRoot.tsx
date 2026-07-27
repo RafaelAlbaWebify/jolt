@@ -17,22 +17,29 @@ type Props = {
 export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) {
   const [settings, setSettings] = useState<EvidenceRoot | null>(null);
   const [rootPath, setRootPath] = useState("");
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const loadSettings = useCallback(async () => {
-    const response = await fetch(`${apiBase}/api/professional-intelligence/evidence-root`);
-    if (!response.ok) throw new Error("Unable to load the local evidence directory.");
-    const payload = (await response.json()) as EvidenceRoot;
-    setSettings(payload);
-    setRootPath(payload.root_path ?? "");
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/professional-intelligence/evidence-root`);
+      if (!response.ok) throw new Error("Unable to load the local evidence directory.");
+      const payload = (await response.json()) as EvidenceRoot;
+      setSettings(payload);
+      setRootPath(payload.root_path ?? "");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Evidence directory failed.");
+    } finally {
+      setLoading(false);
+    }
   }, [apiBase]);
 
   useEffect(() => {
     if (!active) return;
-    void loadSettings().catch((caught) => {
-      setError(caught instanceof Error ? caught.message : "Evidence directory failed.");
-    });
+    void loadSettings();
   }, [active, loadSettings]);
 
   async function configure(event: FormEvent) {
@@ -50,6 +57,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         throw new Error(payload?.detail || "The evidence directory could not be verified.");
       }
       setSettings((await response.json()) as EvidenceRoot);
+      setError("");
       onChanged();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Evidence directory update failed.");
@@ -69,6 +77,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
       const payload = (await response.json()) as EvidenceRoot;
       setSettings(payload);
       setRootPath("");
+      setError("");
       onChanged();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Evidence directory clear failed.");
@@ -78,7 +87,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
   }
 
   if (!active) return null;
-  if (!settings && !error) return <p role="status">Loading local evidence directory…</p>;
+  if (!settings && loading && !error) return <p role="status">Loading local evidence directory…</p>;
 
   return (
     <section className="panel professional-evidence-root" aria-labelledby="professional-evidence-root-heading">
@@ -86,7 +95,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         <div>
           <p className="eyebrow">Local evidence storage</p>
           <h2 id="professional-evidence-root-heading">Evidence directory</h2>
-          <p>Choose an existing writable local directory. JOLT verifies and stores the resolved path but does not create folders or write artifacts yet.</p>
+          <p>Choose an existing writable local directory. Supervised captures write their evidence files and manifests beneath the verified path; JOLT does not create the selected root directory.</p>
         </div>
         <span className="professional-plan-status">
           {settings?.configured && settings.exists && settings.writable ? "Verified" : "Not configured"}
@@ -99,15 +108,20 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
           value={rootPath}
           onChange={(event) => setRootPath(event.target.value)}
           placeholder="C:\\Users\\ralba\\Documents\\JOLT Evidence"
-          disabled={busy}
+          disabled={busy || loading}
         />
         <div className="professional-source-editor-actions">
-          <button type="submit" disabled={busy || !rootPath.trim()}>
+          <button type="submit" disabled={busy || loading || !rootPath.trim()}>
             {busy ? "Verifying…" : "Verify and save"}
           </button>
           {settings?.configured && (
-            <button type="button" className="secondary" disabled={busy} onClick={() => void clear()}>
+            <button type="button" className="secondary" disabled={busy || loading} onClick={() => void clear()}>
               Clear configuration
+            </button>
+          )}
+          {error && (
+            <button type="button" className="secondary" disabled={busy || loading} onClick={() => void loadSettings()}>
+              Retry evidence directory
             </button>
           )}
         </div>
