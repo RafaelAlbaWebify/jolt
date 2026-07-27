@@ -68,6 +68,66 @@ function Get-EndpointResult {
     }
 }
 
+function Get-LiveSqliteSnapshotHash {
+    param(
+        [Parameter(Mandatory)][string]$SourcePath,
+        [Parameter(Mandatory)][string]$SnapshotPath
+    )
+
+    $python = Get-Command "python" -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        $python = Get-Command "py" -ErrorAction SilentlyContinue
+    }
+    if ($null -eq $python) {
+        return [ordered]@{
+            status = "unavailable"
+            sha256 = $null
+            snapshot_size_bytes = $null
+            error = "Python was not found in PATH."
+        }
+    }
+
+    $escapedSource = $SourcePath.Replace("'", "''")
+    $escapedSnapshot = $SnapshotPath.Replace("'", "''")
+    $script = @(
+        "import sqlite3",
+        "source = r'$escapedSource'",
+        "target = r'$escapedSnapshot'",
+        "src = sqlite3.connect(f'file:{source}?mode=ro', uri=True)",
+        "dst = sqlite3.connect(target)",
+        "try:",
+        "    src.backup(dst)",
+        "finally:",
+        "    dst.close()",
+        "    src.close()"
+    ) -join "`n"
+
+    try {
+        $output = $script | & $python.Source - 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) {
+            throw "SQLite backup failed: $($output.Trim())"
+        }
+        $snapshot = Get-Item $SnapshotPath
+        return [ordered]@{
+            status = "created"
+            sha256 = (Get-FileHash -Path $SnapshotPath -Algorithm SHA256).Hash
+            snapshot_size_bytes = $snapshot.Length
+            error = $null
+        }
+    }
+    catch {
+        return [ordered]@{
+            status = "failed"
+            sha256 = $null
+            snapshot_size_bytes = $null
+            error = $_.Exception.Message
+        }
+    }
+    finally {
+        Remove-Item $SnapshotPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $Staging, $Downloads | Out-Null
 
 try {
@@ -110,7 +170,7 @@ try {
         }
     }
 
-    foreach ($command in @("uv", "node", "npm", "git")) {
+    foreach ($command in @("uv", "node", "npm", "git", "python")) {
         $resolved = Get-Command $command -ErrorAction SilentlyContinue
         $results.commands[$command] = if ($null -eq $resolved) { "missing" } else { $resolved.Source }
     }
@@ -119,7 +179,13 @@ try {
         $database = Get-Item $DatabasePath
         $results.database.size_bytes = $database.Length
         $results.database.last_write_time = $database.LastWriteTime.ToString("o")
-        $results.database.sha256 = (Get-FileHash -Path $DatabasePath -Algorithm SHA256).Hash
+        $snapshotPath = Join-Path $Staging "jolt-validation-snapshot.db"
+        $snapshotHash = Get-LiveSqliteSnapshotHash -SourcePath $DatabasePath -SnapshotPath $snapshotPath
+        $results.database.hash_source = "sqlite_backup_snapshot"
+        $results.database.hash_status = $snapshotHash.status
+        $results.database.sha256 = $snapshotHash.sha256
+        $results.database.snapshot_size_bytes = $snapshotHash.snapshot_size_bytes
+        $results.database.hash_error = $snapshotHash.error
     }
 
     if (Test-Path $StatePath) {
@@ -163,6 +229,7 @@ try {
         "Backend: $($results.backend.status)",
         "Frontend: $($results.frontend.status)",
         "Database present: $($results.database.present)",
+        "Database hash status: $($results.database.hash_status)",
         "",
         "Before sharing this package, review validation_summary.json and logs for private data.",
         "For supervised LinkedIn validation, also include the separate JOLT_LINKEDIN_CAPTURE_<timestamp>.zip package."
