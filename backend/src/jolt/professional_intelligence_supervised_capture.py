@@ -79,7 +79,9 @@ def capture_professional_source_visible(url: str) -> CapturedProfessionalPage:
             body_ready = len(visible_text.strip()) >= 100
             if network_idle and body_ready:
                 readiness_status = "network_idle_and_body_ready"
-                readiness_detail = "Network became idle and rendered body text reached the threshold."
+                readiness_detail = (
+                    "Network became idle and rendered body text reached the threshold."
+                )
             elif body_ready:
                 readiness_status = "body_ready"
                 readiness_detail = "Rendered body text reached the threshold before network idle."
@@ -311,9 +313,7 @@ def _load_progress(run: ProfessionalCaptureRun) -> list[ProfessionalSourceProgre
 
 
 def _save_progress(run: ProfessionalCaptureRun, progress: list[ProfessionalSourceProgress]) -> None:
-    run.source_progress_json = json.dumps(
-        [item.model_dump(mode="json") for item in progress]
-    )
+    run.source_progress_json = json.dumps([item.model_dump(mode="json") for item in progress])
     run.progress_updated_at = utc_now()
 
 
