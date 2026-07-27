@@ -7,9 +7,11 @@ Set-StrictMode -Version Latest
 
 function Require-Command {
     param([Parameter(Mandatory = $true)][string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if (-not $command) {
         throw "Required command '$Name' was not found on PATH."
     }
+    return $command.Source
 }
 
 function Wait-JoltEndpoint {
@@ -44,8 +46,8 @@ function Stop-JoltProcessTree {
     try { & taskkill /PID $servicePid /T /F | Out-Null } catch { }
 }
 
-Require-Command -Name "uv"
-Require-Command -Name "npm"
+$UvCommand = Require-Command -Name "uv.exe"
+$NpmCommand = Require-Command -Name "npm.cmd"
 
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 $BackendRoot = Join-Path $RepoRoot "backend"
@@ -84,11 +86,11 @@ $env:JOLT_CERT_FRONTEND_LOG = $FrontendLog
 try {
     Push-Location $BackendRoot
     try {
-        & uv sync --all-groups
+        & $UvCommand sync --all-groups
         if ($LASTEXITCODE -ne 0) { throw "Backend dependency installation failed." }
-        & uv run playwright install chromium
+        & $UvCommand run playwright install chromium
         if ($LASTEXITCODE -ne 0) { throw "Playwright Chromium installation failed." }
-        & uv run alembic upgrade head
+        & $UvCommand run alembic upgrade head
         if ($LASTEXITCODE -ne 0) { throw "Disposable database migration failed." }
     }
     finally {
@@ -97,14 +99,14 @@ try {
 
     Push-Location $FrontendRoot
     try {
-        & npm ci --ignore-scripts --no-fund
+        & $NpmCommand ci --ignore-scripts --no-fund
         if ($LASTEXITCODE -ne 0) { throw "Frontend dependency installation failed." }
     }
     finally {
         Pop-Location
     }
 
-    $BackendProcess = Start-Process -FilePath "uv.exe" `
+    $BackendProcess = Start-Process -FilePath $UvCommand `
         -ArgumentList @("run", "uvicorn", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
         -WorkingDirectory $BackendRoot `
         -RedirectStandardOutput $BackendLog `
@@ -113,7 +115,7 @@ try {
         -PassThru
     Set-Content -LiteralPath $BackendPid -Value $BackendProcess.Id -Encoding ascii
 
-    $FrontendProcess = Start-Process -FilePath "npm.cmd" `
+    $FrontendProcess = Start-Process -FilePath $NpmCommand `
         -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1") `
         -WorkingDirectory $FrontendRoot `
         -RedirectStandardOutput $FrontendLog `
@@ -127,7 +129,7 @@ try {
 
     Push-Location $BackendRoot
     try {
-        & uv run python $Runner --output-dir $EvidenceRoot 2>&1 | Tee-Object -FilePath $CertificationLog
+        & $UvCommand run python $Runner --output-dir $EvidenceRoot 2>&1 | Tee-Object -FilePath $CertificationLog
         if ($LASTEXITCODE -ne 0) { throw "Full-cycle certification failed." }
 
         $DatabaseSummaryPath = Join-Path $WorkRoot "database-summary.json"
@@ -150,7 +152,7 @@ revision = connection.execute("select version_num from alembic_version").fetchon
 result["alembic_version"] = revision[0] if revision else None
 connection.close()
 print(json.dumps(result, indent=2))
-'@ | & uv run python - | Set-Content -LiteralPath $DatabaseSummaryPath -Encoding utf8
+'@ | & $UvCommand run python - | Set-Content -LiteralPath $DatabaseSummaryPath -Encoding utf8
         if ($LASTEXITCODE -ne 0) { throw "Disposable database summary failed." }
     }
     finally {
