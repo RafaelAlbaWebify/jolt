@@ -1,0 +1,86 @@
+name: Full-cycle Playwright certification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  full-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      JOLT_DATABASE_URL: sqlite:////tmp/jolt-full-cycle-certification.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.14"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          uv python install 3.12
+          uv sync --all-groups
+          uv run playwright install --with-deps chromium
+      - name: Prepare disposable certification database
+        working-directory: backend
+        run: |
+          rm -f /tmp/jolt-full-cycle-certification.db*
+          uv run alembic upgrade head
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-fund
+      - name: Start disposable JOLT services
+        run: |
+          mkdir -p artifacts/full-cycle-certification/evidence
+          (cd backend && nohup uv run uvicorn jolt.main:app --host 127.0.0.1 --port 8000 > ../artifacts/full-cycle-certification/backend.log 2>&1 &)
+          (cd frontend && nohup npm run dev -- --host 127.0.0.1 > ../artifacts/full-cycle-certification/frontend.log 2>&1 &)
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null && curl --silent --fail http://127.0.0.1:5173 >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Disposable JOLT services did not become ready." >&2
+          exit 1
+      - name: Run full-cycle certification
+        working-directory: backend
+        run: |
+          set -o pipefail
+          uv run python ../tools/jolt-full-cycle-playwright-certification-settled.py \
+            --output-dir ../artifacts/full-cycle-certification/evidence \
+            2>&1 | tee ../artifacts/full-cycle-certification/certification.log
+      - name: Record disposable database summary
+        if: always()
+        run: |
+          python - <<'PY' > artifacts/full-cycle-certification/database-summary.json
+          import json, sqlite3
+          path = "/tmp/jolt-full-cycle-certification.db"
+          result = {"database": path, "tables": {}}
+          try:
+              connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+              tables = [row[0] for row in connection.execute("select name from sqlite_master where type='table' order by name")]
+              for table in tables:
+                  if table.startswith("sqlite_"):
+                      continue
+                  safe = table.replace('"', '""')
+                  result["tables"][table] = connection.execute(f'SELECT COUNT(*) FROM "{safe}"').fetchone()[0]
+              revision = connection.execute("select version_num from alembic_version").fetchone()
+              result["alembic_version"] = revision[0] if revision else None
+              connection.close()
+          except Exception as exc:
+              result["error"] = str(exc)
+          print(json.dumps(result, indent=2))
+          PY
+      - name: Upload full-cycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jolt-full-cycle-playwright-certification
+          path: artifacts/full-cycle-certification
+          if-no-files-found: error
