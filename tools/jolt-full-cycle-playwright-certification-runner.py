@@ -56,8 +56,17 @@ def exercise_tasks(
     corrected_item.get_by_role("button", name="Complete", exact=True).click()
     corrected_item.get_by_role("button", name="Reopen", exact=True).wait_for(timeout=30_000)
     module.record_action(actions, "Complete application task", "passed")
-    corrected_item.get_by_role("button", name="Reopen", exact=True).click()
+
+    with page.expect_response(
+        lambda response: response.request.method == "POST"
+        and response.url.endswith("/reopen")
+    ) as response_info:
+        corrected_item.get_by_role("button", name="Reopen", exact=True).click()
+    reopen_response = response_info.value
+    if reopen_response.status >= 400:
+        raise AssertionError(f"Task reopen returned HTTP {reopen_response.status}")
     corrected_item.get_by_role("button", name="Complete", exact=True).wait_for(timeout=30_000)
+    page.wait_for_load_state("networkidle")
     module.record_action(actions, "Reopen application task", "passed")
 
     page.reload(wait_until="networkidle")
