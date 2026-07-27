@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from jolt.database import (
@@ -94,6 +95,10 @@ def normalize_url(value: str) -> str:
     return canonicalize_source_url(value)
 
 
+def posting_identity_key(canonical_url: str, content_hash: str) -> str:
+    return f"url:{canonical_url}" if canonical_url else f"hash:{content_hash}"
+
+
 def parse_manual_text(raw_text: str) -> ParsedPosting:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     title = lines[0] if lines else ""
@@ -144,55 +149,68 @@ def evaluate_text(text: str) -> tuple[str, str, int, list[str]]:
     return "consider", "medium" if matches else "low", score, reasons
 
 
-def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeResponse:
-    content_hash = hashlib.sha256(request.raw_text.encode("utf-8")).hexdigest()
-    source = SourceDocument(
-        id=str(uuid4()),
+def _source_document(
+    source_id: str, request: ManualIntakeRequest, content_hash: str
+) -> SourceDocument:
+    return SourceDocument(
+        id=source_id,
         source_type=request.source_type,
         source_url=request.source_url,
         raw_text=request.raw_text,
         content_hash=content_hash,
         captured_at=utc_now(),
     )
+
+
+def _duplicate_response(
+    session: Session, source_document_id: str, duplicate: Posting
+) -> IntakeResponse:
+    evaluation = session.scalar(
+        select(Evaluation)
+        .where(Evaluation.posting_id == duplicate.id)
+        .order_by(Evaluation.created_at.desc())
+    )
+    if evaluation is None:
+        raise RuntimeError("Duplicate posting exists without an evaluation.")
+    return IntakeResponse(
+        source_document_id=source_document_id,
+        posting_id=duplicate.id,
+        evaluation_id=evaluation.id,
+        identity_status="confirmed_duplicate",
+        duplicate_of_posting_id=duplicate.id,
+        title=duplicate.title,
+        company=duplicate.company,
+        location=duplicate.location,
+        recommendation=evaluation.recommendation,
+        confidence=evaluation.confidence,
+        ranking_score=evaluation.ranking_score,
+        reasons=json.loads(evaluation.reasons_json),
+        profile_version_id=evaluation.profile_version_id,
+        engine_version=evaluation.engine_version,
+    )
+
+
+def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeResponse:
+    content_hash = hashlib.sha256(request.raw_text.encode("utf-8")).hexdigest()
+    canonical_url = normalize_url(request.source_url)
+    identity_key = posting_identity_key(canonical_url, content_hash)
+    source_id = str(uuid4())
+    source = _source_document(source_id, request, content_hash)
     session.add(source)
     session.flush()
-    canonical_url = normalize_url(request.source_url)
-    duplicate_query = (
-        select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
-    )
-    if canonical_url:
-        duplicate_query = select(Posting).where(Posting.canonical_url == canonical_url)
-    duplicate = session.scalar(duplicate_query)
+
+    duplicate = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
     if duplicate is not None:
-        evaluation = session.scalar(
-            select(Evaluation)
-            .where(Evaluation.posting_id == duplicate.id)
-            .order_by(Evaluation.created_at.desc())
-        )
-        if evaluation is None:
-            raise RuntimeError("Duplicate posting exists without an evaluation.")
+        response = _duplicate_response(session, source.id, duplicate)
         session.commit()
-        return IntakeResponse(
-            source_document_id=source.id,
-            posting_id=duplicate.id,
-            evaluation_id=evaluation.id,
-            identity_status="confirmed_duplicate",
-            duplicate_of_posting_id=duplicate.id,
-            title=duplicate.title,
-            company=duplicate.company,
-            location=duplicate.location,
-            recommendation=evaluation.recommendation,
-            confidence=evaluation.confidence,
-            ranking_score=evaluation.ranking_score,
-            reasons=json.loads(evaluation.reasons_json),
-            profile_version_id=evaluation.profile_version_id,
-            engine_version=evaluation.engine_version,
-        )
+        return response
+
     parsed = parse_manual_text(request.raw_text)
     posting = Posting(
         id=str(uuid4()),
         source_document_id=source.id,
         canonical_url=canonical_url,
+        identity_key=identity_key,
         title=parsed.title,
         company=parsed.company,
         location=parsed.location,
@@ -215,7 +233,19 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
         created_at=utc_now(),
     )
     session.add(evaluation)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        winner = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
+        if winner is None:
+            raise
+        recovered_source = _source_document(source_id, request, content_hash)
+        session.add(recovered_source)
+        response = _duplicate_response(session, recovered_source.id, winner)
+        session.commit()
+        return response
+
     return IntakeResponse(
         source_document_id=source.id,
         posting_id=posting.id,

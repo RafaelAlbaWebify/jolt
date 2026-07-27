@@ -96,6 +96,7 @@ class Posting(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     source_document_id: Mapped[str] = mapped_column(ForeignKey("source_documents.id"), unique=True)
     canonical_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    identity_key: Mapped[str] = mapped_column(String(2110), nullable=False, unique=True)
     title: Mapped[str] = mapped_column(Text, default="", nullable=False)
     company: Mapped[str] = mapped_column(Text, default="", nullable=False)
     location: Mapped[str] = mapped_column(Text, default="", nullable=False)
