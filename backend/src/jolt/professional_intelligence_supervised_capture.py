@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from uuid import uuid4
@@ -105,12 +106,14 @@ def reconcile_professional_capture_artifacts(session: Session, root: Path) -> No
 
     for path in sorted(professional_root.rglob("*"), reverse=True):
         if path.is_dir():
-            try:
+            with suppress(OSError):
                 path.rmdir()
-            except OSError:
-                pass
             continue
-        final_path = path.with_name(path.name.removesuffix(".staged")) if path.name.endswith(".staged") else path
+        final_path = (
+            path.with_name(path.name.removesuffix(".staged"))
+            if path.name.endswith(".staged")
+            else path
+        )
         if final_path not in manifest_paths:
             path.unlink(missing_ok=True)
 
