@@ -188,7 +188,7 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
       <div className="section-heading">
         <div>
           <p className="eyebrow">Capture operations</p>
-          <h2 id="professional-run-ledger-heading">Supervised captures</h2>
+          <h2 id="professional-run-ledger-heading">Supervised run history</h2>
           <p>Start a new capture, complete the required safety confirmation, and manage recent capture batches from one place.</p>
         </div>
         <div className="professional-primary-capture-action">
