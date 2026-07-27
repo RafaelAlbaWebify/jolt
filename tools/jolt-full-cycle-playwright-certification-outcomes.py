@@ -55,7 +55,9 @@ def exercise_outcome_cycle(
     dialog.get_by_label("Activity or correction notes").fill(
         "Certification rejection outcome before reopening."
     )
-    dialog.get_by_label("Outcome").select_option("rejected_by_employer")
+    dialog.get_by_role("combobox", name="Outcome", exact=True).select_option(
+        "rejected_by_employer"
+    )
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/outcomes")
@@ -82,7 +84,9 @@ def exercise_outcome_cycle(
     dialog.get_by_label("Activity or correction notes").fill(
         "Certification reopening correction."
     )
-    dialog.get_by_label("Stage").select_option("recruiter_screen")
+    dialog.get_by_role("combobox", name="Stage", exact=True).select_option(
+        "recruiter_screen"
+    )
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/transitions")
