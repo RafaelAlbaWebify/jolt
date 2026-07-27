@@ -43,7 +43,17 @@ function Stop-JoltProcessTree {
     $rawPid = (Get-Content -LiteralPath $PidFile -Raw).Trim()
     $servicePid = 0
     if (-not [int]::TryParse($rawPid, [ref]$servicePid)) { return }
+
     try { & taskkill /PID $servicePid /T /F | Out-Null } catch { }
+
+    $deadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Get-Process -Id $servicePid -ErrorAction SilentlyContinue)) {
+            return
+        }
+        Start-Sleep -Milliseconds 200
+    }
+    throw "Timed out waiting for service process $servicePid to exit."
 }
 
 $UvCommand = Require-Command -Name "uv.exe"
@@ -158,6 +168,12 @@ print(json.dumps(result, indent=2))
     finally {
         Pop-Location
     }
+
+    Stop-JoltProcessTree -PidFile $BackendPid
+    Stop-JoltProcessTree -PidFile $FrontendPid
+    Wait-JoltEndpoint -Uri "http://127.0.0.1:8000/api/health" -Available $false
+    Wait-JoltEndpoint -Uri "http://127.0.0.1:5173" -Available $false
+    Start-Sleep -Milliseconds 500
 
     if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
     Compress-Archive -Path (Join-Path $WorkRoot "*") -DestinationPath $ZipPath -CompressionLevel Optimal
