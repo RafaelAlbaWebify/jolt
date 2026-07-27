@@ -132,7 +132,7 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
     expect(screen.getByText("Explicit start available")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Supervised run history" })).toBeInTheDocument();
-    expect(screen.getByText("No preview runs recorded.")).toBeInTheDocument();
+    expect(screen.getByText(/No capture runs recorded yet/)).toBeInTheDocument();
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
     expect(screen.getByText("visible fresh browser context per source")).toBeInTheDocument();
   });
