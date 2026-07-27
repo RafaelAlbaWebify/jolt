@@ -126,6 +126,7 @@ def restart_and_verify(
     if before_events < 1:
         raise AssertionError("Application has no persisted events before service restart.")
 
+    page.goto("about:blank", wait_until="load")
     stop_process_group(frontend_pid_file)
     stop_process_group(backend_pid_file)
     wait_for_endpoint(FRONTEND_URL, available=False)
@@ -171,7 +172,7 @@ def restart_and_verify(
             f"{before_events} -> {len(after.get('events', []))}"
         )
 
-    page.reload(wait_until="networkidle")
+    page.goto(FRONTEND_URL, wait_until="networkidle")
     module.open_application(page, fixture)
     dialog = page.get_by_role("dialog", name=fixture["title"])
     dialog.get_by_role("tab", name="Tasks", exact=True).click()
