@@ -34,6 +34,7 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
   const loadPlan = useCallback(async () => {
     requestRef.current?.abort();
@@ -47,14 +48,14 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
       });
       if (!response.ok) throw new Error("Unable to build the supervised capture plan.");
       const loaded = (await response.json()) as CapturePlan;
-      if (requestRef.current === controller) setPlan(loaded);
+      if (mountedRef.current && requestRef.current === controller) setPlan(loaded);
     } catch (caught) {
       if (isAbortError(caught)) return;
-      if (requestRef.current === controller) {
+      if (mountedRef.current && requestRef.current === controller) {
         setError(caught instanceof Error ? caught.message : "Capture plan failed.");
       }
     } finally {
-      if (requestRef.current === controller) setLoading(false);
+      if (mountedRef.current && requestRef.current === controller) setLoading(false);
     }
   }, [apiBase]);
 
@@ -63,7 +64,9 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
     void loadPlan();
   }, [active, loadPlan, refreshKey]);
 
-  useEffect(() => () => requestRef.current?.abort(), []);
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   if (error && !plan) {
     return (
