@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
 
@@ -152,10 +153,8 @@ def cleanup_expired_professional_evidence(
 
     for path in sorted(professional_root.rglob("*"), reverse=True):
         if path.is_dir():
-            try:
+            with suppress(OSError):
                 path.rmdir()
-            except OSError:
-                pass
 
     return ProfessionalRetentionCleanupResult(
         completed_at=utc_now().isoformat(),
