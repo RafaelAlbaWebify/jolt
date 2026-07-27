@@ -4,12 +4,18 @@ import importlib.util
 import json
 from pathlib import Path
 from types import ModuleType
+from typing import Any, Callable
 
-from playwright.sync_api import Page, Route
+from playwright.sync_api import ConsoleMessage, Page, Route
 
 CLASSIFIED_PATH = Path(__file__).with_name(
     "jolt-full-cycle-playwright-certification-classified.py"
 )
+
+EXPECTED_CONSOLE_ERRORS = {
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)": 1,
+    "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)": 1,
+}
 
 
 def load_classified() -> ModuleType:
@@ -90,7 +96,9 @@ def exercise_task_recovery(
         has_text="Injected task validation failure for certification."
     ).wait_for(timeout=30_000)
     if title_input.input_value() != recovered_title:
-        raise AssertionError("Task edit form did not preserve the entered title after validation failure.")
+        raise AssertionError(
+            "Task edit form did not preserve the entered title after validation failure."
+        )
     dialog.get_by_role("button", name="Save task changes", exact=True).wait_for()
     module.record_action(actions, "Preserve task edit after validation error", "passed")
 
@@ -129,7 +137,32 @@ def main() -> int:
 
     restart.restart_and_verify = recovery_then_restart
     classified.load_restart = lambda: restart
-    return int(classified.main())
+
+    remaining_expected = dict(EXPECTED_CONSOLE_ERRORS)
+    original_page_on = Page.on
+
+    def filtered_page_on(
+        self: Page,
+        event: str,
+        handler: Callable[[Any], Any],
+    ) -> Page:
+        if event != "console":
+            return original_page_on(self, event, handler)
+
+        def filtered_handler(message: ConsoleMessage) -> Any:
+            remaining = remaining_expected.get(message.text, 0)
+            if message.type == "error" and remaining > 0:
+                remaining_expected[message.text] = remaining - 1
+                return None
+            return handler(message)
+
+        return original_page_on(self, event, filtered_handler)
+
+    Page.on = filtered_page_on  # type: ignore[method-assign]
+    try:
+        return int(classified.main())
+    finally:
+        Page.on = original_page_on  # type: ignore[method-assign]
 
 
 if __name__ == "__main__":
