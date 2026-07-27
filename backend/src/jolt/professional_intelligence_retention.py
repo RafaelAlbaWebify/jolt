@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, Field
@@ -47,6 +47,12 @@ class ProfessionalRetentionCleanupResult(BaseModel):
     deleted_bytes: int = Field(ge=0)
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def _professional_root(session: Session) -> Path:
     evidence_root = get_professional_evidence_root(session)
     if not (
@@ -71,14 +77,14 @@ def _artifact_path(professional_root: Path, relative_path: str) -> Path:
     return path
 
 
+def _expires_at(artifact: ProfessionalCaptureArtifact) -> datetime:
+    return _as_utc(artifact.created_at) + timedelta(days=artifact.retention_days)
+
+
 def _expired_artifacts(session: Session) -> list[ProfessionalCaptureArtifact]:
     now = utc_now()
     artifacts = session.scalars(select(ProfessionalCaptureArtifact)).all()
-    return [
-        artifact
-        for artifact in artifacts
-        if artifact.created_at + timedelta(days=artifact.retention_days) <= now
-    ]
+    return [artifact for artifact in artifacts if _expires_at(artifact) <= now]
 
 
 def preview_professional_retention_cleanup(session: Session) -> ProfessionalRetentionPreview:
@@ -104,10 +110,8 @@ def preview_professional_retention_cleanup(session: Session) -> ProfessionalRete
                 source_id=artifact.source_id,
                 artifact_type=artifact.artifact_type,
                 relative_path=artifact.relative_path,
-                created_at=artifact.created_at.isoformat(),
-                expires_at=(
-                    artifact.created_at + timedelta(days=artifact.retention_days)
-                ).isoformat(),
+                created_at=_as_utc(artifact.created_at).isoformat(),
+                expires_at=_expires_at(artifact).isoformat(),
                 retention_days=artifact.retention_days,
                 existing_bytes=artifact_bytes,
             )
