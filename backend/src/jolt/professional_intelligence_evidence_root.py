@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from pydantic import BaseModel
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
@@ -46,7 +47,7 @@ def _response(settings: ProfessionalEvidenceSettings | None) -> ProfessionalEvid
 
 def _default_evidence_root(session: Session) -> Path:
     bind = session.get_bind()
-    database_path = getattr(bind.url, "database", None)
+    database_path = bind.url.database if isinstance(bind, Engine) else bind.engine.url.database
     if database_path and database_path != ":memory:":
         return (
             Path(database_path).expanduser().resolve(strict=False).parent / _DEFAULT_DIRECTORY_NAME
