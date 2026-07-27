@@ -177,8 +177,8 @@ def default_database_url() -> str:
     configured = os.getenv("JOLT_DATABASE_URL")
     if configured:
         return configured
-    project_root = Path(__file__).resolve().parents[3]
-    data_dir = project_root / "data"
+    backend_root = Path(__file__).resolve().parents[2]
+    data_dir = backend_root / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{(data_dir / 'jolt.db').as_posix()}"
 
