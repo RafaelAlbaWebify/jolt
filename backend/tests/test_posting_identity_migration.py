@@ -88,4 +88,4 @@ def test_upgrade_backfills_url_and_hash_identity_keys(tmp_path: Path) -> None:
     identity_column = next(column for column in columns if column[1] == "identity_key")
     assert identity_column[3] == 1
     assert any(row[1] == "uq_postings_identity_key" and row[2] == 1 for row in indexes)
-    assert revision == ("20260727_0015",)
+    assert revision == ("20260727_0016",)

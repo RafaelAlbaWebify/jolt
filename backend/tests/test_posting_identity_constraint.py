@@ -92,7 +92,7 @@ def test_identity_key_and_duplicate_evidence_survive_restart(tmp_path: Path) -> 
     assert duplicate.json()["posting_id"] == created.json()["posting_id"]
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT version_num FROM alembic_version").fetchone() == (
-            "20260727_0015",
+            "20260727_0016",
         )
         assert connection.execute("SELECT COUNT(*) FROM postings").fetchone() == (1,)
         assert connection.execute("SELECT COUNT(*) FROM source_documents").fetchone() == (2,)

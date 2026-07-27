@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 
 from jolt.database import Base, create_session_factory
 
-HEAD_REVISION = "20260727_0015"
+HEAD_REVISION = "20260727_0016"
 
 
 def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeypatch) -> None:
@@ -40,6 +40,11 @@ def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeyp
         "authorized_at",
         "authorization_expires_at",
         "user_present_confirmed",
+        "source_progress_json",
+        "completed_source_count",
+        "current_source_id",
+        "cancel_requested",
+        "progress_updated_at",
     }.issubset(run_columns)
     artifact_columns = {
         column["name"] for column in inspector.get_columns("professional_capture_artifacts")
