@@ -86,10 +86,10 @@ class ContactResponse(ContactRequest):
 class DocumentRequest(BaseModel):
     document_type: DocumentType
     title: str = Field(min_length=1, max_length=240)
-    file_path: str = ""
+    file_path: str = Field(default="", max_length=2048)
     source_url: str = Field(default="", max_length=2048)
     status: DocumentStatus = "draft"
-    notes: str = ""
+    notes: str = Field(default="", max_length=4000)
 
     @field_validator("title")
     @classmethod
@@ -125,7 +125,6 @@ def _application(session: Session, application_id: str) -> Application:
 
 
 def _event(application_id: str, event_type: str, notes: str) -> ApplicationEvent:
-    now = utc_now()
     return ApplicationEvent(
         id=str(uuid4()),
         application_id=application_id,
@@ -133,7 +132,7 @@ def _event(application_id: str, event_type: str, notes: str) -> ApplicationEvent
         from_status="",
         to_status="recorded",
         notes=notes,
-        occurred_at=now,
+        occurred_at=utc_now(),
     )
 
 
@@ -155,6 +154,17 @@ def _contact_values(contact: ApplicationContact) -> dict[str, str]:
         "phone": contact.phone,
         "linkedin_url": contact.linkedin_url,
         "notes": contact.notes,
+    }
+
+
+def _document_values(document: ApplicationDocument) -> dict[str, str]:
+    return {
+        "document_type": document.document_type,
+        "title": document.title,
+        "file_path": document.file_path,
+        "source_url": document.source_url,
+        "status": document.status,
+        "notes": document.notes,
     }
 
 
@@ -193,23 +203,11 @@ def list_contacts(session: Session, application_id: str) -> list[ContactResponse
     return [_contact_response(contact) for contact in contacts]
 
 
-def create_contact(
-    session: Session, application_id: str, request: ContactRequest
-) -> ContactResponse:
+def create_contact(session: Session, application_id: str, request: ContactRequest) -> ContactResponse:
     _application(session, application_id)
     now = utc_now()
     contact = ApplicationContact(
-        id=str(uuid4()),
-        application_id=application_id,
-        name=request.name,
-        role=request.role,
-        company=request.company,
-        email=request.email,
-        phone=request.phone,
-        linkedin_url=request.linkedin_url,
-        notes=request.notes,
-        created_at=now,
-        updated_at=now,
+        id=str(uuid4()), application_id=application_id, **request.model_dump(), created_at=now, updated_at=now
     )
     session.add(contact)
     session.add(_event(application_id, "contact_created", contact.name))
@@ -222,22 +220,10 @@ def update_contact(session: Session, contact_id: str, request: ContactRequest) -
     if contact is None:
         raise LookupError("Application contact was not found.")
     before = _contact_values(contact)
-    contact.name = request.name
-    contact.role = request.role
-    contact.company = request.company
-    contact.email = request.email
-    contact.phone = request.phone
-    contact.linkedin_url = request.linkedin_url
-    contact.notes = request.notes
+    for field, value in request.model_dump().items():
+        setattr(contact, field, value)
     contact.updated_at = utc_now()
-    after = _contact_values(contact)
-    session.add(
-        _event(
-            contact.application_id,
-            "contact_updated",
-            f"Contact {contact.id} corrected. {_changed_fields(before, after)}",
-        )
-    )
+    session.add(_event(contact.application_id, "contact_updated", f"Contact {contact.id} corrected. {_changed_fields(before, _contact_values(contact))}"))
     session.commit()
     return _contact_response(contact)
 
@@ -252,22 +238,11 @@ def list_documents(session: Session, application_id: str) -> list[DocumentRespon
     return [_document_response(document) for document in documents]
 
 
-def create_document(
-    session: Session, application_id: str, request: DocumentRequest
-) -> DocumentResponse:
+def create_document(session: Session, application_id: str, request: DocumentRequest) -> DocumentResponse:
     _application(session, application_id)
     now = utc_now()
     document = ApplicationDocument(
-        id=str(uuid4()),
-        application_id=application_id,
-        document_type=request.document_type,
-        title=request.title,
-        file_path=request.file_path,
-        source_url=request.source_url,
-        status=request.status,
-        notes=request.notes,
-        created_at=now,
-        updated_at=now,
+        id=str(uuid4()), application_id=application_id, **request.model_dump(), created_at=now, updated_at=now
     )
     session.add(document)
     session.add(_event(application_id, "document_created", document.title))
@@ -275,19 +250,20 @@ def create_document(
     return _document_response(document)
 
 
-def update_document(
-    session: Session, document_id: str, request: DocumentRequest
-) -> DocumentResponse:
+def update_document(session: Session, document_id: str, request: DocumentRequest) -> DocumentResponse:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
         raise LookupError("Application document was not found.")
-    document.document_type = request.document_type
-    document.title = request.title
-    document.file_path = request.file_path
-    document.source_url = request.source_url
-    document.status = request.status
-    document.notes = request.notes
+    before = _document_values(document)
+    for field, value in request.model_dump().items():
+        setattr(document, field, value)
     document.updated_at = utc_now()
-    session.add(_event(document.application_id, "document_updated", document.title))
+    session.add(
+        _event(
+            document.application_id,
+            "document_updated",
+            f"Document {document.id} corrected. {_changed_fields(before, _document_values(document))}",
+        )
+    )
     session.commit()
     return _document_response(document)
