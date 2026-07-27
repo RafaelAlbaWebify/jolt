@@ -10,6 +10,10 @@ jobs:
     timeout-minutes: 30
     env:
       JOLT_DATABASE_URL: sqlite:////tmp/jolt-full-cycle-certification.db
+      JOLT_CERT_BACKEND_PID_FILE: ${{ github.workspace }}/artifacts/full-cycle-certification/backend.pid
+      JOLT_CERT_FRONTEND_PID_FILE: ${{ github.workspace }}/artifacts/full-cycle-certification/frontend.pid
+      JOLT_CERT_BACKEND_LOG: ${{ github.workspace }}/artifacts/full-cycle-certification/backend.log
+      JOLT_CERT_FRONTEND_LOG: ${{ github.workspace }}/artifacts/full-cycle-certification/frontend.log
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -38,8 +42,16 @@ jobs:
       - name: Start disposable JOLT services
         run: |
           mkdir -p artifacts/full-cycle-certification/evidence
-          (cd backend && nohup uv run uvicorn jolt.main:app --host 127.0.0.1 --port 8000 > ../artifacts/full-cycle-certification/backend.log 2>&1 &)
-          (cd frontend && nohup npm run dev -- --host 127.0.0.1 > ../artifacts/full-cycle-certification/frontend.log 2>&1 &)
+          (
+            cd backend
+            setsid uv run uvicorn jolt.main:app --host 127.0.0.1 --port 8000 > "$JOLT_CERT_BACKEND_LOG" 2>&1 &
+            echo $! > "$JOLT_CERT_BACKEND_PID_FILE"
+          )
+          (
+            cd frontend
+            setsid npm run dev -- --host 127.0.0.1 > "$JOLT_CERT_FRONTEND_LOG" 2>&1 &
+            echo $! > "$JOLT_CERT_FRONTEND_PID_FILE"
+          )
           for attempt in $(seq 1 60); do
             if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null && curl --silent --fail http://127.0.0.1:5173 >/dev/null; then
               exit 0
@@ -52,7 +64,7 @@ jobs:
         working-directory: backend
         run: |
           set -o pipefail
-          uv run python ../tools/jolt-full-cycle-playwright-certification-outcomes.py \
+          uv run python ../tools/jolt-full-cycle-playwright-certification-restart.py \
             --output-dir ../artifacts/full-cycle-certification/evidence \
             2>&1 | tee ../artifacts/full-cycle-certification/certification.log
       - name: Record disposable database summary
