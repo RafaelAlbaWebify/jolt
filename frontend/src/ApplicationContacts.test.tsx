@@ -44,19 +44,21 @@ describe("ApplicationContacts", () => {
       />,
     );
 
-    expect(await screen.findByText("Technical recruiter")).toBeInTheDocument();
+    expect(await screen.findByText("Technical recruiter · Example Systems")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit contact" }));
     fireEvent.change(screen.getByLabelText("Role"), { target: { value: "Senior technical recruiter" } });
     fireEvent.click(screen.getByRole("button", { name: "Save contact changes" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "http://api/api/application-contacts/contact-1/update",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ ...contact, contact_id: undefined, role: "Senior technical recruiter" }),
-      }),
-    ));
-    expect(await screen.findByText("Senior technical recruiter")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://api/api/application-contacts/contact-1/update",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ ...contact, contact_id: undefined, role: "Senior technical recruiter" }),
+        }),
+      ),
+    );
+    expect(await screen.findByText("Senior technical recruiter · Example Systems")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add contact" })).toBeInTheDocument();
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
@@ -72,7 +74,7 @@ describe("ApplicationContacts", () => {
       />,
     );
 
-    await screen.findByText("Technical recruiter");
+    await screen.findByText("Technical recruiter · Example Systems");
     fireEvent.click(screen.getByRole("button", { name: "Edit contact" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Changed locally" } });
     fireEvent.click(screen.getByRole("button", { name: "Cancel edit" }));
