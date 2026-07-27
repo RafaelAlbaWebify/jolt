@@ -21,16 +21,31 @@ def upgrade() -> None:
     op.add_column("postings", sa.Column("identity_key", sa.String(length=2110), nullable=True))
 
     connection = op.get_bind()
-    rows = connection.execute(
-        sa.text(
-            """
-            SELECT postings.id, postings.canonical_url, source_documents.content_hash
-            FROM postings
-            JOIN source_documents ON source_documents.id = postings.source_document_id
-            ORDER BY postings.id
-            """
+    inspector = sa.inspect(connection)
+    posting_count = connection.scalar(sa.text("SELECT COUNT(*) FROM postings")) or 0
+    posting_columns = {column["name"] for column in inspector.get_columns("postings")}
+    can_backfill = inspector.has_table("source_documents") and {
+        "source_document_id",
+        "canonical_url",
+    }.issubset(posting_columns)
+    if posting_count and not can_backfill:
+        raise RuntimeError(
+            "Cannot add posting identity constraint because the existing postings schema "
+            "does not expose source identity columns."
         )
-    ).mappings()
+
+    rows = []
+    if can_backfill:
+        rows = connection.execute(
+            sa.text(
+                """
+                SELECT postings.id, postings.canonical_url, source_documents.content_hash
+                FROM postings
+                JOIN source_documents ON source_documents.id = postings.source_document_id
+                ORDER BY postings.id
+                """
+            )
+        ).mappings()
 
     seen: dict[str, str] = {}
     for row in rows:
