@@ -28,7 +28,14 @@ def test_upgrade_backfills_url_and_hash_identity_keys(tmp_path: Path) -> None:
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             [
-                ("source-url", "manual", "https://example.test/jobs/7", "url text", "a" * 64, "2026-07-27 09:00:00"),
+                (
+                    "source-url",
+                    "manual",
+                    "https://example.test/jobs/7",
+                    "url text",
+                    "a" * 64,
+                    "2026-07-27 09:00:00",
+                ),
                 ("source-hash", "manual", "", "hash text", "b" * 64, "2026-07-27 09:01:00"),
             ],
         )
@@ -40,8 +47,28 @@ def test_upgrade_backfills_url_and_hash_identity_keys(tmp_path: Path) -> None:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
-                ("posting-url", "source-url", "https://example.test/jobs/7", "Role 7", "Example", "Spain", "url text", "new", "2026-07-27 09:00:00"),
-                ("posting-hash", "source-hash", "", "Role hash", "Example", "Remote", "hash text", "new", "2026-07-27 09:01:00"),
+                (
+                    "posting-url",
+                    "source-url",
+                    "https://example.test/jobs/7",
+                    "Role 7",
+                    "Example",
+                    "Spain",
+                    "url text",
+                    "new",
+                    "2026-07-27 09:00:00",
+                ),
+                (
+                    "posting-hash",
+                    "source-hash",
+                    "",
+                    "Role hash",
+                    "Example",
+                    "Remote",
+                    "hash text",
+                    "new",
+                    "2026-07-27 09:01:00",
+                ),
             ],
         )
         connection.commit()
@@ -49,9 +76,7 @@ def test_upgrade_backfills_url_and_hash_identity_keys(tmp_path: Path) -> None:
     command.upgrade(config, "head")
 
     with sqlite3.connect(database) as connection:
-        rows = connection.execute(
-            "SELECT id, identity_key FROM postings ORDER BY id"
-        ).fetchall()
+        rows = connection.execute("SELECT id, identity_key FROM postings ORDER BY id").fetchall()
         columns = connection.execute("PRAGMA table_info(postings)").fetchall()
         indexes = connection.execute("PRAGMA index_list(postings)").fetchall()
         revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
