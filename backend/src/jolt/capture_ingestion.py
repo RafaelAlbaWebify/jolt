@@ -15,6 +15,7 @@ from jolt.workflow import (
     evaluate_text,
     normalize_url,
     parse_manual_text,
+    posting_identity_key,
 )
 
 
@@ -33,12 +34,8 @@ def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> Intak
     session.flush()
 
     canonical_url = normalize_url(request.source_url)
-    duplicate_query = (
-        select(Posting).join(SourceDocument).where(SourceDocument.content_hash == content_hash)
-    )
-    if canonical_url:
-        duplicate_query = select(Posting).where(Posting.canonical_url == canonical_url)
-    duplicate = session.scalar(duplicate_query)
+    identity_key = posting_identity_key(canonical_url, content_hash)
+    duplicate = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
 
     if duplicate is not None:
         evaluation = session.scalar(
@@ -70,6 +67,7 @@ def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> Intak
         id=str(uuid4()),
         source_document_id=source.id,
         canonical_url=canonical_url,
+        identity_key=identity_key,
         title=parsed.title,
         company=parsed.company,
         location=parsed.location,
