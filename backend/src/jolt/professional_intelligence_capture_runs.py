@@ -18,6 +18,7 @@ from jolt.professional_intelligence_sources import ProfessionalIntelligenceSourc
 
 AUTHORIZATION_CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN"
 AUTHORIZATION_LIFETIME_MINUTES = 15
+STALE_RUNNING_MINUTES = 30
 
 
 class ProfessionalCaptureAuthorizationRequest(BaseModel):
@@ -57,6 +58,33 @@ def effective_capture_run_status(run: ProfessionalCaptureRun, now: datetime | No
         if comparable_expiry <= comparable_current:
             return "expired"
     return run.status
+
+
+def recover_stale_professional_capture_runs(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    stale_after: timedelta = timedelta(minutes=STALE_RUNNING_MINUTES),
+) -> int:
+    current = now or utc_now()
+    running = session.scalars(
+        select(ProfessionalCaptureRun).where(ProfessionalCaptureRun.status == "running")
+    ).all()
+    recovered = 0
+    for run in running:
+        stale = run.started_at is None
+        if run.started_at is not None:
+            comparable_started, comparable_current = comparable_datetimes(run.started_at, current)
+            stale = comparable_started + stale_after <= comparable_current
+        if not stale:
+            continue
+        run.status = "interrupted"
+        run.completed_at = current
+        run.stop_reason = "stale_running_run_recovered"
+        recovered += 1
+    if recovered:
+        session.commit()
+    return recovered
 
 
 def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
@@ -110,6 +138,7 @@ def create_professional_capture_preview_run(session: Session) -> ProfessionalCap
 
 
 def list_professional_capture_runs(session: Session) -> list[ProfessionalCaptureRunResponse]:
+    recover_stale_professional_capture_runs(session)
     runs = session.scalars(
         select(ProfessionalCaptureRun).order_by(ProfessionalCaptureRun.requested_at.desc())
     ).all()
@@ -117,6 +146,7 @@ def list_professional_capture_runs(session: Session) -> list[ProfessionalCapture
 
 
 def get_professional_capture_run(session: Session, run_id: str) -> ProfessionalCaptureRunResponse:
+    recover_stale_professional_capture_runs(session)
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
