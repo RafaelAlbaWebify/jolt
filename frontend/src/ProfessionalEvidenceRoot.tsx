@@ -71,6 +71,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
   if (!settings && loading && !error) return <p role="status">Preparing local evidence directory…</p>;
 
   const ready = Boolean(settings?.configured && settings.exists && settings.writable);
+  const statusLabel = ready ? "Ready" : settings?.configured ? "Needs attention" : "Not configured";
 
   return (
     <section className="panel professional-evidence-root" aria-labelledby="professional-evidence-root-heading">
@@ -80,9 +81,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
           <h2 id="professional-evidence-root-heading">Evidence directory</h2>
           <p>Supervised captures write their evidence files and manifests to a private local directory. JOLT creates a safe default beside its database automatically; enter another path only to move future evidence.</p>
         </div>
-        <span className="professional-plan-status">
-          {ready ? "Ready" : "Needs attention"}
-        </span>
+        <span className="professional-plan-status">{statusLabel}</span>
       </div>
       <form onSubmit={(event) => void configure(event)}>
         <label htmlFor="professional-evidence-root-path">Evidence directory path</label>
