@@ -64,7 +64,7 @@ jobs:
         working-directory: backend
         run: |
           set -o pipefail
-          uv run python ../tools/jolt-full-cycle-playwright-certification-classified.py \
+          uv run python ../tools/jolt-full-cycle-playwright-certification-recovery.py \
             --output-dir ../artifacts/full-cycle-certification/evidence \
             2>&1 | tee ../artifacts/full-cycle-certification/certification.log
       - name: Record disposable database summary
