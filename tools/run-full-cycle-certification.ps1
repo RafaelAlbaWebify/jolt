@@ -35,6 +35,15 @@ function Wait-JoltEndpoint {
     throw "Timed out waiting for $Uri to become $state."
 }
 
+function Stop-JoltProcessTree {
+    param([Parameter(Mandatory = $true)][string]$PidFile)
+    if (-not (Test-Path -LiteralPath $PidFile)) { return }
+    $rawPid = (Get-Content -LiteralPath $PidFile -Raw).Trim()
+    $servicePid = 0
+    if (-not [int]::TryParse($rawPid, [ref]$servicePid)) { return }
+    try { & taskkill /PID $servicePid /T /F | Out-Null } catch { }
+}
+
 Require-Command -Name "uv"
 Require-Command -Name "npm"
 
@@ -71,9 +80,6 @@ $env:JOLT_CERT_BACKEND_PID_FILE = $BackendPid
 $env:JOLT_CERT_FRONTEND_PID_FILE = $FrontendPid
 $env:JOLT_CERT_BACKEND_LOG = $BackendLog
 $env:JOLT_CERT_FRONTEND_LOG = $FrontendLog
-
-$BackendProcess = $null
-$FrontendProcess = $null
 
 try {
     Push-Location $BackendRoot
@@ -123,13 +129,9 @@ try {
     try {
         & uv run python $Runner --output-dir $EvidenceRoot 2>&1 | Tee-Object -FilePath $CertificationLog
         if ($LASTEXITCODE -ne 0) { throw "Full-cycle certification failed." }
-    }
-    finally {
-        Pop-Location
-    }
 
-    $DatabaseSummaryPath = Join-Path $WorkRoot "database-summary.json"
-    @'
+        $DatabaseSummaryPath = Join-Path $WorkRoot "database-summary.json"
+        @'
 import json
 import os
 import sqlite3
@@ -149,15 +151,17 @@ result["alembic_version"] = revision[0] if revision else None
 connection.close()
 print(json.dumps(result, indent=2))
 '@ | & uv run python - | Set-Content -LiteralPath $DatabaseSummaryPath -Encoding utf8
+        if ($LASTEXITCODE -ne 0) { throw "Disposable database summary failed." }
+    }
+    finally {
+        Pop-Location
+    }
 
     if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
     Compress-Archive -Path (Join-Path $WorkRoot "*") -DestinationPath $ZipPath -CompressionLevel Optimal
     Write-Host "`nUPLOAD THIS FILE:`n$ZipPath" -ForegroundColor Green
 }
 finally {
-    foreach ($process in @($BackendProcess, $FrontendProcess)) {
-        if ($null -ne $process) {
-            try { & taskkill /PID $process.Id /T /F | Out-Null } catch { }
-        }
-    }
+    Stop-JoltProcessTree -PidFile $BackendPid
+    Stop-JoltProcessTree -PidFile $FrontendPid
 }
