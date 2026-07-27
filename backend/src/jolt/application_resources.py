@@ -203,11 +203,17 @@ def list_contacts(session: Session, application_id: str) -> list[ContactResponse
     return [_contact_response(contact) for contact in contacts]
 
 
-def create_contact(session: Session, application_id: str, request: ContactRequest) -> ContactResponse:
+def create_contact(
+    session: Session, application_id: str, request: ContactRequest
+) -> ContactResponse:
     _application(session, application_id)
     now = utc_now()
     contact = ApplicationContact(
-        id=str(uuid4()), application_id=application_id, **request.model_dump(), created_at=now, updated_at=now
+        id=str(uuid4()),
+        application_id=application_id,
+        **request.model_dump(),
+        created_at=now,
+        updated_at=now,
     )
     session.add(contact)
     session.add(_event(application_id, "contact_created", contact.name))
@@ -223,7 +229,13 @@ def update_contact(session: Session, contact_id: str, request: ContactRequest) -
     for field, value in request.model_dump().items():
         setattr(contact, field, value)
     contact.updated_at = utc_now()
-    session.add(_event(contact.application_id, "contact_updated", f"Contact {contact.id} corrected. {_changed_fields(before, _contact_values(contact))}"))
+    session.add(
+        _event(
+            contact.application_id,
+            "contact_updated",
+            f"Contact {contact.id} corrected. {_changed_fields(before, _contact_values(contact))}",
+        )
+    )
     session.commit()
     return _contact_response(contact)
 
@@ -238,11 +250,17 @@ def list_documents(session: Session, application_id: str) -> list[DocumentRespon
     return [_document_response(document) for document in documents]
 
 
-def create_document(session: Session, application_id: str, request: DocumentRequest) -> DocumentResponse:
+def create_document(
+    session: Session, application_id: str, request: DocumentRequest
+) -> DocumentResponse:
     _application(session, application_id)
     now = utc_now()
     document = ApplicationDocument(
-        id=str(uuid4()), application_id=application_id, **request.model_dump(), created_at=now, updated_at=now
+        id=str(uuid4()),
+        application_id=application_id,
+        **request.model_dump(),
+        created_at=now,
+        updated_at=now,
     )
     session.add(document)
     session.add(_event(application_id, "document_created", document.title))
@@ -250,7 +268,9 @@ def create_document(session: Session, application_id: str, request: DocumentRequ
     return _document_response(document)
 
 
-def update_document(session: Session, document_id: str, request: DocumentRequest) -> DocumentResponse:
+def update_document(
+    session: Session, document_id: str, request: DocumentRequest
+) -> DocumentResponse:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
         raise LookupError("Application document was not found.")
