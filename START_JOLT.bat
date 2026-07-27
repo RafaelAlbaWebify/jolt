@@ -38,7 +38,7 @@ if not exist "%FRONTEND_DIR%\package.json" (
 powershell.exe -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%BACKEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; exit 1"
 if errorlevel 1 (
     echo Starting JOLT backend...
-    start "JOLT Backend" /min cmd.exe /k "cd /d ""%BACKEND_DIR%"" ^&^& uv.exe run uvicorn jolt.main:app --host 127.0.0.1 --port 8000"
+    start "JOLT Backend" /min cmd.exe /k ""cd /d "%BACKEND_DIR%" && uv.exe run uvicorn jolt.main:app --host 127.0.0.1 --port 8000""
 ) else (
     echo JOLT backend is already running.
 )
@@ -46,7 +46,7 @@ if errorlevel 1 (
 powershell.exe -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%FRONTEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; exit 1"
 if errorlevel 1 (
     echo Starting JOLT frontend...
-    start "JOLT Frontend" /min cmd.exe /k "cd /d ""%FRONTEND_DIR%"" ^&^& npm.cmd run dev -- --host 127.0.0.1"
+    start "JOLT Frontend" /min cmd.exe /k ""cd /d "%FRONTEND_DIR%" && npm.cmd run dev -- --host 127.0.0.1""
 ) else (
     echo JOLT frontend is already running.
 )
