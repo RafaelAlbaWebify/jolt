@@ -65,7 +65,10 @@ def test_optional_contact_fields_reject_invalid_values(tmp_path: Path) -> None:
     application_id = _application(client)
     endpoint = f"/api/applications/{application_id}/contacts"
 
-    assert client.post(endpoint, json={"name": "Morgan", "email": "", "linkedin_url": ""}).status_code == 200
+    assert (
+        client.post(endpoint, json={"name": "Morgan", "email": "", "linkedin_url": ""}).status_code
+        == 200
+    )
     invalid_email = client.post(endpoint, json={"name": "Morgan", "email": "not-an-email"})
     assert invalid_email.status_code == 422
     assert "valid email address" in invalid_email.text
@@ -85,10 +88,13 @@ def test_document_source_url_is_blank_or_public_https(tmp_path: Path) -> None:
     client = _client(tmp_path / "documents.db")
     application_id = _application(client)
     endpoint = f"/api/applications/{application_id}/documents"
-    assert client.post(
-        endpoint,
-        json={"document_type": "resume", "title": "Support resume", "source_url": ""},
-    ).status_code == 200
+    assert (
+        client.post(
+            endpoint,
+            json={"document_type": "resume", "title": "Support resume", "source_url": ""},
+        ).status_code
+        == 200
+    )
     invalid = client.post(
         endpoint,
         json={
