@@ -67,9 +67,18 @@ def exercise_tasks(
     module.record_action(actions, "Task persists after reload", "passed")
 
     page.get_by_role("tab", name="Timeline", exact=True).click()
-    page.get_by_text("Task Updated", exact=True).wait_for(timeout=30_000)
-    page.get_by_text(task_title, exact=False).first.wait_for(timeout=30_000)
-    page.get_by_text(corrected, exact=False).first.wait_for(timeout=30_000)
+    page.get_by_role("heading", name="Timeline", exact=True).wait_for(timeout=30_000)
+    rendered_timeline = page.get_by_role("dialog", name=fixture["title"]).inner_text()
+    required_fragments = (
+        "Task Updated",
+        task_title,
+        corrected,
+        "Initial certification task notes.",
+        "Corrected certification task notes.",
+    )
+    missing = [fragment for fragment in required_fragments if fragment not in rendered_timeline]
+    if missing:
+        raise AssertionError(f"Task correction timeline is missing rendered evidence: {missing}")
     module.record_action(actions, "Task correction visible in timeline", "passed")
 
 
