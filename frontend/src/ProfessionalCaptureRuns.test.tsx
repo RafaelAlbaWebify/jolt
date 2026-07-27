@@ -25,7 +25,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("records, authorizes, and explicitly starts a supervised capture", async () => {
+  it("starts a guided capture and deletes the completed batch with exact confirmation", async () => {
     const authorized = {
       ...plannedRun,
       status: "authorized",
@@ -57,6 +57,10 @@ describe("ProfessionalCaptureRuns", () => {
       if (url.endsWith("/run-1/start")) {
         return new Response(JSON.stringify(completed), { status: 200 });
       }
+      if (url.endsWith("/run-1/delete")) {
+        expect(JSON.parse(String(init.body))).toEqual({ confirmation_phrase: "DELETE CAPTURE RUN" });
+        return new Response(JSON.stringify({ run_id: "run-1" }), { status: 200 });
+      }
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -68,25 +72,30 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("No preview runs recorded.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Record preview run" }));
+    expect(await screen.findByText(/No capture runs recorded yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start new supervised capture" }));
 
     expect(await screen.findByText("planned")).toBeInTheDocument();
-    expect(screen.getByText("0 planned sources · 0 artifacts")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Authorize supervised run" }));
+    expect(screen.getByLabelText("Authorization phrase for run-1")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Authorization phrase for run-1"), {
       target: { value: "I UNDERSTAND THIS WILL OPEN LINKEDIN" },
     });
     fireEvent.click(screen.getByLabelText("User present for run-1"));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm authorization" }));
+    fireEvent.click(screen.getByRole("button", { name: "Authorize capture" }));
 
     expect(await screen.findByText("authorized")).toBeInTheDocument();
-    expect(screen.getByText(/Authorization expires:/)).toBeInTheDocument();
-    expect(screen.getByText(/visible Chromium window will open/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Start supervised capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start capture now" }));
 
     expect(await screen.findByText("completed")).toBeInTheDocument();
-    expect(screen.getByText("0 planned sources · 32 artifacts")).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    fireEvent.click(screen.getByRole("button", { name: "Delete this capture batch" }));
+    const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
+    expect(deleteButton).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Deletion phrase for run-1"), {
+      target: { value: "DELETE CAPTURE RUN" },
+    });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(screen.queryByText("completed")).not.toBeInTheDocument());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
   });
 });
