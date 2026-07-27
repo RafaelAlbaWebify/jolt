@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,7 +31,7 @@ def _add_artifact(
     run_id: str,
     source_id: str,
     filename: str,
-    created_at,
+    created_at: datetime,
     retention_days: int,
 ) -> str:
     artifact_id = str(uuid4())
@@ -43,9 +43,7 @@ def _add_artifact(
                 capture_run_id=run_id,
                 source_id=source_id,
                 artifact_type="page_diagnostics_json",
-                relative_path=(
-                    f"professional-intelligence/{run_id}/{source_id}/{filename}"
-                ),
+                relative_path=(f"professional-intelligence/{run_id}/{source_id}/{filename}"),
                 sha256="a" * 64,
                 completeness_status="complete",
                 retention_days=retention_days,
@@ -131,9 +129,7 @@ def test_retention_preview_and_cleanup_are_supervised_and_expiry_scoped(
 
     factory = create_session_factory(database_url)
     with factory() as session:
-        remaining_ids = set(
-            session.scalars(select(ProfessionalCaptureArtifact.id)).all()
-        )
+        remaining_ids = set(session.scalars(select(ProfessionalCaptureArtifact.id)).all())
     assert expired_id not in remaining_ids
     assert missing_id not in remaining_ids
     assert fresh_id in remaining_ids
