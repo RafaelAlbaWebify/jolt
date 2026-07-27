@@ -12,7 +12,9 @@ def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_ru
 
     first = client.post("/api/professional-intelligence/capture-runs").json()
     second = client.post("/api/professional-intelligence/capture-runs").json()
-    evidence_root = Path(client.get("/api/professional-intelligence/evidence-root").json()["root_path"])
+    evidence_root = Path(
+        client.get("/api/professional-intelligence/evidence-root").json()["root_path"]
+    )
     first_directory = evidence_root / first["id"] / "linkedin-profile"
     first_directory.mkdir(parents=True)
     (first_directory / "page.html").write_text("fixture", encoding="utf-8")
