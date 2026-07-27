@@ -48,7 +48,9 @@ def _default_evidence_root(session: Session) -> Path:
     bind = session.get_bind()
     database_path = getattr(bind.url, "database", None)
     if database_path and database_path != ":memory:":
-        return Path(database_path).expanduser().resolve(strict=False).parent / _DEFAULT_DIRECTORY_NAME
+        return (
+            Path(database_path).expanduser().resolve(strict=False).parent / _DEFAULT_DIRECTORY_NAME
+        )
     return Path(__file__).resolve().parents[2] / "data" / _DEFAULT_DIRECTORY_NAME
 
 
