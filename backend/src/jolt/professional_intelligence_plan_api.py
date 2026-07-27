@@ -35,6 +35,13 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_retention import (
+    ProfessionalRetentionCleanupRequest,
+    ProfessionalRetentionCleanupResult,
+    ProfessionalRetentionPreview,
+    cleanup_expired_professional_evidence,
+    preview_professional_retention_cleanup,
+)
 from jolt.professional_intelligence_structured_extraction import (
     ProfessionalStructuredExtraction,
     extract_professional_intelligence,
@@ -123,6 +130,31 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             return validate_professional_artifact_manifest_entry(session, entry)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.get(
+        "/api/professional-intelligence/retention-preview",
+        response_model=ProfessionalRetentionPreview,
+    )
+    def professional_intelligence_retention_preview(
+        session: Session = session_dependency,
+    ) -> ProfessionalRetentionPreview:
+        try:
+            return preview_professional_retention_cleanup(session)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/retention-cleanup",
+        response_model=ProfessionalRetentionCleanupResult,
+    )
+    def professional_intelligence_retention_cleanup(
+        request: ProfessionalRetentionCleanupRequest,
+        session: Session = session_dependency,
+    ) -> ProfessionalRetentionCleanupResult:
+        try:
+            return cleanup_expired_professional_evidence(session, request)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
