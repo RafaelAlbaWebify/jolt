@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from uuid import uuid4
 
 from playwright.sync_api import sync_playwright
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
@@ -41,6 +42,12 @@ class CapturedProfessionalPage:
     http_status: int | None
 
 
+@dataclass(frozen=True)
+class StagedProfessionalArtifact:
+    staged_path: Path
+    final_path: Path
+
+
 CaptureSource = Callable[[str], CapturedProfessionalPage]
 
 
@@ -64,6 +71,50 @@ def capture_professional_source_visible(url: str) -> CapturedProfessionalPage:
             browser.close()
 
 
+def _staged_path(final_path: Path) -> Path:
+    return final_path.with_name(f"{final_path.name}.staged")
+
+
+def _manifest_paths(session: Session, root: Path) -> dict[Path, ProfessionalCaptureArtifact]:
+    artifacts = session.scalars(select(ProfessionalCaptureArtifact)).all()
+    professional_root = (root / "professional-intelligence").resolve()
+    paths: dict[Path, ProfessionalCaptureArtifact] = {}
+    for artifact in artifacts:
+        relative = PurePosixPath(artifact.relative_path)
+        if not relative.parts or relative.parts[0] != "professional-intelligence":
+            continue
+        final_path = (root / Path(*relative.parts)).resolve()
+        if not final_path.is_relative_to(professional_root):
+            continue
+        paths[final_path] = artifact
+    return paths
+
+
+def reconcile_professional_capture_artifacts(session: Session, root: Path) -> None:
+    professional_root = (root / "professional-intelligence").resolve()
+    professional_root.mkdir(parents=True, exist_ok=True)
+    manifest_paths = _manifest_paths(session, root)
+
+    for final_path in manifest_paths:
+        staged_path = _staged_path(final_path)
+        if final_path.exists():
+            staged_path.unlink(missing_ok=True)
+        elif staged_path.exists():
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            staged_path.replace(final_path)
+
+    for path in sorted(professional_root.rglob("*"), reverse=True):
+        if path.is_dir():
+            try:
+                path.rmdir()
+            except OSError:
+                pass
+            continue
+        final_path = path.with_name(path.name.removesuffix(".staged")) if path.name.endswith(".staged") else path
+        if final_path not in manifest_paths:
+            path.unlink(missing_ok=True)
+
+
 def _write_artifact(
     session: Session,
     *,
@@ -74,13 +125,14 @@ def _write_artifact(
     filename: str,
     content: bytes,
     completeness_status: str,
-) -> None:
+) -> StagedProfessionalArtifact:
     relative_path = PurePosixPath("professional-intelligence", run_id, source_id, filename)
-    absolute_path = resolve_professional_evidence_path(
+    final_path = resolve_professional_evidence_path(
         str(root / "professional-intelligence"), run_id, source_id, filename
     )
-    absolute_path.parent.mkdir(parents=True, exist_ok=True)
-    absolute_path.write_bytes(content)
+    staged_path = _staged_path(final_path)
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    staged_path.write_bytes(content)
     sha256 = hashlib.sha256(content).hexdigest()
     entry = validate_professional_artifact_manifest_entry(
         session,
@@ -107,6 +159,7 @@ def _write_artifact(
             created_at=utc_now(),
         )
     )
+    return StagedProfessionalArtifact(staged_path=staged_path, final_path=final_path)
 
 
 def _capture_source(
@@ -116,6 +169,7 @@ def _capture_source(
     run_id: str,
     source: ProfessionalIntelligenceSource,
     capture_source: CaptureSource,
+    staged_artifacts: list[StagedProfessionalArtifact],
 ) -> str:
     captured_at = utc_now()
     try:
@@ -149,45 +203,53 @@ def _capture_source(
             "completeness_status": completeness,
             "errors": [],
         }
-        _write_artifact(
-            session,
-            root=root,
-            run_id=run_id,
-            source_id=source.source_id,
-            artifact_type="screenshot_png",
-            filename="page.png",
-            content=captured.screenshot_png,
-            completeness_status=completeness,
+        staged_artifacts.append(
+            _write_artifact(
+                session,
+                root=root,
+                run_id=run_id,
+                source_id=source.source_id,
+                artifact_type="screenshot_png",
+                filename="page.png",
+                content=captured.screenshot_png,
+                completeness_status=completeness,
+            )
         )
-        _write_artifact(
-            session,
-            root=root,
-            run_id=run_id,
-            source_id=source.source_id,
-            artifact_type="rendered_text_json",
-            filename="rendered-text.json",
-            content=json.dumps(rendered_text, ensure_ascii=False, indent=2).encode("utf-8"),
-            completeness_status=completeness,
+        staged_artifacts.append(
+            _write_artifact(
+                session,
+                root=root,
+                run_id=run_id,
+                source_id=source.source_id,
+                artifact_type="rendered_text_json",
+                filename="rendered-text.json",
+                content=json.dumps(rendered_text, ensure_ascii=False, indent=2).encode("utf-8"),
+                completeness_status=completeness,
+            )
         )
-        _write_artifact(
-            session,
-            root=root,
-            run_id=run_id,
-            source_id=source.source_id,
-            artifact_type="capture_metadata_json",
-            filename="capture-metadata.json",
-            content=json.dumps(metadata, ensure_ascii=False, indent=2).encode("utf-8"),
-            completeness_status=completeness,
+        staged_artifacts.append(
+            _write_artifact(
+                session,
+                root=root,
+                run_id=run_id,
+                source_id=source.source_id,
+                artifact_type="capture_metadata_json",
+                filename="capture-metadata.json",
+                content=json.dumps(metadata, ensure_ascii=False, indent=2).encode("utf-8"),
+                completeness_status=completeness,
+            )
         )
-        _write_artifact(
-            session,
-            root=root,
-            run_id=run_id,
-            source_id=source.source_id,
-            artifact_type="page_diagnostics_json",
-            filename="page-diagnostics.json",
-            content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
-            completeness_status=completeness,
+        staged_artifacts.append(
+            _write_artifact(
+                session,
+                root=root,
+                run_id=run_id,
+                source_id=source.source_id,
+                artifact_type="page_diagnostics_json",
+                filename="page-diagnostics.json",
+                content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
+                completeness_status=completeness,
+            )
         )
         return completeness
     except Exception as exc:
@@ -197,17 +259,30 @@ def _capture_source(
             "errors": [str(exc)],
             "captured_at": captured_at.isoformat(),
         }
-        _write_artifact(
-            session,
-            root=root,
-            run_id=run_id,
-            source_id=source.source_id,
-            artifact_type="page_diagnostics_json",
-            filename="page-diagnostics.json",
-            content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
-            completeness_status="failed",
+        staged_artifacts.append(
+            _write_artifact(
+                session,
+                root=root,
+                run_id=run_id,
+                source_id=source.source_id,
+                artifact_type="page_diagnostics_json",
+                filename="page-diagnostics.json",
+                content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
+                completeness_status="failed",
+            )
         )
         return "failed"
+
+
+def _finalize_staged_artifacts(staged_artifacts: list[StagedProfessionalArtifact]) -> None:
+    for artifact in staged_artifacts:
+        artifact.final_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact.staged_path.replace(artifact.final_path)
+
+
+def _discard_staged_artifacts(staged_artifacts: list[StagedProfessionalArtifact]) -> None:
+    for artifact in staged_artifacts:
+        artifact.staged_path.unlink(missing_ok=True)
 
 
 def start_professional_supervised_capture(
@@ -230,6 +305,8 @@ def start_professional_supervised_capture(
     ):
         raise ValueError("A verified writable local evidence root is required.")
 
+    root = Path(evidence_root.root_path)
+    reconcile_professional_capture_artifacts(session, root)
     sources = [
         ProfessionalIntelligenceSource.model_validate(item)
         for item in json.loads(run.source_snapshot_json)
@@ -244,18 +321,23 @@ def start_professional_supervised_capture(
     run.stop_reason = ""
     session.commit()
 
+    staged_artifacts: list[StagedProfessionalArtifact] = []
+    manifests_committed = False
     try:
         statuses = [
             _capture_source(
                 session,
-                root=Path(evidence_root.root_path),
+                root=root,
                 run_id=run.id,
                 source=source,
                 capture_source=capture_source,
+                staged_artifacts=staged_artifacts,
             )
             for source in sources
         ]
         session.commit()
+        manifests_committed = True
+        _finalize_staged_artifacts(staged_artifacts)
         run.status = (
             "completed"
             if all(status == "complete" for status in statuses)
@@ -268,6 +350,8 @@ def start_professional_supervised_capture(
         session.commit()
     except Exception:
         session.rollback()
+        if not manifests_committed:
+            _discard_staged_artifacts(staged_artifacts)
         run = session.get(ProfessionalCaptureRun, run_id)
         if run is not None:
             run.status = "failed"
