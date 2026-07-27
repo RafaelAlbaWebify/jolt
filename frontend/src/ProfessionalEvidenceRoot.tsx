@@ -84,7 +84,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         <span className="professional-plan-status">{statusLabel}</span>
       </div>
       <form onSubmit={(event) => void configure(event)}>
-        <label htmlFor="professional-evidence-root-path">Evidence directory path</label>
+        <label htmlFor="professional-evidence-root-path">Local directory path</label>
         <input
           id="professional-evidence-root-path"
           value={rootPath}
