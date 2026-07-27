@@ -25,37 +25,29 @@ function humanize(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function isAbortError(caught: unknown) {
-  return caught instanceof DOMException && caught.name === "AbortError";
-}
-
 export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) {
   const [plan, setPlan] = useState<CapturePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const requestRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const mountedRef = useRef(true);
 
   const loadPlan = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${apiBase}/api/professional-intelligence/capture-plan`, {
-        signal: controller.signal,
-      });
+      const response = await fetch(`${apiBase}/api/professional-intelligence/capture-plan`);
       if (!response.ok) throw new Error("Unable to build the supervised capture plan.");
       const loaded = (await response.json()) as CapturePlan;
-      if (mountedRef.current && requestRef.current === controller) setPlan(loaded);
+      if (mountedRef.current && requestIdRef.current === requestId) setPlan(loaded);
     } catch (caught) {
-      if (isAbortError(caught)) return;
-      if (mountedRef.current && requestRef.current === controller) {
+      if (mountedRef.current && requestIdRef.current === requestId) {
         setError(caught instanceof Error ? caught.message : "Capture plan failed.");
       }
     } finally {
-      if (mountedRef.current && requestRef.current === controller) setLoading(false);
+      if (mountedRef.current && requestIdRef.current === requestId) setLoading(false);
     }
   }, [apiBase]);
 
