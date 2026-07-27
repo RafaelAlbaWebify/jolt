@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
 
@@ -25,23 +25,60 @@ function humanize(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function isAbortError(caught: unknown) {
+  return caught instanceof DOMException && caught.name === "AbortError";
+}
+
 export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) {
   const [plan, setPlan] = useState<CapturePlan | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const requestRef = useRef<AbortController | null>(null);
+
+  const loadPlan = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/professional-intelligence/capture-plan`, {
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Unable to build the supervised capture plan.");
+      const loaded = (await response.json()) as CapturePlan;
+      if (requestRef.current === controller) setPlan(loaded);
+    } catch (caught) {
+      if (isAbortError(caught)) return;
+      if (requestRef.current === controller) {
+        setError(caught instanceof Error ? caught.message : "Capture plan failed.");
+      }
+    } finally {
+      if (requestRef.current === controller) setLoading(false);
+    }
+  }, [apiBase]);
 
   useEffect(() => {
-    if (!active) return;
-    setError("");
-    fetch(`${apiBase}/api/professional-intelligence/capture-plan`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Unable to build the supervised capture plan.");
-        return response.json() as Promise<CapturePlan>;
-      })
-      .then(setPlan)
-      .catch((caught) => setError(caught instanceof Error ? caught.message : "Capture plan failed."));
-  }, [active, apiBase, refreshKey]);
+    if (!active) {
+      requestRef.current?.abort();
+      return;
+    }
+    void loadPlan();
+  }, [active, loadPlan, refreshKey]);
 
-  if (error) return <p className="error" role="alert">{error}</p>;
+  useEffect(() => () => requestRef.current?.abort(), []);
+
+  if (error && !plan) {
+    return (
+      <section className="panel professional-capture-plan" aria-labelledby="professional-capture-plan-heading">
+        <h2 id="professional-capture-plan-heading">Supervised capture plan</h2>
+        <p className="error" role="alert">{error}</p>
+        <button type="button" className="secondary" disabled={loading} onClick={() => void loadPlan()}>
+          Retry capture plan
+        </button>
+      </section>
+    );
+  }
   if (!plan) return <p role="status">Building supervised capture plan…</p>;
 
   return (
@@ -56,9 +93,15 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
           </p>
         </div>
         <span className="professional-plan-status">
-          {plan.execution_available ? "Explicit start available" : "Execution blocked"}
+          {loading ? "Refreshing" : plan.execution_available ? "Explicit start available" : "Execution blocked"}
         </span>
       </div>
+      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <button type="button" className="secondary" disabled={loading} onClick={() => void loadPlan()}>
+          Retry capture plan
+        </button>
+      )}
       <div className="professional-plan-columns">
         <section>
           <h3>Planned sources</h3>
