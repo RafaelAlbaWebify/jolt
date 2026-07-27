@@ -30,13 +30,12 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
       const payload = (await response.json()) as EvidenceRoot;
       setSettings(payload);
       setRootPath(payload.root_path ?? "");
-      onChanged();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Evidence directory failed.");
     } finally {
       setLoading(false);
     }
-  }, [apiBase, onChanged]);
+  }, [apiBase]);
 
   useEffect(() => {
     if (!active) return;
@@ -79,7 +78,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         <div>
           <p className="eyebrow">Local evidence storage</p>
           <h2 id="professional-evidence-root-heading">Evidence directory</h2>
-          <p>JOLT automatically creates a private local evidence directory beside its database. Enter another local path only when you want to move future capture evidence; JOLT will create that directory when possible.</p>
+          <p>Supervised captures write their evidence files and manifests to a private local directory. JOLT creates a safe default beside its database automatically; enter another path only to move future evidence.</p>
         </div>
         <span className="professional-plan-status">
           {ready ? "Ready" : "Needs attention"}
@@ -99,7 +98,7 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
             {busy ? "Saving…" : "Create or verify this directory"}
           </button>
           <button type="button" className="secondary" disabled={busy || loading} onClick={() => void loadSettings()}>
-            Refresh status
+            {error ? "Retry evidence directory" : "Refresh status"}
           </button>
         </div>
       </form>
