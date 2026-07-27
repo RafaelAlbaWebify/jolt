@@ -59,10 +59,7 @@ export function ProfessionalCapturePlan({ apiBase, active, refreshKey }: Props) 
   }, [apiBase]);
 
   useEffect(() => {
-    if (!active) {
-      requestRef.current?.abort();
-      return;
-    }
+    if (!active) return;
     void loadPlan();
   }, [active, loadPlan, refreshKey]);
 
