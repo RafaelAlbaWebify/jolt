@@ -22,9 +22,13 @@ InterviewType = Literal[
 ]
 
 
+def _optional_text(value: str) -> str:
+    return value.strip()
+
+
 class TaskCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=240)
-    notes: str = ""
+    notes: str = Field(default="", max_length=4000)
     due_at: datetime | None = None
 
     @field_validator("title")
@@ -34,6 +38,11 @@ class TaskCreateRequest(BaseModel):
         if not normalized:
             raise ValueError("Task title is required.")
         return normalized
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: str) -> str:
+        return _optional_text(value)
 
 
 class TaskUpdateRequest(TaskCreateRequest):
@@ -56,9 +65,9 @@ class InterviewCreateRequest(BaseModel):
     interview_type: InterviewType
     scheduled_at: datetime
     timezone: str = Field(default="UTC", min_length=1, max_length=80)
-    format_location: str = ""
-    participants: str = ""
-    preparation_notes: str = ""
+    format_location: str = Field(default="", max_length=1000)
+    participants: str = Field(default="", max_length=2000)
+    preparation_notes: str = Field(default="", max_length=4000)
 
     @field_validator("timezone")
     @classmethod
@@ -68,13 +77,28 @@ class InterviewCreateRequest(BaseModel):
             raise ValueError("Interview timezone is required.")
         return normalized
 
+    @field_validator("format_location", "participants", "preparation_notes")
+    @classmethod
+    def normalize_optional_text(cls, value: str) -> str:
+        return _optional_text(value)
+
 
 class InterviewUpdateRequest(InterviewCreateRequest):
-    outcome_notes: str = ""
+    outcome_notes: str = Field(default="", max_length=4000)
+
+    @field_validator("outcome_notes")
+    @classmethod
+    def normalize_outcome_notes(cls, value: str) -> str:
+        return _optional_text(value)
 
 
 class InterviewCompleteRequest(BaseModel):
-    outcome_notes: str = ""
+    outcome_notes: str = Field(default="", max_length=4000)
+
+    @field_validator("outcome_notes")
+    @classmethod
+    def normalize_outcome_notes(cls, value: str) -> str:
+        return _optional_text(value)
 
 
 class InterviewResponse(BaseModel):
@@ -98,6 +122,35 @@ def _application(session: Session, application_id: str) -> Application:
     if application is None:
         raise LookupError("Application was not found.")
     return application
+
+
+def _task_values(task: ApplicationTask) -> dict[str, str]:
+    return {
+        "title": task.title,
+        "notes": task.notes,
+        "due_at": task.due_at.isoformat() if task.due_at else "",
+    }
+
+
+def _interview_values(interview: ApplicationInterview) -> dict[str, str]:
+    return {
+        "interview_type": interview.interview_type,
+        "scheduled_at": interview.scheduled_at.isoformat(),
+        "timezone": interview.timezone,
+        "format_location": interview.format_location,
+        "participants": interview.participants,
+        "preparation_notes": interview.preparation_notes,
+        "outcome_notes": interview.outcome_notes,
+    }
+
+
+def _changed_fields(before: dict[str, str], after: dict[str, str]) -> str:
+    changes = [
+        f"{field}: {before[field] or '(blank)'} -> {after[field] or '(blank)'}"
+        for field in before
+        if before[field] != after[field]
+    ]
+    return "; ".join(changes) if changes else "No field values changed."
 
 
 def _task_response(task: ApplicationTask) -> TaskResponse:
@@ -167,8 +220,8 @@ def create_task(session: Session, application_id: str, request: TaskCreateReques
     task = ApplicationTask(
         id=str(uuid4()),
         application_id=application_id,
-        title=request.title.strip(),
-        notes=request.notes.strip(),
+        title=request.title,
+        notes=request.notes,
         due_at=request.due_at,
         status="open",
         completed_at=None,
@@ -185,13 +238,21 @@ def update_task(session: Session, task_id: str, request: TaskUpdateRequest) -> T
     task = session.get(ApplicationTask, task_id)
     if task is None:
         raise LookupError("Application task was not found.")
+    before = _task_values(task)
     now = utc_now()
-    task.title = request.title.strip()
-    task.notes = request.notes.strip()
+    task.title = request.title
+    task.notes = request.notes
     task.due_at = request.due_at
     task.updated_at = now
     session.add(
-        _event(task.application_id, "task_updated", task.status, task.status, task.title, now)
+        _event(
+            task.application_id,
+            "task_updated",
+            task.status,
+            task.status,
+            f"Task {task.id} corrected. {_changed_fields(before, _task_values(task))}",
+            now,
+        )
     )
     session.commit()
     return _task_response(task)
@@ -242,10 +303,10 @@ def create_interview(
         application_id=application_id,
         interview_type=request.interview_type,
         scheduled_at=request.scheduled_at,
-        timezone=request.timezone.strip(),
-        format_location=request.format_location.strip(),
-        participants=request.participants.strip(),
-        preparation_notes=request.preparation_notes.strip(),
+        timezone=request.timezone,
+        format_location=request.format_location,
+        participants=request.participants,
+        preparation_notes=request.preparation_notes,
         outcome_notes="",
         status="scheduled",
         completed_at=None,
@@ -273,14 +334,15 @@ def update_interview(
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
         raise LookupError("Application interview was not found.")
+    before = _interview_values(interview)
     now = utc_now()
     interview.interview_type = request.interview_type
     interview.scheduled_at = request.scheduled_at
-    interview.timezone = request.timezone.strip()
-    interview.format_location = request.format_location.strip()
-    interview.participants = request.participants.strip()
-    interview.preparation_notes = request.preparation_notes.strip()
-    interview.outcome_notes = request.outcome_notes.strip()
+    interview.timezone = request.timezone
+    interview.format_location = request.format_location
+    interview.participants = request.participants
+    interview.preparation_notes = request.preparation_notes
+    interview.outcome_notes = request.outcome_notes
     interview.updated_at = now
     session.add(
         _event(
@@ -288,7 +350,8 @@ def update_interview(
             "interview_updated",
             interview.status,
             interview.status,
-            f"{request.interview_type}: {request.scheduled_at.isoformat()}",
+            f"Interview {interview.id} corrected. "
+            f"{_changed_fields(before, _interview_values(interview))}",
             now,
         )
     )
@@ -305,14 +368,15 @@ def set_interview_status(
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
         raise LookupError("Application interview was not found.")
-    if interview.status == status and not outcome_notes.strip():
+    normalized_outcome = outcome_notes.strip()
+    if interview.status == status and not normalized_outcome:
         return _interview_response(interview)
     now = utc_now()
     previous = interview.status
     interview.status = status
     interview.completed_at = now if status == "completed" else None
-    if outcome_notes.strip():
-        interview.outcome_notes = outcome_notes.strip()
+    if normalized_outcome:
+        interview.outcome_notes = normalized_outcome
     interview.updated_at = now
     session.add(
         _event(
