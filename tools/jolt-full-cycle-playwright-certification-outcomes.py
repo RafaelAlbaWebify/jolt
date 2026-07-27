@@ -5,7 +5,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 
 RESOURCES_PATH = Path(__file__).with_name(
     "jolt-full-cycle-playwright-certification-resources.py"
@@ -23,24 +23,26 @@ def load_resources() -> ModuleType:
     return module
 
 
-def application_card(page: Page, fixture: dict[str, str]):
-    return page.locator(
-        f'article.application-card[data-application-id="{fixture["application_id"]}"]'
-    )
-
-
-def open_workflow(page: Page, module: ModuleType, fixture: dict[str, str], status: str):
-    module.click_workspace(page, "Applications")
-    card = application_card(page, fixture)
-    card.wait_for(timeout=30_000)
-    toggle = card.get_by_role(
+def open_workflow(
+    page: Page,
+    module: ModuleType,
+    fixture: dict[str, str],
+    status: str,
+) -> Locator:
+    dialog = page.get_by_role("dialog", name=fixture["title"])
+    if not dialog.is_visible():
+        module.open_application(page, fixture)
+        dialog = page.get_by_role("dialog", name=fixture["title"])
+    dialog.wait_for(timeout=30_000)
+    dialog.get_by_role("tab", name="Overview", exact=True).click()
+    toggle = dialog.get_by_role(
         "button", name=f"Manage application · {status.replace('_', ' ')}", exact=True
     )
     toggle.click()
-    card.get_by_role("heading", name=status.replace("_", " "), exact=True).wait_for(
-        timeout=30_000
-    )
-    return card
+    dialog.get_by_role(
+        "heading", name=status.replace("_", " "), exact=True
+    ).wait_for(timeout=30_000)
+    return dialog
 
 
 def exercise_outcome_cycle(
@@ -49,22 +51,21 @@ def exercise_outcome_cycle(
     fixture: dict[str, str],
     actions: list[dict[str, str]],
 ) -> None:
-    page.keyboard.press("Escape")
-    card = open_workflow(page, module, fixture, "submitted")
-    card.get_by_label("Activity or correction notes").fill(
+    dialog = open_workflow(page, module, fixture, "submitted")
+    dialog.get_by_label("Activity or correction notes").fill(
         "Certification rejection outcome before reopening."
     )
-    card.get_by_label("Outcome").select_option("rejected_by_employer")
+    dialog.get_by_label("Outcome").select_option("rejected_by_employer")
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/outcomes")
     ) as response_info:
-        card.get_by_role("button", name="Record final outcome", exact=True).click()
+        dialog.get_by_role("button", name="Record final outcome", exact=True).click()
     if response_info.value.status >= 400:
         raise AssertionError(
             f"Final outcome returned HTTP {response_info.value.status}"
         )
-    card.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
+    dialog.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
         timeout=30_000
     )
     module.record_action(actions, "Record final application outcome", "passed")
@@ -72,26 +73,26 @@ def exercise_outcome_cycle(
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(750)
     page.reload(wait_until="networkidle")
-    card = open_workflow(page, module, fixture, "rejected")
-    card.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
+    dialog = open_workflow(page, module, fixture, "rejected")
+    dialog.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
         timeout=30_000
     )
     module.record_action(actions, "Outcome persists after reload", "passed")
 
-    card.get_by_label("Activity or correction notes").fill(
+    dialog.get_by_label("Activity or correction notes").fill(
         "Certification reopening correction."
     )
-    card.get_by_label("Stage").select_option("recruiter_screen")
+    dialog.get_by_label("Stage").select_option("recruiter_screen")
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/transitions")
     ) as response_info:
-        card.get_by_role("button", name="Save stage", exact=True).click()
+        dialog.get_by_role("button", name="Save stage", exact=True).click()
     if response_info.value.status >= 400:
         raise AssertionError(
             f"Outcome reopening returned HTTP {response_info.value.status}"
         )
-    card.get_by_role("heading", name="recruiter screen", exact=True).wait_for(
+    dialog.get_by_role("heading", name="recruiter screen", exact=True).wait_for(
         timeout=30_000
     )
     module.record_action(actions, "Reopen application from final outcome", "passed")
@@ -99,14 +100,14 @@ def exercise_outcome_cycle(
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(750)
     page.reload(wait_until="networkidle")
-    card = open_workflow(page, module, fixture, "recruiter_screen")
-    card.get_by_role("heading", name="recruiter screen", exact=True).wait_for(
+    dialog = open_workflow(page, module, fixture, "recruiter_screen")
+    dialog.get_by_role("heading", name="recruiter screen", exact=True).wait_for(
         timeout=30_000
     )
-    card.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
+    dialog.get_by_text("Final outcome: rejected by employer", exact=True).wait_for(
         state="detached", timeout=30_000
     )
-    history = card.locator("details.application-event-history")
+    history = dialog.locator("details.application-event-history")
     history.locator("summary").click()
     rendered = history.inner_text()
     required = (
