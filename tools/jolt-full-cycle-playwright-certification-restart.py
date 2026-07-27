@@ -66,6 +66,15 @@ def read_process_group(pid_file: Path) -> int:
 
 def stop_process_group(pid_file: Path) -> None:
     process_group = read_process_group(pid_file)
+    if os.name == "nt":
+        subprocess.run(  # noqa: S603
+            ["taskkill", "/PID", str(process_group), "/T", "/F"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
+
     try:
         os.killpg(process_group, signal.SIGTERM)
     except ProcessLookupError:
@@ -80,6 +89,17 @@ def stop_process_group(pid_file: Path) -> None:
     os.killpg(process_group, signal.SIGKILL)
 
 
+def platform_command(command: list[str]) -> list[str]:
+    if os.name != "nt" or not command:
+        return command
+    executable = command[0].lower()
+    if executable == "npm":
+        return ["npm.cmd", *command[1:]]
+    if executable == "uv":
+        return ["uv.exe", *command[1:]]
+    return command
+
+
 def start_service(
     command: list[str],
     *,
@@ -89,13 +109,15 @@ def start_service(
 ) -> subprocess.Popen[bytes]:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_handle = log_path.open("ab", buffering=0)
+    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     process = subprocess.Popen(  # noqa: S603
-        command,
+        platform_command(command),
         cwd=cwd,
         env=os.environ.copy(),
         stdout=log_handle,
         stderr=subprocess.STDOUT,
-        start_new_session=True,
+        start_new_session=os.name != "nt",
+        creationflags=creationflags,
     )
     pid_file.write_text(str(process.pid), encoding="utf-8")
     return process
