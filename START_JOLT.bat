@@ -38,7 +38,7 @@ if not exist "%FRONTEND_DIR%\package.json" (
 powershell.exe -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%BACKEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; exit 1"
 if errorlevel 1 (
     echo Starting JOLT backend...
-    start "JOLT Backend" /min cmd.exe /k ""cd /d "%BACKEND_DIR%" && uv.exe run uvicorn jolt.main:app --host 127.0.0.1 --port 8000""
+    start "JOLT Backend" /min cmd.exe /k ""cd /d "%BACKEND_DIR%" && uv.exe sync && uv.exe run alembic upgrade head && uv.exe run python -m uvicorn jolt.main:app --host 127.0.0.1 --port 8000""
 ) else (
     echo JOLT backend is already running.
 )
@@ -52,9 +52,9 @@ if errorlevel 1 (
 )
 
 echo Waiting for JOLT...
-powershell.exe -NoProfile -Command "$deadline = (Get-Date).AddSeconds(60); do { try { $backend = Invoke-WebRequest -Uri '%BACKEND_URL%' -UseBasicParsing -TimeoutSec 2; $frontend = Invoke-WebRequest -Uri '%FRONTEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($backend.StatusCode -lt 500 -and $frontend.StatusCode -lt 500) { exit 0 } } catch {}; Start-Sleep -Milliseconds 300 } while ((Get-Date) -lt $deadline); exit 1"
+powershell.exe -NoProfile -Command "$deadline = (Get-Date).AddSeconds(120); do { try { $backend = Invoke-WebRequest -Uri '%BACKEND_URL%' -UseBasicParsing -TimeoutSec 2; $frontend = Invoke-WebRequest -Uri '%FRONTEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($backend.StatusCode -lt 500 -and $frontend.StatusCode -lt 500) { exit 0 } } catch {}; Start-Sleep -Milliseconds 300 } while ((Get-Date) -lt $deadline); exit 1"
 if errorlevel 1 (
-    echo ERROR: JOLT did not become ready within 60 seconds.
+    echo ERROR: JOLT did not become ready within 120 seconds.
     echo Review the JOLT Backend and JOLT Frontend windows for details.
     pause
     exit /b 1
