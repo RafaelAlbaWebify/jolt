@@ -26,6 +26,15 @@ class ProfessionalCaptureAuthorizationRequest(BaseModel):
     user_present: bool
 
 
+class ProfessionalSourceProgress(BaseModel):
+    source_id: str
+    status: str
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    completeness_status: str = ""
+    detail: str = ""
+
+
 class ProfessionalCaptureRunResponse(BaseModel):
     id: str
     mode: str
@@ -40,6 +49,12 @@ class ProfessionalCaptureRunResponse(BaseModel):
     completed_at: datetime | None
     stop_reason: str
     artifact_count: int = 0
+    source_progress: list[ProfessionalSourceProgress]
+    completed_source_count: int = 0
+    total_source_count: int = 0
+    current_source_id: str = ""
+    cancel_requested: bool = False
+    progress_updated_at: datetime | None = None
 
 
 def comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
@@ -80,11 +95,18 @@ def recover_stale_professional_capture_runs(
             continue
         run.status = "interrupted"
         run.completed_at = current
+        run.current_source_id = ""
+        run.progress_updated_at = current
         run.stop_reason = "stale_running_run_recovered"
         recovered += 1
     if recovered:
         session.commit()
     return recovered
+
+
+def _source_progress(run: ProfessionalCaptureRun) -> list[ProfessionalSourceProgress]:
+    raw = run.source_progress_json or "[]"
+    return [ProfessionalSourceProgress.model_validate(item) for item in json.loads(raw)]
 
 
 def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
@@ -111,6 +133,12 @@ def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalC
         completed_at=run.completed_at,
         stop_reason=run.stop_reason,
         artifact_count=int(artifact_count or 0),
+        source_progress=_source_progress(run),
+        completed_source_count=run.completed_source_count,
+        total_source_count=len(sources),
+        current_source_id=run.current_source_id,
+        cancel_requested=run.cancel_requested,
+        progress_updated_at=run.progress_updated_at,
     )
 
 
@@ -124,6 +152,18 @@ def create_professional_capture_preview_run(session: Session) -> ProfessionalCap
             [source.model_dump(mode="json") for source in plan.planned_sources]
         ),
         safety_constraints_json=json.dumps(plan.safety_constraints),
+        source_progress_json=json.dumps(
+            [
+                ProfessionalSourceProgress(source_id=source.source_id, status="pending").model_dump(
+                    mode="json"
+                )
+                for source in plan.planned_sources
+            ]
+        ),
+        completed_source_count=0,
+        current_source_id="",
+        cancel_requested=False,
+        progress_updated_at=utc_now(),
         requested_at=utc_now(),
         authorized_at=None,
         authorization_expires_at=None,
@@ -173,6 +213,7 @@ def authorize_professional_capture_run(
     run.authorized_at = authorized_at
     run.authorization_expires_at = authorized_at + timedelta(minutes=AUTHORIZATION_LIFETIME_MINUTES)
     run.user_present_confirmed = True
+    run.progress_updated_at = authorized_at
     session.commit()
     return _to_response(session, run)
 
@@ -183,10 +224,16 @@ def cancel_professional_capture_run(
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
+    if run.status == "running":
+        run.cancel_requested = True
+        run.progress_updated_at = utc_now()
+        session.commit()
+        return _to_response(session, run)
     if run.status not in {"planned", "authorized"}:
-        raise ValueError("Only planned or authorized preview runs can be cancelled.")
+        raise ValueError("Only planned, authorized, or running capture runs can be cancelled.")
     run.status = "cancelled"
     run.completed_at = utc_now()
+    run.progress_updated_at = run.completed_at
     run.stop_reason = "cancelled_by_user"
     session.commit()
     return _to_response(session, run)
