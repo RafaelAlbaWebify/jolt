@@ -1,0 +1,73 @@
+.opportunity-row .score {
+  width: 96px;
+  min-width: 96px;
+  overflow: hidden;
+}
+
+.opportunity-row .score span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.opportunity-row .score span {
+  font-size: 0;
+}
+
+.opportunity-row .score span::after {
+  content: "Review";
+  font-size: 0.72rem;
+}
+
+.opportunity-row .score-strong_pursue span::after {
+  content: "Strong pursue";
+}
+
+.opportunity-row .score-pursue span::after {
+  content: "Pursue";
+}
+
+.opportunity-row .score-consider span::after {
+  content: "Consider";
+}
+
+.opportunity-row .score-reject span::after {
+  content: "Reject";
+}
+
+.professional-primary-capture-action {
+  display: grid;
+  gap: 8px;
+  min-width: min(100%, 300px);
+}
+
+.professional-primary-capture-action p,
+.professional-delete-confirmation p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+.professional-delete-confirmation {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #f2b8b5;
+  border-radius: 10px;
+  background: #fff7f7;
+}
+
+button.danger {
+  border-color: #b42318;
+  background: #fff;
+  color: #b42318;
+}
+
+@media (max-width: 760px) {
+  .opportunity-row .score {
+    width: 88px;
+    min-width: 88px;
+  }
+}
