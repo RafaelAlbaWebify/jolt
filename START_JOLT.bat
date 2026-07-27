@@ -4,6 +4,8 @@ setlocal EnableExtensions
 set "REPO=%~dp0"
 set "BACKEND_DIR=%REPO%backend"
 set "FRONTEND_DIR=%REPO%frontend"
+set "BACKEND_HELPER=%REPO%START_JOLT_BACKEND.cmd"
+set "FRONTEND_HELPER=%REPO%START_JOLT_FRONTEND.cmd"
 set "BACKEND_URL=http://127.0.0.1:8000/api/health"
 set "FRONTEND_URL=http://127.0.0.1:5173"
 
@@ -35,10 +37,22 @@ if not exist "%FRONTEND_DIR%\package.json" (
     exit /b 1
 )
 
+if not exist "%BACKEND_HELPER%" (
+    echo ERROR: Backend launcher helper was not found at "%BACKEND_HELPER%".
+    pause
+    exit /b 1
+)
+
+if not exist "%FRONTEND_HELPER%" (
+    echo ERROR: Frontend launcher helper was not found at "%FRONTEND_HELPER%".
+    pause
+    exit /b 1
+)
+
 powershell.exe -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%BACKEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; exit 1"
 if errorlevel 1 (
     echo Starting JOLT backend...
-    start "JOLT Backend" /min cmd.exe /k ""cd /d "%BACKEND_DIR%" && uv.exe sync && uv.exe run alembic upgrade head && uv.exe run python -m uvicorn jolt.main:app --host 127.0.0.1 --port 8000""
+    start "JOLT Backend" /min "%BACKEND_HELPER%"
 ) else (
     echo JOLT backend is already running.
 )
@@ -46,7 +60,7 @@ if errorlevel 1 (
 powershell.exe -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%FRONTEND_URL%' -UseBasicParsing -TimeoutSec 2; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; exit 1"
 if errorlevel 1 (
     echo Starting JOLT frontend...
-    start "JOLT Frontend" /min cmd.exe /k ""cd /d "%FRONTEND_DIR%" && npm.cmd run dev -- --host 127.0.0.1""
+    start "JOLT Frontend" /min "%FRONTEND_HELPER%"
 ) else (
     echo JOLT frontend is already running.
 )

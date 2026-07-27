@@ -1,0 +1,19 @@
+name: Windows launcher contract
+
+on:
+  pull_request:
+    paths:
+      - "START_JOLT.bat"
+      - "START_JOLT_BACKEND.cmd"
+      - "START_JOLT_FRONTEND.cmd"
+      - "tools/validate-windows-launchers.ps1"
+      - ".github/workflows/windows-launcher-contract.yml"
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Windows launchers
+        shell: pwsh
+        run: ./tools/validate-windows-launchers.ps1
