@@ -148,7 +148,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         <div>
           <p className="eyebrow">Approved LinkedIn source registry</p>
           <h2 id="professional-intelligence-heading">Professional</h2>
-          <p>Edit only the confirmed source set before any supervised evidence capture is introduced. Every change is stored locally and can be reset to its verified default.</p>
+          <p>Maintain the approved source set, verify local evidence storage, review the supervised read-only capture plan, and explicitly start each capture while remaining present. Every registry change is stored locally and can be reset to its verified default.</p>
         </div>
         <div className="professional-safety-boundary" role="note">
           <strong>Read-only boundary</strong>

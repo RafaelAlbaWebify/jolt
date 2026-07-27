@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
+import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 
 const sources = [
@@ -30,6 +32,14 @@ const emptyEvidenceRoot = {
   exists: false,
   writable: false,
   verified_at: null,
+};
+
+const verifiedEvidenceRoot = {
+  configured: true,
+  root_path: "C:\\Evidence",
+  exists: true,
+  writable: true,
+  verified_at: "2026-07-27T00:00:00Z",
 };
 
 function capturePlan(
@@ -111,7 +121,9 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
+    expect(screen.getByText(/Maintain the approved source set/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
+    expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Supervised capture readiness" })).toBeInTheDocument();
     expect(screen.getByText("Blocked")).toBeInTheDocument();
@@ -204,5 +216,45 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     await waitFor(() => expect(planCalls).toBe(3));
     expect(fetchMock).toHaveBeenCalledTimes(9);
+  });
+
+  it("retries an evidence-root failure and clears the stale error", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(verifiedEvidenceRoot), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProfessionalEvidenceRoot apiBase="http://api" active onChanged={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load the local evidence directory.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry evidence directory" }));
+
+    expect(await screen.findByDisplayValue("C:\\Evidence")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the newest capture plan when an older request resolves last", async () => {
+    let resolveFirst: ((response: Response) => void) | undefined;
+    let resolveSecond: ((response: Response) => void) | undefined;
+    const first = new Promise<Response>((resolve) => { resolveFirst = resolve; });
+    const second = new Promise<Response>((resolve) => { resolveSecond = resolve; });
+    const fetchMock = vi.fn()
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(
+      <ProfessionalCapturePlan apiBase="http://api" active refreshKey={0} />,
+    );
+    rerender(<ProfessionalCapturePlan apiBase="http://api" active refreshKey={1} />);
+
+    resolveSecond?.(new Response(JSON.stringify(capturePlan([sources[1]], [])), { status: 200 }));
+    expect(await screen.findByText("Feed")).toBeInTheDocument();
+
+    resolveFirst?.(new Response(JSON.stringify(capturePlan([sources[0]], [])), { status: 200 }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Feed")).toBeInTheDocument();
+    expect(screen.queryByText("Main profile")).not.toBeInTheDocument();
   });
 });
