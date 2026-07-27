@@ -33,9 +33,7 @@ def test_stale_running_capture_is_recovered_on_detail_after_restart(tmp_path: Pa
     _set_running(database, run["id"], datetime.now(UTC) - timedelta(minutes=31))
 
     restarted = _client(database)
-    recovered = restarted.get(
-        f"/api/professional-intelligence/capture-runs/{run['id']}"
-    )
+    recovered = restarted.get(f"/api/professional-intelligence/capture-runs/{run['id']}")
 
     assert recovered.status_code == 200
     payload = recovered.json()
@@ -73,9 +71,7 @@ def test_recent_running_capture_is_not_reclassified(tmp_path: Path) -> None:
     run = client.post("/api/professional-intelligence/capture-runs").json()
     _set_running(database, run["id"], datetime.now(UTC) - timedelta(minutes=5))
 
-    detail = _client(database).get(
-        f"/api/professional-intelligence/capture-runs/{run['id']}"
-    )
+    detail = _client(database).get(f"/api/professional-intelligence/capture-runs/{run['id']}")
 
     assert detail.status_code == 200
     assert detail.json()["status"] == "running"
