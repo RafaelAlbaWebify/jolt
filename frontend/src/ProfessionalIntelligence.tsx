@@ -39,6 +39,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
+  const [captureStartRequestKey, setCaptureStartRequestKey] = useState(0);
   const [error, setError] = useState("");
 
   const loadSources = useCallback(async () => {
@@ -150,9 +151,22 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
           <h2 id="professional-intelligence-heading">Professional</h2>
           <p>Maintain the approved source set, verify local evidence storage, review the supervised read-only capture plan, and explicitly start each capture while remaining present. Every registry change is stored locally and can be reset to its verified default.</p>
         </div>
-        <div className="professional-safety-boundary" role="note">
-          <strong>Read-only boundary</strong>
-          <span>No login handling, stored credentials, cookies, messages, reactions, applications, invitations, or unattended account actions.</span>
+        <div className="professional-overview-actions">
+          <div className="professional-primary-capture-action">
+            <button
+              type="button"
+              disabled={!active}
+              aria-controls="professional-run-ledger"
+              onClick={() => setCaptureStartRequestKey((current) => current + 1)}
+            >
+              Start new supervised capture
+            </button>
+            <span>Creates a new batch and opens the required authorization step.</span>
+          </div>
+          <div className="professional-safety-boundary" role="note">
+            <strong>Read-only boundary</strong>
+            <span>No login handling, stored credentials, cookies, messages, reactions, applications, invitations, or unattended account actions.</span>
+          </div>
         </div>
       </section>
 
@@ -171,7 +185,14 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         />
       )}
       {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
-      {active && <ProfessionalCaptureRuns apiBase={apiBase} active={active} planRefreshKey={planRefreshKey} />}
+      {active && (
+        <ProfessionalCaptureRuns
+          apiBase={apiBase}
+          active={active}
+          planRefreshKey={planRefreshKey}
+          startRequestKey={captureStartRequestKey}
+        />
+      )}
       {loading && <p role="status">Loading source registry…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadSources()}>Retry source registry</button>}
