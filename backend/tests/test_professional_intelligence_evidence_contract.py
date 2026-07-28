@@ -9,17 +9,17 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
 
 
-def test_execution_readiness_requires_only_verified_local_root(tmp_path: Path) -> None:
+def test_execution_readiness_uses_provisioned_local_root(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.get("/api/professional-intelligence/execution-readiness")
 
     assert response.status_code == 200
     readiness = response.json()
-    assert readiness["ready"] is False
-    assert readiness["execution_available"] is False
-    assert readiness["blockers"] == ["local_evidence_root_not_verified"]
+    assert readiness["ready"] is True
+    assert readiness["execution_available"] is True
+    assert readiness["blockers"] == []
     assert "record_and_authorize_each_run_explicitly" in readiness["required_user_actions"]
-    assert "choose_local_evidence_root" in readiness["required_user_actions"]
+    assert "choose_local_evidence_root" not in readiness["required_user_actions"]
     assert (
         "visible_rendered_dom_text_is_primary"
         in readiness["evidence_policy"]["text_extraction_policy"]
@@ -27,7 +27,6 @@ def test_execution_readiness_requires_only_verified_local_root(tmp_path: Path) -
     assert "browser_storage_state" in readiness["evidence_policy"]["prohibited_evidence"]
 
     evidence_root = tmp_path / "evidence"
-    evidence_root.mkdir()
     configured = client.post(
         "/api/professional-intelligence/evidence-root",
         json={"root_path": str(evidence_root)},
