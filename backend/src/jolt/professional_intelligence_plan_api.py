@@ -14,6 +14,7 @@ from jolt.professional_intelligence_capture_plan import (
 )
 from jolt.professional_intelligence_capture_runs import (
     ProfessionalCaptureAuthorizationRequest,
+    ProfessionalCaptureCreateRequest,
     ProfessionalCaptureRunResponse,
     authorize_professional_capture_run,
     cancel_professional_capture_run,
@@ -168,9 +169,10 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         response_model=ProfessionalCaptureRunResponse,
     )
     def record_professional_capture_preview(
+        request: ProfessionalCaptureCreateRequest,
         session: Session = session_dependency,
     ) -> ProfessionalCaptureRunResponse:
-        return create_professional_capture_preview_run(session)
+        return create_professional_capture_preview_run(session, request)
 
     @router.get(
         "/api/professional-intelligence/capture-runs",
