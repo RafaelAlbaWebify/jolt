@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -16,12 +18,41 @@ def assert_true(value: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def _write_failure_summary(output_dir: Path, reason: str, detail: str) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary = {
+        "runtime_identity_endpoint_ok": False,
+        "runtime_identity_sidebar_visible": False,
+        "failure_reason": reason,
+        "failure_detail": detail,
+        "expected_backend_url": f"{API_BASE}/api/runtime-identity",
+        "next_windows_checks": [
+            "Confirm the JOLT Backend command window is still open.",
+            "Run: Invoke-WebRequest http://127.0.0.1:8000/api/health -UseBasicParsing",
+            "If refused, restart .\\START_JOLT.bat and inspect the JOLT Backend window for errors.",
+        ],
+    }
+    (output_dir / "runtime-truth-audit-summary.json").write_text(
+        json.dumps(summary, indent=2), encoding="utf-8"
+    )
+
+
 def read_runtime_identity() -> dict[str, Any]:
-    with urllib.request.urlopen(f"{API_BASE}/api/runtime-identity", timeout=30) as response:  # noqa: S310
-        loaded = json.loads(response.read().decode("utf-8"))
-    if not isinstance(loaded, dict):
-        raise RuntimeError("Runtime identity endpoint did not return an object")
-    return loaded
+    last_error = ""
+    for _ in range(30):
+        try:
+            with urllib.request.urlopen(f"{API_BASE}/api/runtime-identity", timeout=2) as response:  # noqa: S310
+                loaded = json.loads(response.read().decode("utf-8"))
+            if not isinstance(loaded, dict):
+                raise RuntimeError("Runtime identity endpoint did not return an object")
+            return loaded
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+            last_error = repr(exc)
+            time.sleep(1)
+    raise RuntimeError(
+        "JOLT backend did not answer /api/runtime-identity on http://127.0.0.1:8000. "
+        f"Last error: {last_error}"
+    )
 
 
 def try_capture_sidebar(output_dir: Path) -> dict[str, object]:
@@ -76,7 +107,14 @@ def try_capture_sidebar(output_dir: Path) -> dict[str, object]:
 
 def audit(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    identity = read_runtime_identity()
+    try:
+        identity = read_runtime_identity()
+    except Exception as exc:
+        _write_failure_summary(output_dir, "backend_unreachable", str(exc))
+        raise SystemExit(
+            "JOLT backend is not reachable at http://127.0.0.1:8000. "
+            "A diagnostic JSON was written to the output directory."
+        ) from exc
 
     assert_true(identity.get("service") == "jolt-backend", "Runtime identity service is not jolt-backend")
     assert_true(bool(identity.get("git", {}).get("repository_root")), "Repository root is missing")
