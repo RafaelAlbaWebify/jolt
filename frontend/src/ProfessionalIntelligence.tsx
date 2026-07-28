@@ -233,6 +233,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
             >
               Start capture
             </button>
+            <span>One click starts the capture.</span>
             <span>LinkedIn result lists use scrolling, so “scroll batches” is the page limit.</span>
           </div>
           <div className="professional-safety-boundary" role="note">
