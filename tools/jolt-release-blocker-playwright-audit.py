@@ -145,8 +145,11 @@ def audit(output_dir: Path) -> dict[str, Any]:
         assert_true(page.get_by_label("Maximum sources").is_visible(), "Maximum sources setting is missing")
         assert_true(page.get_by_label("Scroll batches per source").is_visible(), "Scroll batch setting is missing")
         assert_true(page.get_by_label("Maximum items per source").is_visible(), "Maximum item setting is missing")
-        assert_true(page.get_by_label("Timeout per source in seconds").is_visible(), "Timeout setting is missing")
-        assert_true(page.get_by_label("Stop after first failure").is_visible(), "Stop-on-failure setting is missing")
+        assert_true(page.get_by_label("Timeout per source (seconds)").is_visible(), "Timeout setting is missing")
+        assert_true(
+            page.get_by_label("Stop the run after the first failed source.").is_visible(),
+            "Stop-on-failure setting is missing",
+        )
         page.screenshot(path=output_dir / "professional-ready-and-start-visible.png", full_page=True)
 
         def mock_external_capture(route: Route) -> None:
