@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
 
+API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
 DELETE_PHRASE = "DELETE CAPTURE RUN"
@@ -15,6 +19,45 @@ DELETE_PHRASE = "DELETE CAPTURE RUN"
 def assert_true(value: bool, message: str) -> None:
     if not value:
         raise AssertionError(message)
+
+
+def request_json(method: str, path: str, payload: dict[str, object]) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{API_BASE}{path}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            loaded = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"{method} {path} failed with HTTP {exc.code}: {detail}") from exc
+    if not isinstance(loaded, dict):
+        raise RuntimeError(f"{method} {path} did not return an object")
+    return loaded
+
+
+def seed_pending_opportunity() -> str:
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    title = f"Release Blocker UX Audit {stamp}"
+    result = request_json(
+        "POST",
+        "/api/intake/manual",
+        {
+            "source_url": f"https://example.test/release-blocker/{stamp}",
+            "raw_text": (
+                f"{title}\nAudit Systems\nRemote Spain\n"
+                "Lead technical support engineer responsible for Windows, Active Directory, "
+                "incident management, SQL troubleshooting, APIs, logs, customer support, "
+                "Microsoft 365, Azure, VMware, documentation, and service management."
+            ),
+        },
+    )
+    if not result.get("posting_id"):
+        raise RuntimeError("Release-blocker fixture did not return a posting_id")
+    return title
 
 
 def score_badge_metrics(page: Page) -> list[dict[str, Any]]:
@@ -39,6 +82,7 @@ def score_badge_metrics(page: Page) -> list[dict[str, Any]]:
 
 def audit(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    fixture_title = seed_pending_opportunity()
     console_errors: list[str] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
@@ -59,6 +103,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
         page.get_by_role("button", name="Opportunities", exact=True).click()
         page.get_by_role("heading", name="Opportunities", exact=True).wait_for(timeout=30_000)
+        page.get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
         page.locator(".opportunity-row .score").first.wait_for(timeout=30_000)
 
         badge_metrics = score_badge_metrics(page)
@@ -109,6 +154,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         browser.close()
 
     summary = {
+        "fixture_title": fixture_title,
         "viewport": VIEWPORT,
         "badge_metrics": badge_metrics,
         "all_score_badges_bounded": True,
