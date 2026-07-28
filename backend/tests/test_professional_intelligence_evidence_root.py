@@ -1,4 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 from fastapi.testclient import TestClient
 
@@ -42,6 +44,30 @@ def test_evidence_root_is_provisioned_persists_and_accepts_custom_path(tmp_path:
     persisted = restarted.get("/api/professional-intelligence/evidence-root")
     assert persisted.status_code == 200
     assert persisted.json()["root_path"] == str(custom_root.resolve())
+
+
+def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    barrier = Barrier(2)
+
+    def request(path: str):
+        barrier.wait(timeout=5)
+        return client.get(path)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        evidence_future = executor.submit(
+            request, "/api/professional-intelligence/evidence-root"
+        )
+        readiness_future = executor.submit(
+            request, "/api/professional-intelligence/execution-readiness"
+        )
+        evidence = evidence_future.result(timeout=10)
+        readiness = readiness_future.result(timeout=10)
+
+    assert evidence.status_code == 200
+    assert readiness.status_code == 200
+    assert evidence.json()["root_path"] == str((tmp_path / "professional-evidence").resolve())
+    assert readiness.json()["ready"] is True
 
 
 def test_evidence_root_rejects_a_file_path(tmp_path: Path) -> None:
