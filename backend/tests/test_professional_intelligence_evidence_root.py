@@ -55,9 +55,7 @@ def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: 
         return client.get(path)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        evidence_future = executor.submit(
-            request, "/api/professional-intelligence/evidence-root"
-        )
+        evidence_future = executor.submit(request, "/api/professional-intelligence/evidence-root")
         readiness_future = executor.submit(
             request, "/api/professional-intelligence/execution-readiness"
         )
