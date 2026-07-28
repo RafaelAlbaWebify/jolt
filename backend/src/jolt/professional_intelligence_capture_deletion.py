@@ -53,12 +53,13 @@ def delete_professional_capture_run(
     deleted_evidence_directory = False
     if evidence_root.root_path:
         root = Path(evidence_root.root_path).resolve(strict=False)
-        run_directory = (root / run_id).resolve(strict=False)
+        professional_root = (root / "professional-intelligence").resolve(strict=False)
+        run_directory = (professional_root / run_id).resolve(strict=False)
         try:
-            run_directory.relative_to(root)
+            run_directory.relative_to(professional_root)
         except ValueError as exc:
             raise ValueError(
-                "Capture evidence must remain contained under the configured root."
+                "Capture evidence must remain contained under the Professional evidence root."
             ) from exc
         if run_directory.exists():
             shutil.rmtree(run_directory)
