@@ -56,8 +56,9 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(payload?.detail || "The evidence directory could not be verified.");
       }
-      setSettings((await response.json()) as EvidenceRoot);
-      setError("");
+      const payload = (await response.json()) as EvidenceRoot;
+      setSettings(payload);
+      setRootPath(payload.root_path ?? "");
       onChanged();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Evidence directory update failed.");
@@ -66,28 +67,11 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
     }
   }
 
-  async function clear() {
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(`${apiBase}/api/professional-intelligence/evidence-root`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("The evidence directory could not be cleared.");
-      const payload = (await response.json()) as EvidenceRoot;
-      setSettings(payload);
-      setRootPath("");
-      setError("");
-      onChanged();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Evidence directory clear failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   if (!active) return null;
-  if (!settings && loading && !error) return <p role="status">Loading local evidence directory…</p>;
+  if (!settings && loading && !error) return <p role="status">Preparing local evidence directory…</p>;
+
+  const ready = Boolean(settings?.configured && settings.exists && settings.writable);
+  const statusLabel = ready ? "Ready" : settings?.configured ? "Needs attention" : "Not configured";
 
   return (
     <section className="panel professional-evidence-root" aria-labelledby="professional-evidence-root-heading">
@@ -95,11 +79,9 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         <div>
           <p className="eyebrow">Local evidence storage</p>
           <h2 id="professional-evidence-root-heading">Evidence directory</h2>
-          <p>Choose an existing writable local directory. Supervised captures write their evidence files and manifests beneath the verified path; JOLT does not create the selected root directory.</p>
+          <p>Supervised captures write their evidence files and manifests to a private local directory. JOLT creates a safe default beside its database automatically; enter another path only to move future evidence.</p>
         </div>
-        <span className="professional-plan-status">
-          {settings?.configured && settings.exists && settings.writable ? "Verified" : "Not configured"}
-        </span>
+        <span className="professional-plan-status">{statusLabel}</span>
       </div>
       <form onSubmit={(event) => void configure(event)}>
         <label htmlFor="professional-evidence-root-path">Local directory path</label>
@@ -112,23 +94,16 @@ export function ProfessionalEvidenceRoot({ apiBase, active, onChanged }: Props) 
         />
         <div className="professional-source-editor-actions">
           <button type="submit" disabled={busy || loading || !rootPath.trim()}>
-            {busy ? "Verifying…" : "Verify and save"}
+            {busy ? "Saving…" : "Create or verify this directory"}
           </button>
-          {settings?.configured && (
-            <button type="button" className="secondary" disabled={busy || loading} onClick={() => void clear()}>
-              Clear configuration
-            </button>
-          )}
-          {error && (
-            <button type="button" className="secondary" disabled={busy || loading} onClick={() => void loadSettings()}>
-              Retry evidence directory
-            </button>
-          )}
+          <button type="button" className="secondary" disabled={busy || loading} onClick={() => void loadSettings()}>
+            {error ? "Retry evidence directory" : "Refresh status"}
+          </button>
         </div>
       </form>
       {settings?.configured && (
         <p className="professional-ledger-note">
-          Resolved path: <code>{settings.root_path}</code> · writable: {settings.writable ? "yes" : "no"}
+          Active path: <code>{settings.root_path}</code> · exists: {settings.exists ? "yes" : "no"} · writable: {settings.writable ? "yes" : "no"}
         </p>
       )}
       {error && <p className="error" role="alert">{error}</p>}

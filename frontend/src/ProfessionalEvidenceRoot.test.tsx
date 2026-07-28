@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
@@ -25,7 +25,7 @@ describe("ProfessionalEvidenceRoot", () => {
     vi.restoreAllMocks();
   });
 
-  it("verifies, displays, and clears the local evidence root", async () => {
+  it("creates, verifies, and displays the local evidence root", async () => {
     const onChanged = vi.fn();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
       if (!init?.method) return new Response(JSON.stringify(emptyRoot), { status: 200 });
@@ -34,9 +34,6 @@ describe("ProfessionalEvidenceRoot", () => {
           root_path: "C:\\Users\\ralba\\Documents\\JOLT Evidence",
         });
         return new Response(JSON.stringify(configuredRoot), { status: 200 });
-      }
-      if (init.method === "DELETE") {
-        return new Response(JSON.stringify(emptyRoot), { status: 200 });
       }
       throw new Error(`Unexpected method: ${init.method}`);
     });
@@ -53,14 +50,12 @@ describe("ProfessionalEvidenceRoot", () => {
     fireEvent.change(screen.getByLabelText("Local directory path"), {
       target: { value: "C:\\Users\\ralba\\Documents\\JOLT Evidence" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Verify and save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create or verify this directory" }));
 
-    expect(await screen.findByText("Verified")).toBeInTheDocument();
-    expect(screen.getByText(/Resolved path:/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Clear configuration" }));
-
-    await waitFor(() => expect(screen.getByText("Not configured")).toBeInTheDocument());
-    expect(onChanged).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(screen.getByText(/Active path:/)).toBeInTheDocument();
+    expect(screen.getByText(/writable: yes/)).toBeInTheDocument();
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

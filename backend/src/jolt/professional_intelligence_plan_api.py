@@ -3,6 +3,11 @@ from collections.abc import Callable, Iterator
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from jolt.professional_intelligence_capture_deletion import (
+    ProfessionalCaptureDeletionRequest,
+    ProfessionalCaptureDeletionResult,
+    delete_professional_capture_run,
+)
 from jolt.professional_intelligence_capture_plan import (
     ProfessionalCapturePlan,
     build_professional_capture_plan,
@@ -260,6 +265,22 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRunResponse:
         try:
             return cancel_professional_capture_run(session, run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/delete",
+        response_model=ProfessionalCaptureDeletionResult,
+    )
+    def delete_professional_capture(
+        run_id: str,
+        request: ProfessionalCaptureDeletionRequest,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureDeletionResult:
+        try:
+            return delete_professional_capture_run(session, run_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:

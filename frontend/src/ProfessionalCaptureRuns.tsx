@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ProfessionalEvidenceReview } from "./ProfessionalEvidenceReview";
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
 
-const CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
+const AUTHORIZATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
+const DELETE_PHRASE = "DELETE CAPTURE RUN";
 
 type ProfessionalCaptureRun = {
   id: string;
@@ -16,7 +17,8 @@ type ProfessionalCaptureRun = {
     | "completed"
     | "completed_with_gaps"
     | "failed"
-    | "cancelled";
+    | "cancelled"
+    | "interrupted";
   planned_sources: ProfessionalIntelligenceSource[];
   safety_constraints: string[];
   requested_at: string;
@@ -41,7 +43,9 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authorizingRunId, setAuthorizingRunId] = useState<string | null>(null);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [confirmationPhrase, setConfirmationPhrase] = useState("");
+  const [deletePhrase, setDeletePhrase] = useState("");
   const [userPresent, setUserPresent] = useState(false);
   const [error, setError] = useState("");
 
@@ -69,18 +73,21 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
   }
 
-  async function recordPreviewRun() {
+  async function startNewCapture() {
     setBusy(true);
     setError("");
     try {
       const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs`, {
         method: "POST",
       });
-      if (!response.ok) throw new Error("The preview run could not be recorded.");
+      if (!response.ok) throw new Error("The supervised capture could not be prepared.");
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
+      setAuthorizingRunId(created.id);
+      setConfirmationPhrase("");
+      setUserPresent(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Preview run failed.");
+      setError(caught instanceof Error ? caught.message : "Capture preparation failed.");
     } finally {
       setBusy(false);
     }
@@ -98,13 +105,16 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
           body: JSON.stringify({ confirmation_phrase: confirmationPhrase, user_present: userPresent }),
         },
       );
-      if (!response.ok) throw new Error("The preview run could not be authorized.");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The capture could not be authorized.");
+      }
       replaceRun((await response.json()) as ProfessionalCaptureRun);
       setAuthorizingRunId(null);
       setConfirmationPhrase("");
       setUserPresent(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Preview authorization failed.");
+      setError(caught instanceof Error ? caught.message : "Capture authorization failed.");
     } finally {
       setBusy(false);
     }
@@ -138,10 +148,36 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
         `${apiBase}/api/professional-intelligence/capture-runs/${runId}/cancel`,
         { method: "POST" },
       );
-      if (!response.ok) throw new Error("The preview run could not be cancelled.");
+      if (!response.ok) throw new Error("The capture could not be cancelled.");
       replaceRun((await response.json()) as ProfessionalCaptureRun);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Preview run cancellation failed.");
+      setError(caught instanceof Error ? caught.message : "Capture cancellation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteRun(runId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/delete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmation_phrase: deletePhrase }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The capture run could not be deleted.");
+      }
+      setRuns((current) => current.filter((run) => run.id !== runId));
+      setDeletingRunId(null);
+      setDeletePhrase("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Capture deletion failed.");
     } finally {
       setBusy(false);
     }
@@ -151,21 +187,24 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
     <section className="panel professional-run-ledger" aria-labelledby="professional-run-ledger-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Audit ledger</p>
+          <p className="eyebrow">Capture operations</p>
           <h2 id="professional-run-ledger-heading">Supervised run history</h2>
-          <p>Record and authorize the current plan. Starting an authorized run opens a visible fresh browser and writes local evidence only.</p>
+          <p>Start a new capture, complete the required safety confirmation, and manage recent capture batches from one place.</p>
         </div>
-        <button type="button" disabled={busy || !active} onClick={() => void recordPreviewRun()}>
-          {busy ? "Working…" : "Record preview run"}
-        </button>
+        <div className="professional-primary-capture-action">
+          <button type="button" disabled={busy || !active} onClick={() => void startNewCapture()}>
+            {busy ? "Working…" : "Start new supervised capture"}
+          </button>
+          <p>This prepares a new run and immediately opens its authorization step.</p>
+        </div>
       </div>
       <p className="professional-ledger-note">
         Current plan revision: {planRefreshKey}. No credentials, cookies, tokens, or browser storage are persisted.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
-      {loading && active && <p role="status">Loading supervised run history…</p>}
-      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry run history</button>}
-      {loaded && runs.length === 0 && <p>No preview runs recorded.</p>}
+      {loading && active && <p role="status">Loading supervised capture history…</p>}
+      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry capture history</button>}
+      {loaded && runs.length === 0 && <p>No capture runs recorded yet. Use “Start new supervised capture” above.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (
@@ -181,18 +220,19 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
               )}
               {run.status === "planned" && authorizingRunId !== run.id && (
                 <button type="button" className="secondary" disabled={busy} onClick={() => setAuthorizingRunId(run.id)}>
-                  Authorize supervised run
+                  Continue authorization
                 </button>
               )}
               {run.status === "planned" && authorizingRunId === run.id && (
                 <div className="professional-run-authorization">
+                  <p>This visible capture opens only the approved source URLs. Confirm that you are present before continuing.</p>
                   <label>
                     Type the exact phrase
                     <input
                       aria-label={`Authorization phrase for ${run.id}`}
                       value={confirmationPhrase}
                       onChange={(event) => setConfirmationPhrase(event.target.value)}
-                      placeholder={CONFIRMATION_PHRASE}
+                      placeholder={AUTHORIZATION_PHRASE}
                     />
                   </label>
                   <label className="professional-source-checkbox">
@@ -206,30 +246,78 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
                   </label>
                   <button
                     type="button"
-                    disabled={busy || confirmationPhrase !== CONFIRMATION_PHRASE || !userPresent}
+                    disabled={busy || confirmationPhrase !== AUTHORIZATION_PHRASE || !userPresent}
                     onClick={() => void authorizeRun(run.id)}
                   >
-                    Confirm authorization
+                    Authorize capture
                   </button>
                 </div>
               )}
               {run.status === "authorized" && (
                 <div className="professional-run-start">
-                  <p>A visible Chromium window will open and visit only this run's approved URLs.</p>
+                  <p>Authorization is complete. A visible Chromium window will open.</p>
                   <button type="button" disabled={busy} onClick={() => void startRun(run.id)}>
-                    Start supervised capture
+                    Start capture now
                   </button>
                 </div>
               )}
-              {(run.status === "planned" || run.status === "authorized") && (
+              {(run.status === "planned" || run.status === "authorized" || run.status === "running") && (
                 <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                  Cancel run
+                  {run.status === "running" ? "Request cancellation" : "Cancel run"}
                 </button>
               )}
               {(run.status === "completed" || run.status === "completed_with_gaps") && (
                 <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
               )}
               {run.stop_reason && <p>{run.stop_reason.replaceAll("_", " ")}</p>}
+              {run.status !== "running" && deletingRunId !== run.id && (
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={busy}
+                  onClick={() => {
+                    setDeletingRunId(run.id);
+                    setDeletePhrase("");
+                  }}
+                >
+                  Delete this capture batch
+                </button>
+              )}
+              {deletingRunId === run.id && (
+                <div className="professional-delete-confirmation">
+                  <strong>Delete this capture batch?</strong>
+                  <p>This removes only this run and its governed local evidence. It cannot be undone.</p>
+                  <label>
+                    Type {DELETE_PHRASE}
+                    <input
+                      aria-label={`Deletion phrase for ${run.id}`}
+                      value={deletePhrase}
+                      onChange={(event) => setDeletePhrase(event.target.value)}
+                    />
+                  </label>
+                  <div className="professional-source-editor-actions">
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={busy || deletePhrase !== DELETE_PHRASE}
+                      onClick={() => void deleteRun(run.id)}
+                    >
+                      Permanently delete batch
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setDeletingRunId(null);
+                        setDeletePhrase("");
+                      }}
+                    >
+                      Keep batch
+                    </button>
+                  </div>
+                </div>
+              )}
             </article>
           ))}
         </div>

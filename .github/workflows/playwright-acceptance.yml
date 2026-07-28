@@ -51,6 +51,11 @@ jobs:
         run: |
           set -o pipefail
           uv run python ../tools/jolt-sidebar-kanban-playwright-audit.py --output-dir ../artifacts/playwright-acceptance/evidence 2>&1 | tee ../artifacts/playwright-acceptance/audit.log
+      - name: Run release-blocking UX audit
+        working-directory: backend
+        run: |
+          set -o pipefail
+          uv run python ../tools/jolt-release-blocker-playwright-audit.py --output-dir ../artifacts/playwright-acceptance/release-blocker-evidence 2>&1 | tee ../artifacts/playwright-acceptance/release-blocker-audit.log
       - name: Upload Playwright acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4

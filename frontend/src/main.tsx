@@ -14,6 +14,7 @@ import "./MarketIntelligence.css";
 import "./ProfessionalIntelligence.css";
 import "./ProfessionalStructuredExtraction.css";
 import "./WorkflowRefinement.css";
+import "./ReleaseBlockingUx.css";
 
 const rootElement = document.getElementById("root");
 
