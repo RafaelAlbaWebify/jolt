@@ -4,6 +4,7 @@ import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
+import { RuntimeIdentityPanel } from "./RuntimeIdentity";
 import "./Workbench.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -46,6 +47,8 @@ export function Workbench() {
           </nav>
           <p className="workspace-description">{view.description}</p>
         </header>
+
+        <RuntimeIdentityPanel apiBase={API_BASE} />
 
         <div
           className="workspace-sidebar-tools"
