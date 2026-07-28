@@ -26,6 +26,10 @@ describe("ProfessionalCaptureRuns", () => {
   });
 
   it("starts a guided capture from the overview trigger and deletes the completed batch", async () => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
     const authorized = {
       ...plannedRun,
       status: "authorized",
