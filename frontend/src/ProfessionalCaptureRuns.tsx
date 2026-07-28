@@ -48,11 +48,8 @@ export function ProfessionalCaptureRuns({
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [authorizingRunId, setAuthorizingRunId] = useState<string | null>(null);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
-  const [confirmationPhrase, setConfirmationPhrase] = useState("");
   const [deletePhrase, setDeletePhrase] = useState("");
-  const [userPresent, setUserPresent] = useState(false);
   const [error, setError] = useState("");
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
@@ -83,13 +80,40 @@ export function ProfessionalCaptureRuns({
     if (active) void startNewCapture();
   }, [active, startRequestKey]);
 
-  useEffect(() => {
-    if (!authorizingRunId) return;
-    ledgerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [authorizingRunId]);
-
   function replaceRun(changed: ProfessionalCaptureRun) {
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
+  }
+
+  async function authorizeAndStart(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
+    let ready = run;
+    if (ready.status === "planned") {
+      const authorization = await fetch(
+        `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/authorize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            confirmation_phrase: AUTHORIZATION_PHRASE,
+            user_present: true,
+          }),
+        },
+      );
+      if (!authorization.ok) {
+        const payload = (await authorization.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The capture could not be authorized.");
+      }
+      ready = (await authorization.json()) as ProfessionalCaptureRun;
+    }
+
+    const response = await fetch(
+      `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/start`,
+      { method: "POST" },
+    );
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+      throw new Error(payload?.detail || "The supervised capture could not start.");
+    }
+    return (await response.json()) as ProfessionalCaptureRun;
   }
 
   async function startNewCapture() {
@@ -103,58 +127,25 @@ export function ProfessionalCaptureRuns({
       if (!response.ok) throw new Error("The supervised capture could not be prepared.");
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
-      setAuthorizingRunId(created.id);
-      setConfirmationPhrase("");
-      setUserPresent(false);
+      const completed = await authorizeAndStart(created);
+      replaceRun(completed);
+      ledgerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Capture preparation failed.");
+      setError(caught instanceof Error ? caught.message : "Capture failed.");
+      await loadRuns();
     } finally {
       setBusy(false);
     }
   }
 
-  async function authorizeRun(runId: string) {
+  async function resumeRun(run: ProfessionalCaptureRun) {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(
-        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/authorize`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmation_phrase: confirmationPhrase, user_present: userPresent }),
-        },
-      );
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(payload?.detail || "The capture could not be authorized.");
-      }
-      replaceRun((await response.json()) as ProfessionalCaptureRun);
-      setAuthorizingRunId(null);
-      setConfirmationPhrase("");
-      setUserPresent(false);
+      replaceRun(await authorizeAndStart(run));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Capture authorization failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startRun(runId: string) {
-    setBusy(true);
-    setError("");
-    try {
-      const response = await fetch(
-        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/start`,
-        { method: "POST" },
-      );
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(payload?.detail || "The supervised capture could not start.");
-      }
-      replaceRun((await response.json()) as ProfessionalCaptureRun);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Supervised capture failed.");
+      setError(caught instanceof Error ? caught.message : "Capture failed.");
     } finally {
       setBusy(false);
     }
@@ -213,8 +204,8 @@ export function ProfessionalCaptureRuns({
       <div className="section-heading">
         <div>
           <p className="eyebrow">Capture operations</p>
-          <h2 id="professional-run-ledger-heading">Supervised run history</h2>
-          <p>Complete the required safety confirmation and manage recent capture batches from one place.</p>
+          <h2 id="professional-run-ledger-heading">Capture history</h2>
+          <p>Review completed captures or remove a bad batch.</p>
         </div>
         <button
           type="button"
@@ -222,16 +213,16 @@ export function ProfessionalCaptureRuns({
           disabled={busy || !active}
           onClick={() => void startNewCapture()}
         >
-          {busy ? "Working…" : "Start another supervised capture"}
+          {busy ? "Capturing…" : "Start another capture"}
         </button>
       </div>
       <p className="professional-ledger-note">
-        Current plan revision: {planRefreshKey}. No credentials, cookies, tokens, or browser storage are persisted.
+        Current plan revision: {planRefreshKey}. The click that starts a capture records user presence locally.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
-      {loading && active && <p role="status">Loading supervised capture history…</p>}
+      {loading && active && <p role="status">Loading capture history…</p>}
       {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry capture history</button>}
-      {loaded && runs.length === 0 && <p>No capture runs recorded yet. Use “Start new supervised capture” at the top of this workspace.</p>}
+      {loaded && runs.length === 0 && <p>No captures yet. Use “Start capture” at the top of this workspace.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (
@@ -240,57 +231,16 @@ export function ProfessionalCaptureRuns({
                 <strong>{run.status.replaceAll("_", " ")}</strong>
                 <span>{new Date(run.requested_at).toLocaleString()}</span>
               </div>
-              <p>{run.planned_sources.length} planned sources · {run.artifact_count} artifacts</p>
+              <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
               <code>{run.id}</code>
-              {run.authorization_expires_at && (
-                <p>Authorization expires: {new Date(run.authorization_expires_at).toLocaleString()}</p>
-              )}
-              {run.status === "planned" && authorizingRunId !== run.id && (
-                <button type="button" className="secondary" disabled={busy} onClick={() => setAuthorizingRunId(run.id)}>
-                  Continue authorization
+              {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
+                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
+                  Start capture
                 </button>
               )}
-              {run.status === "planned" && authorizingRunId === run.id && (
-                <div className="professional-run-authorization">
-                  <p>This visible capture opens only the approved source URLs. Confirm that you are present before continuing.</p>
-                  <label>
-                    Type the exact phrase
-                    <input
-                      aria-label={`Authorization phrase for ${run.id}`}
-                      value={confirmationPhrase}
-                      onChange={(event) => setConfirmationPhrase(event.target.value)}
-                      placeholder={AUTHORIZATION_PHRASE}
-                    />
-                  </label>
-                  <label className="professional-source-checkbox">
-                    <input
-                      type="checkbox"
-                      aria-label={`User present for ${run.id}`}
-                      checked={userPresent}
-                      onChange={(event) => setUserPresent(event.target.checked)}
-                    />
-                    I am present and will supervise this run.
-                  </label>
-                  <button
-                    type="button"
-                    disabled={busy || confirmationPhrase !== AUTHORIZATION_PHRASE || !userPresent}
-                    onClick={() => void authorizeRun(run.id)}
-                  >
-                    Authorize capture
-                  </button>
-                </div>
-              )}
-              {run.status === "authorized" && (
-                <div className="professional-run-start">
-                  <p>Authorization is complete. A visible Chromium window will open.</p>
-                  <button type="button" disabled={busy} onClick={() => void startRun(run.id)}>
-                    Start capture now
-                  </button>
-                </div>
-              )}
-              {(run.status === "planned" || run.status === "authorized" || run.status === "running") && (
+              {run.status === "running" && (
                 <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                  {run.status === "running" ? "Request cancellation" : "Cancel run"}
+                  Request cancellation
                 </button>
               )}
               {(run.status === "completed" || run.status === "completed_with_gaps") && (

@@ -149,7 +149,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         <div>
           <p className="eyebrow">Approved LinkedIn source registry</p>
           <h2 id="professional-intelligence-heading">Professional</h2>
-          <p>Maintain the approved source set, verify local evidence storage, review the supervised read-only capture plan, and explicitly start each capture while remaining present. Every registry change is stored locally and can be reset to its verified default.</p>
+          <p>Capture the approved sources, keep the evidence locally, and review the result.</p>
         </div>
         <div className="professional-overview-actions">
           <div className="professional-primary-capture-action">
@@ -159,13 +159,13 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
               aria-controls="professional-run-ledger"
               onClick={() => setCaptureStartRequestKey((current) => current + 1)}
             >
-              Start new supervised capture
+              Start capture
             </button>
-            <span>Creates a new batch and opens the required authorization step.</span>
+            <span>One click starts the capture.</span>
           </div>
           <div className="professional-safety-boundary" role="note">
             <strong>Read-only boundary</strong>
-            <span>No login handling, stored credentials, cookies, messages, reactions, applications, invitations, or unattended account actions.</span>
+            <span>No messages, reactions, applications, invitations, or account changes.</span>
           </div>
         </div>
       </section>

@@ -25,7 +25,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts a guided capture from the overview trigger and deletes the completed batch", async () => {
+  it("starts a complete capture from one overview click and deletes the batch", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -77,7 +77,7 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText(/No capture runs recorded yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/No captures yet/)).toBeInTheDocument();
     rerender(
       <ProfessionalCaptureRuns
         apiBase="http://127.0.0.1:8000"
@@ -87,18 +87,10 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("planned")).toBeInTheDocument();
-    expect(screen.getByLabelText("Authorization phrase for run-1")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Authorization phrase for run-1"), {
-      target: { value: "I UNDERSTAND THIS WILL OPEN LINKEDIN" },
-    });
-    fireEvent.click(screen.getByLabelText("User present for run-1"));
-    fireEvent.click(screen.getByRole("button", { name: "Authorize capture" }));
-
-    expect(await screen.findByText("authorized")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Start capture now" }));
-
     expect(await screen.findByText("completed")).toBeInTheDocument();
+    expect(screen.queryByText(/Type the exact phrase/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Delete this capture batch" }));
     const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
     expect(deleteButton).toBeDisabled();

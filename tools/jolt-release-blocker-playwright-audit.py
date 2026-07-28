@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, Route, sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
@@ -36,6 +36,14 @@ def request_json(method: str, path: str, payload: dict[str, object]) -> dict[str
         raise RuntimeError(f"{method} {path} failed with HTTP {exc.code}: {detail}") from exc
     if not isinstance(loaded, dict):
         raise RuntimeError(f"{method} {path} did not return an object")
+    return loaded
+
+
+def read_json(path: str) -> dict[str, Any]:
+    with urllib.request.urlopen(f"{API_BASE}{path}", timeout=30) as response:  # noqa: S310
+        loaded = json.loads(response.read().decode("utf-8"))
+    if not isinstance(loaded, dict):
+        raise RuntimeError(f"GET {path} did not return an object")
     return loaded
 
 
@@ -131,18 +139,36 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("heading", name="Professional", exact=True).wait_for(timeout=30_000)
         evidence_panel = page.locator(".professional-evidence-root")
         evidence_panel.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
-        primary = page.get_by_role("button", name="Start new supervised capture", exact=True)
+        primary = page.get_by_role("button", name="Start capture", exact=True).first
         primary.wait_for(timeout=30_000)
         assert_true(primary.is_visible(), "Primary capture action is not visible")
         page.screenshot(path=output_dir / "professional-ready-and-start-visible.png", full_page=True)
 
+        def mock_external_capture(route: Route) -> None:
+            run_id = route.request.url.rsplit("/", 2)[-2]
+            run = read_json(f"/api/professional-intelligence/capture-runs/{run_id}")
+            run.update(
+                {
+                    "mode": "supervised_read_only",
+                    "status": "completed",
+                    "started_at": run.get("authorized_at"),
+                    "completed_at": run.get("authorized_at"),
+                    "stop_reason": "audit_capture_mocked_before_external_navigation",
+                }
+            )
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(run))
+
+        page.route("**/api/professional-intelligence/capture-runs/*/start", mock_external_capture)
         primary.click()
-        page.get_by_text("planned", exact=True).first.wait_for(timeout=30_000)
-        page.get_by_label("Authorization phrase for", exact=False).wait_for(timeout=30_000)
+        page.get_by_text("completed", exact=True).first.wait_for(timeout=30_000)
+        assert_true(
+            page.get_by_text("Type the exact phrase", exact=False).count() == 0,
+            "One-click capture still exposes an authorization phrase form",
+        )
+        assert_true(page.get_by_role("checkbox").count() == 0, "One-click capture still exposes a checkbox")
         delete_button = page.get_by_role("button", name="Delete this capture batch", exact=True).first
         delete_button.wait_for(timeout=30_000)
-        assert_true(delete_button.is_visible(), "Planned capture run has no delete control")
-        page.screenshot(path=output_dir / "professional-planned-run-controls.png", full_page=True)
+        page.screenshot(path=output_dir / "professional-one-click-capture-completed.png", full_page=True)
 
         delete_button.click()
         deletion_input = page.get_by_label("Deletion phrase for", exact=False)
@@ -150,7 +176,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         permanent_delete = page.get_by_role("button", name="Permanently delete batch", exact=True)
         assert_true(permanent_delete.is_enabled(), "Confirmed deletion action did not become enabled")
         permanent_delete.click()
-        page.get_by_text("No capture runs recorded yet", exact=False).wait_for(timeout=30_000)
+        page.get_by_text("No captures yet", exact=False).wait_for(timeout=30_000)
         page.screenshot(path=output_dir / "professional-run-deleted.png", full_page=True)
         browser.close()
 
@@ -162,7 +188,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "all_score_labels_human_readable": True,
         "default_evidence_directory_ready": True,
         "primary_capture_action_visible": True,
-        "planned_run_delete_control_visible": True,
+        "one_click_capture_completed": True,
+        "authorization_form_absent": True,
         "confirmed_run_deletion_completed": True,
         "console_errors": console_errors,
         "page_errors": page_errors,
