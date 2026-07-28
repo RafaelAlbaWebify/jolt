@@ -329,6 +329,21 @@ def _update_source_progress(
     raise LookupError(f"Source progress for {source_id} was not found.")
 
 
+def _stop_on_failure_enabled(run: ProfessionalCaptureRun) -> bool:
+    raw_options = json.loads(run.capture_options_json or "{}")
+    return bool(raw_options.get("stop_on_failure", True))
+
+
+def _mark_pending_sources_skipped(
+    progress: list[ProfessionalSourceProgress],
+    *,
+    detail: str,
+) -> None:
+    for item in progress:
+        if item.status == "pending":
+            _update_source_progress(progress, item.source_id, status="skipped", detail=detail)
+
+
 def start_professional_supervised_capture(
     session: Session,
     run_id: str,
@@ -389,14 +404,10 @@ def start_professional_supervised_capture(
                 run.completed_at = utc_now()
                 run.current_source_id = ""
                 run.stop_reason = "cancelled_by_user"
-                for item in progress:
-                    if item.status == "pending":
-                        _update_source_progress(
-                            progress,
-                            item.source_id,
-                            status="skipped",
-                            detail="Skipped because cancellation was requested.",
-                        )
+                _mark_pending_sources_skipped(
+                    progress,
+                    detail="Skipped because cancellation was requested.",
+                )
                 _save_progress(run, progress)
                 session.commit()
                 return get_professional_capture_run(session, run.id)
@@ -441,6 +452,16 @@ def start_professional_supervised_capture(
                 session.commit()
                 manifests_committed = True
                 _finalize_staged_artifacts(staged_artifacts)
+                if status == "failed" and _stop_on_failure_enabled(run):
+                    progress = _load_progress(run)
+                    _mark_pending_sources_skipped(
+                        progress,
+                        detail="Skipped because stop_on_failure was enabled after a source failed.",
+                    )
+                    run.stop_reason = "stopped_after_first_source_failure"
+                    _save_progress(run, progress)
+                    session.commit()
+                    break
             except Exception:
                 session.rollback()
                 if not manifests_committed:
@@ -457,9 +478,10 @@ def start_professional_supervised_capture(
         )
         run.completed_at = utc_now()
         run.current_source_id = ""
-        run.stop_reason = (
-            "" if run.status == "completed" else "one_or_more_sources_partial_or_failed"
-        )
+        if run.status == "completed":
+            run.stop_reason = ""
+        elif not run.stop_reason:
+            run.stop_reason = "one_or_more_sources_partial_or_failed"
         run.progress_updated_at = run.completed_at
         session.commit()
     except Exception:
