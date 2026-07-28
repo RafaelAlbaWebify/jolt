@@ -26,6 +26,12 @@ const plannedRun = {
   completed_at: null,
   stop_reason: "",
   artifact_count: 0,
+  source_progress: [],
+  completed_source_count: 0,
+  total_source_count: 0,
+  current_source_id: "",
+  cancel_requested: false,
+  progress_updated_at: null,
 };
 
 describe("ProfessionalCaptureRuns", () => {
@@ -53,6 +59,26 @@ describe("ProfessionalCaptureRuns", () => {
       started_at: "2026-07-24T18:02:00Z",
       completed_at: "2026-07-24T18:03:00Z",
       artifact_count: 8,
+      completed_source_count: 2,
+      total_source_count: 2,
+      source_progress: [
+        {
+          source_id: "linkedin-profile",
+          status: "completed",
+          started_at: "2026-07-24T18:02:00Z",
+          completed_at: "2026-07-24T18:02:30Z",
+          completeness_status: "complete",
+          detail: "Captured profile evidence.",
+        },
+        {
+          source_id: "linkedin-posts",
+          status: "completed",
+          started_at: "2026-07-24T18:02:31Z",
+          completed_at: "2026-07-24T18:03:00Z",
+          completeness_status: "partial",
+          detail: "Captured bounded post evidence.",
+        },
+      ],
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
@@ -101,6 +127,10 @@ describe("ProfessionalCaptureRuns", () => {
 
     expect(await screen.findByText("completed")).toBeInTheDocument();
     expect(screen.getByText(/Limits: 2 sources/)).toBeInTheDocument();
+    expect(screen.getByText(/Progress: 2\/2 sources completed/)).toBeInTheDocument();
+    expect(screen.getByText("Source progress and failure details")).toBeInTheDocument();
+    expect(screen.getByText(/linkedin-profile/)).toBeInTheDocument();
+    expect(screen.getByText(/Captured bounded post evidence/)).toBeInTheDocument();
     expect(screen.queryByText(/Type the exact phrase/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete this capture batch" }));
@@ -113,5 +143,70 @@ describe("ProfessionalCaptureRuns", () => {
 
     await waitFor(() => expect(screen.queryByText("completed")).not.toBeInTheDocument());
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+  });
+
+  it("surfaces running source, cancellation, and failed source details", async () => {
+    const runningRun = {
+      ...plannedRun,
+      id: "run-progress",
+      status: "running",
+      planned_sources: [
+        {
+          source_id: "linkedin-profile",
+          label: "LinkedIn profile",
+          url: "https://www.linkedin.com/in/example/",
+          initial_scope: true,
+        },
+        {
+          source_id: "linkedin-posts",
+          label: "LinkedIn posts",
+          url: "https://www.linkedin.com/in/example/recent-activity/all/",
+          initial_scope: true,
+        },
+      ],
+      started_at: "2026-07-24T18:02:00Z",
+      artifact_count: 1,
+      source_progress: [
+        {
+          source_id: "linkedin-profile",
+          status: "completed",
+          started_at: "2026-07-24T18:02:00Z",
+          completed_at: "2026-07-24T18:02:30Z",
+          completeness_status: "complete",
+          detail: "Profile captured successfully.",
+        },
+        {
+          source_id: "linkedin-posts",
+          status: "failed",
+          started_at: "2026-07-24T18:02:31Z",
+          completed_at: null,
+          completeness_status: "failed",
+          detail: "LinkedIn posts timed out before bounded capture completed.",
+        },
+      ],
+      completed_source_count: 1,
+      total_source_count: 2,
+      current_source_id: "linkedin-posts",
+      cancel_requested: true,
+      progress_updated_at: "2026-07-24T18:03:00Z",
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify([runningRun]), { status: 200 }),
+    );
+
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+      />,
+    );
+
+    expect(await screen.findByText("running")).toBeInTheDocument();
+    expect(screen.getByText(/Progress: 1\/2 sources completed/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: LinkedIn posts/)).toBeInTheDocument();
+    expect(screen.getByText(/cancellation requested/)).toBeInTheDocument();
+    expect(screen.getByText(/LinkedIn posts timed out/)).toBeInTheDocument();
   });
 });

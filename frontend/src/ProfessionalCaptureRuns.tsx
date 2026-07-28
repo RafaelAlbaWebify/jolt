@@ -14,6 +14,15 @@ export type ProfessionalCaptureOptions = {
   stop_on_failure: boolean;
 };
 
+type ProfessionalSourceProgress = {
+  source_id: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  completeness_status: string;
+  detail: string;
+};
+
 type ProfessionalCaptureRun = {
   id: string;
   mode: "preview_only" | "supervised_read_only";
@@ -38,6 +47,12 @@ type ProfessionalCaptureRun = {
   completed_at: string | null;
   stop_reason: string;
   artifact_count: number;
+  source_progress: ProfessionalSourceProgress[];
+  completed_source_count: number;
+  total_source_count: number;
+  current_source_id: string;
+  cancel_requested: boolean;
+  progress_updated_at: string | null;
 };
 
 type Props = {
@@ -47,6 +62,24 @@ type Props = {
   captureOptions: ProfessionalCaptureOptions;
   startRequestKey?: number;
 };
+
+function humanize(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function sourceLabel(run: ProfessionalCaptureRun, sourceId: string) {
+  return run.planned_sources.find((source) => source.source_id === sourceId)?.label || sourceId;
+}
+
+function progressSummary(run: ProfessionalCaptureRun) {
+  const total = run.total_source_count || run.planned_sources.length || run.source_progress.length;
+  return `${run.completed_source_count}/${total} sources completed`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "";
+  return new Date(value).toLocaleString();
+}
 
 export function ProfessionalCaptureRuns({
   apiBase,
@@ -235,22 +268,52 @@ export function ProfessionalCaptureRuns({
       <p className="professional-ledger-note">
         Current plan revision: {planRefreshKey}. Each batch records the exact limits used.
       </p>
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
       {loading && active && <p role="status">Loading capture history…</p>}
-      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry capture history</button>}
+      {error && !loaded && (
+        <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>
+          Retry capture history
+        </button>
+      )}
       {loaded && runs.length === 0 && <p>No captures yet. Use “Start capture” at the top of this workspace.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (
             <article className="professional-run-card" key={run.id}>
               <div>
-                <strong>{run.status.replaceAll("_", " ")}</strong>
+                <strong>{humanize(run.status)}</strong>
                 <span>{new Date(run.requested_at).toLocaleString()}</span>
               </div>
               <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
               <p>
                 Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s timeout
               </p>
+              <p>
+                Progress: {progressSummary(run)}
+                {run.current_source_id ? ` · Current: ${sourceLabel(run, run.current_source_id)}` : ""}
+                {run.cancel_requested ? " · cancellation requested" : ""}
+              </p>
+              {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
+              {run.source_progress.length > 0 && (
+                <details className="professional-source-progress" open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}>
+                  <summary>Source progress and failure details</summary>
+                  <ol>
+                    {run.source_progress.map((source) => (
+                      <li key={source.source_id}>
+                        <strong>{sourceLabel(run, source.source_id)}</strong>: {humanize(source.status)}
+                        {source.completeness_status ? ` · ${humanize(source.completeness_status)}` : ""}
+                        {source.started_at ? ` · started ${formatDate(source.started_at)}` : ""}
+                        {source.completed_at ? ` · completed ${formatDate(source.completed_at)}` : ""}
+                        {source.detail && <p>{source.detail}</p>}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
               <code>{run.id}</code>
               {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
                 <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
@@ -265,7 +328,7 @@ export function ProfessionalCaptureRuns({
               {(run.status === "completed" || run.status === "completed_with_gaps") && (
                 <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
               )}
-              {run.stop_reason && <p>{run.stop_reason.replaceAll("_", " ")}</p>}
+              {run.stop_reason && <p>{humanize(run.stop_reason)}</p>}
               {run.status !== "running" && deletingRunId !== run.id && (
                 <button
                   type="button"
