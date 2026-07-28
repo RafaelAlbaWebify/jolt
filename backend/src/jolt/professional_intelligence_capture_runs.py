@@ -27,7 +27,7 @@ class ProfessionalCaptureAuthorizationRequest(BaseModel):
 
 
 class ProfessionalCaptureOptions(BaseModel):
-    max_sources: int = Field(default=3, ge=1, le=12)
+    max_sources: int = Field(default=8, ge=1, le=12)
     max_scroll_batches: int = Field(default=2, ge=0, le=20)
     max_items_per_source: int = Field(default=25, ge=1, le=200)
     timeout_seconds: int = Field(default=30, ge=10, le=120)
