@@ -97,7 +97,12 @@ def configure_professional_evidence_root(
     if not raw_path:
         raise ValueError("A local evidence directory is required.")
     path = Path(raw_path).expanduser().resolve(strict=False)
-    path.mkdir(parents=True, exist_ok=True)
+    if path.exists() and not path.is_dir():
+        raise ValueError("The local evidence root must be a directory.")
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ValueError("The local evidence root could not be created.") from exc
     if not path.is_dir():
         raise ValueError("The local evidence root must be a directory.")
     if not os.access(path, os.W_OK):
