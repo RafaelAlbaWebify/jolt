@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
-import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
+import {
+  ProfessionalCaptureRuns,
+  type ProfessionalCaptureOptions,
+} from "./ProfessionalCaptureRuns";
 import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
 import { ProfessionalExecutionReadiness } from "./ProfessionalExecutionReadiness";
 import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
@@ -32,6 +35,14 @@ const CATEGORY_LABELS: Record<ProfessionalIntelligenceSource["category"], string
   network: "Network and discovery",
 };
 
+const DEFAULT_CAPTURE_OPTIONS: ProfessionalCaptureOptions = {
+  max_sources: 3,
+  max_scroll_batches: 2,
+  max_items_per_source: 25,
+  timeout_seconds: 30,
+  stop_on_failure: true,
+};
+
 export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [sources, setSources] = useState<ProfessionalIntelligenceSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,6 +51,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
   const [captureStartRequestKey, setCaptureStartRequestKey] = useState(0);
+  const [captureOptions, setCaptureOptions] = useState(DEFAULT_CAPTURE_OPTIONS);
   const [error, setError] = useState("");
 
   const loadSources = useCallback(async () => {
@@ -69,6 +81,13 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
     setSources((current) => current.map((source) => (
       source.source_id === changed.source_id ? changed : source
     )));
+  }
+
+  function setNumericCaptureOption(
+    key: "max_sources" | "max_scroll_batches" | "max_items_per_source" | "timeout_seconds",
+    value: string,
+  ) {
+    setCaptureOptions((current) => ({ ...current, [key]: Number(value) }));
   }
 
   async function runSourceAction(sourceId: string, path: string, body?: SourceUpdate) {
@@ -152,7 +171,60 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
           <p>Capture the approved sources, keep the evidence locally, and review the result.</p>
         </div>
         <div className="professional-overview-actions">
-          <div className="professional-primary-capture-action">
+          <div className="professional-capture-controls" aria-label="Capture settings">
+            <div className="professional-capture-settings-grid">
+              <label>
+                Maximum sources
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={captureOptions.max_sources}
+                  onChange={(event) => setNumericCaptureOption("max_sources", event.target.value)}
+                />
+              </label>
+              <label>
+                Scroll batches per source
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={captureOptions.max_scroll_batches}
+                  onChange={(event) => setNumericCaptureOption("max_scroll_batches", event.target.value)}
+                />
+              </label>
+              <label>
+                Maximum items per source
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={captureOptions.max_items_per_source}
+                  onChange={(event) => setNumericCaptureOption("max_items_per_source", event.target.value)}
+                />
+              </label>
+              <label>
+                Timeout per source (seconds)
+                <input
+                  type="number"
+                  min="10"
+                  max="120"
+                  value={captureOptions.timeout_seconds}
+                  onChange={(event) => setNumericCaptureOption("timeout_seconds", event.target.value)}
+                />
+              </label>
+            </div>
+            <label className="professional-source-checkbox">
+              <input
+                type="checkbox"
+                checked={captureOptions.stop_on_failure}
+                onChange={(event) => setCaptureOptions((current) => ({
+                  ...current,
+                  stop_on_failure: event.target.checked,
+                }))}
+              />
+              Stop the run after the first failed source.
+            </label>
             <button
               type="button"
               disabled={!active}
@@ -161,7 +233,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
             >
               Start capture
             </button>
-            <span>One click starts the capture.</span>
+            <span>LinkedIn result lists use scrolling, so “scroll batches” is the page limit.</span>
           </div>
           <div className="professional-safety-boundary" role="note">
             <strong>Read-only boundary</strong>
@@ -190,6 +262,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
           apiBase={apiBase}
           active={active}
           planRefreshKey={planRefreshKey}
+          captureOptions={captureOptions}
           startRequestKey={captureStartRequestKey}
         />
       )}
