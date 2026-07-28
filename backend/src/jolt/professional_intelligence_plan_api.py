@@ -3,6 +3,9 @@ from collections.abc import Callable, Iterator
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from jolt.professional_intelligence_bounded_capture import (
+    start_bounded_professional_capture,
+)
 from jolt.professional_intelligence_capture_deletion import (
     ProfessionalCaptureDeletionRequest,
     ProfessionalCaptureDeletionResult,
@@ -51,9 +54,6 @@ from jolt.professional_intelligence_retention import (
 from jolt.professional_intelligence_structured_extraction import (
     ProfessionalStructuredExtraction,
     extract_professional_intelligence,
-)
-from jolt.professional_intelligence_supervised_capture import (
-    start_professional_supervised_capture,
 )
 
 SessionProvider = Callable[[], Iterator[Session]]
@@ -251,7 +251,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         session: Session = session_dependency,
     ) -> ProfessionalCaptureRunResponse:
         try:
-            return start_professional_supervised_capture(session, run_id)
+            return start_bounded_professional_capture(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
