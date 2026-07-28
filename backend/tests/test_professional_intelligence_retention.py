@@ -139,11 +139,14 @@ def test_retention_preview_and_cleanup_are_supervised_and_expiry_scoped(
     assert after["existing_file_count"] == 0
 
 
-def test_retention_preview_requires_verified_evidence_root(tmp_path: Path) -> None:
+def test_retention_preview_uses_default_evidence_root(tmp_path: Path) -> None:
     database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
     client = TestClient(create_app(database_url))
 
     response = client.get("/api/professional-intelligence/retention-preview")
 
-    assert response.status_code == 422
-    assert "verified writable local evidence root" in response.json()["detail"]
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["expired_artifact_count"] == 0
+    assert payload["existing_file_count"] == 0
+    assert payload["candidates"] == []
