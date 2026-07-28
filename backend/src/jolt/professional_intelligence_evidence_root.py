@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
@@ -71,7 +72,17 @@ def ensure_default_professional_evidence_root(session: Session) -> ProfessionalE
         verified_at=utc_now(),
     )
     session.add(settings)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # Evidence root and execution-readiness are loaded concurrently by the UI.
+        # Another request may have inserted the singleton row after this session's
+        # initial read. Recover by rolling back and reading the committed winner.
+        session.rollback()
+        existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
+        if existing is None:
+            raise
+        return existing
     return settings
 
 
