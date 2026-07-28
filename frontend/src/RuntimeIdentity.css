@@ -1,0 +1,42 @@
+.runtime-identity-panel {
+  margin-top: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.runtime-identity-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.runtime-identity-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.runtime-identity-grid div {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.runtime-identity-grid span,
+.runtime-identity-grid small {
+  color: var(--muted-text);
+  font-size: 0.78rem;
+}
+
+.runtime-identity-grid strong,
+.runtime-identity-grid small {
+  overflow-wrap: anywhere;
+}
+
+.runtime-identity-grid strong {
+  font-size: 0.86rem;
+}
