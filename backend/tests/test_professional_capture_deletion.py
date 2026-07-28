@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from jolt.main import create_app
 
 
-def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_run(
+def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_governed_evidence(
     tmp_path: Path,
 ) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
@@ -15,16 +15,19 @@ def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_ru
     evidence_root = Path(
         client.get("/api/professional-intelligence/evidence-root").json()["root_path"]
     )
-    first_directory = evidence_root / first["id"] / "linkedin-profile"
-    first_directory.mkdir(parents=True)
-    (first_directory / "page.html").write_text("fixture", encoding="utf-8")
+    governed_directory = evidence_root / "professional-intelligence" / first["id"] / "linkedin-profile"
+    governed_directory.mkdir(parents=True)
+    (governed_directory / "page.html").write_text("fixture", encoding="utf-8")
+    legacy_wrong_directory = evidence_root / first["id"]
+    legacy_wrong_directory.mkdir(parents=True)
+    (legacy_wrong_directory / "sentinel.txt").write_text("must remain", encoding="utf-8")
 
     rejected = client.post(
         f"/api/professional-intelligence/capture-runs/{first['id']}/delete",
         json={"confirmation_phrase": "delete"},
     )
     assert rejected.status_code == 409
-    assert first_directory.exists()
+    assert governed_directory.exists()
 
     deleted = client.post(
         f"/api/professional-intelligence/capture-runs/{first['id']}/delete",
@@ -36,7 +39,8 @@ def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_ru
         "deleted_artifact_count": 0,
         "deleted_evidence_directory": True,
     }
-    assert not (evidence_root / first["id"]).exists()
+    assert not (evidence_root / "professional-intelligence" / first["id"]).exists()
+    assert legacy_wrong_directory.exists()
 
     runs = client.get("/api/professional-intelligence/capture-runs").json()
     assert [run["id"] for run in runs] == [second["id"]]
