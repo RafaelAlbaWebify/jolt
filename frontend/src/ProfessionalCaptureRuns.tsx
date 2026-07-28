@@ -6,6 +6,14 @@ import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence"
 const AUTHORIZATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
 const DELETE_PHRASE = "DELETE CAPTURE RUN";
 
+export type ProfessionalCaptureOptions = {
+  max_sources: number;
+  max_scroll_batches: number;
+  max_items_per_source: number;
+  timeout_seconds: number;
+  stop_on_failure: boolean;
+};
+
 type ProfessionalCaptureRun = {
   id: string;
   mode: "preview_only" | "supervised_read_only";
@@ -21,6 +29,7 @@ type ProfessionalCaptureRun = {
     | "interrupted";
   planned_sources: ProfessionalIntelligenceSource[];
   safety_constraints: string[];
+  capture_options: ProfessionalCaptureOptions;
   requested_at: string;
   authorized_at: string | null;
   authorization_expires_at: string | null;
@@ -35,6 +44,7 @@ type Props = {
   apiBase: string;
   active: boolean;
   planRefreshKey: number;
+  captureOptions: ProfessionalCaptureOptions;
   startRequestKey?: number;
 };
 
@@ -42,6 +52,7 @@ export function ProfessionalCaptureRuns({
   apiBase,
   active,
   planRefreshKey,
+  captureOptions,
   startRequestKey = 0,
 }: Props) {
   const [runs, setRuns] = useState<ProfessionalCaptureRun[]>([]);
@@ -86,7 +97,7 @@ export function ProfessionalCaptureRuns({
 
   async function authorizeAndStart(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
     let ready = run;
-    if (ready.status === "planned") {
+    if (ready.status === "planned" || ready.status === "expired") {
       const authorization = await fetch(
         `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/authorize`,
         {
@@ -123,8 +134,13 @@ export function ProfessionalCaptureRuns({
     try {
       const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ options: captureOptions }),
       });
-      if (!response.ok) throw new Error("The supervised capture could not be prepared.");
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The supervised capture could not be prepared.");
+      }
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
       const completed = await authorizeAndStart(created);
@@ -217,7 +233,7 @@ export function ProfessionalCaptureRuns({
         </button>
       </div>
       <p className="professional-ledger-note">
-        Current plan revision: {planRefreshKey}. The click that starts a capture records user presence locally.
+        Current plan revision: {planRefreshKey}. Each batch records the exact limits used.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
       {loading && active && <p role="status">Loading capture history…</p>}
@@ -232,6 +248,9 @@ export function ProfessionalCaptureRuns({
                 <span>{new Date(run.requested_at).toLocaleString()}</span>
               </div>
               <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
+              <p>
+                Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s timeout
+              </p>
               <code>{run.id}</code>
               {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
                 <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
