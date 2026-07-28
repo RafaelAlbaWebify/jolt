@@ -93,7 +93,7 @@ describe("ProfessionalIntelligence", () => {
     vi.restoreAllMocks();
   });
 
-  it("loads only when active and shows the supervised execution contract", async () => {
+  it("loads only when active and shows one-click capture", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
@@ -121,7 +121,10 @@ describe("ProfessionalIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
-    expect(screen.getByText(/Maintain the approved source set/)).toBeInTheDocument();
+    expect(screen.getByText(/Capture the approved sources/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start capture" })).toBeInTheDocument();
+    expect(screen.getByText("One click starts the capture.")).toBeInTheDocument();
+    expect(screen.queryByText(/authorization step/i)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
     expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
@@ -131,8 +134,8 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByText("Default retention: 30 days.")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
     expect(screen.getByText("Explicit start available")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Supervised run history" })).toBeInTheDocument();
-    expect(screen.getByText(/No capture runs recorded yet/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Capture history" })).toBeInTheDocument();
+    expect(screen.getByText(/No captures yet/)).toBeInTheDocument();
     expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
     expect(screen.getByText("visible fresh browser context per source")).toBeInTheDocument();
   });
