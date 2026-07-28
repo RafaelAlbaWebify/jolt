@@ -27,6 +27,14 @@ class ProfessionalCaptureRun(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     source_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
     safety_constraints_json: Mapped[str] = mapped_column(Text, nullable=False)
+    capture_options_json: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        default=(
+            '{"max_sources":3,"max_scroll_batches":2,"max_items_per_source":25,'
+            '"timeout_seconds":30,"stop_on_failure":true}'
+        ),
+    )
     source_progress_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     completed_source_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current_source_id: Mapped[str] = mapped_column(Text, nullable=False, default="")
