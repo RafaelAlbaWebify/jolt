@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProfessionalEvidenceReview } from "./ProfessionalEvidenceReview";
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
@@ -35,9 +35,15 @@ type Props = {
   apiBase: string;
   active: boolean;
   planRefreshKey: number;
+  startRequestKey?: number;
 };
 
-export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Props) {
+export function ProfessionalCaptureRuns({
+  apiBase,
+  active,
+  planRefreshKey,
+  startRequestKey = 0,
+}: Props) {
   const [runs, setRuns] = useState<ProfessionalCaptureRun[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,6 +54,8 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
   const [deletePhrase, setDeletePhrase] = useState("");
   const [userPresent, setUserPresent] = useState(false);
   const [error, setError] = useState("");
+  const ledgerRef = useRef<HTMLElement | null>(null);
+  const previousStartRequestKey = useRef(startRequestKey);
 
   const loadRuns = useCallback(async () => {
     setLoading(true);
@@ -69,11 +77,23 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
     void loadRuns();
   }, [active, loadRuns, loaded]);
 
+  useEffect(() => {
+    if (startRequestKey === previousStartRequestKey.current) return;
+    previousStartRequestKey.current = startRequestKey;
+    if (active) void startNewCapture();
+  }, [active, startRequestKey]);
+
+  useEffect(() => {
+    if (!authorizingRunId) return;
+    ledgerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [authorizingRunId]);
+
   function replaceRun(changed: ProfessionalCaptureRun) {
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
   }
 
   async function startNewCapture() {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -184,19 +204,26 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
   }
 
   return (
-    <section className="panel professional-run-ledger" aria-labelledby="professional-run-ledger-heading">
+    <section
+      id="professional-run-ledger"
+      ref={ledgerRef}
+      className="panel professional-run-ledger"
+      aria-labelledby="professional-run-ledger-heading"
+    >
       <div className="section-heading">
         <div>
           <p className="eyebrow">Capture operations</p>
           <h2 id="professional-run-ledger-heading">Supervised run history</h2>
-          <p>Start a new capture, complete the required safety confirmation, and manage recent capture batches from one place.</p>
+          <p>Complete the required safety confirmation and manage recent capture batches from one place.</p>
         </div>
-        <div className="professional-primary-capture-action">
-          <button type="button" disabled={busy || !active} onClick={() => void startNewCapture()}>
-            {busy ? "Working…" : "Start new supervised capture"}
-          </button>
-          <p>This prepares a new run and immediately opens its authorization step.</p>
-        </div>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy || !active}
+          onClick={() => void startNewCapture()}
+        >
+          {busy ? "Working…" : "Start another supervised capture"}
+        </button>
       </div>
       <p className="professional-ledger-note">
         Current plan revision: {planRefreshKey}. No credentials, cookies, tokens, or browser storage are persisted.
@@ -204,7 +231,7 @@ export function ProfessionalCaptureRuns({ apiBase, active, planRefreshKey }: Pro
       {error && <p className="error" role="alert">{error}</p>}
       {loading && active && <p role="status">Loading supervised capture history…</p>}
       {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry capture history</button>}
-      {loaded && runs.length === 0 && <p>No capture runs recorded yet. Use “Start new supervised capture” above.</p>}
+      {loaded && runs.length === 0 && <p>No capture runs recorded yet. Use “Start new supervised capture” at the top of this workspace.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (

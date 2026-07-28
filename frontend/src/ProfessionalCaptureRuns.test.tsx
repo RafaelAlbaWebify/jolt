@@ -25,7 +25,11 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts a guided capture and deletes the completed batch with exact confirmation", async () => {
+  it("starts a guided capture from the overview trigger and deletes the completed batch", async () => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
     const authorized = {
       ...plannedRun,
       status: "authorized",
@@ -64,16 +68,24 @@ describe("ProfessionalCaptureRuns", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
 
-    render(
+    const { rerender } = render(
       <ProfessionalCaptureRuns
         apiBase="http://127.0.0.1:8000"
         active
         planRefreshKey={0}
+        startRequestKey={0}
       />,
     );
 
     expect(await screen.findByText(/No capture runs recorded yet/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Start new supervised capture" }));
+    rerender(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        startRequestKey={1}
+      />,
+    );
 
     expect(await screen.findByText("planned")).toBeInTheDocument();
     expect(screen.getByLabelText("Authorization phrase for run-1")).toBeInTheDocument();
