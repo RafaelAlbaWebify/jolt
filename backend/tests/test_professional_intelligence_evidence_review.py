@@ -117,14 +117,18 @@ def test_evidence_review_detects_tampering(tmp_path: Path) -> None:
     assert rendered["content"] is None
 
 
-def test_evidence_review_requires_configured_root_and_known_run(tmp_path: Path) -> None:
+def test_evidence_review_uses_default_root_and_requires_known_run(tmp_path: Path) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
     run = client.post("/api/professional-intelligence/capture-runs").json()
 
-    missing_root = client.get(
+    empty_review = client.get(
         f"/api/professional-intelligence/capture-runs/{run['id']}/evidence-review"
     )
     unknown_run = client.get("/api/professional-intelligence/capture-runs/missing/evidence-review")
 
-    assert missing_root.status_code == 422
+    assert empty_review.status_code == 200
+    payload = empty_review.json()
+    assert payload["capture_run_id"] == run["id"]
+    assert payload["review_available"] is False
+    assert payload["ready_for_analysis"] is False
     assert unknown_run.status_code == 404
