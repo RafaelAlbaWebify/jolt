@@ -171,9 +171,7 @@ def create_professional_capture_preview_run(
         id=str(uuid4()),
         mode="preview_only",
         status="planned",
-        source_snapshot_json=json.dumps(
-            [source.model_dump(mode="json") for source in sources]
-        ),
+        source_snapshot_json=json.dumps([source.model_dump(mode="json") for source in sources]),
         safety_constraints_json=json.dumps(
             [
                 *plan.safety_constraints,
