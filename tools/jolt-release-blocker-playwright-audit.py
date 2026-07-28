@@ -142,6 +142,14 @@ def audit(output_dir: Path) -> dict[str, Any]:
         primary = page.get_by_role("button", name="Start capture", exact=True).first
         primary.wait_for(timeout=30_000)
         assert_true(primary.is_visible(), "Primary capture action is not visible")
+        assert_true(page.get_by_label("Maximum sources").is_visible(), "Maximum sources setting is missing")
+        assert_true(page.get_by_label("Scroll batches per source").is_visible(), "Scroll batch setting is missing")
+        assert_true(page.get_by_label("Maximum items per source").is_visible(), "Maximum item setting is missing")
+        assert_true(page.get_by_label("Timeout per source (seconds)").is_visible(), "Timeout setting is missing")
+        assert_true(
+            page.get_by_label("Stop the run after the first failed source.").is_visible(),
+            "Stop-on-failure setting is missing",
+        )
         page.screenshot(path=output_dir / "professional-ready-and-start-visible.png", full_page=True)
 
         def mock_external_capture(route: Route) -> None:
@@ -165,7 +173,10 @@ def audit(output_dir: Path) -> dict[str, Any]:
             page.get_by_text("Type the exact phrase", exact=False).count() == 0,
             "One-click capture still exposes an authorization phrase form",
         )
-        assert_true(page.get_by_role("checkbox").count() == 0, "One-click capture still exposes a checkbox")
+        assert_true(
+            page.get_by_label("User present for", exact=False).count() == 0,
+            "One-click capture still exposes a user-presence checkbox",
+        )
         delete_button = page.get_by_role("button", name="Delete this capture batch", exact=True).first
         delete_button.wait_for(timeout=30_000)
         page.screenshot(path=output_dir / "professional-one-click-capture-completed.png", full_page=True)
@@ -188,6 +199,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "all_score_labels_human_readable": True,
         "default_evidence_directory_ready": True,
         "primary_capture_action_visible": True,
+        "bounded_capture_settings_visible": True,
         "one_click_capture_completed": True,
         "authorization_form_absent": True,
         "confirmed_run_deletion_completed": True,

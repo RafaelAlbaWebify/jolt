@@ -1,7 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
+import { ProfessionalCaptureRuns, type ProfessionalCaptureOptions } from "./ProfessionalCaptureRuns";
+
+const captureOptions: ProfessionalCaptureOptions = {
+  max_sources: 2,
+  max_scroll_batches: 1,
+  max_items_per_source: 10,
+  timeout_seconds: 20,
+  stop_on_failure: true,
+};
 
 const plannedRun = {
   id: "run-1",
@@ -9,6 +17,7 @@ const plannedRun = {
   status: "planned",
   planned_sources: [],
   safety_constraints: ["no_unattended_capture"],
+  capture_options: captureOptions,
   requested_at: "2026-07-24T18:00:00Z",
   authorized_at: null,
   authorization_expires_at: null,
@@ -25,7 +34,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts a complete capture from one overview click and deletes the batch", async () => {
+  it("starts a bounded capture from one overview click and deletes the batch", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -43,12 +52,13 @@ describe("ProfessionalCaptureRuns", () => {
       status: "completed",
       started_at: "2026-07-24T18:02:00Z",
       completed_at: "2026-07-24T18:03:00Z",
-      artifact_count: 32,
+      artifact_count: 8,
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (!init?.method) return new Response(JSON.stringify([]), { status: 200 });
       if (url.endsWith("/capture-runs")) {
+        expect(JSON.parse(String(init.body))).toEqual({ options: captureOptions });
         return new Response(JSON.stringify(plannedRun), { status: 200 });
       }
       if (url.endsWith("/run-1/authorize")) {
@@ -73,6 +83,7 @@ describe("ProfessionalCaptureRuns", () => {
         apiBase="http://127.0.0.1:8000"
         active
         planRefreshKey={0}
+        captureOptions={captureOptions}
         startRequestKey={0}
       />,
     );
@@ -83,13 +94,14 @@ describe("ProfessionalCaptureRuns", () => {
         apiBase="http://127.0.0.1:8000"
         active
         planRefreshKey={0}
+        captureOptions={captureOptions}
         startRequestKey={1}
       />,
     );
 
     expect(await screen.findByText("completed")).toBeInTheDocument();
+    expect(screen.getByText(/Limits: 2 sources/)).toBeInTheDocument();
     expect(screen.queryByText(/Type the exact phrase/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete this capture batch" }));
     const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
