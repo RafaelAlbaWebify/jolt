@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
@@ -40,16 +40,16 @@ def request_json(method: str, path: str, payload: dict[str, object] | None = Non
     return loaded
 
 
-def audit_api_vertical_slice() -> dict[str, Any]:
+def create_reviewed_opportunity() -> dict[str, Any]:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     title = f"JOLT Daily Workflow Audit {stamp}"
     raw_text = (
         f"{title}\n"
         "Audit Systems Ltd\n"
         "Location: Remote Spain\n"
-        "Application support engineer role involving Windows, Active Directory, SQL troubleshooting, "
-        "incident management, APIs, logs, customer support, Microsoft 365, Azure, VMware, "
-        "documentation, service management, and production support."
+        "Application support engineer role involving Windows, Active Directory, SQL "
+        "troubleshooting, incident management, APIs, logs, customer support, Microsoft 365, "
+        "Azure, VMware, documentation, service management, and production support."
     )
     source_url = f"https://example.test/jolt-daily-workflow/{stamp}"
 
@@ -63,8 +63,26 @@ def audit_api_vertical_slice() -> dict[str, Any]:
     review = request_json(
         "POST",
         f"/api/opportunities/{posting_id}/reviews",
-        {"evaluation_id": evaluation_id, "decision": "pursue", "notes": "Daily workflow audit pursue decision."},
+        {
+            "evaluation_id": evaluation_id,
+            "decision": "pursue",
+            "notes": "Daily workflow audit pursue decision.",
+        },
     )
+
+    assert_true(posting_id, "Manual intake did not create a posting")
+    assert_true(review.get("decision") == "pursue", "Pursue review was not recorded")
+
+    return {
+        "fixture_title": title,
+        "posting_id": posting_id,
+        "evaluation_id": evaluation_id,
+        "review": review,
+    }
+
+
+def complete_application_vertical_slice(opportunity: dict[str, Any]) -> dict[str, Any]:
+    posting_id = str(opportunity["posting_id"])
     application = request_json(
         "POST",
         f"/api/opportunities/{posting_id}/applications",
@@ -133,11 +151,12 @@ def audit_api_vertical_slice() -> dict[str, Any]:
     reloaded = request_json("GET", f"/api/applications/{application_id}")
 
     events = reloaded.get("events", [])
-    assert_true(posting_id, "Manual intake did not create a posting")
-    assert_true(review.get("decision") == "pursue", "Pursue review was not recorded")
     assert_true(application.get("status") == "preparing", "Application did not start in preparing")
     assert_true(submitted.get("status") == "submitted", "Application did not move to submitted")
-    assert_true(recruiter_screen.get("status") == "recruiter_screen", "Application did not move to recruiter screen")
+    assert_true(
+        recruiter_screen.get("status") == "recruiter_screen",
+        "Application did not move to recruiter screen",
+    )
     assert_true(corrected.get("status") == "preparing", "Backward correction to preparing failed")
     assert_true(completed_task.get("status") == "completed", "Task completion failed")
     assert_true(interview.get("status") == "scheduled", "Interview creation failed")
@@ -154,11 +173,8 @@ def audit_api_vertical_slice() -> dict[str, Any]:
     )
 
     return {
-        "fixture_title": title,
-        "posting_id": posting_id,
-        "evaluation_id": evaluation_id,
+        **opportunity,
         "application_id": application_id,
-        "review": review,
         "application_created": application,
         "submitted": submitted,
         "recruiter_screen": recruiter_screen,
@@ -172,9 +188,14 @@ def audit_api_vertical_slice() -> dict[str, Any]:
     }
 
 
+def wait_for_fixture(page: Page, section_name: str, fixture_title: str) -> None:
+    page.get_by_role("button", name=section_name, exact=True).click()
+    page.get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
+
+
 def audit(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    api_summary = audit_api_vertical_slice()
+    api_summary = create_reviewed_opportunity()
     console_errors: list[str] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
@@ -192,12 +213,11 @@ def audit(output_dir: Path) -> dict[str, Any]:
             ),
         )
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
-        page.get_by_role("button", name="Opportunities", exact=True).click()
-        page.get_by_text(api_summary["fixture_title"], exact=True).wait_for(timeout=30_000)
+        wait_for_fixture(page, "Opportunities", api_summary["fixture_title"])
         page.screenshot(path=output_dir / "daily-workflow-opportunities.png", full_page=True)
 
-        page.get_by_role("button", name="Applications", exact=True).click()
-        page.get_by_text(api_summary["fixture_title"], exact=True).wait_for(timeout=30_000)
+        api_summary = complete_application_vertical_slice(api_summary)
+        wait_for_fixture(page, "Applications", api_summary["fixture_title"])
         page.screenshot(path=output_dir / "daily-workflow-applications.png", full_page=True)
         browser.close()
 
