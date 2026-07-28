@@ -1,0 +1,119 @@
+import { useEffect, useState } from "react";
+
+type RuntimeIdentity = {
+  service: string;
+  version: string;
+  git: {
+    repository_root: string;
+    branch: string;
+    commit_sha: string;
+    dirty: boolean | null;
+    source: string;
+  };
+  database: {
+    database_url: string;
+    database_path: string | null;
+    alembic_revision: string;
+    record_counts: Record<string, number | null>;
+  };
+  evidence_root: {
+    configured: boolean;
+    root_path: string | null;
+    exists: boolean;
+    writable: boolean;
+    verified_at: string | null;
+  };
+  process: {
+    process_id: number;
+    current_working_directory: string;
+    python_executable: string;
+    python_version: string;
+    platform: string;
+  };
+};
+
+type Props = {
+  apiBase: string;
+};
+
+function shortSha(value: string) {
+  return value && value !== "unknown" ? value.slice(0, 12) : value || "unknown";
+}
+
+function statusLabel(value: boolean | null) {
+  if (value === null) return "unknown";
+  return value ? "dirty" : "clean";
+}
+
+export function RuntimeIdentityPanel({ apiBase }: Props) {
+  const [identity, setIdentity] = useState<RuntimeIdentity | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadIdentity() {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/runtime-identity`);
+      if (!response.ok) throw new Error("Unable to load runtime identity.");
+      setIdentity((await response.json()) as RuntimeIdentity);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Runtime identity failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadIdentity();
+  }, [apiBase]);
+
+  return (
+    <details className="runtime-identity-panel" open>
+      <summary>Runtime identity</summary>
+      {loading && <p role="status">Checking active JOLT runtime…</p>}
+      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <button type="button" className="secondary" disabled={loading} onClick={() => void loadIdentity()}>
+          Retry runtime identity
+        </button>
+      )}
+      {identity && (
+        <div className="runtime-identity-grid">
+          <div>
+            <span>Code</span>
+            <strong>{identity.git.branch} · {shortSha(identity.git.commit_sha)}</strong>
+            <small>{statusLabel(identity.git.dirty)} · {identity.git.source}</small>
+          </div>
+          <div>
+            <span>Database</span>
+            <strong>{identity.database.database_path ?? identity.database.database_url}</strong>
+            <small>Alembic {identity.database.alembic_revision}</small>
+          </div>
+          <div>
+            <span>Records</span>
+            <strong>
+              {identity.database.record_counts.postings ?? "?"} opportunities ·{" "}
+              {identity.database.record_counts.applications ?? "?"} applications
+            </strong>
+            <small>{identity.database.record_counts.professional_capture_runs ?? "?"} professional captures</small>
+          </div>
+          <div>
+            <span>Evidence root</span>
+            <strong>{identity.evidence_root.root_path ?? "not configured"}</strong>
+            <small>
+              {identity.evidence_root.configured
+                ? `${identity.evidence_root.exists ? "exists" : "missing"} · ${identity.evidence_root.writable ? "writable" : "not writable"}`
+                : "no configured root"}
+            </small>
+          </div>
+          <div>
+            <span>Process</span>
+            <strong>PID {identity.process.process_id}</strong>
+            <small>{identity.process.python_version} · {identity.process.current_working_directory}</small>
+          </div>
+        </div>
+      )}
+    </details>
+  );
+}
