@@ -129,7 +129,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
 
         page.get_by_role("button", name="Professional", exact=True).click()
         page.get_by_role("heading", name="Professional", exact=True).wait_for(timeout=30_000)
-        page.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
+        evidence_panel = page.locator(".professional-evidence-root")
+        evidence_panel.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
         primary = page.get_by_role("button", name="Start new supervised capture", exact=True)
         primary.wait_for(timeout=30_000)
         assert_true(primary.is_visible(), "Primary capture action is not visible")
