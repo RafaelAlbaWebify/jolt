@@ -10,6 +10,28 @@
   align-items: start;
 }
 
+.professional-overview-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.professional-primary-capture-action {
+  display: grid;
+  gap: 0.4rem;
+  align-items: start;
+}
+
+.professional-primary-capture-action button {
+  width: 100%;
+}
+
+.professional-primary-capture-action span,
+.professional-primary-capture-action p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .professional-safety-boundary {
   display: grid;
   gap: 0.35rem;
