@@ -20,6 +20,7 @@ from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
 from jolt.opportunity_workbench import get_opportunity_workbench, list_opportunity_workbench
 from jolt.professional_intelligence_plan_api import build_professional_intelligence_plan_router
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
+from jolt.runtime_identity import RuntimeIdentityResponse, build_runtime_identity
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -72,6 +73,12 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "jolt-backend", "version": "0.8.0"}
+
+    @app.get("/api/runtime-identity", response_model=RuntimeIdentityResponse, tags=["system"])
+    def runtime_identity(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> RuntimeIdentityResponse:
+        return build_runtime_identity(session)
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
     def manual_intake(
