@@ -190,7 +190,10 @@ def complete_application_vertical_slice(opportunity: dict[str, Any]) -> dict[str
 
 def wait_for_fixture(page: Page, section_name: str, fixture_title: str) -> None:
     page.get_by_role("button", name=section_name, exact=True).click()
-    page.get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
+    if section_name == "Applications":
+        page.get_by_role("button", name=f"Open {fixture_title}", exact=True).wait_for(timeout=30_000)
+        return
+    page.get_by_role("heading", name=fixture_title, exact=True).wait_for(timeout=30_000)
 
 
 def audit(output_dir: Path) -> dict[str, Any]:
