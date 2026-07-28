@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,18 @@ class ProfessionalCaptureAuthorizationRequest(BaseModel):
     user_present: bool
 
 
+class ProfessionalCaptureOptions(BaseModel):
+    max_sources: int = Field(default=3, ge=1, le=12)
+    max_scroll_batches: int = Field(default=2, ge=0, le=20)
+    max_items_per_source: int = Field(default=25, ge=1, le=200)
+    timeout_seconds: int = Field(default=30, ge=10, le=120)
+    stop_on_failure: bool = True
+
+
+class ProfessionalCaptureCreateRequest(BaseModel):
+    options: ProfessionalCaptureOptions = Field(default_factory=ProfessionalCaptureOptions)
+
+
 class ProfessionalSourceProgress(BaseModel):
     source_id: str
     status: str
@@ -41,6 +53,7 @@ class ProfessionalCaptureRunResponse(BaseModel):
     status: str
     planned_sources: list[ProfessionalIntelligenceSource]
     safety_constraints: list[str]
+    capture_options: ProfessionalCaptureOptions
     requested_at: datetime
     authorized_at: datetime | None
     authorization_expires_at: datetime | None
@@ -109,6 +122,10 @@ def _source_progress(run: ProfessionalCaptureRun) -> list[ProfessionalSourceProg
     return [ProfessionalSourceProgress.model_validate(item) for item in json.loads(raw)]
 
 
+def _capture_options(run: ProfessionalCaptureRun) -> ProfessionalCaptureOptions:
+    return ProfessionalCaptureOptions.model_validate_json(run.capture_options_json)
+
+
 def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalCaptureRunResponse:
     sources = [
         ProfessionalIntelligenceSource.model_validate(item)
@@ -125,6 +142,7 @@ def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalC
         status=effective_capture_run_status(run),
         planned_sources=sources,
         safety_constraints=list(json.loads(run.safety_constraints_json)),
+        capture_options=_capture_options(run),
         requested_at=run.requested_at,
         authorized_at=run.authorized_at,
         authorization_expires_at=run.authorization_expires_at,
@@ -142,22 +160,37 @@ def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalC
     )
 
 
-def create_professional_capture_preview_run(session: Session) -> ProfessionalCaptureRunResponse:
+def create_professional_capture_preview_run(
+    session: Session,
+    request: ProfessionalCaptureCreateRequest | None = None,
+) -> ProfessionalCaptureRunResponse:
+    options = (request or ProfessionalCaptureCreateRequest()).options
     plan = build_professional_capture_plan(session)
+    sources = plan.planned_sources[: options.max_sources]
     run = ProfessionalCaptureRun(
         id=str(uuid4()),
         mode="preview_only",
         status="planned",
         source_snapshot_json=json.dumps(
-            [source.model_dump(mode="json") for source in plan.planned_sources]
+            [source.model_dump(mode="json") for source in sources]
         ),
-        safety_constraints_json=json.dumps(plan.safety_constraints),
+        safety_constraints_json=json.dumps(
+            [
+                *plan.safety_constraints,
+                "bounded_source_count",
+                "bounded_scroll_batches",
+                "bounded_item_count",
+                "bounded_source_timeout",
+                "single_browser_process_per_run",
+            ]
+        ),
+        capture_options_json=options.model_dump_json(),
         source_progress_json=json.dumps(
             [
                 ProfessionalSourceProgress(source_id=source.source_id, status="pending").model_dump(
                     mode="json"
                 )
-                for source in plan.planned_sources
+                for source in sources
             ]
         ),
         completed_source_count=0,
