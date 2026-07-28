@@ -3,9 +3,6 @@ from collections.abc import Callable, Iterator
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from jolt.professional_intelligence_bounded_capture import (
-    start_bounded_professional_capture,
-)
 from jolt.professional_intelligence_capture_deletion import (
     ProfessionalCaptureDeletionRequest,
     ProfessionalCaptureDeletionResult,
@@ -54,6 +51,9 @@ from jolt.professional_intelligence_retention import (
 from jolt.professional_intelligence_structured_extraction import (
     ProfessionalStructuredExtraction,
     extract_professional_intelligence,
+)
+from jolt.professional_intelligence_supervised_runtime import (
+    start_bounded_professional_capture,
 )
 
 SessionProvider = Callable[[], Iterator[Session]]
@@ -169,7 +169,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         response_model=ProfessionalCaptureRunResponse,
     )
     def record_professional_capture_preview(
-        request: ProfessionalCaptureCreateRequest,
+        request: ProfessionalCaptureCreateRequest | None = None,
         session: Session = session_dependency,
     ) -> ProfessionalCaptureRunResponse:
         return create_professional_capture_preview_run(session, request)
