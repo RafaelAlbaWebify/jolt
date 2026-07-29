@@ -177,7 +177,7 @@ def list_opportunity_index(
         elif task_due:
             due_at, due_kind = task_due, "task"
         elif interview_due:
-            due_at, due_kind = "interview"
+            due_at, due_kind = interview_due, "interview"
 
         application_documents = (
             documents_by_application.get(application.id, []) if application else []
