@@ -8,7 +8,7 @@ function Test-HttpEndpoint {
 
     try {
         $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 2
-        [pscustomobject]@{
+        [pscustomObject]@{
             Name = $Name
             Uri = $Uri
             Reachable = $true
@@ -17,7 +17,7 @@ function Test-HttpEndpoint {
         }
     }
     catch {
-        [pscustomobject]@{
+        [pscustomObject]@{
             Name = $Name
             Uri = $Uri
             Reachable = $false
@@ -34,7 +34,7 @@ function Get-PortOwner {
         Select-Object -First 1
 
     if (-not $connection) {
-        return [pscustomobject]@{
+        return [pscustomObject]@{
             Port = $Port
             Listening = $false
             Pid = $null
@@ -44,7 +44,7 @@ function Get-PortOwner {
     }
 
     $process = Get-CimInstance Win32_Process -Filter "ProcessId = $($connection.OwningProcess)" -ErrorAction SilentlyContinue
-    [pscustomobject]@{
+    [pscustomObject]@{
         Port = $Port
         Listening = $true
         Pid = [int]$connection.OwningProcess
@@ -56,7 +56,10 @@ function Get-PortOwner {
 $backendHealth = Test-HttpEndpoint -Name "backend-health" -Uri "http://127.0.0.1:8000/api/health"
 $runtimeIdentity = Test-HttpEndpoint -Name "runtime-identity" -Uri "http://127.0.0.1:8000/api/runtime-identity"
 $frontend = Test-HttpEndpoint -Name "frontend" -Uri "http://127.0.0.1:5173"
-$owners = @(Get-PortOwner -Port 8000, Get-PortOwner -Port 5173)
+$owners = @(
+    Get-PortOwner -Port 8000
+    Get-PortOwner -Port 5173
+)
 
 Write-Host "JOLT launcher status"
 Write-Host "===================="
