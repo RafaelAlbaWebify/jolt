@@ -5,6 +5,11 @@ from collections.abc import Callable, Iterator
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import (
+    ApplicationArchiveRequest,
+    ApplicationArchiveResponse,
+    archive_application_card,
+)
 from jolt.application_resources import (
     ContactRequest,
     ContactResponse,
@@ -87,6 +92,21 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> ProfessionalIntelligenceSource:
         try:
             return reset_professional_source(session, source_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/applications/{application_id}/archive",
+        response_model=ApplicationArchiveResponse,
+        tags=["applications"],
+    )
+    def archive_application(
+        application_id: str,
+        request: ApplicationArchiveRequest | None = None,
+        session: Session = session_dependency,
+    ) -> ApplicationArchiveResponse:
+        try:
+            return archive_application_card(session, application_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
