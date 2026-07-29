@@ -1,21 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { createPortal } from "react-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./App", () => ({
-  App: ({ sidebarToolsTarget }: { sidebarToolsTarget?: HTMLDivElement | null }) => (
-    <>
-      <section>Opportunity review content</section>
-      {sidebarToolsTarget
-        ? createPortal(
-            <details>
-              <summary>Data tools: capture batches and exports</summary>
-            </details>,
-            sidebarToolsTarget,
-          )
-        : null}
-    </>
-  ),
+  App: () => <section>Opportunity review content</section>,
 }));
 
 vi.mock("./ApplicationDashboard", () => ({
@@ -44,7 +31,7 @@ describe("Workbench", () => {
     expect(sidebar).toContainElement(screen.getByRole("heading", { name: "JOLT" }));
     expect(sidebar).toContainElement(screen.getByRole("navigation", { name: "JOLT workspace views" }));
     expect(sidebar).toHaveTextContent("Review newly captured or manually added jobs before they move forward.");
-    expect(sidebar).toContainElement(screen.getByText("Data tools: capture batches and exports"));
+    expect(screen.queryByText("Data tools: capture batches, decisions, and exports")).not.toBeInTheDocument();
     expect(workspace).toContainElement(screen.getByText("Opportunity review content"));
   });
 
@@ -64,7 +51,7 @@ describe("Workbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Application Pipeline" }));
     expect(opportunities).toHaveAttribute("hidden");
     expect(applications).not.toHaveAttribute("hidden");
-    expect(screen.getByText("Data tools: capture batches and exports")).toBeInTheDocument();
+    expect(screen.getByText("Data tools: capture batches, decisions, and exports")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Market Insights" }));
     expect(applications).toHaveAttribute("hidden");
