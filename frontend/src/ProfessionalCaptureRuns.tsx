@@ -110,7 +110,10 @@ export function ProfessionalCaptureRuns({
 
   const runningRun = useMemo(() => runs.find((run) => run.status === "running") || null, [runs]);
   const activePreparedRun = useMemo(
-    () => runs.find((run) => run.id === activeSessionRunId && isManualBrowserReady(run)) || null,
+    () =>
+      runs.find((run) => run.id === activeSessionRunId && isManualBrowserReady(run)) ||
+      runs.find(isManualBrowserReady) ||
+      null,
     [activeSessionRunId, runs],
   );
 
@@ -355,11 +358,6 @@ export function ProfessionalCaptureRuns({
             capture this current page.
           </p>
         )}
-        {!activePreparedRun && runs.some(isManualBrowserReady) && (
-          <p>
-            Stale prepared runs exist in history. Start a fresh capture session above, or delete old prepared batches below.
-          </p>
-        )}
       </div>
 
       <p className="professional-ledger-note">
@@ -399,7 +397,7 @@ export function ProfessionalCaptureRuns({
                   {run.cancel_requested ? " · cancellation requested" : ""}
                 </p>
                 {isManualBrowserReady(run) && (
-                  <p>Prepared batch. Use the top Current capture session panel only for new/current captures.</p>
+                  <p>Prepared batch. Use the top Current capture session panel to capture the newest prepared page.</p>
                 )}
                 {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
                 {run.source_progress.length > 0 && (
