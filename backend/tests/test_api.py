@@ -53,7 +53,7 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert duplicate.json()["source_document_id"] != result["source_document_id"]
 
     restarted_client = _client(database_path)
-    compact = restarted_client.get("/api/opportunity-index")
+    compact = restarted_client.get("/api/opportunity-index?include_reviewed=true")
     assert compact.status_code == 200
     compact_items = compact.json()
     assert len(compact_items) == 1
