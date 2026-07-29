@@ -425,11 +425,6 @@ export function ProfessionalCaptureRuns({
                     Open Chromium to prepare this run
                   </button>
                 )}
-                {run.status === "running" && (
-                  <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                    Request cancellation
-                  </button>
-                )}
                 {(run.status === "completed" || run.status === "completed_with_gaps") && (
                   <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
                 )}
