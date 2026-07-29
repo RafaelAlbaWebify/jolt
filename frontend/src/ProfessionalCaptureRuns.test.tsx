@@ -131,6 +131,8 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect(await screen.findByText("Current capture session")).toBeInTheDocument();
+    const captureButton = screen.getByRole("button", { name: "Capture current Chromium page" });
+    expect(captureButton).toBeEnabled();
     expect(screen.getAllByRole("button", { name: "Capture current Chromium page" })).toHaveLength(1);
   });
 
