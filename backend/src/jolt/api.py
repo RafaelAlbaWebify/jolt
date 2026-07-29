@@ -32,14 +32,7 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
-from jolt.workflow import (
-    create_application,
-    get_application,
-    ingest_manual,
-    record_outcome,
-    record_review,
-    transition_application,
-)
+from jolt.workflow import create_application, get_application, ingest_manual, record_outcome, record_review, transition_application
 
 LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
@@ -67,103 +60,62 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return {"status": "ok", "service": "jolt-backend", "version": "0.8.0"}
 
     @app.post("/api/intake/manual", response_model=IntakeResponse, tags=["intake"])
-    def manual_intake(
-        request: ManualIntakeRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> IntakeResponse:
+    def manual_intake(request: ManualIntakeRequest, session: Annotated[Session, Depends(get_session)]) -> IntakeResponse:
         return ingest_manual(session, request)
 
-    @app.post(
-        "/api/captures/linkedin/fixture", response_model=CaptureRunResponse, tags=["captures"]
-    )
-    def linkedin_fixture_capture(
-        request: LinkedInFixtureCaptureRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> CaptureRunResponse:
+    @app.post("/api/captures/linkedin/fixture", response_model=CaptureRunResponse, tags=["captures"])
+    def linkedin_fixture_capture(request: LinkedInFixtureCaptureRequest, session: Annotated[Session, Depends(get_session)]) -> CaptureRunResponse:
         return run_linkedin_fixture_capture(session, request)
 
     @app.post("/api/captures/linkedin/live", response_model=CaptureRunResponse, tags=["captures"])
-    def linkedin_live_capture(
-        request: LinkedInLiveCaptureRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> CaptureRunResponse:
+    def linkedin_live_capture(request: LinkedInLiveCaptureRequest, session: Annotated[Session, Depends(get_session)]) -> CaptureRunResponse:
         return run_linkedin_live_capture(session, request)
 
     @app.get("/api/captures", response_model=list[CaptureRunSummary], tags=["captures"])
-    def capture_history(
-        session: Annotated[Session, Depends(get_session)],
-    ) -> list[CaptureRunSummary]:
+    def capture_history(session: Annotated[Session, Depends(get_session)]) -> list[CaptureRunSummary]:
         return list_capture_runs(session)
 
     @app.get("/api/captures/{capture_run_id}", response_model=CaptureRunResponse, tags=["captures"])
-    def capture_run(
-        capture_run_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> CaptureRunResponse:
+    def capture_run(capture_run_id: str, session: Annotated[Session, Depends(get_session)]) -> CaptureRunResponse:
         try:
             return get_capture_run(session, capture_run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"]
-    )
-    def create_review(
-        posting_id: str,
-        request: ReviewRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> ReviewResponse:
+    @app.post("/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"])
+    def create_review(posting_id: str, request: ReviewRequest, session: Annotated[Session, Depends(get_session)]) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/identity-evidence", tags=["identity"])
-    def identity_evidence_index(
-        session: Annotated[Session, Depends(get_session)],
-    ) -> list[dict[str, object]]:
+    def identity_evidence_index(session: Annotated[Session, Depends(get_session)]) -> list[dict[str, object]]:
         return list_identity_evidence(session)
 
     @app.get("/api/opportunities/{posting_id}/identity-evidence", tags=["identity"])
-    def identity_evidence(
-        posting_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> dict[str, object]:
+    def identity_evidence(posting_id: str, session: Annotated[Session, Depends(get_session)]) -> dict[str, object]:
         try:
             return opportunity_identity_evidence(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/opportunities/{posting_id}/readiness/history", tags=["readiness"])
-    def readiness_history(
-        posting_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> list[dict[str, object]]:
+    def readiness_history(posting_id: str, session: Annotated[Session, Depends(get_session)]) -> list[dict[str, object]]:
         try:
             return list_readiness_history(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/api/opportunities/{posting_id}/readiness/refresh", tags=["readiness"])
-    def refresh_readiness(
-        posting_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> dict[str, object]:
+    def refresh_readiness(posting_id: str, session: Annotated[Session, Depends(get_session)]) -> dict[str, object]:
         try:
             return refresh_readiness_report(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/opportunities/{posting_id}/applications",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
-    def start_application(
-        posting_id: str,
-        request: ApplicationCreateRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> ApplicationResponse:
+    @app.post("/api/opportunities/{posting_id}/applications", response_model=ApplicationResponse, tags=["applications"])
+    def start_application(posting_id: str, request: ApplicationCreateRequest, session: Annotated[Session, Depends(get_session)]) -> ApplicationResponse:
         try:
             return create_application(session, posting_id, request)
         except LookupError as exc:
@@ -171,30 +123,15 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get(
-        "/api/applications/{application_id}",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
-    def application(
-        application_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> ApplicationResponse:
+    @app.get("/api/applications/{application_id}", response_model=ApplicationResponse, tags=["applications"])
+    def application(application_id: str, session: Annotated[Session, Depends(get_session)]) -> ApplicationResponse:
         try:
             return get_application(session, application_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/applications/{application_id}/transitions",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
-    def change_application_status(
-        application_id: str,
-        request: ApplicationTransitionRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> ApplicationResponse:
+    @app.post("/api/applications/{application_id}/transitions", response_model=ApplicationResponse, tags=["applications"])
+    def change_application_status(application_id: str, request: ApplicationTransitionRequest, session: Annotated[Session, Depends(get_session)]) -> ApplicationResponse:
         try:
             return transition_application(session, application_id, request)
         except LookupError as exc:
@@ -202,16 +139,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.post(
-        "/api/applications/{application_id}/outcomes",
-        response_model=ApplicationResponse,
-        tags=["applications"],
-    )
-    def save_outcome(
-        application_id: str,
-        request: OutcomeRequest,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> ApplicationResponse:
+    @app.post("/api/applications/{application_id}/outcomes", response_model=ApplicationResponse, tags=["applications"])
+    def save_outcome(application_id: str, request: OutcomeRequest, session: Annotated[Session, Depends(get_session)]) -> ApplicationResponse:
         try:
             return record_outcome(session, application_id, request)
         except LookupError as exc:
@@ -219,34 +148,18 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @app.get(
-        "/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"]
-    )
-    def opportunity_index(
-        session: Annotated[Session, Depends(get_session)],
-        include_reviewed: bool = False,
-    ) -> list[OpportunityIndexItem]:
+    @app.get("/api/opportunity-index", response_model=list[OpportunityIndexItem], tags=["opportunities"])
+    def opportunity_index(session: Annotated[Session, Depends(get_session)], include_reviewed: bool = False) -> list[OpportunityIndexItem]:
         if include_reviewed:
             return list_opportunity_index(session, include_applied=True)
         return list_opportunity_index(session)
 
-    @app.get(
-        "/api/application-index", response_model=list[OpportunityIndexItem], tags=["applications"]
-    )
-    def application_index(
-        session: Annotated[Session, Depends(get_session)],
-    ) -> list[OpportunityIndexItem]:
+    @app.get("/api/application-index", response_model=list[OpportunityIndexItem], tags=["applications"])
+    def application_index(session: Annotated[Session, Depends(get_session)]) -> list[OpportunityIndexItem]:
         return list_opportunity_index(session, include_applied=True)
 
-    @app.get(
-        "/api/opportunity-detail/{posting_id}",
-        response_model=OpportunitySummary,
-        tags=["opportunities"],
-    )
-    def opportunity_detail(
-        posting_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> OpportunitySummary:
+    @app.get("/api/opportunity-detail/{posting_id}", response_model=OpportunitySummary, tags=["opportunities"])
+    def opportunity_detail(posting_id: str, session: Annotated[Session, Depends(get_session)]) -> OpportunitySummary:
         try:
             return get_opportunity_workbench(session, posting_id)
         except LookupError as exc:
@@ -255,41 +168,28 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.get("/api/market-intelligence", tags=["analysis"])
     def market_intelligence(
         session: Annotated[Session, Depends(get_session)],
+        timeframe: str = "all",
+        source_scope: str = "all",
     ) -> dict[str, object]:
-        return build_market_intelligence(session)
+        return build_market_intelligence(session, timeframe=timeframe, source_scope=source_scope)
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
-    def opportunities(
-        session: Annotated[Session, Depends(get_session)],
-    ) -> list[OpportunitySummary]:
+    def opportunities(session: Annotated[Session, Depends(get_session)]) -> list[OpportunitySummary]:
         return list_opportunity_workbench(session)
 
     @app.get("/api/opportunities/{posting_id}/preparation-pack", tags=["exports"])
-    def preparation_pack(
-        posting_id: str,
-        session: Annotated[Session, Depends(get_session)],
-    ) -> StreamingResponse:
+    def preparation_pack(posting_id: str, session: Annotated[Session, Depends(get_session)]) -> StreamingResponse:
         try:
             content = build_application_preparation_pack(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         filename = f"JOLT_PREPARATION_{posting_id}.zip"
-        return StreamingResponse(
-            BytesIO(content),
-            media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
+        return StreamingResponse(BytesIO(content), media_type="application/zip", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
     @app.get("/api/exports/analysis-pack", tags=["exports"])
-    def analysis_pack(
-        session: Annotated[Session, Depends(get_session)],
-    ) -> StreamingResponse:
+    def analysis_pack(session: Annotated[Session, Depends(get_session)]) -> StreamingResponse:
         content = build_analysis_pack(session)
-        return StreamingResponse(
-            BytesIO(content),
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=JOLT_ANALYSIS_PACK.zip"},
-        )
+        return StreamingResponse(BytesIO(content), media_type="application/zip", headers={"Content-Disposition": "attachment; filename=JOLT_ANALYSIS_PACK.zip"})
 
     return app
 
