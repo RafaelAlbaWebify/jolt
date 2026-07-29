@@ -136,7 +136,6 @@ export function ProfessionalCaptureRuns({
   const [activeSessionRunId, setActiveSessionRunId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [deleteModalRunId, setDeleteModalRunId] = useState<string | null>(null);
-  const [deletePhrases, setDeletePhrases] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
@@ -315,7 +314,7 @@ export function ProfessionalCaptureRuns({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmation_phrase: deletePhrases[runId] || "" }),
+          body: JSON.stringify({ confirmation_phrase: DELETE_PHRASE }),
         },
       );
       if (!response.ok) {
@@ -326,20 +325,11 @@ export function ProfessionalCaptureRuns({
       if (runId === activeSessionRunId) setActiveSessionRunId(null);
       setSelectedRunId((current) => (current === runId ? null : current));
       setDeleteModalRunId(null);
-      setDeletePhrases((current) => {
-        const next = { ...current };
-        delete next[runId];
-        return next;
-      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture deletion failed.");
     } finally {
       setBusy(false);
     }
-  }
-
-  function updateDeletePhrase(runId: string, value: string) {
-    setDeletePhrases((current) => ({ ...current, [runId]: value }));
   }
 
   return (
@@ -477,7 +467,7 @@ export function ProfessionalCaptureRuns({
             </div>
             <div>
               <dt>Deletion</dt>
-              <dd>Modal confirmation required</dd>
+              <dd>Second confirmation required</dd>
             </div>
           </dl>
         </section>
@@ -525,7 +515,7 @@ export function ProfessionalCaptureRuns({
                             Details
                           </button>
                           {run.status !== "running" && (
-                            <button type="button" className="danger" disabled={busy} onClick={(event) => { event.stopPropagation(); setDeleteModalRunId(run.id); updateDeletePhrase(run.id, ""); }}>
+                            <button type="button" className="danger" disabled={busy} onClick={(event) => { event.stopPropagation(); setDeleteModalRunId(run.id); }}>
                               Delete
                             </button>
                           )}
@@ -599,7 +589,7 @@ export function ProfessionalCaptureRuns({
                   <ProfessionalEvidenceReview apiBase={apiBase} runId={selectedRun.id} />
                 )}
                 {selectedRun.status !== "running" && (
-                  <button type="button" className="danger" disabled={busy} onClick={() => { setDeleteModalRunId(selectedRun.id); updateDeletePhrase(selectedRun.id, ""); }}>
+                  <button type="button" className="danger" disabled={busy} onClick={() => setDeleteModalRunId(selectedRun.id)}>
                     Delete selected run
                   </button>
                 )}
@@ -607,15 +597,6 @@ export function ProfessionalCaptureRuns({
             </>
           )}
         </aside>
-      </div>
-
-      <div className="professional-audit-strip" aria-label="Professional section redesign audit fixes">
-        <strong>Audit fixes</strong>
-        <span>One active capture flow</span>
-        <span>No duplicate capture buttons</span>
-        <span>Compact history table</span>
-        <span>Safe delete modal</span>
-        <span>Above-the-fold actions</span>
       </div>
 
       {deleteModalRun && (
@@ -637,31 +618,20 @@ export function ProfessionalCaptureRuns({
                 <dd>{runSourceLabel(deleteModalRun)}</dd>
               </div>
             </dl>
-            <label>
-              Type {DELETE_PHRASE}
-              <input
-                aria-label={`Deletion phrase for ${deleteModalRun.id}`}
-                value={deletePhrases[deleteModalRun.id] || ""}
-                onChange={(event) => updateDeletePhrase(deleteModalRun.id, event.target.value)}
-              />
-            </label>
             <div className="professional-dashboard-actions">
               <button
                 type="button"
                 className="danger"
-                disabled={busy || (deletePhrases[deleteModalRun.id] || "") !== DELETE_PHRASE}
+                disabled={busy}
                 onClick={() => void deleteRun(deleteModalRun.id)}
               >
-                Permanently delete batch
+                Yes, delete this run
               </button>
               <button
                 type="button"
                 className="secondary"
                 disabled={busy}
-                onClick={() => {
-                  setDeleteModalRunId(null);
-                  updateDeletePhrase(deleteModalRun.id, "");
-                }}
+                onClick={() => setDeleteModalRunId(null)}
               >
                 Keep batch
               </button>
