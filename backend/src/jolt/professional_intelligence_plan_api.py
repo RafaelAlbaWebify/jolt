@@ -43,6 +43,11 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_manual_browser import (
+    manual_professional_browser_status,
+    open_manual_professional_browser,
+    queue_manual_current_page_capture,
+)
 from jolt.professional_intelligence_records import ProfessionalCaptureRun
 from jolt.professional_intelligence_retention import (
     ProfessionalRetentionCleanupRequest,
@@ -95,15 +100,33 @@ def _run_professional_capture_background(
 
 def _queued_capture_response(
     run: ProfessionalCaptureRunResponse,
+    *,
+    stop_reason: str = "capture_queued",
 ) -> ProfessionalCaptureRunResponse:
     return run.model_copy(
         update={
             "mode": "supervised_read_only",
             "status": "running",
             "started_at": utc_now(),
-            "stop_reason": "capture_queued",
+            "stop_reason": stop_reason,
         }
     )
+
+
+def _mark_manual_browser_ready(
+    session: Session,
+    run_id: str,
+) -> ProfessionalCaptureRunResponse:
+    run = session.get(ProfessionalCaptureRun, run_id)
+    if run is None:
+        raise LookupError(f"Professional capture run {run_id} was not found.")
+    if run.status != "authorized":
+        raise ValueError("Only authorized capture runs can prepare the manual browser.")
+    run.mode = "supervised_read_only"
+    run.stop_reason = "manual_browser_ready_prepare_linkedin_then_capture_current_page"
+    run.progress_updated_at = utc_now()
+    session.commit()
+    return get_professional_capture_run(session, run_id)
 
 
 def build_professional_intelligence_plan_router(get_session: SessionProvider) -> APIRouter:
@@ -244,6 +267,12 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get(
+        "/api/professional-intelligence/manual-browser/status",
+    )
+    def professional_capture_manual_browser_status() -> dict[str, object]:
+        return manual_professional_browser_status()
+
+    @router.get(
         "/api/professional-intelligence/capture-runs/{run_id}/evidence-review",
         response_model=ProfessionalEvidenceRunReview,
     )
@@ -287,6 +316,44 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/prepare-browser",
+        response_model=ProfessionalCaptureRunResponse,
+    )
+    def prepare_professional_capture_browser(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureRunResponse:
+        try:
+            prepared = _mark_manual_browser_ready(session, run_id)
+            open_manual_professional_browser()
+            return prepared
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/capture-current-page",
+        response_model=ProfessionalCaptureRunResponse,
+    )
+    def capture_current_professional_browser_page(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureRunResponse:
+        try:
+            run = get_professional_capture_run(session, run_id)
+            if run.status != "authorized":
+                raise ValueError("Only authorized prepared runs can capture the current browser page.")
+            queue_manual_current_page_capture(get_session, run_id)
+            return _queued_capture_response(run, stop_reason="manual_current_page_capture_queued")
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except (RuntimeError, ValueError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @router.post(
