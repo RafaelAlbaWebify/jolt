@@ -19,6 +19,7 @@ type ScopeData = {
   salary_coverage: number;
 };
 type MarketData = {
+  filters?: { timeframe: Timeframe; source_scope: SourceScope };
   total_unique_roles: number;
   target_role_count: number;
   outside_target_count: number;
@@ -30,6 +31,8 @@ type MarketData = {
 
 type Props = { apiBase: string; active: boolean };
 type Scope = "target" | "all";
+type Timeframe = "all" | "last_7_days" | "last_30_days";
+type SourceScope = "all" | "capture_batches" | "manual_intake";
 
 function Ranking({ title, items, empty }: { title: string; items: Metric[]; empty?: string }) {
   const maximum = Math.max(1, ...items.map((item) => item.count));
@@ -53,6 +56,8 @@ function Ranking({ title, items, empty }: { title: string; items: Metric[]; empt
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
   const [scope, setScope] = useState<Scope>("target");
+  const [timeframe, setTimeframe] = useState<Timeframe>("all");
+  const [sourceScope, setSourceScope] = useState<SourceScope>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
@@ -66,7 +71,8 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${apiBase}/api/market-intelligence`, { signal: controller.signal });
+      const params = new URLSearchParams({ timeframe, source_scope: sourceScope });
+      const response = await fetch(`${apiBase}/api/market-intelligence?${params.toString()}`, { signal: controller.signal });
       if (!response.ok) throw new Error("Unable to load market insights.");
       const loaded = (await response.json()) as MarketData;
       if (requestRef.current !== controller) return;
@@ -80,7 +86,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     } finally {
       if (requestRef.current === controller) setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, sourceScope, timeframe]);
 
   useEffect(() => {
     if (!active || hasActivatedRef.current) return;
@@ -114,6 +120,28 @@ export function MarketIntelligence({ apiBase, active }: Props) {
         </div>
       </div>
 
+      <div className="opportunity-query-tools" aria-label="Market filters">
+        <label>
+          <span>Timeframe</span>
+          <select value={timeframe} onChange={(event) => setTimeframe(event.target.value as Timeframe)}>
+            <option value="all">All active records</option>
+            <option value="last_30_days">Last 30 days</option>
+            <option value="last_7_days">Last 7 days</option>
+          </select>
+        </label>
+        <label>
+          <span>Source</span>
+          <select value={sourceScope} onChange={(event) => setSourceScope(event.target.value as SourceScope)}>
+            <option value="all">All sources</option>
+            <option value="capture_batches">Capture batches</option>
+            <option value="manual_intake">Manual intake</option>
+          </select>
+        </label>
+        <button type="button" className="secondary" disabled={!active || loading} onClick={() => void load()}>
+          Apply filters
+        </button>
+      </div>
+
       {loading && !data && <p role="status">Loading market insights…</p>}
       {error && (
         <div className="market-load-error">
@@ -134,6 +162,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <strong>How to read fit</strong>
             <p>{data.fit_explanation}</p>
             <p>Archived capture batches are excluded. Reviewed and application records remain included unless the application card itself is archived.</p>
+            <p>Current filters: {timeframe.replaceAll("_", " ")} · {sourceScope.replaceAll("_", " ")}.</p>
             {scope === "target" && <p><strong>{data.outside_target_count}</strong> active records are outside your target path and are excluded from this view.</p>}
           </div>
 
