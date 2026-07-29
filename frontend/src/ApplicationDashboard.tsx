@@ -15,7 +15,7 @@ type Opportunity = {
   location: string;
   review_decision: string | null;
   application_id?: string | null;
-  application_status?: ApplicationStatus | null;
+  application_status?: ApplicationStatus | string | null;
   outcome_type?: string | null;
   last_activity_at?: string | null;
   next_due_at?: string | null;
@@ -66,13 +66,13 @@ const TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "timeline", label: "Timeline" },
 ];
 
-const INTERVIEW_STATUSES = new Set<ApplicationStatus>([
+const INTERVIEW_STATUSES = new Set<string>([
   "recruiter_screen",
   "technical_interview",
   "hiring_manager_interview",
   "final_interview",
 ]);
-const CLOSED_STATUSES = new Set<ApplicationStatus>(["rejected", "withdrawn", "no_response", "closed"]);
+const CLOSED_STATUSES = new Set<string>(["rejected", "withdrawn", "no_response", "closed"]);
 const OUTCOME_CODES = [
   "rejected_by_employer",
   "withdrawn_by_user",
@@ -101,7 +101,7 @@ function laneFor(item: Opportunity): PipelineLane {
   if (item.outcome_type || (item.application_status && CLOSED_STATUSES.has(item.application_status))) return "closed";
   if (!item.application_id || !item.application_status || item.application_status === "preparing") return "preparing";
   if (item.application_status === "offer") return "offer";
-  if (INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
+  if (item.application_status && INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
   return "applied";
 }
 
@@ -248,7 +248,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   }, [selectedPostingId]);
 
   const candidates = useMemo(
-    () => opportunities.filter((item) => item.review_decision === "pursue" || Boolean(item.application_id)),
+    () => opportunities.filter((item) => (item.review_decision === "pursue" || Boolean(item.application_id)) && item.application_status !== "archived"),
     [opportunities],
   );
   const visibleCandidates = useMemo(() => {
@@ -355,6 +355,35 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       setBusy(false);
       setDraggedPostingId(null);
       setDragOverLane(null);
+    }
+  }
+
+  async function archiveCard(item: Opportunity) {
+    if (!item.application_id || busy) return;
+    const confirmed = window.confirm(
+      `Archive ${item.title || "this application"}? It will be removed from the active board, but its history stays in the database.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    setMoveNotice("");
+    try {
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: "Archived from the Applications board." }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The application could not be archived.");
+      }
+      if (selectedPostingId === item.posting_id) setSelectedPostingId(null);
+      await refresh();
+      setMoveNotice(`${item.title || "Application"} archived and removed from the active board.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The application could not be archived.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -519,6 +548,16 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>
                         Preparation pack
                       </a>
+                      {opportunity.application_id && (
+                        <button
+                          type="button"
+                          className="danger application-card-archive"
+                          disabled={busy}
+                          onClick={() => void archiveCard(opportunity)}
+                        >
+                          Archive card
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))
@@ -569,7 +608,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                   title={selected.title || "Untitled opportunity"}
                   reviewDecision={selected.review_decision}
                   applicationId={selected.application_id}
-                  applicationStatus={selected.application_status}
+                  applicationStatus={selected.application_status as ApplicationStatus | null | undefined}
                   disabled={busy}
                   onChanged={refreshAfterChange}
                   onError={setError}
