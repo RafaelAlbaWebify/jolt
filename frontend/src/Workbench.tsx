@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
+import { DataTools } from "./DataTools";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 import { RuntimeIdentityPanel } from "./RuntimeIdentity";
@@ -26,7 +27,6 @@ const WORKFLOW_STEPS = [
 
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("opportunities");
-  const [sidebarToolsTarget, setSidebarToolsTarget] = useState<HTMLDivElement | null>(null);
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
 
   return (
@@ -61,17 +61,15 @@ export function Workbench() {
 
         <RuntimeIdentityPanel apiBase={API_BASE} />
 
-        <div
-          className="workspace-sidebar-tools"
-          ref={setSidebarToolsTarget}
-          aria-label="Global data tools"
-        />
+        <div className="workspace-sidebar-tools" aria-label="Global data tools">
+          <DataTools apiBase={API_BASE} />
+        </div>
       </aside>
 
       <main className="workspace-content">
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
-            <App sidebarToolsTarget={sidebarToolsTarget} />
+            <App />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
