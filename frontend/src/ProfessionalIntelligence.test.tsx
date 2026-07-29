@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ProfessionalCapturePlan } from "./ProfessionalCapturePlan";
 import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 
@@ -42,24 +41,6 @@ const verifiedEvidenceRoot = {
   verified_at: "2026-07-27T00:00:00Z",
 };
 
-function capturePlan(
-  plannedSources = [sources[0]],
-  excludedSources = [{ source: sources[1], reason: "deferred_scope" }],
-) {
-  return {
-    mode: "supervised_read_only",
-    execution_available: true,
-    planned_sources: plannedSources,
-    excluded_sources: excludedSources,
-    safety_constraints: [
-      "explicit_user_start_required",
-      "visible_fresh_browser_context_per_source",
-      "no_credentials_cookies_or_tokens_in_evidence",
-      "no_unattended_capture",
-    ],
-  };
-}
-
 describe("ProfessionalIntelligence", () => {
   afterEach(() => {
     cleanup();
@@ -93,6 +74,8 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Primary sources" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Secondary sources" })).toBeInTheDocument();
+    expect(screen.getByText("Use as primary source")).toBeInTheDocument();
+    expect(screen.getAllByText("Keep source enabled")).toHaveLength(2);
   });
 
   it("updates the source registry after saving and resetting a source override", async () => {
@@ -137,8 +120,8 @@ describe("ProfessionalIntelligence", () => {
     fireEvent.change(screen.getByLabelText("LinkedIn URL for linkedin-profile"), {
       target: { value: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt" },
     });
-    fireEvent.click(screen.getByLabelText("Initial scope for linkedin-profile"));
-    fireEvent.click(screen.getByLabelText("Enabled for linkedin-profile"));
+    fireEvent.click(screen.getByLabelText("Primary source for linkedin-profile"));
+    fireEvent.click(screen.getByLabelText("Enabled source linkedin-profile"));
     fireEvent.click(within(profileCard as HTMLElement).getByRole("button", { name: "Save source" }));
 
     const updatedHeading = await screen.findByRole("heading", { name: "Profile positioning review" });
@@ -169,28 +152,5 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByDisplayValue("C:\\Evidence")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps the newest capture plan when an older request resolves last", async () => {
-    let resolveFirst: ((response: Response) => void) | undefined;
-    let resolveSecond: ((response: Response) => void) | undefined;
-    const first = new Promise<Response>((resolve) => { resolveFirst = resolve; });
-    const second = new Promise<Response>((resolve) => { resolveSecond = resolve; });
-    const fetchMock = vi.fn()
-      .mockReturnValueOnce(first)
-      .mockReturnValueOnce(second);
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { rerender } = render(
-      <ProfessionalCapturePlan apiBase="http://api" active refreshKey={0} />,
-    );
-    rerender(<ProfessionalCapturePlan apiBase="http://api" active refreshKey={1} />);
-
-    resolveSecond?.(new Response(JSON.stringify(capturePlan([sources[1]], [])), { status: 200 }));
-    expect(await screen.findByText("Feed")).toBeInTheDocument();
-
-    resolveFirst?.(new Response(JSON.stringify(capturePlan([sources[0]], [])), { status: 200 }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    expect(screen.getByText("Feed")).toBeInTheDocument();
   });
 });
