@@ -55,7 +55,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.useRealTimers();
   });
 
-  it("opens Chromium for manual preparation before current-page capture", async () => {
+  it("opens Chromium for manual preparation in a single session panel", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -102,15 +102,39 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect(await screen.findByText("authorized")).toBeInTheDocument();
+    expect(screen.getByText("Current capture session")).toBeInTheDocument();
     expect(screen.getByText(/Chromium is open/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Capture current Chromium page" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Capture current Chromium page" })).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-1/prepare-browser",
       { method: "POST" },
     );
   });
 
-  it("captures the current prepared Chromium page with a separate button", async () => {
+  it("does not duplicate capture buttons across multiple prepared history cards", async () => {
+    const olderPreparedRun = {
+      ...preparedRun,
+      id: "run-older",
+      requested_at: "2026-07-24T17:00:00Z",
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify([preparedRun, olderPreparedRun]), { status: 200 }),
+    );
+
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+      />,
+    );
+
+    expect(await screen.findByText("Current capture session")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Capture current Chromium page" })).toHaveLength(1);
+  });
+
+  it("captures the current prepared Chromium page with the top-level button", async () => {
     const queued = {
       ...preparedRun,
       status: "running",
@@ -157,6 +181,45 @@ describe("ProfessionalCaptureRuns", () => {
     expect(await screen.findByText("running")).toBeInTheDocument();
     expect(screen.getByText(/manual current page capture queued/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
+  });
+
+  it("deletes a stale prepared capture without sharing deletion phrase state", async () => {
+    const preparedA = { ...preparedRun, id: "run-a" };
+    const preparedB = { ...preparedRun, id: "run-b" };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (!init?.method) return new Response(JSON.stringify([preparedA, preparedB]), { status: 200 });
+      if (url.endsWith("/run-a/delete")) {
+        expect(JSON.parse(String(init.body))).toEqual({ confirmation_phrase: "DELETE CAPTURE RUN" });
+        return new Response(JSON.stringify({ run_id: "run-a", deleted_artifact_count: 0, deleted_evidence_directory: false }), { status: 200 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+      />,
+    );
+
+    expect(await screen.findByText("Current capture session")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete this capture batch" })[0]);
+    const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
+    expect(deleteButton).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Deletion phrase for run-a"), {
+      target: { value: "DELETE CAPTURE RUN" },
+    });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(screen.queryByText("run-a")).not.toBeInTheDocument());
+    expect(screen.getByText("run-b")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-a/delete",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   it("surfaces running source, cancellation, and failed source details", async () => {
