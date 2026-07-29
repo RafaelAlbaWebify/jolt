@@ -11,10 +11,17 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 type WorkbenchView = "opportunities" | "applications" | "market" | "professional";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
-  { id: "opportunities", label: "Opportunities", description: "Review, prioritise, and prepare opportunities." },
-  { id: "applications", label: "Applications", description: "Track active applications and outcomes." },
-  { id: "market", label: "Market", description: "Turn captured jobs into role, skill, location, and fit intelligence." },
-  { id: "professional", label: "Professional", description: "Review approved professional sources and supervised evidence boundaries." },
+  { id: "opportunities", label: "Review Inbox", description: "Review newly captured or manually added jobs before they move forward." },
+  { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
+  { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
+  { id: "professional", label: "Sources & Evidence", description: "Configure trusted sources and local evidence storage." },
+];
+
+const WORKFLOW_STEPS = [
+  "Capture / intake",
+  "Review",
+  "Apply / track",
+  "Learn from market",
 ];
 
 export function Workbench() {
@@ -29,8 +36,12 @@ export function Workbench() {
           <div className="hero">
             <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Turn job evidence into an auditable decision, application workflow, and outcome history.</p>
+            <p>Turn job evidence into review decisions, application tracking, and market learning.</p>
           </div>
+
+          <ol className="workspace-flow" aria-label="JOLT workflow order">
+            {WORKFLOW_STEPS.map((step) => <li key={step}>{step}</li>)}
+          </ol>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
             {VIEWS.map((item) => (
