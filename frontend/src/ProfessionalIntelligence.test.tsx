@@ -60,54 +60,18 @@ function capturePlan(
   };
 }
 
-function executionReadiness() {
-  return {
-    ready: false,
-    execution_available: true,
-    blockers: ["local_evidence_root_not_verified"],
-    required_user_actions: [
-      "choose_local_evidence_root",
-      "record_and_authorize_each_run_explicitly",
-      "remain_present_during_capture",
-      "review_artifacts_before_analysis",
-    ],
-    evidence_policy: {
-      allowed_artifact_types: [
-        "capture_metadata_json",
-        "page_diagnostics_json",
-        "rendered_text_json",
-        "screenshot_png",
-      ],
-      page_completeness_statuses: ["complete", "partial", "failed"],
-      default_retention_days: 30,
-      maximum_retention_days: 365,
-      text_extraction_policy: ["visible_rendered_dom_text_is_primary"],
-      prohibited_evidence: ["credentials", "cookies", "tokens", "browser_storage_state"],
-    },
-  };
-}
-
 describe("ProfessionalIntelligence", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("loads only when active and shows one-click capture", async () => {
+  it("loads only when active and shows source and evidence configuration", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
       if (url.endsWith("/evidence-root")) {
         return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
-      }
-      if (url.endsWith("/capture-plan")) {
-        return new Response(JSON.stringify(capturePlan()), { status: 200 });
-      }
-      if (url.endsWith("/capture-runs")) {
-        return new Response(JSON.stringify([]), { status: 200 });
-      }
-      if (url.endsWith("/execution-readiness")) {
-        return new Response(JSON.stringify(executionReadiness()), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -119,28 +83,19 @@ describe("ProfessionalIntelligence", () => {
 
     rerender(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
 
+    expect(await screen.findByRole("heading", { name: "Sources & Evidence" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
-    expect(screen.getByText(/Capture the approved sources/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start capture" })).toBeInTheDocument();
-    expect(screen.getByText("One click starts the capture.")).toBeInTheDocument();
-    expect(screen.queryByText(/authorization step/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Trusted source")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Start capture" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
     expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Supervised capture readiness" })).toBeInTheDocument();
-    expect(screen.getByText("Blocked")).toBeInTheDocument();
-    expect(screen.getByText("local evidence root not verified")).toBeInTheDocument();
-    expect(screen.getByText("Default retention: 30 days.")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Supervised capture plan" })).toBeInTheDocument();
-    expect(screen.getByText("Explicit start available")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Capture history" })).toBeInTheDocument();
-    expect(screen.getByText(/No captures yet/)).toBeInTheDocument();
-    expect(screen.getByText("Feed · deferred scope")).toBeInTheDocument();
-    expect(screen.getByText("visible fresh browser context per source")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Primary sources" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Secondary sources" })).toBeInTheDocument();
   });
 
-  it("refreshes the supervised plan after saving and resetting a source override", async () => {
+  it("updates the source registry after saving and resetting a source override", async () => {
     const updated = {
       ...sources[0],
       label: "Profile positioning review",
@@ -148,7 +103,6 @@ describe("ProfessionalIntelligence", () => {
       initial_scope: false,
       enabled: false,
     };
-    let planCalls = 0;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/sources") && !init?.method) {
@@ -156,24 +110,6 @@ describe("ProfessionalIntelligence", () => {
       }
       if (url.endsWith("/evidence-root") && !init?.method) {
         return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
-      }
-      if (url.endsWith("/capture-runs") && !init?.method) {
-        return new Response(JSON.stringify([]), { status: 200 });
-      }
-      if (url.endsWith("/execution-readiness")) {
-        return new Response(JSON.stringify(executionReadiness()), { status: 200 });
-      }
-      if (url.endsWith("/capture-plan")) {
-        planCalls += 1;
-        const payload = planCalls === 1
-          ? capturePlan()
-          : planCalls === 2
-            ? capturePlan([], [
-                { source: updated, reason: "disabled_by_user" },
-                { source: sources[1], reason: "deferred_scope" },
-              ])
-            : capturePlan();
-        return new Response(JSON.stringify(payload), { status: 200 });
       }
       if (url.endsWith("/linkedin-profile/update")) {
         expect(JSON.parse(String(init?.body))).toEqual({
@@ -207,7 +143,6 @@ describe("ProfessionalIntelligence", () => {
 
     const updatedHeading = await screen.findByRole("heading", { name: "Profile positioning review" });
     expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(await screen.findByText("Profile positioning review · disabled by user")).toBeInTheDocument();
 
     const updatedCard = updatedHeading.closest("article");
     expect(updatedCard).not.toBeNull();
@@ -217,8 +152,7 @@ describe("ProfessionalIntelligence", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
-    await waitFor(() => expect(planCalls).toBe(3));
-    expect(fetchMock).toHaveBeenCalledTimes(9);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   });
 
   it("retries an evidence-root failure and clears the stale error", async () => {
@@ -258,6 +192,5 @@ describe("ProfessionalIntelligence", () => {
     resolveFirst?.(new Response(JSON.stringify(capturePlan([sources[0]], [])), { status: 200 }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(screen.getByText("Feed")).toBeInTheDocument();
-    expect(screen.queryByText("Main profile")).not.toBeInTheDocument();
   });
 });
