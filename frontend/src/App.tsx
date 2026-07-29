@@ -11,7 +11,7 @@ import { OpportunityApplicationHandoff } from "./OpportunityApplicationHandoff";
 import { ReadinessHistory } from "./ReadinessHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
-type QueueFilter = "all" | "pending" | "pursue" | "active";
+type QueueFilter = "all" | "pending";
 type SortOption = "score_desc" | "score_asc" | "title_asc" | "company_asc";
 
 type OpportunityIndex = {
@@ -220,8 +220,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
     const filtered = opportunities.filter((opportunity) => {
       if (queueFilter === "pending" && opportunity.review_decision) return false;
-      if (queueFilter === "pursue" && opportunity.review_decision !== "pursue") return false;
-      if (queueFilter === "active" && !(opportunity.application_id && !opportunity.outcome_type)) return false;
       if (!normalizedQuery) return true;
       return [opportunity.title, opportunity.company, opportunity.location]
         .join(" ")
@@ -240,8 +238,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     () => ({
       all: opportunities.length,
       pending: opportunities.filter((item) => !item.review_decision).length,
-      pursue: opportunities.filter((item) => item.review_decision === "pursue").length,
-      active: opportunities.filter((item) => item.application_id && !item.outcome_type).length,
     }),
     [opportunities],
   );
@@ -364,7 +360,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           <div>
             <p className="eyebrow">Opportunity review workbench</p>
             <h2 id="queue-heading">Opportunities</h2>
-            <p>Review the highest-value opportunities first.</p>
+            <p>Review newly captured opportunities before they move into the application pipeline.</p>
           </div>
           <button
             type="button"
@@ -376,14 +372,14 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           </button>
         </div>
         <div className="queue-filters" aria-label="Filter opportunities">
-          {(["all", "pending", "pursue", "active"] as QueueFilter[]).map((filter) => (
+          {(["all", "pending"] as QueueFilter[]).map((filter) => (
             <button
               type="button"
               className={queueFilter === filter ? "filter-active" : "secondary"}
               onClick={() => changeFilter(filter)}
               key={filter}
             >
-              {filter} ({counts[filter]})
+              {filter === "all" ? "review inbox" : filter} ({counts[filter]})
             </button>
           ))}
         </div>
