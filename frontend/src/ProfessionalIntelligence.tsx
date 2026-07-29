@@ -6,7 +6,6 @@ import {
   type ProfessionalCaptureOptions,
 } from "./ProfessionalCaptureRuns";
 import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
-import { ProfessionalExecutionReadiness } from "./ProfessionalExecutionReadiness";
 import { ProfessionalSourceEditor } from "./ProfessionalSourceEditor";
 
 export type ProfessionalIntelligenceSource = {
@@ -49,7 +48,6 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
-  const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
   const [captureOptions] = useState(DEFAULT_CAPTURE_OPTIONS);
   const [error, setError] = useState("");
 
@@ -169,7 +167,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         <summary>
           <span>
             <strong>Professional configuration and source registry</strong>
-            <small>Evidence directory, execution contract, capture plan, and approved source maintenance.</small>
+            <small>Evidence directory, capture plan, and approved source maintenance.</small>
           </span>
         </summary>
 
@@ -178,14 +176,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
             <ProfessionalEvidenceRoot
               apiBase={apiBase}
               active={active}
-              onChanged={() => setReadinessRefreshKey((current) => current + 1)}
-            />
-          )}
-          {active && (
-            <ProfessionalExecutionReadiness
-              key={readinessRefreshKey}
-              apiBase={apiBase}
-              active={active}
+              onChanged={() => setPlanRefreshKey((current) => current + 1)}
             />
           )}
           {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
