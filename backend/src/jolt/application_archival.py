@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Application, ApplicationEvent, utc_now
-from uuid import uuid4
 
 ARCHIVED_APPLICATION_STATUS = "archived"
+DEFAULT_RESTORE_STATUS = "preparing"
 
 
 class ApplicationArchiveRequest(BaseModel):
@@ -24,6 +27,15 @@ class ApplicationArchiveResponse(BaseModel):
     previous_status: str
     status: str
     archived: bool
+
+
+def _latest_archive_event(session: Session, application_id: str) -> ApplicationEvent | None:
+    return session.scalar(
+        select(ApplicationEvent)
+        .where(ApplicationEvent.application_id == application_id)
+        .where(ApplicationEvent.event_type == "application_archived")
+        .order_by(ApplicationEvent.occurred_at.desc())
+    )
 
 
 def archive_application_card(
@@ -66,4 +78,53 @@ def archive_application_card(
         previous_status=previous,
         status=application.status,
         archived=True,
+    )
+
+
+def restore_application_card(
+    session: Session,
+    application_id: str,
+    request: ApplicationArchiveRequest | None = None,
+) -> ApplicationArchiveResponse:
+    application = session.get(Application, application_id)
+    if application is None:
+        raise LookupError("Application was not found.")
+    if application.status != ARCHIVED_APPLICATION_STATUS:
+        return ApplicationArchiveResponse(
+            application_id=application.id,
+            posting_id=application.posting_id,
+            previous_status=application.status,
+            status=application.status,
+            archived=False,
+        )
+
+    archive_event = _latest_archive_event(session, application.id)
+    restored_status = (
+        archive_event.from_status
+        if archive_event and archive_event.from_status and archive_event.from_status != ARCHIVED_APPLICATION_STATUS
+        else DEFAULT_RESTORE_STATUS
+    )
+    previous = application.status
+    now = utc_now()
+    notes = (request.notes if request else "") or f"Restored to {restored_status} from the Applications board."
+    application.status = restored_status
+    application.updated_at = now
+    session.add(
+        ApplicationEvent(
+            id=str(uuid4()),
+            application_id=application.id,
+            event_type="application_restored",
+            from_status=previous,
+            to_status=restored_status,
+            notes=notes,
+            occurred_at=now,
+        )
+    )
+    session.commit()
+    return ApplicationArchiveResponse(
+        application_id=application.id,
+        posting_id=application.posting_id,
+        previous_status=previous,
+        status=application.status,
+        archived=False,
     )
