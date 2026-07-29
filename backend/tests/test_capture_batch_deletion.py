@@ -45,10 +45,11 @@ def test_deleting_capture_batch_removes_unclassified_imported_opportunity(tmp_pa
     assert deleted.json()["deleted_source_document_count"] == 1
     assert deleted.json()["protected_posting_count"] == 0
     assert client.get("/api/opportunity-index").json() == []
+    assert client.get("/api/application-index").json() == []
     assert client.get("/api/captures").json() == []
 
 
-def test_deleting_capture_batch_preserves_reviewed_opportunity(tmp_path) -> None:
+def test_deleting_capture_batch_preserves_reviewed_opportunity_outside_review_inbox(tmp_path) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
 
     captured = client.post(
@@ -66,6 +67,7 @@ def test_deleting_capture_batch_preserves_reviewed_opportunity(tmp_path) -> None
         },
     )
     assert review.status_code == 200
+    assert client.get("/api/opportunity-index").json() == []
 
     deleted = client.post(f"/api/captures/{captured['capture_run_id']}/delete")
     assert deleted.status_code == 200
@@ -73,6 +75,7 @@ def test_deleting_capture_batch_preserves_reviewed_opportunity(tmp_path) -> None
     assert deleted.json()["deleted_posting_count"] == 0
     assert deleted.json()["protected_posting_count"] == 1
 
-    remaining = client.get("/api/opportunity-index").json()
+    assert client.get("/api/opportunity-index").json() == []
+    remaining = client.get("/api/application-index").json()
     assert len(remaining) == 1
     assert remaining[0]["posting_id"] == opportunity["posting_id"]
