@@ -1,8 +1,10 @@
 from collections.abc import Callable, Iterator
+from contextlib import suppress
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from jolt.database import utc_now
 from jolt.professional_intelligence_capture_deletion import (
     ProfessionalCaptureDeletionRequest,
     ProfessionalCaptureDeletionResult,
@@ -41,6 +43,7 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_records import ProfessionalCaptureRun
 from jolt.professional_intelligence_retention import (
     ProfessionalRetentionCleanupRequest,
     ProfessionalRetentionCleanupResult,
@@ -57,6 +60,50 @@ from jolt.professional_intelligence_supervised_runtime import (
 )
 
 SessionProvider = Callable[[], Iterator[Session]]
+
+
+def _run_professional_capture_background(
+    get_session: SessionProvider,
+    run_id: str,
+) -> None:
+    session_iterator = get_session()
+    session: Session | None = None
+    try:
+        session = next(session_iterator)
+        start_bounded_professional_capture(session, run_id)
+    except Exception:
+        if session is not None:
+            session.rollback()
+            run = session.get(ProfessionalCaptureRun, run_id)
+            if run is not None:
+                now = utc_now()
+                run.status = "failed"
+                run.completed_at = now
+                run.current_source_id = ""
+                run.progress_updated_at = now
+                run.stop_reason = "capture_background_failure"
+                session.commit()
+    finally:
+        close = getattr(session_iterator, "close", None)
+        if callable(close):
+            with suppress(Exception):
+                close()
+        elif session is not None:
+            with suppress(Exception):
+                session.close()
+
+
+def _queued_capture_response(
+    run: ProfessionalCaptureRunResponse,
+) -> ProfessionalCaptureRunResponse:
+    return run.model_copy(
+        update={
+            "mode": "supervised_read_only",
+            "status": "running",
+            "started_at": utc_now(),
+            "stop_reason": "capture_queued",
+        }
+    )
 
 
 def build_professional_intelligence_plan_router(get_session: SessionProvider) -> APIRouter:
@@ -248,10 +295,15 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     )
     def start_professional_capture(
         run_id: str,
+        background_tasks: BackgroundTasks,
         session: Session = session_dependency,
     ) -> ProfessionalCaptureRunResponse:
         try:
-            return start_bounded_professional_capture(session, run_id)
+            run = get_professional_capture_run(session, run_id)
+            if run.status != "authorized":
+                raise ValueError("Only authorized capture runs can be started.")
+            background_tasks.add_task(_run_professional_capture_background, get_session, run_id)
+            return _queued_capture_response(run)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
