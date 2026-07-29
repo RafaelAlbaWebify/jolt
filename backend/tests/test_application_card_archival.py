@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from jolt.main import create_app
 
 
-def test_archiving_application_hides_it_from_application_index_but_keeps_history(tmp_path) -> None:
+def test_archiving_and_restoring_application_card_keeps_history(tmp_path) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
 
     intake = client.post(
@@ -48,10 +48,29 @@ def test_archiving_application_hides_it_from_application_index_but_keeps_history
     assert archived.json()["status"] == "archived"
 
     assert client.get("/api/application-index").json() == []
+    archived_index = client.get("/api/application-index?include_archived=true")
+    assert archived_index.status_code == 200
+    assert archived_index.json()[0]["application_status"] == "archived"
+
     history = client.get(f"/api/applications/{application_id}")
     assert history.status_code == 200
     assert history.json()["status"] == "archived"
+    assert any(event["event_type"] == "application_archived" for event in history.json()["events"])
+
+    restored = client.post(
+        f"/api/applications/{application_id}/restore",
+        json={"notes": "Relevant again."},
+    )
+    assert restored.status_code == 200
+    assert restored.json()["archived"] is False
+    assert restored.json()["status"] == "preparing"
+
+    active_index = client.get("/api/application-index")
+    assert active_index.status_code == 200
+    assert active_index.json()[0]["application_status"] == "preparing"
+
+    restored_history = client.get(f"/api/applications/{application_id}").json()
     assert any(
-        event["event_type"] == "application_archived"
-        for event in history.json()["events"]
+        event["event_type"] == "application_restored"
+        for event in restored_history["events"]
     )
