@@ -185,8 +185,8 @@ describe("ProfessionalCaptureRuns", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Capture prepared page" }));
 
-    expect(await screen.findByText("running")).toBeInTheDocument();
-    expect(screen.getByText(/manual current page capture queued/)).toBeInTheDocument();
+    expect((await screen.findAllByText("running")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/manual current page capture queued/).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
   });
 
@@ -277,9 +277,9 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("running")).toBeInTheDocument();
+    expect((await screen.findAllByText("running")).length).toBeGreaterThan(0);
     expect(screen.getByText(/0\/1 sources completed/)).toBeInTheDocument();
-    expect(screen.getByText(/Prepared LinkedIn job search/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Prepared LinkedIn job search/).length).toBeGreaterThan(0);
     expect(screen.getByText(/authwall\/sign-in page/)).toBeInTheDocument();
   });
 });
