@@ -50,6 +50,8 @@ _CAPTURE_SOURCE_TYPES = {"linkedin_fixture", "linkedin_live"}
 def _document_state(application: Application | None, documents: list[ApplicationDocument]) -> str:
     if application is None:
         return "not started"
+    if application.status == ARCHIVED_APPLICATION_STATUS:
+        return "archived"
     if not documents:
         return "resume attached" if application.resume_used.strip() else "no records"
     counts = Counter(document.status for document in documents)
@@ -101,14 +103,14 @@ def _is_orphaned_capture_import(
 
 
 def list_opportunity_index(
-    session: Session, *, include_applied: bool = False
+    session: Session, *, include_applied: bool = False, include_archived: bool = False
 ) -> list[OpportunityIndexItem]:
     """Return compact queue metadata without constructing full review detail.
 
     The default Opportunities page is the pending-review inbox. Reviewed items,
     applications, archived capture imports, and orphaned LinkedIn imports are excluded.
-    Tracking views pass include_applied=True so reviewed/applied postings remain visible,
-    except archived application cards, which are intentionally hidden from active boards.
+    Tracking views pass include_applied=True so reviewed/applied postings remain visible.
+    Archived application cards remain hidden unless include_archived=True is requested.
     """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
@@ -165,7 +167,11 @@ def list_opportunity_index(
         if evaluation is None:
             continue
         application = applications.get(posting.id)
-        if application is not None and application.status == ARCHIVED_APPLICATION_STATUS:
+        if (
+            application is not None
+            and application.status == ARCHIVED_APPLICATION_STATUS
+            and not include_archived
+        ):
             continue
         review = latest_reviews.get(posting.id)
         source_document = source_documents.get(posting.source_document_id)
