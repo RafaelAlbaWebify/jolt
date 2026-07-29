@@ -64,21 +64,21 @@ export function ProfessionalSourceEditor({ source, busy, onSave, onReset }: Prop
         </label>
         <label className="professional-source-checkbox">
           <input
-            aria-label={`Initial scope for ${source.source_id}`}
+            aria-label={`Primary source for ${source.source_id}`}
             type="checkbox"
             checked={initialScope}
             onChange={(event) => setInitialScope(event.target.checked)}
           />
-          Include in initial supervised scope
+          Use as primary source
         </label>
         <label className="professional-source-checkbox">
           <input
-            aria-label={`Enabled for ${source.source_id}`}
+            aria-label={`Enabled source ${source.source_id}`}
             type="checkbox"
             checked={enabled}
             onChange={(event) => setEnabled(event.target.checked)}
           />
-          Enabled for future supervised capture
+          Keep source enabled
         </label>
         <div className="professional-source-editor-actions">
           <button type="submit" disabled={busy || !label.trim() || !url.trim()}>
