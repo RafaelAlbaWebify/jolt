@@ -36,13 +36,18 @@ const detail = {
   profile_version_id: "profile:v1",
   engine_version: "rules-v1",
   readiness: {
-    posting_id: "posting-1",
+    report_id: "readiness-1",
+    profile_version_id: "profile:v1",
+    engine_version: "readiness-rules:v1",
+    priority: "high",
     readiness_score: 82,
-    recommendation: "ready_with_tailoring",
-    blockers: [],
-    required_actions: ["Tailor CV"],
-    evidence_gaps: [],
-    generated_at: "2026-07-29T12:00:00Z",
+    evidence_matches: ["SQL troubleshooting"],
+    credibility_warnings: [],
+    cv_tailoring_points: ["Tailor CV"],
+    talking_points: ["Application support incidents"],
+    interview_questions: [],
+    revision_topics: [],
+    checklist: ["Review the source job"],
   },
 };
 
@@ -101,7 +106,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Cloud Operations Analyst");
+    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
     fireEvent.change(screen.getByLabelText("Search inbox"), { target: { value: "Example Systems" } });
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
