@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessionalCaptureRuns, type ProfessionalCaptureOptions } from "./ProfessionalCaptureRuns";
@@ -48,6 +48,19 @@ const preparedRun = {
   stop_reason: "manual_browser_ready_prepare_linkedin_then_capture_current_page",
 };
 
+const preparedJobRun = {
+  ...preparedRun,
+  planned_sources: [
+    {
+      source_id: "linkedin-current-page",
+      label: "Prepared LinkedIn job search",
+      url: "https://www.linkedin.com/jobs/search/",
+      initial_scope: true,
+    },
+  ],
+  total_source_count: 1,
+};
+
 describe("ProfessionalCaptureRuns", () => {
   afterEach(() => {
     cleanup();
@@ -55,7 +68,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.useRealTimers();
   });
 
-  it("opens Chromium for manual preparation in a single session panel", async () => {
+  it("opens Chromium into one above-the-fold current session workflow", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -101,24 +114,25 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("authorized")).toBeInTheDocument();
-    expect(screen.getByText("Current capture session")).toBeInTheDocument();
-    expect(screen.getByText(/Chromium is open/)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Capture current Chromium page" })).toHaveLength(1);
+    expect(await screen.findByRole("heading", { name: "Current capture session" })).toBeInTheDocument();
+    expect(screen.getByText("Chromium ready")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Capture prepared page" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Capture prepared page" })).toHaveLength(1);
+    expect(screen.getByRole("table")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-1/prepare-browser",
       { method: "POST" },
     );
   });
 
-  it("keeps one enabled top-level capture button when stale prepared cards exist", async () => {
+  it("keeps one primary capture button when stale prepared runs exist", async () => {
     const olderPreparedRun = {
-      ...preparedRun,
+      ...preparedJobRun,
       id: "run-older",
       requested_at: "2026-07-24T17:00:00Z",
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify([preparedRun, olderPreparedRun]), { status: 200 }),
+      new Response(JSON.stringify([preparedJobRun, olderPreparedRun]), { status: 200 }),
     );
 
     render(
@@ -130,27 +144,18 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("Current capture session")).toBeInTheDocument();
-    const captureButton = screen.getByRole("button", { name: "Capture current Chromium page" });
+    expect(await screen.findByRole("heading", { name: "Current capture session" })).toBeInTheDocument();
+    const captureButton = screen.getByRole("button", { name: "Capture prepared page" });
     expect(captureButton).toBeEnabled();
-    expect(screen.getAllByRole("button", { name: "Capture current Chromium page" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Capture prepared page" })).toHaveLength(1);
   });
 
-  it("captures the current prepared Chromium page with the top-level button", async () => {
+  it("captures the current prepared Chromium page from the top session card", async () => {
     const queued = {
-      ...preparedRun,
+      ...preparedJobRun,
       status: "running",
       started_at: "2026-07-24T18:02:00Z",
       stop_reason: "manual_current_page_capture_queued",
-      planned_sources: [
-        {
-          source_id: "linkedin-current-page",
-          label: "Prepared LinkedIn job search",
-          url: "https://www.linkedin.com/jobs/search/",
-          initial_scope: true,
-        },
-      ],
-      total_source_count: 1,
       source_progress: [
         {
           source_id: "linkedin-current-page",
@@ -164,7 +169,7 @@ describe("ProfessionalCaptureRuns", () => {
     };
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
-      if (!init?.method) return new Response(JSON.stringify([preparedRun]), { status: 200 });
+      if (!init?.method) return new Response(JSON.stringify([preparedJobRun]), { status: 200 });
       if (url.endsWith("/run-1/capture-current-page")) return new Response(JSON.stringify(queued), { status: 200 });
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -178,16 +183,16 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "Capture current Chromium page" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Capture prepared page" }));
 
     expect(await screen.findByText("running")).toBeInTheDocument();
     expect(screen.getByText(/manual current page capture queued/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
   });
 
-  it("deletes a stale prepared capture without sharing deletion phrase state", async () => {
-    const preparedA = { ...preparedRun, id: "run-a" };
-    const preparedB = { ...preparedRun, id: "run-b" };
+  it("deletes through a modal instead of expanding history rows", async () => {
+    const preparedA = { ...preparedJobRun, id: "run-a" };
+    const preparedB = { ...preparedJobRun, id: "run-b" };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (!init?.method) return new Response(JSON.stringify([preparedA, preparedB]), { status: 200 });
@@ -207,8 +212,12 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("Current capture session")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Delete this capture batch" })[0]);
+    expect(await screen.findByRole("heading", { name: "Current capture session" })).toBeInTheDocument();
+    const row = screen.getByText("run-a").closest("tr");
+    expect(row).not.toBeNull();
+    fireEvent.click(within(row as HTMLTableRowElement).getByRole("button", { name: "Delete" }));
+
+    expect(screen.getByRole("dialog", { name: "Delete capture run?" })).toBeInTheDocument();
     const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
     expect(deleteButton).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Deletion phrase for run-a"), {
@@ -224,7 +233,7 @@ describe("ProfessionalCaptureRuns", () => {
     );
   });
 
-  it("surfaces running source, cancellation, and failed source details", async () => {
+  it("surfaces running source, cancellation, and failed source details in the selected details panel", async () => {
     const runningRun = {
       ...plannedRun,
       id: "run-progress",
@@ -269,9 +278,8 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect(await screen.findByText("running")).toBeInTheDocument();
-    expect(screen.getByText(/Progress: 0\/1 sources completed/)).toBeInTheDocument();
-    expect(screen.getByText(/Current: Prepared LinkedIn job search/)).toBeInTheDocument();
-    expect(screen.getByText(/cancellation requested/)).toBeInTheDocument();
+    expect(screen.getByText(/0\/1 sources completed/)).toBeInTheDocument();
+    expect(screen.getByText(/Prepared LinkedIn job search/)).toBeInTheDocument();
     expect(screen.getByText(/authwall\/sign-in page/)).toBeInTheDocument();
   });
 });
