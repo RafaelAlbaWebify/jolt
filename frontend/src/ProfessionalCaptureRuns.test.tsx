@@ -190,7 +190,7 @@ describe("ProfessionalCaptureRuns", () => {
     expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
   });
 
-  it("deletes through a modal instead of expanding history rows", async () => {
+  it("deletes through a second-confirm modal instead of expanding history rows", async () => {
     const preparedA = { ...preparedJobRun, id: "run-a" };
     const preparedB = { ...preparedJobRun, id: "run-b" };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -219,12 +219,8 @@ describe("ProfessionalCaptureRuns", () => {
     fireEvent.click(within(row as HTMLTableRowElement).getByRole("button", { name: "Delete" }));
 
     expect(screen.getByRole("dialog", { name: "Delete capture run?" })).toBeInTheDocument();
-    const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
-    expect(deleteButton).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Deletion phrase for run-a"), {
-      target: { value: "DELETE CAPTURE RUN" },
-    });
-    fireEvent.click(deleteButton);
+    expect(screen.queryByLabelText(/Deletion phrase/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Yes, delete this run" }));
 
     await waitFor(() => expect(screen.queryByText(/run-a/)).not.toBeInTheDocument());
     expect(screen.getByText(/run-b/)).toBeInTheDocument();
