@@ -1,0 +1,122 @@
+.professional-intelligence-dashboard {
+  align-content: start;
+}
+
+.professional-intelligence-dashboard > .professional-workspace-redesign {
+  order: 0;
+}
+
+.professional-advanced-section {
+  order: 1;
+  padding: 0;
+  overflow: hidden;
+}
+
+.professional-advanced-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.professional-advanced-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.professional-advanced-section > summary::after {
+  content: "Show";
+  flex: 0 0 auto;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: #1f4fc4;
+  background: #f5f8ff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.professional-advanced-section[open] > summary::after {
+  content: "Hide";
+}
+
+.professional-advanced-section > summary span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.professional-advanced-section > summary small {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.professional-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+.professional-advanced-grid > .panel,
+.professional-advanced-grid > section {
+  margin: 0;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.professional-registry-panel {
+  display: grid;
+  gap: 1rem;
+  margin: 0 1rem 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
+.professional-source-registry-details {
+  border: 1px solid #edf0f5;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.professional-source-registry-details > summary {
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.professional-source-registry-details[open] {
+  background: #fff;
+}
+
+.professional-source-registry-details .professional-source-group {
+  padding: 0 1rem 1rem;
+}
+
+.professional-source-grid-compact {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.professional-source-grid-compact .professional-source-card {
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.professional-source-grid-compact .professional-source-card h4 {
+  font-size: 0.95rem;
+}
+
+.professional-source-grid-compact .professional-source-editor:not([open]) {
+  padding-top: 0;
+  border-top: 0;
+}
+
+@media (max-width: 1180px) {
+  .professional-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+}
