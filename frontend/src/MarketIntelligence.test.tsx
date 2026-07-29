@@ -56,7 +56,7 @@ describe("MarketIntelligence", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load market insights.");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Retry market load" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry insights load" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
   });
