@@ -64,14 +64,14 @@ export function Workbench() {
         <div
           className="workspace-sidebar-tools"
           ref={setSidebarToolsTarget}
-          hidden={activeView !== "opportunities"}
+          aria-label="Global data tools"
         />
       </aside>
 
       <main className="workspace-content">
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
-            <App sidebarToolsTarget={activeView === "opportunities" ? sidebarToolsTarget : null} />
+            <App sidebarToolsTarget={sidebarToolsTarget} />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
