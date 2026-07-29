@@ -11,7 +11,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting JOLT frontend...
+echo Starting JOLT frontend without dependency installation.
+echo To update dependencies intentionally, run UPDATE_JOLT_ENVIRONMENT.bat.
+echo Frontend directory: %CD%
+echo Frontend URL: http://127.0.0.1:5173
+echo.
+
 npm.cmd run dev -- --host 127.0.0.1
 set "EXIT_CODE=%ERRORLEVEL%"
 
