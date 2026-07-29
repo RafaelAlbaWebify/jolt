@@ -103,13 +103,18 @@ def _is_orphaned_capture_import(
 
 
 def list_opportunity_index(
-    session: Session, *, include_applied: bool = False, include_archived: bool = False
+    session: Session,
+    *,
+    include_applied: bool = False,
+    include_archived: bool = False,
+    include_reviewed: bool = False,
 ) -> list[OpportunityIndexItem]:
     """Return compact queue metadata without constructing full review detail.
 
     The default Opportunities page is the pending-review inbox. Reviewed items,
     applications, archived capture imports, and orphaned LinkedIn imports are excluded.
     Tracking views pass include_applied=True so reviewed/applied postings remain visible.
+    Reviewed archive tools pass include_reviewed=True to include reviewed non-application rows.
     Archived application cards remain hidden unless include_archived=True is requested.
     """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
@@ -177,7 +182,9 @@ def list_opportunity_index(
         source_document = source_documents.get(posting.source_document_id)
         posting_capture_statuses = capture_statuses.get(posting.id, set())
         if not include_applied:
-            if application is not None or review is not None:
+            if application is not None:
+                continue
+            if review is not None and not include_reviewed:
                 continue
             if _is_archived_capture_import(posting_capture_statuses):
                 continue
