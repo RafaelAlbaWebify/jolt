@@ -8,7 +8,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.database import Evaluation, Posting
+from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
+from jolt.database import CaptureItem, CaptureRun, Evaluation, Posting
 from jolt.strategy_runtime import ENGINE_VERSION
 
 SKILL_TERMS = (
@@ -190,6 +191,25 @@ def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
     return [{"label": label, "count": count} for label, count in counter.most_common(limit)]
 
 
+def _capture_statuses_by_posting(session: Session) -> dict[str, set[str]]:
+    runs = {run.id: run for run in session.scalars(select(CaptureRun)).all()}
+    statuses: dict[str, set[str]] = {}
+    for item in session.scalars(select(CaptureItem).where(CaptureItem.posting_id.is_not(None))).all():
+        if not item.posting_id:
+            continue
+        run = runs.get(item.capture_run_id)
+        if run is None:
+            continue
+        statuses.setdefault(item.posting_id, set()).add(run.status)
+    return statuses
+
+
+def _is_archived_capture_import(capture_statuses: set[str]) -> bool:
+    return bool(capture_statuses) and all(
+        status == ARCHIVED_CAPTURE_STATUS for status in capture_statuses
+    )
+
+
 def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> dict[str, object]:
     role_families: Counter[str] = Counter()
     work_modes: Counter[str] = Counter()
@@ -268,7 +288,13 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
 
 
 def build_market_intelligence(session: Session) -> dict[str, object]:
-    postings = list(session.scalars(select(Posting).order_by(Posting.created_at.desc())).all())
+    all_postings = list(session.scalars(select(Posting).order_by(Posting.created_at.desc())).all())
+    capture_statuses = _capture_statuses_by_posting(session)
+    postings = [
+        posting
+        for posting in all_postings
+        if not _is_archived_capture_import(capture_statuses.get(posting.id, set()))
+    ]
     evaluations = list(
         session.scalars(
             select(Evaluation)
@@ -300,7 +326,7 @@ def build_market_intelligence(session: Session) -> dict[str, object]:
         "outside_title_examples": _ranked(outside_titles, 15),
         "fit_explanation": (
             "Fit scores measure alignment with the active target profile, not general "
-            "employability. Outside-target captures should be used to improve search filters, "
-            "not to judge career fit."
+            "employability. Archived capture batches are excluded from this active market view. "
+            "Outside-target captures should be used to improve search filters, not to judge career fit."
         ),
     }
