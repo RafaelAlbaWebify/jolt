@@ -24,7 +24,7 @@ LinkedIn can show authwall, signup, cookie, premium, app-prompt, or other inters
 - The active action controls live in one top-level panel, not inside every history card.
 - History cards are read-only for old runs except review, cancel, and delete actions.
 - Only one **Capture current Chromium page** button should be available.
-- If stale prepared batches exist, JOLT uses the newest prepared run for the top-level capture action and lets old batches be deleted from history.
+- If multiple prepared batches exist after reload, JOLT uses the newest prepared run for the single top-level capture action and lets old batches be deleted from history.
 
 ## Deletion model
 
