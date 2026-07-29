@@ -74,7 +74,7 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Primary sources" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Secondary sources" })).toBeInTheDocument();
-    expect(screen.getByText("Use as primary source")).toBeInTheDocument();
+    expect(screen.getAllByText("Use as primary source")).toHaveLength(2);
     expect(screen.getAllByText("Keep source enabled")).toHaveLength(2);
   });
 
