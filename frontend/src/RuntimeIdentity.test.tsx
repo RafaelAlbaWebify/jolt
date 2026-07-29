@@ -52,7 +52,7 @@ describe("RuntimeIdentityPanel", () => {
 
     render(<RuntimeIdentityPanel apiBase="http://127.0.0.1:8000" />);
 
-    expect(await screen.findByText("Runtime identity")).toBeInTheDocument();
+    expect(await screen.findByText("Developer diagnostics")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/agent\/runtime-identity-baseline/)).toBeInTheDocument());
     expect(screen.getByText(/1234567890ab/)).toBeInTheDocument();
     expect(screen.getByText("C:/Users/ralba/Documents/GitHub/jolt/backend/data/jolt.db")).toBeInTheDocument();
