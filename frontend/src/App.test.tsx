@@ -118,16 +118,16 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Cloud Operations Analyst")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Cloud Operations Analyst");
-    fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "Example Systems" } });
+    fireEvent.change(screen.getByLabelText("Search inbox"), { target: { value: "Example Systems" } });
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search opportunities"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Search inbox"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title_asc" } });
     expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("loads capture history only after operations tools open", async () => {
+  it("loads capture history only after data tools open", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/opportunity-index")) return jsonResponse([]);
@@ -136,10 +136,10 @@ describe("App", () => {
     });
 
     render(<App />);
-    expect(await screen.findByText("No opportunities match this view.")).toBeInTheDocument();
+    expect(await screen.findByText("No pending review items match this view.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByText("Intake, captures, and exports"));
-    await screen.findByText("No capture runs recorded yet.");
+    fireEvent.click(screen.getByText("Data tools: capture batches and exports"));
+    await screen.findByText("No active capture runs recorded.");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
