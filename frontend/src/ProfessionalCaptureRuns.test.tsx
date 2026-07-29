@@ -34,6 +34,20 @@ const plannedRun = {
   progress_updated_at: null,
 };
 
+const authorizedRun = {
+  ...plannedRun,
+  status: "authorized",
+  authorized_at: "2026-07-24T18:01:00Z",
+  authorization_expires_at: "2026-07-24T18:16:00Z",
+  user_present_confirmed: true,
+};
+
+const preparedRun = {
+  ...authorizedRun,
+  mode: "supervised_read_only",
+  stop_reason: "manual_browser_ready_prepare_linkedin_then_capture_current_page",
+};
+
 describe("ProfessionalCaptureRuns", () => {
   afterEach(() => {
     cleanup();
@@ -41,46 +55,11 @@ describe("ProfessionalCaptureRuns", () => {
     vi.useRealTimers();
   });
 
-  it("starts a bounded capture from one overview click and deletes the batch", async () => {
+  it("opens Chromium for manual preparation before current-page capture", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
     });
-    const authorized = {
-      ...plannedRun,
-      status: "authorized",
-      authorized_at: "2026-07-24T18:01:00Z",
-      authorization_expires_at: "2026-07-24T18:16:00Z",
-      user_present_confirmed: true,
-    };
-    const completed = {
-      ...authorized,
-      mode: "supervised_read_only",
-      status: "completed",
-      started_at: "2026-07-24T18:02:00Z",
-      completed_at: "2026-07-24T18:03:00Z",
-      artifact_count: 8,
-      completed_source_count: 2,
-      total_source_count: 2,
-      source_progress: [
-        {
-          source_id: "linkedin-profile",
-          status: "completed",
-          started_at: "2026-07-24T18:02:00Z",
-          completed_at: "2026-07-24T18:02:30Z",
-          completeness_status: "complete",
-          detail: "Captured profile evidence.",
-        },
-        {
-          source_id: "linkedin-posts",
-          status: "completed",
-          started_at: "2026-07-24T18:02:31Z",
-          completed_at: "2026-07-24T18:03:00Z",
-          completeness_status: "partial",
-          detail: "Captured bounded post evidence.",
-        },
-      ],
-    };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (!init?.method) return new Response(JSON.stringify([]), { status: 200 });
@@ -93,14 +72,10 @@ describe("ProfessionalCaptureRuns", () => {
           confirmation_phrase: "I UNDERSTAND THIS WILL OPEN LINKEDIN",
           user_present: true,
         });
-        return new Response(JSON.stringify(authorized), { status: 200 });
+        return new Response(JSON.stringify(authorizedRun), { status: 200 });
       }
-      if (url.endsWith("/run-1/start")) {
-        return new Response(JSON.stringify(completed), { status: 200 });
-      }
-      if (url.endsWith("/run-1/delete")) {
-        expect(JSON.parse(String(init.body))).toEqual({ confirmation_phrase: "DELETE CAPTURE RUN" });
-        return new Response(JSON.stringify({ run_id: "run-1" }), { status: 200 });
+      if (url.endsWith("/run-1/prepare-browser")) {
+        return new Response(JSON.stringify(preparedRun), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -126,24 +101,62 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("completed")).toBeInTheDocument();
-    expect(screen.getByText(/Limits: 2 sources/)).toBeInTheDocument();
-    expect(screen.getByText(/Progress: 2\/2 sources completed/)).toBeInTheDocument();
-    expect(screen.getByText("Source progress and failure details")).toBeInTheDocument();
-    expect(screen.getByText(/linkedin-profile/)).toBeInTheDocument();
-    expect(screen.getByText(/Captured bounded post evidence/)).toBeInTheDocument();
-    expect(screen.queryByText(/Type the exact phrase/)).not.toBeInTheDocument();
+    expect(await screen.findByText("authorized")).toBeInTheDocument();
+    expect(screen.getByText(/Chromium is open/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Capture current Chromium page" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-1/prepare-browser",
+      { method: "POST" },
+    );
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete this capture batch" }));
-    const deleteButton = screen.getByRole("button", { name: "Permanently delete batch" });
-    expect(deleteButton).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Deletion phrase for run-1"), {
-      target: { value: "DELETE CAPTURE RUN" },
+  it("captures the current prepared Chromium page with a separate button", async () => {
+    const queued = {
+      ...preparedRun,
+      status: "running",
+      started_at: "2026-07-24T18:02:00Z",
+      stop_reason: "manual_current_page_capture_queued",
+      planned_sources: [
+        {
+          source_id: "linkedin-current-page",
+          label: "Prepared LinkedIn job search",
+          url: "https://www.linkedin.com/jobs/search/",
+          initial_scope: true,
+        },
+      ],
+      total_source_count: 1,
+      source_progress: [
+        {
+          source_id: "linkedin-current-page",
+          status: "pending",
+          started_at: null,
+          completed_at: null,
+          completeness_status: "",
+          detail: "Waiting to capture the user-prepared Chromium page.",
+        },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (!init?.method) return new Response(JSON.stringify([preparedRun]), { status: 200 });
+      if (url.endsWith("/run-1/capture-current-page")) return new Response(JSON.stringify(queued), { status: 200 });
+      throw new Error(`Unexpected request: ${url}`);
     });
-    fireEvent.click(deleteButton);
 
-    await waitFor(() => expect(screen.queryByText("completed")).not.toBeInTheDocument());
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Capture current Chromium page" }));
+
+    expect(await screen.findByText("running")).toBeInTheDocument();
+    expect(screen.getByText(/manual current page capture queued/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
   });
 
   it("surfaces running source, cancellation, and failed source details", async () => {
@@ -153,15 +166,9 @@ describe("ProfessionalCaptureRuns", () => {
       status: "running",
       planned_sources: [
         {
-          source_id: "linkedin-profile",
-          label: "LinkedIn profile",
-          url: "https://www.linkedin.com/in/example/",
-          initial_scope: true,
-        },
-        {
-          source_id: "linkedin-posts",
-          label: "LinkedIn posts",
-          url: "https://www.linkedin.com/in/example/recent-activity/all/",
+          source_id: "linkedin-current-page",
+          label: "Prepared LinkedIn job search",
+          url: "https://www.linkedin.com/jobs/search/",
           initial_scope: true,
         },
       ],
@@ -169,25 +176,17 @@ describe("ProfessionalCaptureRuns", () => {
       artifact_count: 1,
       source_progress: [
         {
-          source_id: "linkedin-profile",
-          status: "completed",
-          started_at: "2026-07-24T18:02:00Z",
-          completed_at: "2026-07-24T18:02:30Z",
-          completeness_status: "complete",
-          detail: "Profile captured successfully.",
-        },
-        {
-          source_id: "linkedin-posts",
+          source_id: "linkedin-current-page",
           status: "failed",
           started_at: "2026-07-24T18:02:31Z",
           completed_at: null,
           completeness_status: "failed",
-          detail: "LinkedIn posts timed out before bounded capture completed.",
+          detail: "The prepared LinkedIn browser page is still an authwall/sign-in page.",
         },
       ],
-      completed_source_count: 1,
-      total_source_count: 2,
-      current_source_id: "linkedin-posts",
+      completed_source_count: 0,
+      total_source_count: 1,
+      current_source_id: "linkedin-current-page",
       cancel_requested: true,
       progress_updated_at: "2026-07-24T18:03:00Z",
     };
@@ -205,70 +204,9 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect(await screen.findByText("running")).toBeInTheDocument();
-    expect(screen.getByText(/Progress: 1\/2 sources completed/)).toBeInTheDocument();
-    expect(screen.getByText(/Current: LinkedIn posts/)).toBeInTheDocument();
+    expect(screen.getByText(/Progress: 0\/1 sources completed/)).toBeInTheDocument();
+    expect(screen.getByText(/Current: Prepared LinkedIn job search/)).toBeInTheDocument();
     expect(screen.getByText(/cancellation requested/)).toBeInTheDocument();
-    expect(screen.getByText(/LinkedIn posts timed out/)).toBeInTheDocument();
-  });
-
-  it("shows a queued browser capture immediately instead of waiting for completion", async () => {
-    const authorized = {
-      ...plannedRun,
-      status: "authorized",
-      authorized_at: "2026-07-24T18:01:00Z",
-      authorization_expires_at: "2026-07-24T18:16:00Z",
-      user_present_confirmed: true,
-    };
-    const queued = {
-      ...authorized,
-      mode: "supervised_read_only",
-      status: "running",
-      started_at: "2026-07-24T18:02:00Z",
-      stop_reason: "capture_queued",
-      total_source_count: 2,
-      source_progress: [
-        {
-          source_id: "linkedin-profile",
-          status: "pending",
-          started_at: null,
-          completed_at: null,
-          completeness_status: "",
-          detail: "",
-        },
-      ],
-    };
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = String(input);
-      if (!init?.method) return new Response(JSON.stringify([]), { status: 200 });
-      if (url.endsWith("/capture-runs")) return new Response(JSON.stringify(plannedRun), { status: 200 });
-      if (url.endsWith("/run-1/authorize")) return new Response(JSON.stringify(authorized), { status: 200 });
-      if (url.endsWith("/run-1/start")) return new Response(JSON.stringify(queued), { status: 200 });
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    const { rerender } = render(
-      <ProfessionalCaptureRuns
-        apiBase="http://127.0.0.1:8000"
-        active
-        planRefreshKey={0}
-        captureOptions={captureOptions}
-        startRequestKey={0}
-      />,
-    );
-
-    expect(await screen.findByText(/No captures yet/)).toBeInTheDocument();
-    rerender(
-      <ProfessionalCaptureRuns
-        apiBase="http://127.0.0.1:8000"
-        active
-        planRefreshKey={0}
-        captureOptions={captureOptions}
-        startRequestKey={1}
-      />,
-    );
-
-    expect(await screen.findByText("running")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
-    expect(screen.getByText(/capture queued/)).toBeInTheDocument();
+    expect(screen.getByText(/authwall\/sign-in page/)).toBeInTheDocument();
   });
 });
