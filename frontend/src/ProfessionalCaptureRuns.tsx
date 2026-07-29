@@ -86,6 +86,10 @@ function shouldPollRun(run: ProfessionalCaptureRun) {
   return run.status === "authorized" || run.status === "running";
 }
 
+function isManualBrowserReady(run: ProfessionalCaptureRun) {
+  return run.status === "authorized" && run.stop_reason.includes("manual_browser_ready");
+}
+
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -141,37 +145,61 @@ export function ProfessionalCaptureRuns({
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
   }
 
-  async function authorizeAndStart(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
-    let ready = run;
-    if (ready.status === "planned" || ready.status === "expired") {
-      const authorization = await fetch(
-        `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/authorize`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            confirmation_phrase: AUTHORIZATION_PHRASE,
-            user_present: true,
-          }),
-        },
-      );
-      if (!authorization.ok) {
-        const payload = (await authorization.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(payload?.detail || "The capture could not be authorized.");
-      }
-      ready = (await authorization.json()) as ProfessionalCaptureRun;
-      replaceRun(ready);
+  async function authorizeRun(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
+    if (run.status !== "planned" && run.status !== "expired") return run;
+    const authorization = await fetch(
+      `${apiBase}/api/professional-intelligence/capture-runs/${run.id}/authorize`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmation_phrase: AUTHORIZATION_PHRASE,
+          user_present: true,
+        }),
+      },
+    );
+    if (!authorization.ok) {
+      const payload = (await authorization.json().catch(() => null)) as { detail?: string } | null;
+      throw new Error(payload?.detail || "The capture could not be authorized.");
     }
+    const ready = (await authorization.json()) as ProfessionalCaptureRun;
+    replaceRun(ready);
+    return ready;
+  }
 
+  async function prepareBrowser(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
+    const ready = await authorizeRun(run);
     const response = await fetch(
-      `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/start`,
+      `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/prepare-browser`,
       { method: "POST" },
     );
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-      throw new Error(payload?.detail || "The supervised capture could not start.");
+      throw new Error(payload?.detail || "The manual Chromium browser could not be prepared.");
     }
     return (await response.json()) as ProfessionalCaptureRun;
+  }
+
+  async function captureCurrentPage(run: ProfessionalCaptureRun) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${apiBase}/api/professional-intelligence/capture-runs/${run.id}/capture-current-page`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The current Chromium page could not be captured.");
+      }
+      replaceRun((await response.json()) as ProfessionalCaptureRun);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Current-page capture failed.");
+      await loadRuns();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function startNewCapture() {
@@ -190,8 +218,8 @@ export function ProfessionalCaptureRuns({
       }
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
-      const queued = await authorizeAndStart(created);
-      replaceRun(queued);
+      const prepared = await prepareBrowser(created);
+      replaceRun(prepared);
       ledgerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture failed.");
@@ -206,7 +234,7 @@ export function ProfessionalCaptureRuns({
     setBusy(true);
     setError("");
     try {
-      replaceRun(await authorizeAndStart(run));
+      replaceRun(await prepareBrowser(run));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture failed.");
     } finally {
@@ -268,7 +296,7 @@ export function ProfessionalCaptureRuns({
         <div>
           <p className="eyebrow">Capture operations</p>
           <h2 id="professional-run-ledger-heading">Capture history</h2>
-          <p>Review completed captures or remove a bad batch.</p>
+          <p>Open Chromium, prepare LinkedIn manually, then capture the current page.</p>
         </div>
         <button
           type="button"
@@ -276,11 +304,11 @@ export function ProfessionalCaptureRuns({
           disabled={busy || !active}
           onClick={() => void startNewCapture()}
         >
-          {busy ? "Capturing…" : "Start another capture"}
+          {busy ? "Preparing…" : "Open Chromium to prepare capture"}
         </button>
       </div>
       <p className="professional-ledger-note">
-        Current plan revision: {planRefreshKey}. Each batch records the exact limits used.
+        Current plan revision: {planRefreshKey}. Prepare the exact LinkedIn profile or job-search results page in the opened browser, then click “Capture current Chromium page”.
       </p>
       {error && (
         <p className="error" role="alert">
@@ -293,7 +321,7 @@ export function ProfessionalCaptureRuns({
           Retry capture history
         </button>
       )}
-      {loaded && runs.length === 0 && <p>No captures yet. Use “Start capture” at the top of this workspace.</p>}
+      {loaded && runs.length === 0 && <p>No captures yet. Use “Open Chromium to prepare capture”.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
           {runs.map((run) => (
@@ -311,6 +339,11 @@ export function ProfessionalCaptureRuns({
                 {run.current_source_id ? ` · Current: ${sourceLabel(run, run.current_source_id)}` : ""}
                 {run.cancel_requested ? " · cancellation requested" : ""}
               </p>
+              {isManualBrowserReady(run) && (
+                <p>
+                  Chromium is open. Sign in to LinkedIn if needed, navigate to the exact page/search results you want, then capture the current page.
+                </p>
+              )}
               {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
               {run.source_progress.length > 0 && (
                 <details className="professional-source-progress" open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}>
@@ -329,9 +362,19 @@ export function ProfessionalCaptureRuns({
                 </details>
               )}
               <code>{run.id}</code>
-              {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
+              {(run.status === "planned" || run.status === "expired") && (
                 <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
-                  Start capture
+                  Open Chromium to prepare
+                </button>
+              )}
+              {run.status === "authorized" && !isManualBrowserReady(run) && (
+                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
+                  Open Chromium to prepare
+                </button>
+              )}
+              {isManualBrowserReady(run) && (
+                <button type="button" disabled={busy} onClick={() => void captureCurrentPage(run)}>
+                  Capture current Chromium page
                 </button>
               )}
               {run.status === "running" && (
