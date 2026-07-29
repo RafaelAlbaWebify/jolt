@@ -306,8 +306,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
     )
     def opportunity_index(
         session: Annotated[Session, Depends(get_session)],
+        include_reviewed: bool = False,
     ) -> list[OpportunityIndexItem]:
-        return list_opportunity_index(session)
+        return list_opportunity_index(session, include_reviewed=include_reviewed)
 
     @app.get(
         "/api/application-index", response_model=list[OpportunityIndexItem], tags=["applications"]
@@ -337,8 +338,12 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.get("/api/market-intelligence", tags=["analysis"])
     def market_intelligence(
         session: Annotated[Session, Depends(get_session)],
+        timeframe: str = "all",
+        source_scope: str = "all",
     ) -> dict[str, object]:
-        return build_market_intelligence(session)
+        return build_market_intelligence(
+            session, timeframe=timeframe, source_scope=source_scope
+        )
 
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
     def opportunities(
