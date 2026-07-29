@@ -6,6 +6,56 @@
   order: 0;
 }
 
+.professional-workspace-redesign .professional-dashboard-actions > button:first-child:not(:disabled) {
+  order: -1;
+}
+
+.professional-workspace-redesign .professional-history-layout {
+  grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.65fr);
+}
+
+.professional-workspace-redesign .professional-history-table-wrap {
+  overflow-x: visible;
+}
+
+.professional-workspace-redesign .professional-history-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.professional-workspace-redesign .professional-history-table th:nth-child(1),
+.professional-workspace-redesign .professional-history-table td:nth-child(1) {
+  width: 9.5rem;
+}
+
+.professional-workspace-redesign .professional-history-table th:nth-child(2),
+.professional-workspace-redesign .professional-history-table td:nth-child(2) {
+  width: 8.5rem;
+}
+
+.professional-workspace-redesign .professional-history-table th:nth-child(4),
+.professional-workspace-redesign .professional-history-table td:nth-child(4) {
+  width: 8.75rem;
+}
+
+.professional-workspace-redesign .professional-history-table td,
+.professional-workspace-redesign .professional-history-table th {
+  word-break: normal;
+}
+
+.professional-workspace-redesign .professional-history-table .professional-row-actions {
+  flex-wrap: nowrap;
+}
+
+.professional-workspace-redesign .professional-history-table .professional-row-actions button {
+  white-space: nowrap;
+}
+
+.professional-workspace-redesign .professional-run-detail-panel {
+  max-height: calc(100vh - 7rem);
+  overflow: auto;
+}
+
 .professional-advanced-section {
   order: 1;
   padding: 0;
@@ -116,7 +166,12 @@
 }
 
 @media (max-width: 1180px) {
+  .professional-workspace-redesign .professional-history-layout,
   .professional-advanced-grid {
     grid-template-columns: 1fr;
+  }
+
+  .professional-workspace-redesign .professional-run-detail-panel {
+    max-height: none;
   }
 }
