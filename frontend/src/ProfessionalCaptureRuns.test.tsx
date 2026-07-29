@@ -111,7 +111,7 @@ describe("ProfessionalCaptureRuns", () => {
     );
   });
 
-  it("does not duplicate capture buttons across multiple prepared history cards", async () => {
+  it("keeps one enabled top-level capture button when stale prepared cards exist", async () => {
     const olderPreparedRun = {
       ...preparedRun,
       id: "run-older",
