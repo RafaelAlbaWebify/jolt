@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import ARCHIVED_APPLICATION_STATUS
 from jolt.application_records import ApplicationDocument, ApplicationInterview, ApplicationTask
 from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
 from jolt.database import (
@@ -106,7 +107,8 @@ def list_opportunity_index(
 
     The default Opportunities page is the pending-review inbox. Reviewed items,
     applications, archived capture imports, and orphaned LinkedIn imports are excluded.
-    Tracking views pass include_applied=True so reviewed/applied postings remain visible.
+    Tracking views pass include_applied=True so reviewed/applied postings remain visible,
+    except archived application cards, which are intentionally hidden from active boards.
     """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
@@ -163,6 +165,8 @@ def list_opportunity_index(
         if evaluation is None:
             continue
         application = applications.get(posting.id)
+        if application is not None and application.status == ARCHIVED_APPLICATION_STATUS:
+            continue
         review = latest_reviews.get(posting.id)
         source_document = source_documents.get(posting.source_document_id)
         posting_capture_statuses = capture_statuses.get(posting.id, set())
