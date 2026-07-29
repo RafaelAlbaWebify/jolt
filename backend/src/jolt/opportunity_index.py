@@ -11,6 +11,7 @@ from jolt.application_records import ApplicationDocument, ApplicationInterview, 
 from jolt.database import (
     Application,
     ApplicationEvent,
+    CaptureItem,
     Outcome,
     Posting,
     ReviewDecision,
@@ -40,6 +41,9 @@ class OpportunityIndexItem(BaseModel):
     overdue: bool = False
 
 
+_CAPTURE_SOURCE_TYPES = {"linkedin_fixture", "linkedin_live"}
+
+
 def _document_state(application: Application | None, documents: list[ApplicationDocument]) -> str:
     if application is None:
         return "not started"
@@ -61,17 +65,42 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
+def _capture_backed_posting_ids(session: Session) -> set[str]:
+    return {
+        posting_id
+        for posting_id in session.scalars(
+            select(CaptureItem.posting_id).where(CaptureItem.posting_id.is_not(None))
+        ).all()
+        if posting_id
+    }
+
+
+def _is_orphaned_capture_import(
+    posting: Posting,
+    source_document: SourceDocument | None,
+    capture_backed_posting_ids: set[str],
+) -> bool:
+    if source_document is None:
+        return False
+    if source_document.source_type not in _CAPTURE_SOURCE_TYPES:
+        return False
+    return posting.id not in capture_backed_posting_ids
+
+
 def list_opportunity_index(
     session: Session, *, include_applied: bool = False
 ) -> list[OpportunityIndexItem]:
     """Return compact queue metadata without constructing full review detail.
 
-    The default Opportunities queue is the review inbox. Once a posting has a user review
-    decision or an application record, it leaves that inbox. Tracking views pass
-    include_applied=True so reviewed/applied postings remain visible there.
+    The default Opportunities queue is the capture-backed review inbox. Once a posting
+    has a user review decision or an application record, it leaves that inbox.
+    LinkedIn imports whose capture batch was deleted are treated as orphaned imports
+    and no longer appear in the queue. Tracking views pass include_applied=True so
+    reviewed/applied postings remain visible there.
     """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
+    capture_backed_posting_ids = _capture_backed_posting_ids(session)
 
     latest_evaluations = authoritative_evaluations(session)
 
@@ -125,10 +154,13 @@ def list_opportunity_index(
             continue
         application = applications.get(posting.id)
         review = latest_reviews.get(posting.id)
-        if not include_applied and (application is not None or review is not None):
-            continue
-        outcome = outcomes.get(application.id) if application else None
         source_document = source_documents.get(posting.source_document_id)
+        if not include_applied:
+            if application is not None or review is not None:
+                continue
+            if _is_orphaned_capture_import(posting, source_document, capture_backed_posting_ids):
+                continue
+        outcome = outcomes.get(application.id) if application else None
 
         activity_at = latest_activity.get(application.id) if application else None
         task = next_tasks.get(application.id) if application else None
@@ -145,7 +177,7 @@ def list_opportunity_index(
         elif task_due:
             due_at, due_kind = task_due, "task"
         elif interview_due:
-            due_at, due_kind = interview_due, "interview"
+            due_at, due_kind = "interview"
 
         application_documents = (
             documents_by_application.get(application.id, []) if application else []
