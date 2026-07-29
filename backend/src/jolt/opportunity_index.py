@@ -64,7 +64,12 @@ def _as_utc(value: datetime) -> datetime:
 def list_opportunity_index(
     session: Session, *, include_applied: bool = False
 ) -> list[OpportunityIndexItem]:
-    """Return compact queue metadata without constructing full review detail."""
+    """Return compact queue metadata without constructing full review detail.
+
+    The default Opportunities queue is the review inbox. Once a posting has a user review
+    decision or an application record, it leaves that inbox. Tracking views pass
+    include_applied=True so reviewed/applied postings remain visible there.
+    """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
 
@@ -119,9 +124,9 @@ def list_opportunity_index(
         if evaluation is None:
             continue
         application = applications.get(posting.id)
-        if application is not None and not include_applied:
-            continue
         review = latest_reviews.get(posting.id)
+        if not include_applied and (application is not None or review is not None):
+            continue
         outcome = outcomes.get(application.id) if application else None
         source_document = source_documents.get(posting.source_document_id)
 
