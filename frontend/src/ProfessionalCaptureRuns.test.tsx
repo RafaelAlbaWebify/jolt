@@ -38,6 +38,7 @@ describe("ProfessionalCaptureRuns", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("starts a bounded capture from one overview click and deletes the batch", async () => {
@@ -208,5 +209,66 @@ describe("ProfessionalCaptureRuns", () => {
     expect(screen.getByText(/Current: LinkedIn posts/)).toBeInTheDocument();
     expect(screen.getByText(/cancellation requested/)).toBeInTheDocument();
     expect(screen.getByText(/LinkedIn posts timed out/)).toBeInTheDocument();
+  });
+
+  it("shows a queued browser capture immediately instead of waiting for completion", async () => {
+    const authorized = {
+      ...plannedRun,
+      status: "authorized",
+      authorized_at: "2026-07-24T18:01:00Z",
+      authorization_expires_at: "2026-07-24T18:16:00Z",
+      user_present_confirmed: true,
+    };
+    const queued = {
+      ...authorized,
+      mode: "supervised_read_only",
+      status: "running",
+      started_at: "2026-07-24T18:02:00Z",
+      stop_reason: "capture_queued",
+      total_source_count: 2,
+      source_progress: [
+        {
+          source_id: "linkedin-profile",
+          status: "pending",
+          started_at: null,
+          completed_at: null,
+          completeness_status: "",
+          detail: "",
+        },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (!init?.method) return new Response(JSON.stringify([]), { status: 200 });
+      if (url.endsWith("/capture-runs")) return new Response(JSON.stringify(plannedRun), { status: 200 });
+      if (url.endsWith("/run-1/authorize")) return new Response(JSON.stringify(authorized), { status: 200 });
+      if (url.endsWith("/run-1/start")) return new Response(JSON.stringify(queued), { status: 200 });
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    const { rerender } = render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+        startRequestKey={0}
+      />,
+    );
+
+    expect(await screen.findByText(/No captures yet/)).toBeInTheDocument();
+    rerender(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active
+        planRefreshKey={0}
+        captureOptions={captureOptions}
+        startRequestKey={1}
+      />,
+    );
+
+    expect(await screen.findByText("running")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Request cancellation" })).toBeInTheDocument();
+    expect(screen.getByText(/capture queued/)).toBeInTheDocument();
   });
 });
