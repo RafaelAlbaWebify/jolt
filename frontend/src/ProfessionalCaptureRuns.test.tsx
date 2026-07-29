@@ -213,8 +213,9 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Current capture session" })).toBeInTheDocument();
-    const row = screen.getByText("run-a").closest("tr");
-    expect(row).not.toBeNull();
+    const rows = screen.getAllByRole("row").slice(1);
+    const row = rows.find((candidate) => within(candidate).queryByText(/run-a/));
+    expect(row).toBeDefined();
     fireEvent.click(within(row as HTMLTableRowElement).getByRole("button", { name: "Delete" }));
 
     expect(screen.getByRole("dialog", { name: "Delete capture run?" })).toBeInTheDocument();
@@ -225,8 +226,8 @@ describe("ProfessionalCaptureRuns", () => {
     });
     fireEvent.click(deleteButton);
 
-    await waitFor(() => expect(screen.queryByText("run-a")).not.toBeInTheDocument());
-    expect(screen.getByText("run-b")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/run-a/)).not.toBeInTheDocument());
+    expect(screen.getByText(/run-b/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-a/delete",
       expect.objectContaining({ method: "POST" }),
@@ -278,7 +279,7 @@ describe("ProfessionalCaptureRuns", () => {
     );
 
     expect((await screen.findAllByText("running")).length).toBeGreaterThan(0);
-    expect(screen.getByText(/0\/1 sources completed/)).toBeInTheDocument();
+    expect(screen.getAllByText(/0\/1 sources completed/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Prepared LinkedIn job search/).length).toBeGreaterThan(0);
     expect(screen.getByText(/authwall\/sign-in page/)).toBeInTheDocument();
   });
