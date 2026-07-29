@@ -90,10 +90,6 @@ function isManualBrowserReady(run: ProfessionalCaptureRun) {
   return run.status === "authorized" && run.stop_reason.includes("manual_browser_ready");
 }
 
-function isTerminal(run: ProfessionalCaptureRun) {
-  return ["completed", "completed_with_gaps", "failed", "cancelled", "interrupted"].includes(run.status);
-}
-
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -105,17 +101,18 @@ export function ProfessionalCaptureRuns({
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [activeSessionRunId, setActiveSessionRunId] = useState<string | null>(null);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
   const [deletePhrases, setDeletePhrases] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
 
-  const activeRun = useMemo(
-    () => runs.find((run) => isManualBrowserReady(run) || run.status === "running" || run.status === "planned" || run.status === "expired"),
-    [runs],
+  const runningRun = useMemo(() => runs.find((run) => run.status === "running") || null, [runs]);
+  const activePreparedRun = useMemo(
+    () => runs.find((run) => run.id === activeSessionRunId && isManualBrowserReady(run)) || null,
+    [activeSessionRunId, runs],
   );
-  const preparedRun = runs.find(isManualBrowserReady);
 
   const loadRuns = useCallback(async () => {
     setLoading(true);
@@ -187,7 +184,9 @@ export function ProfessionalCaptureRuns({
       const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
       throw new Error(payload?.detail || "The manual Chromium browser could not be prepared.");
     }
-    return (await response.json()) as ProfessionalCaptureRun;
+    const prepared = (await response.json()) as ProfessionalCaptureRun;
+    setActiveSessionRunId(prepared.id);
+    return prepared;
   }
 
   async function captureCurrentPage(run: ProfessionalCaptureRun) {
@@ -203,7 +202,9 @@ export function ProfessionalCaptureRuns({
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(payload?.detail || "The current Chromium page could not be captured.");
       }
-      replaceRun((await response.json()) as ProfessionalCaptureRun);
+      const queued = (await response.json()) as ProfessionalCaptureRun;
+      replaceRun(queued);
+      setActiveSessionRunId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Current-page capture failed.");
       await loadRuns();
@@ -262,6 +263,7 @@ export function ProfessionalCaptureRuns({
       );
       if (!response.ok) throw new Error("The capture could not be cancelled.");
       replaceRun((await response.json()) as ProfessionalCaptureRun);
+      if (runId === activeSessionRunId) setActiveSessionRunId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture cancellation failed.");
     } finally {
@@ -286,6 +288,7 @@ export function ProfessionalCaptureRuns({
         throw new Error(payload?.detail || "The capture run could not be deleted.");
       }
       setRuns((current) => current.filter((run) => run.id !== runId));
+      if (runId === activeSessionRunId) setActiveSessionRunId(null);
       setDeletingRunId(null);
       setDeletePhrases((current) => {
         const next = { ...current };
@@ -328,34 +331,33 @@ export function ProfessionalCaptureRuns({
           <button
             type="button"
             className="secondary"
-            disabled={busy || !active || Boolean(preparedRun) || runs.some((run) => run.status === "running")}
+            disabled={busy || !active || Boolean(activePreparedRun) || Boolean(runningRun)}
             onClick={() => void prepareNewCaptureSession()}
           >
-            {busy ? "Preparing…" : preparedRun ? "Chromium is ready" : "Open Chromium to prepare capture"}
+            {busy ? "Preparing…" : activePreparedRun ? "Chromium is ready" : "Open Chromium to prepare capture"}
           </button>
           <button
             type="button"
-            disabled={busy || !preparedRun}
-            onClick={() => preparedRun && void captureCurrentPage(preparedRun)}
+            disabled={busy || !activePreparedRun}
+            onClick={() => activePreparedRun && void captureCurrentPage(activePreparedRun)}
           >
             Capture current Chromium page
           </button>
-          {activeRun?.status === "running" && (
-            <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(activeRun.id)}>
+          {runningRun && (
+            <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(runningRun.id)}>
               Request cancellation
             </button>
           )}
         </div>
-        {preparedRun && (
+        {activePreparedRun && (
           <p role="status">
             Chromium is open. Sign in to LinkedIn if needed, navigate to the exact page/search results you want, then
             capture this current page.
           </p>
         )}
-        {activeRun && !preparedRun && !isTerminal(activeRun) && activeRun.status !== "running" && (
+        {!activePreparedRun && runs.some(isManualBrowserReady) && (
           <p>
-            Existing prepared run found. Use Open Chromium to prepare if the browser was closed, or delete stale prepared
-            runs from history.
+            Stale prepared runs exist in history. Start a fresh capture session above, or delete old prepared batches below.
           </p>
         )}
       </div>
@@ -397,7 +399,7 @@ export function ProfessionalCaptureRuns({
                   {run.cancel_requested ? " · cancellation requested" : ""}
                 </p>
                 {isManualBrowserReady(run) && (
-                  <p>Prepared capture session. Use the top “Current capture session” controls to capture this page.</p>
+                  <p>Prepared batch. Use the top Current capture session panel only for new/current captures.</p>
                 )}
                 {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
                 {run.source_progress.length > 0 && (
@@ -421,7 +423,7 @@ export function ProfessionalCaptureRuns({
                 )}
                 <code>{run.id}</code>
                 {(run.status === "planned" || run.status === "expired") && (
-                  <button type="button" disabled={busy || Boolean(preparedRun)} onClick={() => void resumeRun(run)}>
+                  <button type="button" disabled={busy || Boolean(activePreparedRun)} onClick={() => void resumeRun(run)}>
                     Open Chromium to prepare this run
                   </button>
                 )}
