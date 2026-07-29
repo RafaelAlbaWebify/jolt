@@ -62,7 +62,7 @@ export function Workbench() {
         <RuntimeIdentityPanel apiBase={API_BASE} />
 
         <div className="workspace-sidebar-tools" aria-label="Global data tools">
-          <DataTools apiBase={API_BASE} />
+          {activeView !== "opportunities" && <DataTools apiBase={API_BASE} />}
         </div>
       </aside>
 
