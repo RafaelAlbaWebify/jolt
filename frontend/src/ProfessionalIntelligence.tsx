@@ -50,8 +50,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
   const [readinessRefreshKey, setReadinessRefreshKey] = useState(0);
-  const [captureStartRequestKey, setCaptureStartRequestKey] = useState(0);
-  const [captureOptions, setCaptureOptions] = useState(DEFAULT_CAPTURE_OPTIONS);
+  const [captureOptions] = useState(DEFAULT_CAPTURE_OPTIONS);
   const [error, setError] = useState("");
 
   const loadSources = useCallback(async () => {
@@ -81,13 +80,6 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
     setSources((current) => current.map((source) => (
       source.source_id === changed.source_id ? changed : source
     )));
-  }
-
-  function setNumericCaptureOption(
-    key: "max_sources" | "max_scroll_batches" | "max_items_per_source" | "timeout_seconds",
-    value: string,
-  ) {
-    setCaptureOptions((current) => ({ ...current, [key]: Number(value) }));
   }
 
   async function runSourceAction(sourceId: string, path: string, body?: SourceUpdate) {
@@ -132,7 +124,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
       return (
         <section className="professional-source-group" key={category}>
           <h3>{CATEGORY_LABELS[category]}</h3>
-          <div className="professional-source-grid">
+          <div className="professional-source-grid professional-source-grid-compact">
             {categorySources.map((source) => (
               <article
                 className={`professional-source-card${source.enabled ? "" : " professional-source-disabled"}`}
@@ -163,129 +155,71 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
   }
 
   return (
-    <main className="professional-intelligence" aria-labelledby="professional-intelligence-heading">
-      <section className="panel professional-intelligence-overview">
-        <div>
-          <p className="eyebrow">Approved LinkedIn source registry</p>
-          <h2 id="professional-intelligence-heading">Professional</h2>
-          <p>Capture the approved sources, keep the evidence locally, and review the result.</p>
-        </div>
-        <div className="professional-overview-actions">
-          <div className="professional-capture-controls" aria-label="Capture settings">
-            <div className="professional-capture-settings-grid">
-              <label>
-                Maximum sources
-                <input
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={captureOptions.max_sources}
-                  onChange={(event) => setNumericCaptureOption("max_sources", event.target.value)}
-                />
-              </label>
-              <label>
-                Scroll batches per source
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={captureOptions.max_scroll_batches}
-                  onChange={(event) => setNumericCaptureOption("max_scroll_batches", event.target.value)}
-                />
-              </label>
-              <label>
-                Maximum items per source
-                <input
-                  type="number"
-                  min="1"
-                  max="200"
-                  value={captureOptions.max_items_per_source}
-                  onChange={(event) => setNumericCaptureOption("max_items_per_source", event.target.value)}
-                />
-              </label>
-              <label>
-                Timeout per source (seconds)
-                <input
-                  type="number"
-                  min="10"
-                  max="120"
-                  value={captureOptions.timeout_seconds}
-                  onChange={(event) => setNumericCaptureOption("timeout_seconds", event.target.value)}
-                />
-              </label>
-            </div>
-            <label className="professional-source-checkbox">
-              <input
-                type="checkbox"
-                checked={captureOptions.stop_on_failure}
-                onChange={(event) => setCaptureOptions((current) => ({
-                  ...current,
-                  stop_on_failure: event.target.checked,
-                }))}
-              />
-              Stop the run after the first failed source.
-            </label>
-            <button
-              type="button"
-              disabled={!active}
-              aria-controls="professional-run-ledger"
-              onClick={() => setCaptureStartRequestKey((current) => current + 1)}
-            >
-              Start capture
-            </button>
-            <span>One click starts the capture.</span>
-            <span>LinkedIn result lists use scrolling, so “scroll batches” is the page limit.</span>
-          </div>
-          <div className="professional-safety-boundary" role="note">
-            <strong>Read-only boundary</strong>
-            <span>No messages, reactions, applications, invitations, or account changes.</span>
-          </div>
-        </div>
-      </section>
-
-      {active && (
-        <ProfessionalEvidenceRoot
-          apiBase={apiBase}
-          active={active}
-          onChanged={() => setReadinessRefreshKey((current) => current + 1)}
-        />
-      )}
-      {active && (
-        <ProfessionalExecutionReadiness
-          key={readinessRefreshKey}
-          apiBase={apiBase}
-          active={active}
-        />
-      )}
-      {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
+    <main className="professional-intelligence professional-intelligence-dashboard" aria-labelledby="professional-intelligence-heading">
       {active && (
         <ProfessionalCaptureRuns
           apiBase={apiBase}
           active={active}
           planRefreshKey={planRefreshKey}
           captureOptions={captureOptions}
-          startRequestKey={captureStartRequestKey}
         />
       )}
-      {loading && <p role="status">Loading source registry…</p>}
-      {error && <p className="error" role="alert">{error}</p>}
-      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadSources()}>Retry source registry</button>}
-      {loaded && (
-        <>
-          <section className="panel" aria-labelledby="initial-professional-sources-heading">
-            <div className="section-heading">
-              <div><h2 id="initial-professional-sources-heading">Initial supervised scope</h2><p>{initialSources.length} sources prioritised for profile positioning and career signals.</p></div>
+
+      <details className="panel professional-advanced-section">
+        <summary>
+          <span>
+            <strong>Professional configuration and source registry</strong>
+            <small>Evidence directory, execution contract, capture plan, and approved source maintenance.</small>
+          </span>
+        </summary>
+
+        <div className="professional-advanced-grid">
+          {active && (
+            <ProfessionalEvidenceRoot
+              apiBase={apiBase}
+              active={active}
+              onChanged={() => setReadinessRefreshKey((current) => current + 1)}
+            />
+          )}
+          {active && (
+            <ProfessionalExecutionReadiness
+              key={readinessRefreshKey}
+              apiBase={apiBase}
+              active={active}
+            />
+          )}
+          {active && <ProfessionalCapturePlan apiBase={apiBase} active={active} refreshKey={planRefreshKey} />}
+        </div>
+
+        <section className="professional-registry-panel" aria-labelledby="professional-registry-heading">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Approved LinkedIn source registry</p>
+              <h2 id="professional-registry-heading">Source maintenance</h2>
+              <p>These approved sources are retained for maintenance, but they are not the primary capture workflow.</p>
             </div>
-            {renderSources(initialSources)}
-          </section>
-          <section className="panel" aria-labelledby="deferred-professional-sources-heading">
-            <div className="section-heading">
-              <div><h2 id="deferred-professional-sources-heading">Deferred sources</h2><p>{deferredSources.length} broader network and feed sources retained but excluded from the first capture slice.</p></div>
-            </div>
-            {renderSources(deferredSources)}
-          </section>
-        </>
-      )}
+            {loading && <span className="professional-plan-status">Loading</span>}
+          </div>
+          {error && <p className="error" role="alert">{error}</p>}
+          {error && !loaded && (
+            <button type="button" className="secondary" disabled={loading} onClick={() => void loadSources()}>
+              Retry source registry
+            </button>
+          )}
+          {loaded && (
+            <>
+              <details className="professional-source-registry-details">
+                <summary>Initial supervised scope · {initialSources.length} sources</summary>
+                {renderSources(initialSources)}
+              </details>
+              <details className="professional-source-registry-details">
+                <summary>Deferred sources · {deferredSources.length} sources</summary>
+                {renderSources(deferredSources)}
+              </details>
+            </>
+          )}
+        </section>
+      </details>
     </main>
   );
 }
