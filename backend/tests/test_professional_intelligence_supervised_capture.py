@@ -132,6 +132,6 @@ def test_supervised_capture_marks_engine_failure_instead_of_staying_running(
     client = TestClient(create_app(database_url))
     failed = client.get(f"/api/professional-intelligence/capture-runs/{run_id}").json()
     assert failed["status"] == "failed"
-    assert failed["stop_reason"] == "capture_engine_failed"
+    assert failed["stop_reason"] == "capture_engine_failure"
     assert failed["completed_at"] is not None
     assert failed["current_source_id"] == ""
