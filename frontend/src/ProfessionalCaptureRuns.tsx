@@ -361,7 +361,7 @@ export function ProfessionalCaptureRuns({
       </div>
 
       <ol className="professional-flow-strip" aria-label="Professional capture workflow">
-        <li>
+        <li className={!activePreparedRun && !runningRun ? "is-active" : ""}>
           <span>1</span>
           <strong>Open Chromium</strong>
           <small>Launch the browser.</small>
@@ -417,18 +417,18 @@ export function ProfessionalCaptureRuns({
           <div className="professional-dashboard-actions">
             <button
               type="button"
-              disabled={busy || !activePreparedRun}
-              onClick={() => activePreparedRun && void captureCurrentPage(activePreparedRun)}
-            >
-              Capture prepared page
-            </button>
-            <button
-              type="button"
               className="secondary"
               disabled={busy || !active || Boolean(activePreparedRun) || Boolean(runningRun)}
               onClick={() => void prepareNewCaptureSession()}
             >
               {busy ? "Preparing…" : "Open Chromium"}
+            </button>
+            <button
+              type="button"
+              disabled={busy || !activePreparedRun}
+              onClick={() => activePreparedRun && void captureCurrentPage(activePreparedRun)}
+            >
+              Capture prepared page
             </button>
             {runningRun && (
               <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(runningRun.id)}>
@@ -498,8 +498,6 @@ export function ProfessionalCaptureRuns({
                     <th>Status</th>
                     <th>Started</th>
                     <th>Source / query</th>
-                    <th>Artifacts</th>
-                    <th>Outcome</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -517,14 +515,14 @@ export function ProfessionalCaptureRuns({
                       <td>
                         <strong>{runSourceLabel(run)}</strong>
                         {runSourceUrl(run) && <code>{runSourceUrl(run)}</code>}
-                        <small>{shortRunId(run.id)}</small>
+                        <small>
+                          {shortRunId(run.id)} · {run.artifact_count || "—"} artifacts · {run.stop_reason ? humanize(run.stop_reason) : progressSummary(run)}
+                        </small>
                       </td>
-                      <td>{run.artifact_count || "—"}</td>
-                      <td>{run.stop_reason ? humanize(run.stop_reason) : progressSummary(run)}</td>
                       <td>
                         <div className="professional-row-actions">
                           <button type="button" className="secondary" onClick={(event) => { event.stopPropagation(); setSelectedRunId(run.id); }}>
-                            Review
+                            Details
                           </button>
                           {run.status !== "running" && (
                             <button type="button" className="danger" disabled={busy} onClick={(event) => { event.stopPropagation(); setDeleteModalRunId(run.id); updateDeletePhrase(run.id, ""); }}>
@@ -596,9 +594,16 @@ export function ProfessionalCaptureRuns({
                   </ol>
                 </details>
               )}
-              {isTerminal(selectedRun) && selectedRun.artifact_count > 0 && (
-                <ProfessionalEvidenceReview apiBase={apiBase} runId={selectedRun.id} />
-              )}
+              <div className="professional-dashboard-actions">
+                {isTerminal(selectedRun) && selectedRun.artifact_count > 0 && (
+                  <ProfessionalEvidenceReview apiBase={apiBase} runId={selectedRun.id} />
+                )}
+                {selectedRun.status !== "running" && (
+                  <button type="button" className="danger" disabled={busy} onClick={() => { setDeleteModalRunId(selectedRun.id); updateDeletePhrase(selectedRun.id, ""); }}>
+                    Delete selected run
+                  </button>
+                )}
+              </div>
             </>
           )}
         </aside>
