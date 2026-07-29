@@ -9,7 +9,7 @@ vi.mock("./App", () => ({
       {sidebarToolsTarget
         ? createPortal(
             <details>
-              <summary>Intake, captures, and exports</summary>
+              <summary>Data tools: capture batches and exports</summary>
             </details>,
             sidebarToolsTarget,
           )
@@ -43,8 +43,8 @@ describe("Workbench", () => {
 
     expect(sidebar).toContainElement(screen.getByRole("heading", { name: "JOLT" }));
     expect(sidebar).toContainElement(screen.getByRole("navigation", { name: "JOLT workspace views" }));
-    expect(sidebar).toHaveTextContent("Review, prioritise, and prepare opportunities.");
-    expect(sidebar).toContainElement(screen.getByText("Intake, captures, and exports"));
+    expect(sidebar).toHaveTextContent("Review newly captured or manually added jobs before they move forward.");
+    expect(sidebar).toContainElement(screen.getByText("Data tools: capture batches and exports"));
     expect(workspace).toContainElement(screen.getByText("Opportunity review content"));
   });
 
@@ -61,16 +61,16 @@ describe("Workbench", () => {
     expect(market).toHaveAttribute("hidden");
     expect(professional).toHaveAttribute("hidden");
 
-    fireEvent.click(screen.getByRole("button", { name: "Applications" }));
+    fireEvent.click(screen.getByRole("button", { name: "Application Pipeline" }));
     expect(opportunities).toHaveAttribute("hidden");
     expect(applications).not.toHaveAttribute("hidden");
-    expect(screen.queryByText("Intake, captures, and exports")).not.toBeInTheDocument();
+    expect(screen.getByText("Data tools: capture batches and exports")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Market" }));
+    fireEvent.click(screen.getByRole("button", { name: "Market Insights" }));
     expect(applications).toHaveAttribute("hidden");
     expect(market).not.toHaveAttribute("hidden");
 
-    fireEvent.click(screen.getByRole("button", { name: "Professional" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sources & Evidence" }));
     expect(market).toHaveAttribute("hidden");
     expect(professional).not.toHaveAttribute("hidden");
   });
@@ -80,12 +80,12 @@ describe("Workbench", () => {
 
     const sidebar = screen.getByRole("complementary", { name: "JOLT workspace navigation" });
     expect(sidebar).toHaveTextContent("Job Opportunity Learning & Tracking");
-    expect(sidebar).toHaveTextContent("Review, prioritise, and prepare opportunities.");
-    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "true");
+    expect(sidebar).toHaveTextContent("Review newly captured or manually added jobs before they move forward.");
+    expect(screen.getByRole("button", { name: "Review Inbox" })).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "Professional" }));
-    expect(screen.getByRole("button", { name: "Professional" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Opportunities" })).toHaveAttribute("aria-pressed", "false");
-    expect(sidebar).toHaveTextContent("Review approved professional sources and supervised evidence boundaries.");
+    fireEvent.click(screen.getByRole("button", { name: "Sources & Evidence" }));
+    expect(screen.getByRole("button", { name: "Sources & Evidence" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Review Inbox" })).toHaveAttribute("aria-pressed", "false");
+    expect(sidebar).toHaveTextContent("Configure trusted sources and local evidence storage.");
   });
 });
