@@ -196,7 +196,7 @@ def _prepare_run_for_current_page(session: Session, run_id: str, page: Page) -> 
 
 class ManualProfessionalBrowser:
     def __init__(self) -> None:
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._capture_requested = threading.Event()
         self._stop_requested = threading.Event()
         self._thread: threading.Thread | None = None
