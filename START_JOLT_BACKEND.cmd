@@ -11,23 +11,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Synchronizing JOLT backend...
-uv.exe sync
-if errorlevel 1 (
-    echo ERROR: Backend dependency synchronization failed.
-    pause
-    exit /b 1
-)
+echo Starting JOLT backend without dependency sync or migrations.
+echo To update dependencies or apply migrations intentionally, run UPDATE_JOLT_ENVIRONMENT.bat.
+echo Backend directory: %CD%
+echo Health URL: http://127.0.0.1:8000/api/health
+echo Runtime identity URL: http://127.0.0.1:8000/api/runtime-identity
+echo.
 
-echo Applying JOLT database migrations...
-uv.exe run alembic upgrade head
-if errorlevel 1 (
-    echo ERROR: Database migration failed.
-    pause
-    exit /b 1
-)
-
-echo Starting JOLT backend...
 uv.exe run python -m uvicorn jolt.main:app --host 127.0.0.1 --port 8000
 set "EXIT_CODE=%ERRORLEVEL%"
 
