@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProfessionalEvidenceReview } from "./ProfessionalEvidenceReview";
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
@@ -90,6 +90,10 @@ function isManualBrowserReady(run: ProfessionalCaptureRun) {
   return run.status === "authorized" && run.stop_reason.includes("manual_browser_ready");
 }
 
+function isTerminal(run: ProfessionalCaptureRun) {
+  return ["completed", "completed_with_gaps", "failed", "cancelled", "interrupted"].includes(run.status);
+}
+
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -102,10 +106,16 @@ export function ProfessionalCaptureRuns({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
-  const [deletePhrase, setDeletePhrase] = useState("");
+  const [deletePhrases, setDeletePhrases] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
+
+  const activeRun = useMemo(
+    () => runs.find((run) => isManualBrowserReady(run) || run.status === "running" || run.status === "planned" || run.status === "expired"),
+    [runs],
+  );
+  const preparedRun = runs.find(isManualBrowserReady);
 
   const loadRuns = useCallback(async () => {
     setLoading(true);
@@ -130,7 +140,7 @@ export function ProfessionalCaptureRuns({
   useEffect(() => {
     if (startRequestKey === previousStartRequestKey.current) return;
     previousStartRequestKey.current = startRequestKey;
-    if (active) void startNewCapture();
+    if (active) void prepareNewCaptureSession();
   }, [active, startRequestKey]);
 
   useEffect(() => {
@@ -202,7 +212,7 @@ export function ProfessionalCaptureRuns({
     }
   }
 
-  async function startNewCapture() {
+  async function prepareNewCaptureSession() {
     if (busy) return;
     setBusy(true);
     setError("");
@@ -268,7 +278,7 @@ export function ProfessionalCaptureRuns({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmation_phrase: deletePhrase }),
+          body: JSON.stringify({ confirmation_phrase: deletePhrases[runId] || "" }),
         },
       );
       if (!response.ok) {
@@ -277,12 +287,20 @@ export function ProfessionalCaptureRuns({
       }
       setRuns((current) => current.filter((run) => run.id !== runId));
       setDeletingRunId(null);
-      setDeletePhrase("");
+      setDeletePhrases((current) => {
+        const next = { ...current };
+        delete next[runId];
+        return next;
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture deletion failed.");
     } finally {
       setBusy(false);
     }
+  }
+
+  function updateDeletePhrase(runId: string, value: string) {
+    setDeletePhrases((current) => ({ ...current, [runId]: value }));
   }
 
   return (
@@ -295,20 +313,55 @@ export function ProfessionalCaptureRuns({
       <div className="section-heading">
         <div>
           <p className="eyebrow">Capture operations</p>
-          <h2 id="professional-run-ledger-heading">Capture history</h2>
-          <p>Open Chromium, prepare LinkedIn manually, then capture the current page.</p>
+          <h2 id="professional-run-ledger-heading">Capture current LinkedIn page</h2>
+          <p>Open Chromium once, prepare LinkedIn manually, then capture exactly the visible page.</p>
         </div>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy || !active}
-          onClick={() => void startNewCapture()}
-        >
-          {busy ? "Preparing…" : "Open Chromium to prepare capture"}
-        </button>
       </div>
+
+      <div className="professional-manual-capture-panel">
+        <h3>Current capture session</h3>
+        <p>
+          Prepare the exact LinkedIn profile or job-search results page in the opened browser. When the page is ready,
+          come back here and capture the current Chromium page.
+        </p>
+        <div className="professional-source-editor-actions">
+          <button
+            type="button"
+            className="secondary"
+            disabled={busy || !active || Boolean(preparedRun) || runs.some((run) => run.status === "running")}
+            onClick={() => void prepareNewCaptureSession()}
+          >
+            {busy ? "Preparing…" : preparedRun ? "Chromium is ready" : "Open Chromium to prepare capture"}
+          </button>
+          <button
+            type="button"
+            disabled={busy || !preparedRun}
+            onClick={() => preparedRun && void captureCurrentPage(preparedRun)}
+          >
+            Capture current Chromium page
+          </button>
+          {activeRun?.status === "running" && (
+            <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(activeRun.id)}>
+              Request cancellation
+            </button>
+          )}
+        </div>
+        {preparedRun && (
+          <p role="status">
+            Chromium is open. Sign in to LinkedIn if needed, navigate to the exact page/search results you want, then
+            capture this current page.
+          </p>
+        )}
+        {activeRun && !preparedRun && !isTerminal(activeRun) && activeRun.status !== "running" && (
+          <p>
+            Existing prepared run found. Use Open Chromium to prepare if the browser was closed, or delete stale prepared
+            runs from history.
+          </p>
+        )}
+      </div>
+
       <p className="professional-ledger-note">
-        Current plan revision: {planRefreshKey}. Prepare the exact LinkedIn profile or job-search results page in the opened browser, then click “Capture current Chromium page”.
+        Current plan revision: {planRefreshKey}. History below is read-only except review, cancel, and delete actions.
       </p>
       {error && (
         <p className="error" role="alert">
@@ -324,118 +377,114 @@ export function ProfessionalCaptureRuns({
       {loaded && runs.length === 0 && <p>No captures yet. Use “Open Chromium to prepare capture”.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
-          {runs.map((run) => (
-            <article className="professional-run-card" key={run.id}>
-              <div>
-                <strong>{humanize(run.status)}</strong>
-                <span>{new Date(run.requested_at).toLocaleString()}</span>
-              </div>
-              <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
-              <p>
-                Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s timeout
-              </p>
-              <p>
-                Progress: {progressSummary(run)}
-                {run.current_source_id ? ` · Current: ${sourceLabel(run, run.current_source_id)}` : ""}
-                {run.cancel_requested ? " · cancellation requested" : ""}
-              </p>
-              {isManualBrowserReady(run) && (
-                <p>
-                  Chromium is open. Sign in to LinkedIn if needed, navigate to the exact page/search results you want, then capture the current page.
-                </p>
-              )}
-              {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
-              {run.source_progress.length > 0 && (
-                <details className="professional-source-progress" open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}>
-                  <summary>Source progress and failure details</summary>
-                  <ol>
-                    {run.source_progress.map((source) => (
-                      <li key={source.source_id}>
-                        <strong>{sourceLabel(run, source.source_id)}</strong>: {humanize(source.status)}
-                        {source.completeness_status ? ` · ${humanize(source.completeness_status)}` : ""}
-                        {source.started_at ? ` · started ${formatDate(source.started_at)}` : ""}
-                        {source.completed_at ? ` · completed ${formatDate(source.completed_at)}` : ""}
-                        {source.detail && <p>{source.detail}</p>}
-                      </li>
-                    ))}
-                  </ol>
-                </details>
-              )}
-              <code>{run.id}</code>
-              {(run.status === "planned" || run.status === "expired") && (
-                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
-                  Open Chromium to prepare
-                </button>
-              )}
-              {run.status === "authorized" && !isManualBrowserReady(run) && (
-                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
-                  Open Chromium to prepare
-                </button>
-              )}
-              {isManualBrowserReady(run) && (
-                <button type="button" disabled={busy} onClick={() => void captureCurrentPage(run)}>
-                  Capture current Chromium page
-                </button>
-              )}
-              {run.status === "running" && (
-                <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                  Request cancellation
-                </button>
-              )}
-              {(run.status === "completed" || run.status === "completed_with_gaps") && (
-                <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
-              )}
-              {run.stop_reason && <p>{humanize(run.stop_reason)}</p>}
-              {run.status !== "running" && deletingRunId !== run.id && (
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => {
-                    setDeletingRunId(run.id);
-                    setDeletePhrase("");
-                  }}
-                >
-                  Delete this capture batch
-                </button>
-              )}
-              {deletingRunId === run.id && (
-                <div className="professional-delete-confirmation">
-                  <strong>Delete this capture batch?</strong>
-                  <p>This removes only this run and its governed local evidence. It cannot be undone.</p>
-                  <label>
-                    Type {DELETE_PHRASE}
-                    <input
-                      aria-label={`Deletion phrase for ${run.id}`}
-                      value={deletePhrase}
-                      onChange={(event) => setDeletePhrase(event.target.value)}
-                    />
-                  </label>
-                  <div className="professional-source-editor-actions">
-                    <button
-                      type="button"
-                      className="danger"
-                      disabled={busy || deletePhrase !== DELETE_PHRASE}
-                      onClick={() => void deleteRun(run.id)}
-                    >
-                      Permanently delete batch
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        setDeletingRunId(null);
-                        setDeletePhrase("");
-                      }}
-                    >
-                      Keep batch
-                    </button>
-                  </div>
+          {runs.map((run) => {
+            const deletePhrase = deletePhrases[run.id] || "";
+            return (
+              <article className="professional-run-card" key={run.id}>
+                <div>
+                  <strong>{humanize(run.status)}</strong>
+                  <span>{new Date(run.requested_at).toLocaleString()}</span>
                 </div>
-              )}
-            </article>
-          ))}
+                <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
+                <p>
+                  Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll
+                  batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s
+                  timeout
+                </p>
+                <p>
+                  Progress: {progressSummary(run)}
+                  {run.current_source_id ? ` · Current: ${sourceLabel(run, run.current_source_id)}` : ""}
+                  {run.cancel_requested ? " · cancellation requested" : ""}
+                </p>
+                {isManualBrowserReady(run) && (
+                  <p>Prepared capture session. Use the top “Current capture session” controls to capture this page.</p>
+                )}
+                {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
+                {run.source_progress.length > 0 && (
+                  <details
+                    className="professional-source-progress"
+                    open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}
+                  >
+                    <summary>Source progress and failure details</summary>
+                    <ol>
+                      {run.source_progress.map((source) => (
+                        <li key={source.source_id}>
+                          <strong>{sourceLabel(run, source.source_id)}</strong>: {humanize(source.status)}
+                          {source.completeness_status ? ` · ${humanize(source.completeness_status)}` : ""}
+                          {source.started_at ? ` · started ${formatDate(source.started_at)}` : ""}
+                          {source.completed_at ? ` · completed ${formatDate(source.completed_at)}` : ""}
+                          {source.detail && <p>{source.detail}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
+                <code>{run.id}</code>
+                {(run.status === "planned" || run.status === "expired") && (
+                  <button type="button" disabled={busy || Boolean(preparedRun)} onClick={() => void resumeRun(run)}>
+                    Open Chromium to prepare this run
+                  </button>
+                )}
+                {run.status === "running" && (
+                  <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
+                    Request cancellation
+                  </button>
+                )}
+                {(run.status === "completed" || run.status === "completed_with_gaps") && (
+                  <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
+                )}
+                {run.stop_reason && <p>{humanize(run.stop_reason)}</p>}
+                {run.status !== "running" && deletingRunId !== run.id && (
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => {
+                      setDeletingRunId(run.id);
+                      updateDeletePhrase(run.id, "");
+                    }}
+                  >
+                    Delete this capture batch
+                  </button>
+                )}
+                {deletingRunId === run.id && (
+                  <div className="professional-delete-confirmation">
+                    <strong>Delete this capture batch?</strong>
+                    <p>This removes only this run and its governed local evidence. It cannot be undone.</p>
+                    <label>
+                      Type {DELETE_PHRASE}
+                      <input
+                        aria-label={`Deletion phrase for ${run.id}`}
+                        value={deletePhrase}
+                        onChange={(event) => updateDeletePhrase(run.id, event.target.value)}
+                      />
+                    </label>
+                    <div className="professional-source-editor-actions">
+                      <button
+                        type="button"
+                        className="danger"
+                        disabled={busy || deletePhrase !== DELETE_PHRASE}
+                        onClick={() => void deleteRun(run.id)}
+                      >
+                        Permanently delete batch
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          setDeletingRunId(null);
+                          updateDeletePhrase(run.id, "");
+                        }}
+                      >
+                        Keep batch
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
