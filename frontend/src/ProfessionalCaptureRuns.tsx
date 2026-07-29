@@ -5,6 +5,7 @@ import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence"
 
 const AUTHORIZATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
 const DELETE_PHRASE = "DELETE CAPTURE RUN";
+const CAPTURE_POLL_MS = 2_000;
 
 export type ProfessionalCaptureOptions = {
   max_sources: number;
@@ -81,6 +82,10 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString();
 }
 
+function shouldPollRun(run: ProfessionalCaptureRun) {
+  return run.status === "authorized" || run.status === "running";
+}
+
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -124,6 +129,14 @@ export function ProfessionalCaptureRuns({
     if (active) void startNewCapture();
   }, [active, startRequestKey]);
 
+  useEffect(() => {
+    if (!active || !runs.some(shouldPollRun)) return;
+    const interval = window.setInterval(() => {
+      void loadRuns();
+    }, CAPTURE_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [active, loadRuns, runs]);
+
   function replaceRun(changed: ProfessionalCaptureRun) {
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
   }
@@ -147,6 +160,7 @@ export function ProfessionalCaptureRuns({
         throw new Error(payload?.detail || "The capture could not be authorized.");
       }
       ready = (await authorization.json()) as ProfessionalCaptureRun;
+      replaceRun(ready);
     }
 
     const response = await fetch(
@@ -176,8 +190,8 @@ export function ProfessionalCaptureRuns({
       }
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
-      const completed = await authorizeAndStart(created);
-      replaceRun(completed);
+      const queued = await authorizeAndStart(created);
+      replaceRun(queued);
       ledgerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture failed.");
