@@ -11,6 +11,10 @@ from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.application_work_items_api import build_application_work_items_router
 from jolt.automated_review import ensure_automated_reviews
 from jolt.capture_analysis_pack import build_analysis_pack
+from jolt.capture_deletion import (
+    CaptureRunDeletionResult,
+    delete_capture_run_with_unclassified_opportunities,
+)
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
@@ -118,6 +122,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
             return get_capture_run(session, capture_run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/captures/{capture_run_id}/delete",
+        response_model=CaptureRunDeletionResult,
+        tags=["captures"],
+    )
+    def delete_capture_batch(
+        capture_run_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> CaptureRunDeletionResult:
+        try:
+            return delete_capture_run_with_unclassified_opportunities(session, capture_run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post(
         "/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"]
