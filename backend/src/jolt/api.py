@@ -224,7 +224,10 @@ def create_app(database_url: str | None = None) -> FastAPI:
     )
     def opportunity_index(
         session: Annotated[Session, Depends(get_session)],
+        include_reviewed: bool = False,
     ) -> list[OpportunityIndexItem]:
+        if include_reviewed:
+            return list_opportunity_index(session, include_applied=True)
         return list_opportunity_index(session)
 
     @app.get(
