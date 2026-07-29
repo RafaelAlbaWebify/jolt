@@ -12,6 +12,7 @@ import "./ApplicationWorkItems.css";
 import "./OpportunityApplicationHandoff.css";
 import "./MarketIntelligence.css";
 import "./ProfessionalIntelligence.css";
+import "./ProfessionalDashboardRebuild.css";
 import "./ProfessionalStructuredExtraction.css";
 import "./WorkflowRefinement.css";
 import "./ReleaseBlockingUx.css";
