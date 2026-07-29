@@ -76,7 +76,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
 
   const refresh = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/captures`);
-    if (!response.ok) throw new Error("Unable to load capture history.");
+    if (!response.ok) throw new Error("Unable to load capture batch history.");
     setRuns((await response.json()) as CaptureRunSummary[]);
   }, [apiBase]);
 
@@ -89,7 +89,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
       setBusy(true);
       refresh()
         .catch((caught) => {
-          onError(caught instanceof Error ? caught.message : "Unable to load capture history.");
+          onError(caught instanceof Error ? caught.message : "Unable to load capture batch history.");
         })
         .finally(() => setBusy(false));
     };
@@ -143,14 +143,14 @@ export function CaptureHistory({ apiBase, onError }: Props) {
     <section ref={sectionRef} className="panel" aria-labelledby="capture-history-heading">
       <div className="section-heading">
         <div>
-          <h2 id="capture-history-heading">LinkedIn capture history</h2>
+          <h2 id="capture-history-heading">Capture batch history</h2>
           <p>Inspect evidence or archive stale batches without deleting central job records.</p>
         </div>
         <div className="professional-source-editor-actions">
           <button
             type="button"
             disabled={busy || !loaded}
-            onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}
+            onClick={() => refresh().catch(() => onError("Unable to refresh capture batch history."))}
           >
             Refresh captures
           </button>
@@ -165,7 +165,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
         </div>
       </div>
 
-      {!loaded || (busy && runs.length === 0) ? <p>Loading capture history…</p> : visibleRuns.length === 0 ? <p>No active capture runs recorded.</p> : (
+      {!loaded || (busy && runs.length === 0) ? <p>Loading capture batch history…</p> : visibleRuns.length === 0 ? <p>No active capture batches recorded.</p> : (
         <div className="queue capture-runs">
           {visibleRuns.map((run) => (
             <article key={run.capture_run_id}>
@@ -209,7 +209,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
             {selected.items.map((item) => (
               <article key={item.capture_item_id}>
                 <div>
-                  <h4>{item.title || `LinkedIn job ${item.source_job_id}`}</h4>
+                  <h4>{item.title || `Captured job ${item.source_job_id}`}</h4>
                   <p>{[item.company, item.location].filter(Boolean).join(" · ")}</p>
                   {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Open job</a>}
                   {item.verification_reasons.length > 0 && (
