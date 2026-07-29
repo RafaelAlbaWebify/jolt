@@ -41,7 +41,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
     setError("");
     try {
       const response = await fetch(`${apiBase}/api/professional-intelligence/sources`);
-      if (!response.ok) throw new Error("Unable to load Professional Intelligence sources.");
+      if (!response.ok) throw new Error("Unable to load source registry.");
       setSources((await response.json()) as ProfessionalIntelligenceSource[]);
       setLoaded(true);
     } catch (caught) {
@@ -114,14 +114,14 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
               >
                 <div className="professional-source-card-heading">
                   <div>
-                    <p className="eyebrow">{source.capture_mode.replaceAll("_", " ")}</p>
+                    <p className="eyebrow">Trusted source</p>
                     <h4>{source.label}</h4>
                   </div>
                   <span className="professional-source-status">
                     {source.enabled ? "Enabled" : "Disabled"}
                   </span>
                 </div>
-                <a href={source.url} target="_blank" rel="noreferrer">Open approved source</a>
+                <a href={source.url} target="_blank" rel="noreferrer">Open source</a>
                 <ProfessionalSourceEditor
                   source={source}
                   busy={busySourceId === source.source_id}
@@ -140,11 +140,11 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
     <main className="professional-intelligence" aria-labelledby="professional-intelligence-heading">
       <section className="panel professional-intelligence-overview">
         <div>
-          <p className="eyebrow">Professional source registry</p>
-          <h2 id="professional-intelligence-heading">Professional</h2>
+          <p className="eyebrow">Sources and evidence settings</p>
+          <h2 id="professional-intelligence-heading">Sources & Evidence</h2>
           <p>
-            Manage approved LinkedIn sources and local evidence settings. The old one-click supervised
-            capture controls are hidden until the manual prepared-page workflow is rebuilt cleanly.
+            Configure trusted LinkedIn sources and the local directory where evidence is stored. LinkedIn
+            page capture will return as a guided manual workflow in a later focused update.
           </p>
         </div>
       </section>
@@ -162,15 +162,15 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
       {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadSources()}>Retry source registry</button>}
       {loaded && (
         <>
-          <section className="panel" aria-labelledby="initial-professional-sources-heading">
+          <section className="panel" aria-labelledby="primary-sources-heading">
             <div className="section-heading">
-              <div><h2 id="initial-professional-sources-heading">Initial supervised scope</h2><p>{initialSources.length} sources prioritised for profile positioning and career signals.</p></div>
+              <div><h2 id="primary-sources-heading">Primary sources</h2><p>{initialSources.length} trusted sources prioritised for profile positioning and career signals.</p></div>
             </div>
             {renderSources(initialSources)}
           </section>
-          <section className="panel" aria-labelledby="deferred-professional-sources-heading">
+          <section className="panel" aria-labelledby="secondary-sources-heading">
             <div className="section-heading">
-              <div><h2 id="deferred-professional-sources-heading">Deferred sources</h2><p>{deferredSources.length} broader network and feed sources retained but excluded from the first capture slice.</p></div>
+              <div><h2 id="secondary-sources-heading">Secondary sources</h2><p>{deferredSources.length} broader network and feed sources retained for later capture workflows.</p></div>
             </div>
             {renderSources(deferredSources)}
           </section>
