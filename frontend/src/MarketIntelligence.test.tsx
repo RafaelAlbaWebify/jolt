@@ -54,7 +54,7 @@ describe("MarketIntelligence", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<MarketIntelligence apiBase="http://api" active />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load market intelligence.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load market insights.");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry market load" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
@@ -70,7 +70,7 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh market" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh insights" }));
     expect(await screen.findByText("Updated fit explanation.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
