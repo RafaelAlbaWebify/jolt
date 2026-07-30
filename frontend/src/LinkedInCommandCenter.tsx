@@ -40,6 +40,7 @@ type LinkedInCommandCenterData = {
   open_recommendation_count: number;
   categories: Record<string, number>;
   recommendation_statuses: Record<string, number>;
+  recommendation_types?: Record<string, number>;
   captures: LinkedInCapture[];
   recommendations: LinkedInRecommendation[];
 };
@@ -62,6 +63,15 @@ const RECOMMENDATION_TYPES: RecommendationType[] = ["profile_update", "network_d
 const PRIORITIES: Priority[] = ["high", "medium", "low"];
 const STATUSES: RecommendationStatus[] = ["pending", "accepted", "rejected", "implemented", "snoozed"];
 
+const BOARD_LABELS: Record<RecommendationType, string> = {
+  profile_update: "Profile updates",
+  network_decision: "Network decisions",
+  content_action: "Content and activity",
+  outreach: "Outreach",
+  lead_research: "Lead research",
+  cleanup: "Cleanup",
+};
+
 function label(value: string) {
   return value.replaceAll("_", " ");
 }
@@ -77,8 +87,10 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showCaptureForm, setShowCaptureForm] = useState(false);
   const [showRecommendationForm, setShowRecommendationForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
   const [category, setCategory] = useState<CaptureCategory>("profile");
   const [captureTitle, setCaptureTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -91,6 +103,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   const [proposedAction, setProposedAction] = useState("");
   const [proposedText, setProposedText] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
+  const [importText, setImportText] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,10 +129,18 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     return Object.entries(data.categories).sort((left, right) => right[1] - left[1]);
   }, [data]);
 
+  const groupedRecommendations = useMemo(() => {
+    const groups = new Map<RecommendationType, LinkedInRecommendation[]>();
+    for (const type of RECOMMENDATION_TYPES) groups.set(type, []);
+    for (const item of data?.recommendations ?? []) groups.get(item.recommendation_type)?.push(item);
+    return [...groups.entries()].filter(([, items]) => items.length > 0);
+  }, [data]);
+
   async function submitCapture(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`${apiBase}/api/linkedin-command-center/captures`, {
         method: "POST",
@@ -132,6 +153,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
       setVisibleText("");
       setNotes("");
       setShowCaptureForm(false);
+      setNotice("LinkedIn evidence snapshot saved.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "LinkedIn capture failed.");
@@ -144,6 +166,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations`, {
         method: "POST",
@@ -166,9 +189,36 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
       setProposedText("");
       setPriority("medium");
       setShowRecommendationForm(false);
+      setNotice("LinkedIn recommendation saved.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "LinkedIn recommendation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const parsed = JSON.parse(importText) as unknown;
+      const payload = Array.isArray(parsed) ? { source: "chatgpt_package", recommendations: parsed } : parsed;
+      const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw await errorFromResponse(response, "Unable to import LinkedIn recommendations.");
+      const imported = (await response.json()) as { imported_count: number };
+      setImportText("");
+      setShowImportForm(false);
+      setNotice(`${imported.imported_count} LinkedIn recommendations imported.`);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "LinkedIn recommendation import failed.");
     } finally {
       setBusy(false);
     }
@@ -178,6 +228,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     if (item.status === status) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/${item.id}/status`, {
         method: "POST",
@@ -185,6 +236,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         body: JSON.stringify({ status }),
       });
       if (!response.ok) throw await errorFromResponse(response, "Unable to update recommendation status.");
+      setNotice("LinkedIn recommendation status updated.");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update recommendation.");
@@ -207,11 +259,13 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
           </button>
           <button type="button" onClick={() => setShowCaptureForm((value) => !value)} disabled={busy}>Capture LinkedIn</button>
           <button type="button" className="secondary" onClick={() => setShowRecommendationForm((value) => !value)} disabled={busy}>Add recommendation</button>
+          <button type="button" className="secondary" onClick={() => setShowImportForm((value) => !value)} disabled={busy}>Import analysis JSON</button>
           <a href={`${apiBase}/api/linkedin-command-center/export`} download="JOLT_LINKEDIN_COMMAND_CENTER.zip">Export package</a>
         </div>
       </div>
 
       {error && <p className="error" role="alert">{error}</p>}
+      {notice && <p className="application-move-notice" role="status">{notice}</p>}
       {loading && !data && <p role="status">Loading LinkedIn Command Center…</p>}
 
       {data && (
@@ -302,30 +356,54 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         </section>
       )}
 
+      {showImportForm && (
+        <section className="panel manual-intake-panel" aria-labelledby="linkedin-import-form-heading">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Analysis import</p>
+              <h3 id="linkedin-import-form-heading">Import ChatGPT recommendations</h3>
+              <p>Paste the returned <code>linkedin_recommendations.json</code>. JOLT will add each item as a pending, reviewable action.</p>
+            </div>
+            <button type="button" className="secondary" onClick={() => setShowImportForm(false)}>Close</button>
+          </div>
+          <form onSubmit={submitImport}>
+            <label>Recommendations JSON
+              <textarea value={importText} onChange={(event) => setImportText(event.target.value)} rows={10} placeholder={'{"source":"chatgpt_package","recommendations":[...]}'}/>
+            </label>
+            <button type="submit" disabled={busy || !importText.trim()}>{busy ? "Importing…" : "Import recommendations"}</button>
+          </form>
+        </section>
+      )}
+
       {data && (
         <div className="workspace-view-stack">
           <section className="panel" aria-labelledby="linkedin-recommendations-heading">
-            <div className="section-heading"><h3 id="linkedin-recommendations-heading">Recommendation board</h3></div>
+            <div className="section-heading"><h3 id="linkedin-recommendations-heading">Action boards</h3></div>
             {data.recommendations.length === 0 ? <p>No LinkedIn recommendations yet.</p> : (
-              <div className="queue reviewed-decisions">
-                {data.recommendations.map((item) => (
-                  <article key={item.id}>
-                    <div>
-                      <p className="eyebrow">{label(item.recommendation_type)} · {item.priority}</p>
-                      <h3>{item.title}</h3>
-                      {item.target_area && <p>{item.target_area}</p>}
-                      {item.rationale && <p>{item.rationale}</p>}
-                      {item.proposed_action && <p><strong>Action:</strong> {item.proposed_action}</p>}
-                      {item.proposed_text && <pre className="evidence-json">{item.proposed_text}</pre>}
-                    </div>
-                    <label className="decision-control"><span>Status</span>
-                      <select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item, event.target.value as RecommendationStatus)}>
-                        {STATUSES.map((status) => <option value={status} key={status}>{label(status)}</option>)}
-                      </select>
-                    </label>
-                  </article>
-                ))}
-              </div>
+              groupedRecommendations.map(([type, items]) => (
+                <section key={type} className="market-card" aria-labelledby={`linkedin-board-${type}`}>
+                  <h4 id={`linkedin-board-${type}`}>{BOARD_LABELS[type]} ({items.length})</h4>
+                  <div className="queue reviewed-decisions">
+                    {items.map((item) => (
+                      <article key={item.id}>
+                        <div>
+                          <p className="eyebrow">{label(item.recommendation_type)} · {item.priority}</p>
+                          <h3>{item.title}</h3>
+                          {item.target_area && <p>{item.target_area}</p>}
+                          {item.rationale && <p>{item.rationale}</p>}
+                          {item.proposed_action && <p><strong>Action:</strong> {item.proposed_action}</p>}
+                          {item.proposed_text && <pre className="evidence-json">{item.proposed_text}</pre>}
+                        </div>
+                        <label className="decision-control"><span>Status</span>
+                          <select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item, event.target.value as RecommendationStatus)}>
+                            {STATUSES.map((status) => <option value={status} key={status}>{label(status)}</option>)}
+                          </select>
+                        </label>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))
             )}
           </section>
 

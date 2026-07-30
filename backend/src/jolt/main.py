@@ -25,12 +25,15 @@ from jolt.linkedin_command_center import (
     LinkedInCaptureRequest,
     LinkedInCaptureResponse,
     LinkedInCommandCenterResponse,
+    LinkedInRecommendationImportRequest,
+    LinkedInRecommendationImportResponse,
     LinkedInRecommendationRequest,
     LinkedInRecommendationResponse,
     LinkedInRecommendationStatusRequest,
     build_linkedin_analysis_pack,
     create_linkedin_capture,
     create_linkedin_recommendation,
+    import_linkedin_recommendations,
     list_linkedin_command_center,
     update_linkedin_recommendation_status,
 )
@@ -390,6 +393,20 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> LinkedInRecommendationResponse:
         try:
             return create_linkedin_recommendation(session, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/linkedin-command-center/recommendations/import",
+        response_model=LinkedInRecommendationImportResponse,
+        tags=["linkedin-command-center"],
+    )
+    def import_linkedin_presence_recommendations(
+        request: LinkedInRecommendationImportRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInRecommendationImportResponse:
+        try:
+            return import_linkedin_recommendations(session, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
