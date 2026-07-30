@@ -3,18 +3,20 @@ import { useMemo, useState } from "react";
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { DataTools } from "./DataTools";
+import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 import { RuntimeIdentityPanel } from "./RuntimeIdentity";
 import "./Workbench.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-type WorkbenchView = "opportunities" | "applications" | "market" | "professional";
+type WorkbenchView = "opportunities" | "applications" | "market" | "linkedin" | "professional";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
   { id: "opportunities", label: "Review Inbox", description: "Review newly captured or manually added jobs before they move forward." },
   { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
   { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
+  { id: "linkedin", label: "LinkedIn Command Center", description: "Improve profile positioning, network quality, activity, and outreach from user-approved LinkedIn evidence." },
   { id: "professional", label: "Sources & Evidence", description: "Configure trusted sources and local evidence storage." },
 ];
 
@@ -22,6 +24,7 @@ const WORKFLOW_STEPS = [
   "Capture / intake",
   "Review",
   "Apply / track",
+  "Improve presence",
   "Learn from market",
 ];
 
@@ -37,7 +40,7 @@ export function Workbench() {
           <div className="hero">
             <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Turn job evidence into review decisions, application tracking, and market learning.</p>
+            <p>Turn job evidence into review decisions, application tracking, market learning, and public career positioning.</p>
           </div>
 
           <ol className="workspace-flow" aria-label="JOLT workflow order">
@@ -77,6 +80,9 @@ export function Workbench() {
           </div>
           <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
             <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
+          </div>
+          <div className="workspace-view workspace-view-linkedin" hidden={activeView !== "linkedin"}>
+            <LinkedInCommandCenter apiBase={API_BASE} active={activeView === "linkedin"} />
           </div>
           <div className="workspace-view workspace-view-professional" hidden={activeView !== "professional"}>
             <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />
