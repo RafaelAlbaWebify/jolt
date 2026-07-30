@@ -59,6 +59,15 @@ class LinkedInRecommendationRequest(BaseModel):
     priority: LinkedInPriority = "medium"
 
 
+class LinkedInRecommendationImportItem(LinkedInRecommendationRequest):
+    status: LinkedInRecommendationStatus = "pending"
+
+
+class LinkedInRecommendationImportRequest(BaseModel):
+    source: str = "chatgpt_package"
+    recommendations: list[LinkedInRecommendationImportItem] = Field(default_factory=list, max_length=100)
+
+
 class LinkedInRecommendationStatusRequest(BaseModel):
     status: LinkedInRecommendationStatus
 
@@ -91,12 +100,18 @@ class LinkedInRecommendationResponse(BaseModel):
     updated_at: str
 
 
+class LinkedInRecommendationImportResponse(BaseModel):
+    imported_count: int
+    recommendations: list[LinkedInRecommendationResponse]
+
+
 class LinkedInCommandCenterResponse(BaseModel):
     capture_count: int
     recommendation_count: int
     open_recommendation_count: int
     categories: dict[str, int]
     recommendation_statuses: dict[str, int]
+    recommendation_types: dict[str, int]
     captures: list[LinkedInCaptureResponse]
     recommendations: list[LinkedInRecommendationResponse]
 
@@ -165,8 +180,9 @@ def list_linkedin_command_center(session: Session) -> LinkedInCommandCenterRespo
         ),
         categories=dict(Counter(item.category for item in captures)),
         recommendation_statuses=dict(status_counts),
+        recommendation_types=dict(Counter(item.recommendation_type for item in recommendations)),
         captures=[_capture_response(item) for item in captures[:25]],
-        recommendations=[_recommendation_response(item) for item in recommendations[:50]],
+        recommendations=[_recommendation_response(item) for item in recommendations[:100]],
     )
 
 
@@ -194,15 +210,20 @@ def create_linkedin_capture(session: Session, request: LinkedInCaptureRequest) -
     return _capture_response(capture)
 
 
-def create_linkedin_recommendation(
-    session: Session, request: LinkedInRecommendationRequest
-) -> LinkedInRecommendationResponse:
-    if request.capture_id:
-        found = session.get(LinkedInPresenceCapture, request.capture_id)
+def _validate_capture_id(session: Session, capture_id: str | None) -> None:
+    if capture_id:
+        found = session.get(LinkedInPresenceCapture, capture_id)
         if found is None:
-            raise LookupError(f"LinkedIn capture {request.capture_id} was not found")
+            raise LookupError(f"LinkedIn capture {capture_id} was not found")
+
+
+def _create_recommendation_row(
+    request: LinkedInRecommendationRequest,
+    *,
+    status: LinkedInRecommendationStatus = "pending",
+) -> LinkedInPresenceRecommendation:
     now = utc_now()
-    recommendation = LinkedInPresenceRecommendation(
+    return LinkedInPresenceRecommendation(
         id=str(uuid.uuid4()),
         capture_id=request.capture_id,
         recommendation_type=request.recommendation_type,
@@ -212,13 +233,35 @@ def create_linkedin_recommendation(
         proposed_action=request.proposed_action.strip(),
         proposed_text=request.proposed_text.strip(),
         priority=request.priority,
-        status="pending",
+        status=status,
         created_at=now,
         updated_at=now,
     )
+
+
+def create_linkedin_recommendation(
+    session: Session, request: LinkedInRecommendationRequest
+) -> LinkedInRecommendationResponse:
+    _validate_capture_id(session, request.capture_id)
+    recommendation = _create_recommendation_row(request)
     session.add(recommendation)
     session.commit()
     return _recommendation_response(recommendation)
+
+
+def import_linkedin_recommendations(
+    session: Session, request: LinkedInRecommendationImportRequest
+) -> LinkedInRecommendationImportResponse:
+    imported: list[LinkedInPresenceRecommendation] = []
+    for item in request.recommendations:
+        _validate_capture_id(session, item.capture_id)
+        imported.append(_create_recommendation_row(item, status=item.status))
+    session.add_all(imported)
+    session.commit()
+    return LinkedInRecommendationImportResponse(
+        imported_count=len(imported),
+        recommendations=[_recommendation_response(item) for item in imported],
+    )
 
 
 def update_linkedin_recommendation_status(
@@ -249,7 +292,7 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
     recommendations = [item.model_dump() for item in command_center.recommendations]
     dataset = {
         "pack_type": "jolt_linkedin_command_center",
-        "pack_version": 1,
+        "pack_version": 2,
         "generated_at": utc_now().isoformat(),
         "purpose": "User-supervised LinkedIn profile, activity, network, and outreach analysis.",
         "guardrails": [
@@ -257,6 +300,24 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
             "Do not infer private facts beyond captured evidence.",
             "Return recommendations as user-reviewable actions only.",
         ],
+        "import_contract": {
+            "endpoint": "/api/linkedin-command-center/recommendations/import",
+            "format": {
+                "source": "chatgpt_package",
+                "recommendations": [
+                    {
+                        "recommendation_type": "profile_update | network_decision | content_action | outreach | lead_research | cleanup",
+                        "target_area": "LinkedIn section, person, company, topic, or workflow area",
+                        "title": "Short recommendation title",
+                        "rationale": "Evidence-based reason",
+                        "proposed_action": "User action to take manually",
+                        "proposed_text": "Optional copy/message/profile text",
+                        "priority": "high | medium | low",
+                        "status": "pending",
+                    }
+                ],
+            },
+        },
         "captures": captures,
         "recommendations": recommendations,
         "market_summary": {
@@ -276,7 +337,26 @@ Use the evidence in `data/linkedin_command_center.json`. Produce practical, revi
 
 Return:
 
-1. `linkedin_recommendations.json` with an array of recommendations using these fields: recommendation_type, target_area, title, rationale, proposed_action, proposed_text, priority.
+1. `linkedin_recommendations.json` with this shape:
+
+```json
+{
+  "source": "chatgpt_package",
+  "recommendations": [
+    {
+      "recommendation_type": "profile_update",
+      "target_area": "headline",
+      "title": "Clarify Application Support positioning",
+      "rationale": "Why this matters based on the evidence",
+      "proposed_action": "Manual action Rafael should take",
+      "proposed_text": "Optional exact text/message/post/comment",
+      "priority": "high",
+      "status": "pending"
+    }
+  ]
+}
+```
+
 2. `profile_rewrite.md` with concrete headline/About/Experience/Featured/Skills proposals.
 3. `network_decisions.csv` for contacts or people explicitly present in the evidence.
 4. `content_plan.md` with realistic posts/comments/actions for the next 30 days.
@@ -294,7 +374,7 @@ Included:
 - Recommendations already tracked in JOLT: {len(recommendations)}
 - Market target roles from JOLT: {dataset['market_summary']['target_role_count']}
 
-Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis.
+Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis. Import the returned `linkedin_recommendations.json` through the LinkedIn Command Center import panel.
 """
     files = {
         "README.md": readme.encode("utf-8"),
