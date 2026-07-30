@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
@@ -18,6 +18,8 @@ type ScopeData = {
   salary_mentions: SalaryMention[];
   salary_coverage: number;
 };
+type Timeframe = "all" | "last_7_days" | "last_30_days";
+type SourceScope = "all" | "capture_batches" | "manual_intake";
 type MarketData = {
   filters?: { timeframe: Timeframe; source_scope: SourceScope };
   total_unique_roles: number;
@@ -31,8 +33,6 @@ type MarketData = {
 
 type Props = { apiBase: string; active: boolean };
 type Scope = "target" | "all";
-type Timeframe = "all" | "last_7_days" | "last_30_days";
-type SourceScope = "all" | "capture_batches" | "manual_intake";
 
 function Ranking({ title, items, empty }: { title: string; items: Metric[]; empty?: string }) {
   const maximum = Math.max(1, ...items.map((item) => item.count));
@@ -53,6 +53,10 @@ function Ranking({ title, items, empty }: { title: string; items: Metric[]; empt
   );
 }
 
+function readable(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
   const [scope, setScope] = useState<Scope>("target");
@@ -61,42 +65,34 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const requestRef = useRef<AbortController | null>(null);
-  const hasActivatedRef = useRef(false);
 
-  const load = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
+  const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams({ timeframe, source_scope: sourceScope });
-      const response = await fetch(`${apiBase}/api/market-intelligence?${params.toString()}`, { signal: controller.signal });
+      const response = await fetch(`${apiBase}/api/market-intelligence?${params.toString()}`, { signal });
       if (!response.ok) throw new Error("Unable to load market insights.");
-      const loaded = (await response.json()) as MarketData;
-      if (requestRef.current !== controller) return;
-      setData(loaded);
+      setData((await response.json()) as MarketData);
       setLastRefreshedAt(new Date().toISOString());
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      if (requestRef.current === controller) {
-        setError(caught instanceof Error ? caught.message : "Market insights failed.");
-      }
+      setError(caught instanceof Error ? caught.message : "Market insights failed.");
     } finally {
-      if (requestRef.current === controller) setLoading(false);
+      setLoading(false);
     }
   }, [apiBase, sourceScope, timeframe]);
 
   useEffect(() => {
-    if (!active || hasActivatedRef.current) return;
-    hasActivatedRef.current = true;
-    void load();
+    if (!active) return undefined;
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [active, load]);
 
-  useEffect(() => () => requestRef.current?.abort(), []);
-
   const selected = data?.[scope] ?? null;
+  const appliedTimeframe = data?.filters?.timeframe ?? timeframe;
+  const appliedSource = data?.filters?.source_scope ?? sourceScope;
 
   return (
     <section className="panel market-workspace" aria-labelledby="market-heading">
@@ -137,9 +133,6 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <option value="manual_intake">Manual intake</option>
           </select>
         </label>
-        <button type="button" className="secondary" disabled={!active || loading} onClick={() => void load()}>
-          Apply filters
-        </button>
       </div>
 
       {loading && !data && <p role="status">Loading market insights…</p>}
@@ -162,7 +155,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <strong>How to read fit</strong>
             <p>{data.fit_explanation}</p>
             <p>Archived capture batches are excluded. Reviewed and application records remain included unless the application card itself is archived.</p>
-            <p>Current filters: {timeframe.replaceAll("_", " ")} · {sourceScope.replaceAll("_", " ")}.</p>
+            <p>Applied filters: {readable(appliedTimeframe)} · {readable(appliedSource)}.</p>
             {scope === "target" && <p><strong>{data.outside_target_count}</strong> active records are outside your target path and are excluded from this view.</p>}
           </div>
 
