@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
@@ -77,6 +77,7 @@ describe("LinkedInCommandCenter", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
   it("loads only when active, saves captures, and displays recommendations", async () => {
@@ -104,6 +105,27 @@ describe("LinkedInCommandCenter", () => {
     expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
     expect(screen.getByText("Profile updates (1)")).toBeInTheDocument();
     expect(screen.getByText("Profile baseline")).toBeInTheDocument();
+  });
+
+  it("shows editable default capture targets for Rafael's LinkedIn sections", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => EMPTY_DASHBOARD }));
+
+    render(<LinkedInCommandCenter apiBase="http://api" active />);
+    expect(await screen.findByText("LinkedIn capture targets")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://www.linkedin.com/in/rafael-alba-tech/details/certifications/")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://www.linkedin.com/jobs-tracker/?stage=applied")).toBeInTheDocument();
+
+    const skillsCard = screen.getByDisplayValue("Skills").closest("article");
+    expect(skillsCard).not.toBeNull();
+    fireEvent.change(within(skillsCard as HTMLElement).getByDisplayValue("Skills"), {
+      target: { value: "Skills and endorsements" },
+    });
+    expect(screen.getByDisplayValue("Skills and endorsements")).toBeInTheDocument();
+
+    fireEvent.click(within(skillsCard as HTMLElement).getByRole("button", { name: "Copy command" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("details/skills/")));
   });
 
   it("imports ChatGPT recommendation JSON into grouped boards", async () => {
