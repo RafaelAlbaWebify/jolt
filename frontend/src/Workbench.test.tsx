@@ -9,6 +9,10 @@ vi.mock("./ApplicationDashboard", () => ({
   ApplicationDashboard: () => <section>Application tracking content</section>,
 }));
 
+vi.mock("./DataTools", () => ({
+  DataTools: () => <details><summary>Data tools: capture batches, decisions, and exports</summary></details>,
+}));
+
 vi.mock("./MarketIntelligence", () => ({
   MarketIntelligence: () => <section>Market intelligence content</section>,
 }));
