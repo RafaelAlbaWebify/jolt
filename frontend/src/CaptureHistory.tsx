@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CaptureRunSummary = {
   capture_run_id: string;
@@ -46,6 +46,8 @@ type Props = {
   onError: (message: string) => void;
 };
 
+const ARCHIVED_CAPTURE_STATUS = "archived";
+
 function readableReason(value: string): string {
   return value ? value.replaceAll("_", " ") : "not recorded";
 }
@@ -61,6 +63,16 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   const [selected, setSelected] = useState<CaptureRun | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const visibleRuns = useMemo(
+    () => runs.filter((run) => showArchived || run.status !== ARCHIVED_CAPTURE_STATUS),
+    [runs, showArchived],
+  );
+  const archivedCount = useMemo(
+    () => runs.filter((run) => run.status === ARCHIVED_CAPTURE_STATUS).length,
+    [runs],
+  );
 
   const refresh = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/captures`);
@@ -110,25 +122,52 @@ export function CaptureHistory({ apiBase, onError }: Props) {
     }
   }
 
+  async function archive(runId: string) {
+    setBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/captures/${runId}/archive`, { method: "POST" });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "Unable to archive capture batch.");
+      }
+      if (selected?.capture_run_id === runId) setSelected(null);
+      await refresh();
+    } catch (caught) {
+      onError(caught instanceof Error ? caught.message : "Unable to archive capture batch.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section ref={sectionRef} className="panel" aria-labelledby="capture-history-heading">
       <div className="section-heading">
         <div>
           <h2 id="capture-history-heading">LinkedIn capture history</h2>
-          <p>Inspect accepted and rejected evidence before relying on captured opportunities.</p>
+          <p>Inspect evidence or archive stale batches without deleting central job records.</p>
         </div>
-        <button
-          type="button"
-          disabled={busy || !loaded}
-          onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}
-        >
-          Refresh captures
-        </button>
+        <div className="professional-source-editor-actions">
+          <button
+            type="button"
+            disabled={busy || !loaded}
+            onClick={() => refresh().catch(() => onError("Unable to refresh capture history."))}
+          >
+            Refresh captures
+          </button>
+          <label className="professional-source-checkbox">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(event) => setShowArchived(event.target.checked)}
+            />
+            Show archived ({archivedCount})
+          </label>
+        </div>
       </div>
 
-      {!loaded || (busy && runs.length === 0) ? <p>Loading capture history…</p> : runs.length === 0 ? <p>No capture runs recorded yet.</p> : (
+      {!loaded || (busy && runs.length === 0) ? <p>Loading capture history…</p> : visibleRuns.length === 0 ? <p>No active capture runs recorded.</p> : (
         <div className="queue capture-runs">
-          {runs.map((run) => (
+          {visibleRuns.map((run) => (
             <article key={run.capture_run_id}>
               <div>
                 <h3>{run.source} · {run.mode}</h3>
@@ -137,9 +176,16 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                 <p>{captureBound(run)}</p>
                 <p><strong>Stopped:</strong> {readableReason(run.stop_reason)}</p>
               </div>
-              <button type="button" disabled={busy} onClick={() => inspect(run.capture_run_id)}>
-                Inspect capture
-              </button>
+              <div className="professional-source-editor-actions">
+                <button type="button" disabled={busy} onClick={() => inspect(run.capture_run_id)}>
+                  Inspect capture
+                </button>
+                {run.status !== ARCHIVED_CAPTURE_STATUS && (
+                  <button type="button" className="secondary" disabled={busy || run.status === "running"} onClick={() => void archive(run.capture_run_id)}>
+                    Archive batch
+                  </button>
+                )}
+              </div>
             </article>
           ))}
         </div>
@@ -149,6 +195,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
         <div className="capture-diagnostics" aria-live="polite">
           <h3>Capture diagnostics</h3>
           <p><strong>Capture bound:</strong> {captureBound(selected)}</p>
+          <p><strong>Status:</strong> {selected.status.replaceAll("_", " ")}</p>
           <p><strong>Stop reason:</strong> {readableReason(selected.stop_reason)}</p>
           {selected.search_url && <p><a href={selected.search_url} target="_blank" rel="noreferrer">Open source search</a></p>}
           {selected.warnings.length > 0 && (

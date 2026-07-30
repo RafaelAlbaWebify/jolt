@@ -7,10 +7,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import (
+    ApplicationArchiveRequest,
+    ApplicationArchiveResponse,
+    archive_application_card,
+    restore_application_card,
+)
 from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.application_work_items_api import build_application_work_items_router
 from jolt.automated_review import ensure_automated_reviews
 from jolt.capture_analysis_pack import build_analysis_pack
+from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
@@ -120,6 +127,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
+        "/api/captures/{capture_run_id}/archive",
+        response_model=CaptureBatchArchiveResult,
+        tags=["captures"],
+    )
+    def archive_capture_batch(
+        capture_run_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> CaptureBatchArchiveResult:
+        try:
+            return archive_capture_run(session, capture_run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post(
         "/api/opportunities/{posting_id}/reviews", response_model=ReviewResponse, tags=["review"]
     )
     def create_review(
@@ -200,6 +223,36 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
+        "/api/applications/{application_id}/archive",
+        response_model=ApplicationArchiveResponse,
+        tags=["applications"],
+    )
+    def archive_application(
+        application_id: str,
+        request: ApplicationArchiveRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> ApplicationArchiveResponse:
+        try:
+            return archive_application_card(session, application_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/applications/{application_id}/restore",
+        response_model=ApplicationArchiveResponse,
+        tags=["applications"],
+    )
+    def restore_application(
+        application_id: str,
+        request: ApplicationArchiveRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> ApplicationArchiveResponse:
+        try:
+            return restore_application_card(session, application_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post(
         "/api/applications/{application_id}/transitions",
         response_model=ApplicationResponse,
         tags=["applications"],
@@ -261,8 +314,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
     )
     def application_index(
         session: Annotated[Session, Depends(get_session)],
+        include_archived: bool = False,
     ) -> list[OpportunityIndexItem]:
-        return list_opportunity_index(session, include_applied=True)
+        return list_opportunity_index(
+            session, include_applied=True, include_archived=include_archived
+        )
 
     @app.get(
         "/api/opportunity-detail/{posting_id}",

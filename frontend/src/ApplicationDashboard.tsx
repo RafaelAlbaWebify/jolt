@@ -15,7 +15,7 @@ type Opportunity = {
   location: string;
   review_decision: string | null;
   application_id?: string | null;
-  application_status?: ApplicationStatus | null;
+  application_status?: ApplicationStatus | string | null;
   outcome_type?: string | null;
   last_activity_at?: string | null;
   next_due_at?: string | null;
@@ -36,7 +36,7 @@ type ApplicationEvent = {
 type ApplicationDetail = {
   application_id: string;
   posting_id: string;
-  status: ApplicationStatus;
+  status: ApplicationStatus | string;
   application_url: string;
   resume_used: string;
   notes: string;
@@ -54,7 +54,7 @@ const LANES: LaneDefinition[] = [
   { id: "applied", label: "Applied", description: "Submitted and awaiting employer contact." },
   { id: "interviewing", label: "Interviewing", description: "Recruiter, technical, and hiring stages." },
   { id: "offer", label: "Offer", description: "Review and record the final offer decision." },
-  { id: "closed", label: "Closed", description: "Completed, rejected, withdrawn, or no response." },
+  { id: "closed", label: "Closed / archived", description: "Completed, rejected, withdrawn, archived, or no response." },
 ];
 
 const TABS: Array<{ id: WorkspaceTab; label: string }> = [
@@ -66,13 +66,13 @@ const TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "timeline", label: "Timeline" },
 ];
 
-const INTERVIEW_STATUSES = new Set<ApplicationStatus>([
+const INTERVIEW_STATUSES = new Set<string>([
   "recruiter_screen",
   "technical_interview",
   "hiring_manager_interview",
   "final_interview",
 ]);
-const CLOSED_STATUSES = new Set<ApplicationStatus>(["rejected", "withdrawn", "no_response", "closed"]);
+const CLOSED_STATUSES = new Set<string>(["rejected", "withdrawn", "no_response", "closed", "archived"]);
 const OUTCOME_CODES = [
   "rejected_by_employer",
   "withdrawn_by_user",
@@ -101,7 +101,7 @@ function laneFor(item: Opportunity): PipelineLane {
   if (item.outcome_type || (item.application_status && CLOSED_STATUSES.has(item.application_status))) return "closed";
   if (!item.application_id || !item.application_status || item.application_status === "preparing") return "preparing";
   if (item.application_status === "offer") return "offer";
-  if (INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
+  if (item.application_status && INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
   return "applied";
 }
 
@@ -120,6 +120,7 @@ function deduplicateOpportunities(items: Opportunity[]) {
 
 function availableTargetLanes(item: Opportunity): PipelineLane[] {
   const currentLane = laneFor(item);
+  if (item.application_status === "archived") return ["closed"];
   if (!item.application_id || !item.application_status) return [currentLane];
   const activeLanes: PipelineLane[] = ["preparing", "applied", "interviewing", "offer"];
   if (currentLane === "closed" || item.outcome_type) return ["closed", ...activeLanes];
@@ -145,6 +146,8 @@ function nextAction(item: Opportunity) {
       return "Record the final decision or offer";
     case "offer":
       return "Accept or decline the offer";
+    case "archived":
+      return "Restore if this process becomes active again";
     default:
       return item.outcome_type ? "Reopen if the process changes" : "Review application status";
   }
@@ -219,15 +222,16 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [draggedPostingId, setDraggedPostingId] = useState<string | null>(null);
   const [dragOverLane, setDragOverLane] = useState<PipelineLane | null>(null);
   const [moveNotice, setMoveNotice] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const movingApplicationIds = useRef(new Set<string>());
   const detailRequestRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`${apiBase}/api/application-index`);
+    const response = await fetch(`${apiBase}/api/application-index${showArchived ? "?include_archived=true" : ""}`);
     if (!response.ok) throw new Error("Unable to load application opportunities.");
     const rows = (await response.json()) as Opportunity[];
     setOpportunities(deduplicateOpportunities(rows));
-  }, [apiBase]);
+  }, [apiBase, showArchived]);
 
   useEffect(() => {
     if (active) refresh().catch((caught) => setError(caught instanceof Error ? caught.message : "Application dashboard failed."));
@@ -249,6 +253,10 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
 
   const candidates = useMemo(
     () => opportunities.filter((item) => item.review_decision === "pursue" || Boolean(item.application_id)),
+    [opportunities],
+  );
+  const archivedCount = useMemo(
+    () => opportunities.filter((item) => item.application_status === "archived").length,
     [opportunities],
   );
   const visibleCandidates = useMemo(() => {
@@ -323,7 +331,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   }
 
   async function moveApplication(item: Opportunity, targetLane: PipelineLane) {
-    if (!item.application_id || laneFor(item) === targetLane || busy) return;
+    if (!item.application_id || item.application_status === "archived" || laneFor(item) === targetLane || busy) return;
     if (!availableTargetLanes(item).includes(targetLane)) {
       setError(`The application cannot move directly from ${laneFor(item)} to ${targetLane}.`);
       return;
@@ -358,6 +366,59 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     }
   }
 
+  async function archiveCard(item: Opportunity) {
+    if (!item.application_id || busy) return;
+    const confirmed = window.confirm(
+      `Archive ${item.title || "this application"}? It will be removed from the active board, but its history stays in the database.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    setMoveNotice("");
+    try {
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: "Archived from the Applications board." }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The application could not be archived.");
+      }
+      if (selectedPostingId === item.posting_id) setSelectedPostingId(null);
+      await refresh();
+      setMoveNotice(`${item.title || "Application"} archived and removed from the active board.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The application could not be archived.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restoreCard(item: Opportunity) {
+    if (!item.application_id || busy) return;
+    setBusy(true);
+    setError("");
+    setMoveNotice("");
+    try {
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: "Restored from the Applications archived view." }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The application could not be restored.");
+      }
+      await refresh();
+      setMoveNotice(`${item.title || "Application"} restored to the active board.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The application could not be restored.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const draggedItem = candidates.find((item) => item.posting_id === draggedPostingId) ?? null;
 
   return (
@@ -387,7 +448,15 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <p className="application-boundary">Move cards forward or backward to correct the pipeline. Closing still requires a recorded outcome, and every correction is preserved in history.</p>
+        <label className="professional-source-checkbox">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(event) => setShowArchived(event.target.checked)}
+          />
+          Show archived cards{showArchived ? ` (${archivedCount})` : ""}
+        </label>
+        <p className="application-boundary">Move cards forward or backward to correct the pipeline. Archive removes a card from the active board while preserving history.</p>
       </div>
       {error && (
         <p className="error" role="alert">
@@ -519,6 +588,26 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>
                         Preparation pack
                       </a>
+                      {opportunity.application_id && opportunity.application_status === "archived" && (
+                        <button
+                          type="button"
+                          className="secondary application-card-restore"
+                          disabled={busy}
+                          onClick={() => void restoreCard(opportunity)}
+                        >
+                          Restore card
+                        </button>
+                      )}
+                      {opportunity.application_id && opportunity.application_status !== "archived" && (
+                        <button
+                          type="button"
+                          className="danger application-card-archive"
+                          disabled={busy}
+                          onClick={() => void archiveCard(opportunity)}
+                        >
+                          Archive card
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))
@@ -569,8 +658,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                   title={selected.title || "Untitled opportunity"}
                   reviewDecision={selected.review_decision}
                   applicationId={selected.application_id}
-                  applicationStatus={selected.application_status}
-                  disabled={busy}
+                  applicationStatus={selected.application_status as ApplicationStatus | null | undefined}
+                  disabled={busy || selected.application_status === "archived"}
                   onChanged={refreshAfterChange}
                   onError={setError}
                 />

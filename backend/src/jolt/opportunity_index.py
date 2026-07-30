@@ -7,10 +7,14 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import ARCHIVED_APPLICATION_STATUS
 from jolt.application_records import ApplicationDocument, ApplicationInterview, ApplicationTask
+from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
 from jolt.database import (
     Application,
     ApplicationEvent,
+    CaptureItem,
+    CaptureRun,
     Outcome,
     Posting,
     ReviewDecision,
@@ -40,9 +44,14 @@ class OpportunityIndexItem(BaseModel):
     overdue: bool = False
 
 
+_CAPTURE_SOURCE_TYPES = {"linkedin_fixture", "linkedin_live"}
+
+
 def _document_state(application: Application | None, documents: list[ApplicationDocument]) -> str:
     if application is None:
         return "not started"
+    if application.status == ARCHIVED_APPLICATION_STATUS:
+        return "archived"
     if not documents:
         return "resume attached" if application.resume_used.strip() else "no records"
     counts = Counter(document.status for document in documents)
@@ -61,12 +70,51 @@ def _as_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
+def _capture_statuses_by_posting(session: Session) -> dict[str, set[str]]:
+    runs = {run.id: run for run in session.scalars(select(CaptureRun)).all()}
+    statuses: dict[str, set[str]] = {}
+    for item in session.scalars(
+        select(CaptureItem).where(CaptureItem.posting_id.is_not(None))
+    ).all():
+        if not item.posting_id:
+            continue
+        run = runs.get(item.capture_run_id)
+        if run is None:
+            continue
+        statuses.setdefault(item.posting_id, set()).add(run.status)
+    return statuses
+
+
+def _is_archived_capture_import(capture_statuses: set[str]) -> bool:
+    return bool(capture_statuses) and all(
+        status == ARCHIVED_CAPTURE_STATUS for status in capture_statuses
+    )
+
+
+def _is_orphaned_capture_import(
+    source_document: SourceDocument | None,
+    capture_statuses: set[str],
+) -> bool:
+    if capture_statuses:
+        return False
+    if source_document is None:
+        return False
+    return source_document.source_type in _CAPTURE_SOURCE_TYPES
+
+
 def list_opportunity_index(
-    session: Session, *, include_applied: bool = False
+    session: Session, *, include_applied: bool = False, include_archived: bool = False
 ) -> list[OpportunityIndexItem]:
-    """Return compact queue metadata without constructing full review detail."""
+    """Return compact queue metadata without constructing full review detail.
+
+    The default Opportunities page is the pending-review inbox. Reviewed items,
+    applications, archived capture imports, and orphaned LinkedIn imports are excluded.
+    Tracking views pass include_applied=True so reviewed/applied postings remain visible.
+    Archived application cards remain hidden unless include_archived=True is requested.
+    """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
+    capture_statuses = _capture_statuses_by_posting(session)
 
     latest_evaluations = authoritative_evaluations(session)
 
@@ -119,11 +167,23 @@ def list_opportunity_index(
         if evaluation is None:
             continue
         application = applications.get(posting.id)
-        if application is not None and not include_applied:
+        if (
+            application is not None
+            and application.status == ARCHIVED_APPLICATION_STATUS
+            and not include_archived
+        ):
             continue
         review = latest_reviews.get(posting.id)
-        outcome = outcomes.get(application.id) if application else None
         source_document = source_documents.get(posting.source_document_id)
+        posting_capture_statuses = capture_statuses.get(posting.id, set())
+        if not include_applied:
+            if application is not None or review is not None:
+                continue
+            if _is_archived_capture_import(posting_capture_statuses):
+                continue
+            if _is_orphaned_capture_import(source_document, posting_capture_statuses):
+                continue
+        outcome = outcomes.get(application.id) if application else None
 
         activity_at = latest_activity.get(application.id) if application else None
         task = next_tasks.get(application.id) if application else None
