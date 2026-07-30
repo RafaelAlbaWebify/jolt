@@ -13,12 +13,13 @@ export type ApplicationReadinessData = {
   checklist: string[];
 };
 
-function ReadinessList({ title, items }: { title: string; items: string[] }) {
-  if (items.length === 0) return null;
+function ReadinessList({ title, items }: { title: string; items?: string[] | null }) {
+  const safeItems = items ?? [];
+  if (safeItems.length === 0) return null;
   return (
     <div className="readiness-section">
       <h5>{title}</h5>
-      <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+      <ul>{safeItems.map((item) => <li key={item}>{item}</li>)}</ul>
     </div>
   );
 }
