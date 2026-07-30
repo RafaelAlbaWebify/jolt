@@ -9,6 +9,7 @@ const EMPTY_DASHBOARD = {
   open_recommendation_count: 0,
   categories: {},
   recommendation_statuses: {},
+  recommendation_types: {},
   captures: [],
   recommendations: [],
 };
@@ -19,6 +20,7 @@ const POPULATED_DASHBOARD = {
   open_recommendation_count: 1,
   categories: { profile: 1 },
   recommendation_statuses: { pending: 1 },
+  recommendation_types: { profile_update: 1 },
   captures: [{
     id: "capture-1",
     category: "profile",
@@ -45,6 +47,30 @@ const POPULATED_DASHBOARD = {
     created_at: "2026-07-30T10:00:00Z",
     updated_at: "2026-07-30T10:00:00Z",
   }],
+};
+
+const IMPORTED_DASHBOARD = {
+  ...POPULATED_DASHBOARD,
+  recommendation_count: 2,
+  open_recommendation_count: 2,
+  recommendation_types: { profile_update: 1, network_decision: 1 },
+  recommendations: [
+    ...POPULATED_DASHBOARD.recommendations,
+    {
+      id: "recommendation-2",
+      capture_id: null,
+      recommendation_type: "network_decision",
+      target_area: "Recruiters",
+      title: "Prioritize support recruiters",
+      rationale: "Better lead quality.",
+      proposed_action: "Review selected recruiters manually.",
+      proposed_text: "",
+      priority: "medium",
+      status: "pending",
+      created_at: "2026-07-30T10:00:00Z",
+      updated_at: "2026-07-30T10:00:00Z",
+    },
+  ],
 };
 
 describe("LinkedInCommandCenter", () => {
@@ -76,7 +102,45 @@ describe("LinkedInCommandCenter", () => {
       expect.objectContaining({ method: "POST" }),
     ));
     expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
+    expect(screen.getByText("Profile updates (1)")).toBeInTheDocument();
     expect(screen.getByText("Profile baseline")).toBeInTheDocument();
+  });
+
+  it("imports ChatGPT recommendation JSON into grouped boards", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => POPULATED_DASHBOARD })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ imported_count: 1 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => IMPORTED_DASHBOARD });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LinkedInCommandCenter apiBase="http://api" active />);
+    expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Import analysis JSON" }));
+    fireEvent.change(screen.getByLabelText("Recommendations JSON"), {
+      target: {
+        value: JSON.stringify({
+          source: "chatgpt_package",
+          recommendations: [{
+            recommendation_type: "network_decision",
+            target_area: "Recruiters",
+            title: "Prioritize support recruiters",
+            rationale: "Better lead quality.",
+            proposed_action: "Review selected recruiters manually.",
+            priority: "medium",
+          }],
+        }),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import recommendations" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://api/api/linkedin-command-center/recommendations/import",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByText("1 LinkedIn recommendations imported.")).toBeInTheDocument();
+    expect(screen.getByText("Network decisions (1)")).toBeInTheDocument();
+    expect(screen.getByText("Prioritize support recruiters")).toBeInTheDocument();
   });
 
   it("updates recommendation status manually", async () => {
