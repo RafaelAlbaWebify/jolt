@@ -22,7 +22,7 @@ import { Workbench } from "./Workbench";
 describe("Workbench", () => {
   afterEach(() => cleanup());
 
-  it("renders persistent navigation beside the active workspace", () => {
+  it("renders persistent navigation and global data tools beside the active workspace", () => {
     render(<Workbench />);
 
     const sidebar = screen.getByRole("complementary", { name: "JOLT workspace navigation" });
@@ -31,7 +31,7 @@ describe("Workbench", () => {
     expect(sidebar).toContainElement(screen.getByRole("heading", { name: "JOLT" }));
     expect(sidebar).toContainElement(screen.getByRole("navigation", { name: "JOLT workspace views" }));
     expect(sidebar).toHaveTextContent("Review newly captured or manually added jobs before they move forward.");
-    expect(screen.queryByText("Data tools: capture batches, decisions, and exports")).not.toBeInTheDocument();
+    expect(screen.getByText("Data tools: capture batches, decisions, and exports")).toBeInTheDocument();
     expect(workspace).toContainElement(screen.getByText("Opportunity review content"));
   });
 
@@ -47,6 +47,7 @@ describe("Workbench", () => {
     expect(applications).toHaveAttribute("hidden");
     expect(market).toHaveAttribute("hidden");
     expect(professional).toHaveAttribute("hidden");
+    expect(screen.getByText("Data tools: capture batches, decisions, and exports")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Application Pipeline" }));
     expect(opportunities).toHaveAttribute("hidden");
