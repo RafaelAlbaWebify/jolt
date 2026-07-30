@@ -140,6 +140,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   const [showRecommendationForm, setShowRecommendationForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
   const [captureTargets, setCaptureTargets] = useState<CaptureTarget[]>(loadStoredTargets);
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [category, setCategory] = useState<CaptureCategory>("profile");
   const [captureTitle, setCaptureTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -194,14 +195,17 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   }
 
   function addTarget() {
+    const id = crypto.randomUUID();
     setCaptureTargets((items) => [
       ...items,
-      { id: crypto.randomUUID(), name: "New LinkedIn target", category: "other", url: "", enabled: true },
+      { id, name: "New LinkedIn target", category: "other", url: "", enabled: true },
     ]);
+    setEditingTargetId(id);
   }
 
   function resetTargets() {
     setCaptureTargets(DEFAULT_CAPTURE_TARGETS);
+    setEditingTargetId(null);
     setNotice("LinkedIn capture targets reset to Rafael's defaults.");
   }
 
@@ -371,40 +375,50 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
             <div>
               <p className="eyebrow">Editable capture list</p>
               <h3 id="linkedin-targets-heading">LinkedIn capture targets</h3>
-              <p>Edit these URLs before capturing. They are stored locally in this browser, not in the database.</p>
+              <p>Edit URLs only when needed. The list is stored locally in this browser.</p>
             </div>
             <div className="professional-source-editor-actions">
               <button type="button" className="secondary" onClick={addTarget}>Add target</button>
               <button type="button" className="secondary" onClick={resetTargets}>Reset defaults</button>
             </div>
           </div>
-          <div className="capture-history-list">
-            {captureTargets.map((target) => (
-              <article key={target.id}>
-                <div>
-                  <label>Enabled
-                    <input type="checkbox" checked={target.enabled} onChange={(event) => updateTarget(target.id, { enabled: event.target.checked })} />
-                  </label>
-                  <label>Name
-                    <input value={target.name} onChange={(event) => updateTarget(target.id, { name: event.target.value })} />
-                  </label>
-                  <label>Category
-                    <select value={target.category} onChange={(event) => updateTarget(target.id, { category: event.target.value as CaptureCategory })}>
-                      {CAPTURE_CATEGORIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}
-                    </select>
-                  </label>
-                  <label>URL
-                    <input value={target.url} onChange={(event) => updateTarget(target.id, { url: event.target.value })} />
-                  </label>
-                  <pre className="evidence-json">{captureCommand(target)}</pre>
-                </div>
-                <div className="professional-source-editor-actions">
-                  <button type="button" className="secondary" disabled={!target.enabled || !target.url.trim()} onClick={() => void copyCommand(target)}>Copy command</button>
-                  <button type="button" disabled={!target.url.trim()} onClick={() => useTargetInForm(target)}>Use in manual form</button>
-                  <button type="button" className="secondary" onClick={() => setCaptureTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>
-                </div>
-              </article>
-            ))}
+          <div className="queue reviewed-decisions">
+            {captureTargets.map((target) => {
+              const editing = editingTargetId === target.id;
+              return (
+                <article key={target.id}>
+                  <div>
+                    <p className="eyebrow">{target.enabled ? "Enabled" : "Disabled"} · {label(target.category)}</p>
+                    <h3>{target.name || "Untitled LinkedIn target"}</h3>
+                    <p className="confidence">{target.url.trim() ? "URL configured" : "URL missing"}</p>
+                    {editing && (
+                      <div className="workspace-view-stack" aria-label={`Edit ${target.name || "LinkedIn target"}`}>
+                        <label>Name
+                          <input value={target.name} onChange={(event) => updateTarget(target.id, { name: event.target.value })} />
+                        </label>
+                        <label>Category
+                          <select value={target.category} onChange={(event) => updateTarget(target.id, { category: event.target.value as CaptureCategory })}>
+                            {CAPTURE_CATEGORIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}
+                          </select>
+                        </label>
+                        <label>URL
+                          <input value={target.url} onChange={(event) => updateTarget(target.id, { url: event.target.value })} />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  <div className="professional-source-editor-actions">
+                    <label className="decision-control"><span>Enabled</span>
+                      <input type="checkbox" checked={target.enabled} onChange={(event) => updateTarget(target.id, { enabled: event.target.checked })} />
+                    </label>
+                    <button type="button" className="secondary" onClick={() => setEditingTargetId(editing ? null : target.id)}>{editing ? "Done" : "Edit"}</button>
+                    <button type="button" className="secondary" disabled={!target.url.trim()} onClick={() => void copyCommand(target)}>Copy command</button>
+                    <button type="button" disabled={!target.url.trim()} onClick={() => useTargetInForm(target)}>Use</button>
+                    <button type="button" className="secondary" onClick={() => setCaptureTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
