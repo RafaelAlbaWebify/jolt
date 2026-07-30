@@ -36,6 +36,8 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         "professional_capture_runs",
         "professional_capture_artifacts",
         "professional_evidence_settings",
+        "linkedin_presence_captures",
+        "linkedin_presence_recommendations",
         "outcomes",
     }.issubset(tables)
 
@@ -49,3 +51,15 @@ def test_initial_migration_creates_expected_schema(tmp_path: Path) -> None:
         column["name"] for column in inspector.get_columns("professional_capture_artifacts")
     }
     assert {"completeness_status", "retention_days"}.issubset(artifact_columns)
+    linkedin_capture_columns = {
+        column["name"] for column in inspector.get_columns("linkedin_presence_captures")
+    }
+    assert {"category", "content_hash", "previous_capture_id", "changed_since_previous"}.issubset(
+        linkedin_capture_columns
+    )
+    linkedin_recommendation_columns = {
+        column["name"] for column in inspector.get_columns("linkedin_presence_recommendations")
+    }
+    assert {"recommendation_type", "priority", "status", "proposed_text"}.issubset(
+        linkedin_recommendation_columns
+    )

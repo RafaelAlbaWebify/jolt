@@ -174,6 +174,42 @@ class Outcome(Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class LinkedInPresenceCapture(Base):
+    __tablename__ = "linkedin_presence_captures"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    visible_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    previous_capture_id: Mapped[str | None] = mapped_column(
+        ForeignKey("linkedin_presence_captures.id"), nullable=True, index=True
+    )
+    changed_since_previous: Mapped[bool] = mapped_column(default=False, nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LinkedInPresenceRecommendation(Base):
+    __tablename__ = "linkedin_presence_recommendations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    capture_id: Mapped[str | None] = mapped_column(
+        ForeignKey("linkedin_presence_captures.id"), nullable=True, index=True
+    )
+    recommendation_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    target_area: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    title: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    proposed_action: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    proposed_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    priority: Mapped[str] = mapped_column(String(20), default="medium", nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 def default_database_url() -> str:
     configured = os.getenv("JOLT_DATABASE_URL")
     if configured:

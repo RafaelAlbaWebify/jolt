@@ -13,6 +13,10 @@ vi.mock("./DataTools", () => ({
   DataTools: () => <details><summary>Data tools: capture batches, decisions, and exports</summary></details>,
 }));
 
+vi.mock("./LinkedInCommandCenter", () => ({
+  LinkedInCommandCenter: () => <section>LinkedIn command content</section>,
+}));
+
 vi.mock("./MarketIntelligence", () => ({
   MarketIntelligence: () => <section>Market intelligence content</section>,
 }));
@@ -45,11 +49,13 @@ describe("Workbench", () => {
     const opportunities = screen.getByText("Opportunity review content").parentElement;
     const applications = screen.getByText("Application tracking content").parentElement;
     const market = screen.getByText("Market intelligence content").parentElement;
+    const linkedin = screen.getByText("LinkedIn command content").parentElement;
     const professional = screen.getByText("Professional intelligence content").parentElement;
 
     expect(opportunities).not.toHaveAttribute("hidden");
     expect(applications).toHaveAttribute("hidden");
     expect(market).toHaveAttribute("hidden");
+    expect(linkedin).toHaveAttribute("hidden");
     expect(professional).toHaveAttribute("hidden");
     expect(screen.getByText("Data tools: capture batches, decisions, and exports")).toBeInTheDocument();
 
@@ -62,8 +68,12 @@ describe("Workbench", () => {
     expect(applications).toHaveAttribute("hidden");
     expect(market).not.toHaveAttribute("hidden");
 
-    fireEvent.click(screen.getByRole("button", { name: "Sources & Evidence" }));
+    fireEvent.click(screen.getByRole("button", { name: "LinkedIn Command Center" }));
     expect(market).toHaveAttribute("hidden");
+    expect(linkedin).not.toHaveAttribute("hidden");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sources & Evidence" }));
+    expect(linkedin).toHaveAttribute("hidden");
     expect(professional).not.toHaveAttribute("hidden");
   });
 
@@ -75,9 +85,9 @@ describe("Workbench", () => {
     expect(sidebar).toHaveTextContent("Review newly captured or manually added jobs before they move forward.");
     expect(screen.getByRole("button", { name: "Review Inbox" })).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "Sources & Evidence" }));
-    expect(screen.getByRole("button", { name: "Sources & Evidence" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "LinkedIn Command Center" }));
+    expect(screen.getByRole("button", { name: "LinkedIn Command Center" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Review Inbox" })).toHaveAttribute("aria-pressed", "false");
-    expect(sidebar).toHaveTextContent("Configure trusted sources and local evidence storage.");
+    expect(sidebar).toHaveTextContent("Improve profile positioning, network quality, activity, and outreach from user-approved LinkedIn evidence.");
   });
 });

@@ -21,6 +21,19 @@ from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
+from jolt.linkedin_command_center import (
+    LinkedInCaptureRequest,
+    LinkedInCaptureResponse,
+    LinkedInCommandCenterResponse,
+    LinkedInRecommendationRequest,
+    LinkedInRecommendationResponse,
+    LinkedInRecommendationStatusRequest,
+    build_linkedin_analysis_pack,
+    create_linkedin_capture,
+    create_linkedin_recommendation,
+    list_linkedin_command_center,
+    update_linkedin_recommendation_status,
+)
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
@@ -345,6 +358,56 @@ def create_app(database_url: str | None = None) -> FastAPI:
             session, timeframe=timeframe, source_scope=source_scope
         )
 
+    @app.get(
+        "/api/linkedin-command-center",
+        response_model=LinkedInCommandCenterResponse,
+        tags=["linkedin-command-center"],
+    )
+    def linkedin_command_center(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInCommandCenterResponse:
+        return list_linkedin_command_center(session)
+
+    @app.post(
+        "/api/linkedin-command-center/captures",
+        response_model=LinkedInCaptureResponse,
+        tags=["linkedin-command-center"],
+    )
+    def create_linkedin_presence_capture(
+        request: LinkedInCaptureRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInCaptureResponse:
+        return create_linkedin_capture(session, request)
+
+    @app.post(
+        "/api/linkedin-command-center/recommendations",
+        response_model=LinkedInRecommendationResponse,
+        tags=["linkedin-command-center"],
+    )
+    def create_linkedin_presence_recommendation(
+        request: LinkedInRecommendationRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInRecommendationResponse:
+        try:
+            return create_linkedin_recommendation(session, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/linkedin-command-center/recommendations/{recommendation_id}/status",
+        response_model=LinkedInRecommendationResponse,
+        tags=["linkedin-command-center"],
+    )
+    def set_linkedin_recommendation_status(
+        recommendation_id: str,
+        request: LinkedInRecommendationStatusRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInRecommendationResponse:
+        try:
+            return update_linkedin_recommendation_status(session, recommendation_id, request)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @app.get("/api/opportunities", response_model=list[OpportunitySummary], tags=["opportunities"])
     def opportunities(
         session: Annotated[Session, Depends(get_session)],
@@ -376,6 +439,17 @@ def create_app(database_url: str | None = None) -> FastAPI:
             BytesIO(content),
             media_type="application/zip",
             headers={"Content-Disposition": "attachment; filename=JOLT_ANALYSIS_PACK.zip"},
+        )
+
+    @app.get("/api/linkedin-command-center/export", tags=["exports"])
+    def linkedin_analysis_pack(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        content = build_linkedin_analysis_pack(session)
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=JOLT_LINKEDIN_COMMAND_CENTER.zip"},
         )
 
     return app
