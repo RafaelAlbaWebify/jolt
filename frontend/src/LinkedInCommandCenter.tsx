@@ -45,6 +45,14 @@ type LinkedInCommandCenterData = {
   recommendations: LinkedInRecommendation[];
 };
 
+type CaptureTarget = {
+  id: string;
+  name: string;
+  category: CaptureCategory;
+  url: string;
+  enabled: boolean;
+};
+
 type Props = { apiBase: string; active: boolean };
 
 const CAPTURE_CATEGORIES: CaptureCategory[] = [
@@ -62,6 +70,22 @@ const CAPTURE_CATEGORIES: CaptureCategory[] = [
 const RECOMMENDATION_TYPES: RecommendationType[] = ["profile_update", "network_decision", "content_action", "outreach", "lead_research", "cleanup"];
 const PRIORITIES: Priority[] = ["high", "medium", "low"];
 const STATUSES: RecommendationStatus[] = ["pending", "accepted", "rejected", "implemented", "snoozed"];
+const TARGETS_STORAGE_KEY = "jolt.linkedin.captureTargets.v1";
+
+const DEFAULT_CAPTURE_TARGETS: CaptureTarget[] = [
+  { id: "profile", name: "Profile", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/", enabled: true },
+  { id: "all-activity", name: "All Activity", category: "activity", url: "https://www.linkedin.com/in/rafael-alba-tech/recent-activity/all/", enabled: true },
+  { id: "experience", name: "Experience", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/experience/", enabled: true },
+  { id: "certifications", name: "Licenses & certifications", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/certifications/", enabled: true },
+  { id: "skills", name: "Skills", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/skills/", enabled: true },
+  { id: "recommendations", name: "Recommendations", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/recommendations/?detailScreenTabIndex=0", enabled: true },
+  { id: "interests", name: "Interests", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/interests/?initialTabId=interest_top_voices", enabled: true },
+  { id: "job-tracker", name: "Job Tracker", category: "job_search", url: "https://www.linkedin.com/jobs-tracker/?stage=applied", enabled: true },
+  { id: "jobs-preferences", name: "Jobs Based on my Preferences", category: "job_search", url: "https://www.linkedin.com/jobs/search-results/?currentJobId=4445359749&keywords=Information%20Technology%20Operations%20Engineer%20or%20Information%20Technology%20Infrastructure%20Engineer%20or%20System%20Administrator%20or%20Information%20Technology%20Support%20Engineer%20or%20Technical%20Support%20Engineer%2C%20remote%20or%20hybrid&origin=PREFERENCES_LANDING&originToLandingJobPostings=4445359749%2C4445622133%2C4423231546&geoId=101165590%2C103644278%2C104524525%2C104738515", enabled: true },
+  { id: "connections", name: "Connections", category: "network_contact", url: "https://www.linkedin.com/mynetwork/invite-connect/connections/", enabled: false },
+  { id: "feed", name: "Feed", category: "activity", url: "https://www.linkedin.com/feed/", enabled: false },
+  { id: "groups", name: "Groups", category: "activity", url: "https://www.linkedin.com/groups/", enabled: false },
+];
 
 const BOARD_LABELS: Record<RecommendationType, string> = {
   profile_update: "Profile updates",
@@ -76,6 +100,29 @@ function label(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function loadStoredTargets(): CaptureTarget[] {
+  if (typeof window === "undefined") return DEFAULT_CAPTURE_TARGETS;
+  const raw = window.localStorage.getItem(TARGETS_STORAGE_KEY);
+  if (!raw) return DEFAULT_CAPTURE_TARGETS;
+  try {
+    const parsed = JSON.parse(raw) as CaptureTarget[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CAPTURE_TARGETS;
+    return parsed.map((item) => ({
+      id: String(item.id || crypto.randomUUID()),
+      name: String(item.name || "LinkedIn target"),
+      category: CAPTURE_CATEGORIES.includes(item.category) ? item.category : "other",
+      url: String(item.url || ""),
+      enabled: Boolean(item.enabled),
+    }));
+  } catch {
+    return DEFAULT_CAPTURE_TARGETS;
+  }
+}
+
+function captureCommand(target: CaptureTarget) {
+  return `uv --project backend run python .\\tools\\jolt-linkedin-user-present-capture.py --url "${target.url}" --category ${target.category} --title "${target.name}"`;
+}
+
 async function errorFromResponse(response: Response, fallback: string) {
   const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
   return new Error(payload?.detail || fallback);
@@ -88,9 +135,11 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [showCaptureTargets, setShowCaptureTargets] = useState(true);
   const [showCaptureForm, setShowCaptureForm] = useState(false);
   const [showRecommendationForm, setShowRecommendationForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
+  const [captureTargets, setCaptureTargets] = useState<CaptureTarget[]>(loadStoredTargets);
   const [category, setCategory] = useState<CaptureCategory>("profile");
   const [captureTitle, setCaptureTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -104,6 +153,10 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   const [proposedText, setProposedText] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [importText, setImportText] = useState("");
+
+  useEffect(() => {
+    window.localStorage.setItem(TARGETS_STORAGE_KEY, JSON.stringify(captureTargets));
+  }, [captureTargets]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,6 +188,35 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     for (const item of data?.recommendations ?? []) groups.get(item.recommendation_type)?.push(item);
     return [...groups.entries()].filter(([, items]) => items.length > 0);
   }, [data]);
+
+  function updateTarget(id: string, patch: Partial<CaptureTarget>) {
+    setCaptureTargets((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addTarget() {
+    setCaptureTargets((items) => [
+      ...items,
+      { id: crypto.randomUUID(), name: "New LinkedIn target", category: "other", url: "", enabled: true },
+    ]);
+  }
+
+  function resetTargets() {
+    setCaptureTargets(DEFAULT_CAPTURE_TARGETS);
+    setNotice("LinkedIn capture targets reset to Rafael's defaults.");
+  }
+
+  async function copyCommand(target: CaptureTarget) {
+    await navigator.clipboard.writeText(captureCommand(target));
+    setNotice(`Capture command copied for ${target.name}.`);
+  }
+
+  function useTargetInForm(target: CaptureTarget) {
+    setCategory(target.category);
+    setCaptureTitle(target.name);
+    setSourceUrl(target.url);
+    setShowCaptureForm(true);
+    setNotice(`Capture form prepared for ${target.name}.`);
+  }
 
   async function submitCapture(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -257,6 +339,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
           <button type="button" disabled={!active || loading} onClick={() => void load()} className="secondary">
             {loading ? "Refreshing…" : loaded ? "Refresh" : "Load"}
           </button>
+          <button type="button" onClick={() => setShowCaptureTargets((value) => !value)} disabled={busy}>Capture targets</button>
           <button type="button" onClick={() => setShowCaptureForm((value) => !value)} disabled={busy}>Capture LinkedIn</button>
           <button type="button" className="secondary" onClick={() => setShowRecommendationForm((value) => !value)} disabled={busy}>Add recommendation</button>
           <button type="button" className="secondary" onClick={() => setShowImportForm((value) => !value)} disabled={busy}>Import analysis JSON</button>
@@ -282,13 +365,57 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         </>
       )}
 
+      {showCaptureTargets && (
+        <section className="panel manual-intake-panel" aria-labelledby="linkedin-targets-heading">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Editable capture list</p>
+              <h3 id="linkedin-targets-heading">LinkedIn capture targets</h3>
+              <p>Edit these URLs before capturing. They are stored locally in this browser, not in the database.</p>
+            </div>
+            <div className="professional-source-editor-actions">
+              <button type="button" className="secondary" onClick={addTarget}>Add target</button>
+              <button type="button" className="secondary" onClick={resetTargets}>Reset defaults</button>
+            </div>
+          </div>
+          <div className="capture-history-list">
+            {captureTargets.map((target) => (
+              <article key={target.id}>
+                <div>
+                  <label>Enabled
+                    <input type="checkbox" checked={target.enabled} onChange={(event) => updateTarget(target.id, { enabled: event.target.checked })} />
+                  </label>
+                  <label>Name
+                    <input value={target.name} onChange={(event) => updateTarget(target.id, { name: event.target.value })} />
+                  </label>
+                  <label>Category
+                    <select value={target.category} onChange={(event) => updateTarget(target.id, { category: event.target.value as CaptureCategory })}>
+                      {CAPTURE_CATEGORIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}
+                    </select>
+                  </label>
+                  <label>URL
+                    <input value={target.url} onChange={(event) => updateTarget(target.id, { url: event.target.value })} />
+                  </label>
+                  <pre className="evidence-json">{captureCommand(target)}</pre>
+                </div>
+                <div className="professional-source-editor-actions">
+                  <button type="button" className="secondary" disabled={!target.enabled || !target.url.trim()} onClick={() => void copyCommand(target)}>Copy command</button>
+                  <button type="button" disabled={!target.url.trim()} onClick={() => useTargetInForm(target)}>Use in manual form</button>
+                  <button type="button" className="secondary" onClick={() => setCaptureTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {showCaptureForm && (
         <section className="panel manual-intake-panel" aria-labelledby="linkedin-capture-form-heading">
           <div className="section-heading">
             <div>
               <p className="eyebrow">User-approved evidence</p>
               <h3 id="linkedin-capture-form-heading">Capture LinkedIn snapshot</h3>
-              <p>Paste visible text from a LinkedIn page you opened yourself. Playwright screenshot capture can be added after this data workflow is proven.</p>
+              <p>Paste visible text from a LinkedIn page you opened yourself, or use a capture target command for screenshot capture.</p>
             </div>
             <button type="button" className="secondary" onClick={() => setShowCaptureForm(false)}>Close</button>
           </div>
