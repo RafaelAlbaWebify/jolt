@@ -5,6 +5,7 @@ from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
+from jolt.linkedin_command_center import LinkedInCaptureRequest, create_linkedin_capture
 from jolt.main import create_app
 
 
@@ -49,6 +50,42 @@ def test_linkedin_command_center_tracks_capture_changes(tmp_path: Path) -> None:
     payload = dashboard.json()
     assert payload["capture_count"] == 2
     assert payload["categories"] == {"profile": 2}
+
+
+def test_linkedin_command_center_playwright_endpoint_saves_capture(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import jolt.main as main_module
+
+    def fake_playwright_capture(session, request):
+        return create_linkedin_capture(
+            session,
+            LinkedInCaptureRequest(
+                category=request.category,
+                title=request.title,
+                source_url=request.url,
+                visible_text="Captured with visible JOLT Playwright browser.",
+                notes="Screenshot: C:/Users/ralba/Downloads/JOLT_LINKEDIN_CAPTURES/profile.png",
+            ),
+        )
+
+    monkeypatch.setattr(main_module, "run_linkedin_playwright_capture", fake_playwright_capture)
+    client = _client(tmp_path)
+
+    captured = client.post(
+        "/api/linkedin-command-center/captures/playwright",
+        json={
+            "category": "profile",
+            "title": "Profile",
+            "url": "https://www.linkedin.com/in/rafael-alba-tech/",
+        },
+    )
+
+    assert captured.status_code == 200
+    payload = captured.json()
+    assert payload["title"] == "Profile"
+    assert payload["source_url"] == "https://www.linkedin.com/in/rafael-alba-tech/"
+    assert "JOLT Playwright" in payload["visible_text"]
 
 
 def test_linkedin_command_center_recommendations_and_export(tmp_path: Path) -> None:
