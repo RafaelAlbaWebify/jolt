@@ -54,7 +54,7 @@ const LANES: LaneDefinition[] = [
   { id: "applied", label: "Applied", description: "Submitted and awaiting employer contact." },
   { id: "interviewing", label: "Interviewing", description: "Recruiter, technical, and hiring stages." },
   { id: "offer", label: "Offer", description: "Review and record the final offer decision." },
-  { id: "closed", label: "Closed / archived", description: "Completed, rejected, withdrawn, archived, or no response." },
+  { id: "closed", label: "Closed", description: "Completed, rejected, withdrawn, or no response." },
 ];
 
 const TABS: Array<{ id: WorkspaceTab; label: string }> = [
@@ -72,7 +72,7 @@ const INTERVIEW_STATUSES = new Set<string>([
   "hiring_manager_interview",
   "final_interview",
 ]);
-const CLOSED_STATUSES = new Set<string>(["rejected", "withdrawn", "no_response", "closed", "archived"]);
+const CLOSED_STATUSES = new Set<string>(["rejected", "withdrawn", "no_response", "closed"]);
 const OUTCOME_CODES = [
   "rejected_by_employer",
   "withdrawn_by_user",
@@ -98,6 +98,7 @@ function formatEventNotes(notes: string) {
 }
 
 function laneFor(item: Opportunity): PipelineLane {
+  if (item.application_status === "archived") return "closed";
   if (item.outcome_type || (item.application_status && CLOSED_STATUSES.has(item.application_status))) return "closed";
   if (!item.application_id || !item.application_status || item.application_status === "preparing") return "preparing";
   if (item.application_status === "offer") return "offer";
@@ -253,10 +254,6 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
 
   const candidates = useMemo(
     () => opportunities.filter((item) => item.review_decision === "pursue" || Boolean(item.application_id)),
-    [opportunities],
-  );
-  const archivedCount = useMemo(
-    () => opportunities.filter((item) => item.application_status === "archived").length,
     [opportunities],
   );
   const visibleCandidates = useMemo(() => {
@@ -426,8 +423,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       <div className="section-heading application-workspace-heading">
         <div>
           <p className="eyebrow">Application pipeline</p>
-          <h2 id="application-dashboard-heading">Applications</h2>
-          <p>Move from preparation to applied, interviews, offer, and closure without losing history.</p>
+          <h2 id="application-dashboard-heading">Application Pipeline</h2>
+          <p>Track active applications from preparation through closure without losing history.</p>
         </div>
         <button
           type="button"
@@ -454,9 +451,9 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
-          Show archived cards{showArchived ? ` (${archivedCount})` : ""}
+          Show archived cards
         </label>
-        <p className="application-boundary">Move cards forward or backward to correct the pipeline. Archive removes a card from the active board while preserving history.</p>
+        <p className="application-boundary">Closed means the process ended. Archived means hidden from the active board but restorable from this view.</p>
       </div>
       {error && (
         <p className="error" role="alert">
@@ -509,8 +506,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 grouped[lane.id].map((opportunity) => (
                   <article
                     className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}${
-                      draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""
-                    }`}
+                      opportunity.application_status === "archived" ? " application-card-archived" : ""
+                    }${draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""}`}
                     key={opportunityIdentity(opportunity)}
                     data-application-id={opportunity.application_id ?? undefined}
                     data-posting-id={opportunity.posting_id}
@@ -561,9 +558,9 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                     </button>
                     <div className="application-card-move">
                       <label>
-                        <span>Move to lane</span>
+                        <span>Move stage</span>
                         <select
-                          aria-label={`Move ${opportunity.title || "untitled opportunity"} to lane`}
+                          aria-label={`Move ${opportunity.title || "untitled opportunity"} to stage`}
                           value={laneFor(opportunity)}
                           disabled={availableTargetLanes(opportunity).length <= 1 || busy}
                           onChange={(event) => void moveApplication(opportunity, event.target.value as PipelineLane)}
@@ -586,18 +583,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         </a>
                       )}
                       <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>
-                        Preparation pack
+                        Download prep pack
                       </a>
-                      {opportunity.application_id && opportunity.application_status === "archived" && (
-                        <button
-                          type="button"
-                          className="secondary application-card-restore"
-                          disabled={busy}
-                          onClick={() => void restoreCard(opportunity)}
-                        >
-                          Restore card
-                        </button>
-                      )}
                       {opportunity.application_id && opportunity.application_status !== "archived" && (
                         <button
                           type="button"
@@ -606,6 +593,16 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                           onClick={() => void archiveCard(opportunity)}
                         >
                           Archive card
+                        </button>
+                      )}
+                      {opportunity.application_id && opportunity.application_status === "archived" && (
+                        <button
+                          type="button"
+                          className="secondary application-card-archive"
+                          disabled={busy}
+                          onClick={() => void restoreCard(opportunity)}
+                        >
+                          Restore card
                         </button>
                       )}
                     </div>

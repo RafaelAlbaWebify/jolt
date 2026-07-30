@@ -129,7 +129,7 @@ describe("ApplicationDashboard", () => {
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByRole("heading", { name: "Applications" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Application Pipeline" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Preparing" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Applied" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Interviewing" })).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("ApplicationDashboard", () => {
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    const moveControl = await screen.findByLabelText("Move Application Support Engineer to lane");
+    const moveControl = await screen.findByLabelText("Move Application Support Engineer to stage");
     fireEvent.change(moveControl, { target: { value: "interviewing" } });
 
     await waitFor(() =>
@@ -192,7 +192,7 @@ describe("ApplicationDashboard", () => {
     const preparedCard = screen.getByRole("button", { name: "Open Application Support Engineer" }).closest("article");
 
     expect(unpreparedCard).toHaveAttribute("draggable", "false");
-    expect(screen.getByLabelText("Move Cloud Support Engineer to lane")).toBeDisabled();
+    expect(screen.getByLabelText("Move Cloud Support Engineer to stage")).toBeDisabled();
     expect(preparedCard).toHaveAttribute("draggable", "true");
   });
 
@@ -210,7 +210,7 @@ describe("ApplicationDashboard", () => {
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    const closedMove = await screen.findByLabelText("Move Support Operations Engineer to lane");
+    const closedMove = await screen.findByLabelText("Move Support Operations Engineer to stage");
     expect(closedMove).not.toBeDisabled();
     expect(Array.from(closedMove.querySelectorAll("option")).map((option) => option.value)).toEqual([
       "closed",
@@ -220,7 +220,7 @@ describe("ApplicationDashboard", () => {
       "offer",
     ]);
 
-    const technicalMove = screen.getByLabelText("Move Production Support Analyst to lane");
+    const technicalMove = screen.getByLabelText("Move Production Support Analyst to stage");
     expect(technicalMove).not.toBeDisabled();
     expect(Array.from(technicalMove.querySelectorAll("option")).map((option) => option.value)).toEqual([
       "preparing",

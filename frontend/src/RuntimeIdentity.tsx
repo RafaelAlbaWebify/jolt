@@ -68,9 +68,15 @@ export function RuntimeIdentityPanel({ apiBase }: Props) {
     void loadIdentity();
   }, [apiBase]);
 
+  const healthySummary = identity
+    ? `${identity.git.branch} · ${shortSha(identity.git.commit_sha)} · ${statusLabel(identity.git.dirty)}`
+    : loading
+      ? "checking runtime"
+      : "runtime details";
+
   return (
-    <details className="runtime-identity-panel" open>
-      <summary>Runtime identity</summary>
+    <details className="runtime-identity-panel">
+      <summary>Developer diagnostics <span>{healthySummary}</span></summary>
       {loading && <p role="status">Checking active JOLT runtime…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {error && (

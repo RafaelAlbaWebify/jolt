@@ -52,9 +52,9 @@ describe("RuntimeIdentityPanel", () => {
 
     render(<RuntimeIdentityPanel apiBase="http://127.0.0.1:8000" />);
 
-    expect(await screen.findByText("Runtime identity")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(/agent\/runtime-identity-baseline/)).toBeInTheDocument());
-    expect(screen.getByText(/1234567890ab/)).toBeInTheDocument();
+    expect(await screen.findByText("Developer diagnostics")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(/agent\/runtime-identity-baseline/).length).toBeGreaterThan(0));
+    expect(screen.getAllByText(/1234567890ab/).length).toBeGreaterThan(0);
     expect(screen.getByText("C:/Users/ralba/Documents/GitHub/jolt/backend/data/jolt.db")).toBeInTheDocument();
     expect(screen.getByText("Alembic 20260728_0017")).toBeInTheDocument();
     expect(screen.getByText(/12 opportunities/)).toBeInTheDocument();

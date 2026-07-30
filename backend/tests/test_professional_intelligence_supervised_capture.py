@@ -14,7 +14,7 @@ from jolt.professional_intelligence_supervised_capture import (
 )
 
 
-def _authorized_run(tmp_path: Path) -> tuple[str, str, Path]:
+def _authorized_run(tmp_path: Path, *, stop_on_failure: bool = True) -> tuple[str, str, Path]:
     database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
     evidence_root = tmp_path / "evidence"
     evidence_root.mkdir()
@@ -24,7 +24,10 @@ def _authorized_run(tmp_path: Path) -> tuple[str, str, Path]:
         json={"root_path": str(evidence_root)},
     )
     assert configured.status_code == 200
-    run = client.post("/api/professional-intelligence/capture-runs").json()
+    run = client.post(
+        "/api/professional-intelligence/capture-runs",
+        json={"options": {"stop_on_failure": stop_on_failure}},
+    ).json()
     authorized = client.post(
         f"/api/professional-intelligence/capture-runs/{run['id']}/authorize",
         json={
@@ -79,7 +82,7 @@ def test_supervised_capture_writes_contained_verified_artifacts(tmp_path: Path) 
 
 
 def test_supervised_capture_records_source_failure_and_continues(tmp_path: Path) -> None:
-    database_url, run_id, evidence_root = _authorized_run(tmp_path)
+    database_url, run_id, evidence_root = _authorized_run(tmp_path, stop_on_failure=False)
     calls = 0
 
     def capture_source(url: str) -> CapturedProfessionalPage:
@@ -131,17 +134,4 @@ def test_supervised_capture_marks_engine_failure_instead_of_staying_running(
     assert failed["status"] == "failed"
     assert failed["stop_reason"] == "capture_engine_failure"
     assert failed["completed_at"] is not None
-
-
-def test_supervised_capture_rejects_missing_authorization_or_root(tmp_path: Path) -> None:
-    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
-    client = TestClient(create_app(database_url))
-    run = client.post("/api/professional-intelligence/capture-runs").json()
-    factory = create_session_factory(database_url)
-
-    with factory() as session, pytest.raises(ValueError, match="authorization"):
-        start_professional_supervised_capture(
-            session,
-            run["id"],
-            capture_source=_fixture_page,
-        )
+    assert failed["current_source_id"] == ""

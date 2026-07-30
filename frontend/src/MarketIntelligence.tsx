@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
@@ -18,7 +18,10 @@ type ScopeData = {
   salary_mentions: SalaryMention[];
   salary_coverage: number;
 };
+type Timeframe = "all" | "last_7_days" | "last_30_days";
+type SourceScope = "all" | "capture_batches" | "manual_intake";
 type MarketData = {
+  filters?: { timeframe: Timeframe; source_scope: SourceScope };
   total_unique_roles: number;
   target_role_count: number;
   outside_target_count: number;
@@ -50,81 +53,99 @@ function Ranking({ title, items, empty }: { title: string; items: Metric[]; empt
   );
 }
 
+function readable(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
   const [scope, setScope] = useState<Scope>("target");
+  const [timeframe, setTimeframe] = useState<Timeframe>("all");
+  const [sourceScope, setSourceScope] = useState<SourceScope>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const requestRef = useRef<AbortController | null>(null);
-  const hasActivatedRef = useRef(false);
 
-  const load = useCallback(async () => {
-    requestRef.current?.abort();
-    const controller = new AbortController();
-    requestRef.current = controller;
+  const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${apiBase}/api/market-intelligence`, { signal: controller.signal });
-      if (!response.ok) throw new Error("Unable to load market intelligence.");
-      const loaded = (await response.json()) as MarketData;
-      if (requestRef.current !== controller) return;
-      setData(loaded);
+      const params = new URLSearchParams({ timeframe, source_scope: sourceScope });
+      const response = await fetch(`${apiBase}/api/market-intelligence?${params.toString()}`, { signal });
+      if (!response.ok) throw new Error("Unable to load market insights.");
+      setData((await response.json()) as MarketData);
       setLastRefreshedAt(new Date().toISOString());
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      if (requestRef.current === controller) {
-        setError(caught instanceof Error ? caught.message : "Market intelligence failed.");
-      }
+      setError(caught instanceof Error ? caught.message : "Market insights failed.");
     } finally {
-      if (requestRef.current === controller) setLoading(false);
+      setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, sourceScope, timeframe]);
 
   useEffect(() => {
-    if (!active || hasActivatedRef.current) return;
-    hasActivatedRef.current = true;
-    void load();
+    if (!active) return undefined;
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [active, load]);
 
-  useEffect(() => () => requestRef.current?.abort(), []);
-
   const selected = data?.[scope] ?? null;
+  const appliedTimeframe = data?.filters?.timeframe ?? timeframe;
+  const appliedSource = data?.filters?.source_scope ?? sourceScope;
 
   return (
     <section className="panel market-workspace" aria-labelledby="market-heading">
       <div className="section-heading market-heading">
         <div>
-          <p className="eyebrow">Market intelligence</p>
-          <h2 id="market-heading">Market</h2>
-          <p>Separate your target market from search noise, then focus applications and study effort.</p>
+          <p className="eyebrow">Market insights</p>
+          <h2 id="market-heading">Market Insights</h2>
+          <p>Learn from active retained records. Archived capture batches are excluded from this view.</p>
           {lastRefreshedAt && <p className="market-refreshed">Last refreshed {new Date(lastRefreshedAt).toLocaleString()}</p>}
         </div>
         <div className="market-heading-actions">
           <button type="button" className="secondary" disabled={!active || loading} onClick={() => void load()}>
-            {loading ? "Refreshing…" : data ? "Refresh market" : "Load market"}
+            {loading ? "Refreshing…" : data ? "Refresh insights" : "Load insights"}
           </button>
           {data && (
             <div className="market-scope" aria-label="Market scope">
-              <button type="button" className={scope === "target" ? "filter-active" : "secondary"} onClick={() => setScope("target")}>Target roles ({data.target_role_count})</button>
-              <button type="button" className={scope === "all" ? "filter-active" : "secondary"} onClick={() => setScope("all")}>All captured ({data.total_unique_roles})</button>
+              <button type="button" className={scope === "target" ? "filter-active" : "secondary"} onClick={() => setScope("target")}>Active target roles ({data.target_role_count})</button>
+              <button type="button" className={scope === "all" ? "filter-active" : "secondary"} onClick={() => setScope("all")}>Active retained records ({data.total_unique_roles})</button>
             </div>
           )}
         </div>
       </div>
 
-      {loading && !data && <p role="status">Loading market intelligence…</p>}
+      <div className="opportunity-query-tools" aria-label="Market filters">
+        <label>
+          <span>Timeframe</span>
+          <select value={timeframe} onChange={(event) => setTimeframe(event.target.value as Timeframe)}>
+            <option value="all">All active records</option>
+            <option value="last_30_days">Last 30 days</option>
+            <option value="last_7_days">Last 7 days</option>
+          </select>
+        </label>
+        <label>
+          <span>Source</span>
+          <select value={sourceScope} onChange={(event) => setSourceScope(event.target.value as SourceScope)}>
+            <option value="all">All sources</option>
+            <option value="capture_batches">Capture batches</option>
+            <option value="manual_intake">Manual intake</option>
+          </select>
+        </label>
+      </div>
+
+      {loading && !data && <p role="status">Loading market insights…</p>}
       {error && (
         <div className="market-load-error">
           <p className="error" role="alert">{error}</p>
-          <button type="button" className="secondary" disabled={loading || !active} onClick={() => void load()}>Retry market load</button>
+          <button type="button" className="secondary" disabled={loading || !active} onClick={() => void load()}>Retry insights load</button>
         </div>
       )}
       {data && selected && (
         <>
           <div className="market-summary">
-            <div><strong>{selected.total_roles}</strong><span>{scope === "target" ? "Target roles" : "Captured roles"}</span></div>
+            <div><strong>{selected.total_roles}</strong><span>{scope === "target" ? "Active target roles" : "Active records"}</span></div>
             <div><strong>{selected.strong_roles}</strong><span>Strong matches</span></div>
             <div><strong>{selected.viable_roles}</strong><span>Strong or viable</span></div>
             <div><strong>{selected.salary_coverage}</strong><span>With salary evidence</span></div>
@@ -133,7 +154,9 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <div className="market-guidance">
             <strong>How to read fit</strong>
             <p>{data.fit_explanation}</p>
-            {scope === "target" && <p><strong>{data.outside_target_count}</strong> captured roles are outside your target path and are excluded from this view.</p>}
+            <p>Archived capture batches are excluded. Reviewed and application records remain included unless the application card itself is archived.</p>
+            <p>Applied filters: {readable(appliedTimeframe)} · {readable(appliedSource)}.</p>
+            {scope === "target" && <p><strong>{data.outside_target_count}</strong> active records are outside your target path and are excluded from this view.</p>}
           </div>
 
           <div className="market-grid">
@@ -149,7 +172,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           </div>
 
           {scope === "target" && (
-            <Ranking title="Outside-target titles to remove from future searches" items={data.outside_title_examples} empty="No outside-target captures were detected." />
+            <Ranking title="Outside-target titles to remove from future searches" items={data.outside_title_examples} empty="No outside-target records were detected." />
           )}
 
           <section className="market-card market-salary">

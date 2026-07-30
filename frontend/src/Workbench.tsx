@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
+import { DataTools } from "./DataTools";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 import { RuntimeIdentityPanel } from "./RuntimeIdentity";
@@ -11,16 +12,23 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 type WorkbenchView = "opportunities" | "applications" | "market" | "professional";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
-  { id: "opportunities", label: "Opportunities", description: "Review, prioritise, and prepare opportunities." },
-  { id: "applications", label: "Applications", description: "Track active applications and outcomes." },
-  { id: "market", label: "Market", description: "Turn captured jobs into role, skill, location, and fit intelligence." },
-  { id: "professional", label: "Professional", description: "Review approved professional sources and supervised evidence boundaries." },
+  { id: "opportunities", label: "Review Inbox", description: "Review newly captured or manually added jobs before they move forward." },
+  { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
+  { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
+  { id: "professional", label: "Sources & Evidence", description: "Configure trusted sources and local evidence storage." },
+];
+
+const WORKFLOW_STEPS = [
+  "Capture / intake",
+  "Review",
+  "Apply / track",
+  "Learn from market",
 ];
 
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("opportunities");
-  const [sidebarToolsTarget, setSidebarToolsTarget] = useState<HTMLDivElement | null>(null);
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
+  const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
     <div className="shell workspace-shell">
@@ -29,8 +37,12 @@ export function Workbench() {
           <div className="hero">
             <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Turn job evidence into an auditable decision, application workflow, and outcome history.</p>
+            <p>Turn job evidence into review decisions, application tracking, and market learning.</p>
           </div>
+
+          <ol className="workspace-flow" aria-label="JOLT workflow order">
+            {WORKFLOW_STEPS.map((step) => <li key={step}>{step}</li>)}
+          </ol>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
             {VIEWS.map((item) => (
@@ -50,17 +62,15 @@ export function Workbench() {
 
         <RuntimeIdentityPanel apiBase={API_BASE} />
 
-        <div
-          className="workspace-sidebar-tools"
-          ref={setSidebarToolsTarget}
-          hidden={activeView !== "opportunities"}
-        />
+        <div className="workspace-sidebar-tools" aria-label="Global data tools">
+          <DataTools apiBase={API_BASE} />
+        </div>
       </aside>
 
       <main className="workspace-content">
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
-            <App sidebarToolsTarget={activeView === "opportunities" ? sidebarToolsTarget : null} />
+            <App sidebarToolsTarget={hiddenReviewInboxToolsTarget} />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />

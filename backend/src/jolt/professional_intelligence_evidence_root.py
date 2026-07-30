@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
@@ -66,24 +67,39 @@ def ensure_default_professional_evidence_root(session: Session) -> ProfessionalE
     if not path.is_dir() or not os.access(path, os.W_OK):
         raise ValueError("JOLT could not provision a writable local evidence directory.")
 
-    settings = ProfessionalEvidenceSettings(
-        id=_SETTINGS_ID,
-        root_path=str(path),
-        verified_at=utc_now(),
-    )
-    session.add(settings)
-    try:
-        session.commit()
-    except IntegrityError:
-        # Evidence root and execution-readiness are loaded concurrently by the UI.
-        # Another request may have inserted the singleton row after this session's
-        # initial read. Recover by rolling back and reading the committed winner.
-        session.rollback()
-        existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
-        if existing is None:
-            raise
-        return existing
-    return settings
+    last_operational_error: OperationalError | None = None
+    for attempt in range(5):
+        settings = ProfessionalEvidenceSettings(
+            id=_SETTINGS_ID,
+            root_path=str(path),
+            verified_at=utc_now(),
+        )
+        session.add(settings)
+        try:
+            session.commit()
+            return settings
+        except IntegrityError:
+            # Evidence root and execution-readiness are loaded concurrently by the UI.
+            # Another request may have inserted the singleton row after this session's
+            # initial read. Recover by rolling back and reading the committed winner.
+            session.rollback()
+            existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
+            if existing is None:
+                raise
+            return existing
+        except OperationalError as exc:
+            # On Windows/SQLite two concurrent TestClient requests can briefly collide
+            # on the singleton insert before SQLite reports the committed winner. Wait
+            # a moment, then re-read before retrying the insert.
+            session.rollback()
+            last_operational_error = exc
+            time.sleep(0.05 * (attempt + 1))
+            existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
+            if existing is not None:
+                return existing
+    if last_operational_error is not None:
+        raise last_operational_error
+    raise ValueError("JOLT could not provision the local evidence directory.")
 
 
 def get_professional_evidence_root(session: Session) -> ProfessionalEvidenceRootResponse:

@@ -11,7 +11,6 @@ import { OpportunityApplicationHandoff } from "./OpportunityApplicationHandoff";
 import { ReadinessHistory } from "./ReadinessHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
-type QueueFilter = "all" | "pending";
 type SortOption = "score_desc" | "score_asc" | "title_asc" | "company_asc";
 
 type OpportunityIndex = {
@@ -64,6 +63,20 @@ const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject",
 
 function decisionLabel(value: ReviewChoice | null) {
   return value ? value.replaceAll("_", " ") : "Pending review";
+}
+
+function reviewNotice(decision: ReviewChoice, title: string) {
+  const name = title || "Opportunity";
+  if (decision === "pursue") return `${name} moved out of the review inbox and is available in Application Pipeline.`;
+  if (decision === "needs_more_information") return `${name} marked as needing more information and removed from the pending inbox.`;
+  if (decision === "defer") return `${name} deferred and removed from the pending inbox.`;
+  if (decision === "reject") return `${name} rejected and removed from the pending inbox.`;
+  return `${name} reviewed and removed from the pending inbox.`;
+}
+
+async function errorFromResponse(response: Response, fallback: string) {
+  const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+  return new Error(payload?.detail || fallback);
 }
 
 function Sources({ postingId }: { postingId: string }) {
@@ -135,7 +148,8 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const [opportunities, setOpportunities] = useState<OpportunityIndex[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
+  const [recalculating, setRecalculating] = useState(false);
+  const [showManualIntake, setShowManualIntake] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("score_desc");
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
@@ -144,29 +158,45 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [workflowNotice, setWorkflowNotice] = useState("");
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const detailRequestRef = useRef<AbortController | null>(null);
 
-  const refreshOpportunities = useCallback(async (recalculate = false) => {
+  const loadOpportunityIndex = useCallback(async () => {
+    const response = await fetch(`${API_BASE}/api/opportunity-index`);
+    if (!response.ok) throw await errorFromResponse(response, "Unable to load opportunities.");
+    setOpportunities((await response.json()) as OpportunityIndex[]);
+    setHasLoaded(true);
+  }, []);
+
+  const refreshOpportunities = useCallback(async () => {
     setRefreshing(true);
     setError("");
     try {
-      if (recalculate) {
-        const refreshResponse = await fetch(`${API_BASE}/api/evaluations/refresh`, { method: "POST" });
-        if (!refreshResponse.ok) throw new Error("Unable to refresh opportunity evaluations.");
-      }
-      const response = await fetch(`${API_BASE}/api/opportunity-index`);
-      if (!response.ok) throw new Error("Unable to load opportunities.");
-      setOpportunities((await response.json()) as OpportunityIndex[]);
-      setHasLoaded(true);
+      await loadOpportunityIndex();
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to load opportunities.";
-      setError(message);
+      setError(caught instanceof Error ? caught.message : "Unable to load opportunities.");
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [loadOpportunityIndex]);
+
+  const recalculateScores = useCallback(async () => {
+    setRecalculating(true);
+    setError("");
+    setWorkflowNotice("");
+    try {
+      const refreshResponse = await fetch(`${API_BASE}/api/evaluations/refresh`, { method: "POST" });
+      if (!refreshResponse.ok) throw await errorFromResponse(refreshResponse, "Unable to recalculate opportunity scores.");
+      await loadOpportunityIndex();
+      setWorkflowNotice("Scores recalculated and review inbox refreshed.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to recalculate opportunity scores.");
+    } finally {
+      setRecalculating(false);
+    }
+  }, [loadOpportunityIndex]);
 
   const loadDetail = useCallback(async (postingId: string) => {
     detailRequestRef.current?.abort();
@@ -177,7 +207,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     setError("");
     try {
       const response = await fetch(`${API_BASE}/api/opportunity-detail/${postingId}`, { signal: controller.signal });
-      if (!response.ok) throw new Error("Unable to load opportunity details.");
+      if (!response.ok) throw await errorFromResponse(response, "Unable to load opportunity details.");
       const detail = (await response.json()) as OpportunityDetail;
       if (detailRequestRef.current === controller) setSelectedDetail(detail);
     } catch (caught) {
@@ -219,7 +249,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
     const filtered = opportunities.filter((opportunity) => {
-      if (queueFilter === "pending" && opportunity.review_decision) return false;
       if (!normalizedQuery) return true;
       return [opportunity.title, opportunity.company, opportunity.location]
         .join(" ")
@@ -232,15 +261,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
       if (sortOption === "company_asc") return left.company.localeCompare(right.company);
       return right.ranking_score - left.ranking_score;
     });
-  }, [opportunities, queueFilter, searchQuery, sortOption]);
-
-  const counts = useMemo(
-    () => ({
-      all: opportunities.length,
-      pending: opportunities.filter((item) => !item.review_decision).length,
-    }),
-    [opportunities],
-  );
+  }, [opportunities, searchQuery, sortOption]);
 
   const pageCount = Math.max(1, Math.ceil(visibleOpportunities.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -260,32 +281,49 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("The workflow change could not be saved.");
+      if (!response.ok) throw await errorFromResponse(response, "The workflow change could not be saved.");
       await refreshSelected();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected workflow error.");
+      throw caught;
     } finally {
       setBusy(false);
     }
   }
 
-  async function reviewOpportunity(postingId: string, evaluationId: string, decision: ReviewChoice) {
-    await apiAction(`/api/opportunities/${postingId}/reviews`, { evaluation_id: evaluationId, decision });
+  async function reviewOpportunity(opportunity: OpportunityIndex, decision: ReviewChoice) {
+    setWorkflowNotice("");
+    try {
+      await apiAction(`/api/opportunities/${opportunity.posting_id}/reviews`, {
+        evaluation_id: opportunity.evaluation_id,
+        decision,
+      });
+      setSelectedOpportunityId(null);
+      setWorkflowNotice(reviewNotice(decision, opportunity.title));
+    } catch {
+      // apiAction already surfaces the error.
+    }
   }
 
   async function submitIntake(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setWorkflowNotice("");
     try {
       const response = await fetch(`${API_BASE}/api/intake/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source_url: sourceUrl, raw_text: rawText }),
       });
-      if (!response.ok) throw new Error("The opportunity could not be processed.");
-      setIntake((await response.json()) as IntakeResult);
+      if (!response.ok) throw await errorFromResponse(response, "The opportunity could not be processed.");
+      const loaded = (await response.json()) as IntakeResult;
+      setIntake(loaded);
+      setRawText("");
+      setSourceUrl("");
+      setShowManualIntake(false);
       await refreshOpportunities();
+      setWorkflowNotice(`${loaded.title || "Opportunity"} added to the review inbox.`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected intake error.");
     } finally {
@@ -293,14 +331,43 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     }
   }
 
-  function changeFilter(filter: QueueFilter) {
-    setQueueFilter(filter);
-    setPage(1);
-  }
+  const manualIntakeForm = (
+    <section className="panel manual-intake-panel" aria-labelledby="manual-intake-heading">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Manual intake</p>
+          <h2 id="manual-intake-heading">Add job manually</h2>
+          <p>Paste a job description when you do not have a capture batch yet.</p>
+        </div>
+        <button type="button" className="secondary" onClick={() => setShowManualIntake(false)}>
+          Close
+        </button>
+      </div>
+      <form onSubmit={submitIntake}>
+        <label>
+          Source URL <span>(optional)</span>
+          <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" />
+        </label>
+        <label>
+          Job text
+          <textarea
+            value={rawText}
+            onChange={(event) => setRawText(event.target.value)}
+            required
+            rows={8}
+            placeholder={"Job title\nCompany\nLocation\nFull description..."}
+          />
+        </label>
+        <button disabled={busy || !rawText.trim()} type="submit">
+          {busy ? "Processing…" : "Evaluate and add to inbox"}
+        </button>
+      </form>
+    </section>
+  );
 
   const operationsTools = (
     <details className="panel operations-tools workspace-sidebar-operations">
-      <summary>Intake, captures, and exports</summary>
+      <summary>Data tools: capture batches and exports</summary>
       <div className="operations-grid">
         <section aria-labelledby="export-heading">
           <h2 id="export-heading">Analysis and feedback</h2>
@@ -308,28 +375,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
             Download analysis pack
           </a>
-        </section>
-        <section aria-labelledby="intake-heading">
-          <h2 id="intake-heading">Manual opportunity intake</h2>
-          <form onSubmit={submitIntake}>
-            <label>
-              Source URL <span>(optional)</span>
-              <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" />
-            </label>
-            <label>
-              Job text
-              <textarea
-                value={rawText}
-                onChange={(event) => setRawText(event.target.value)}
-                required
-                rows={5}
-                placeholder={"Job title\nCompany\nLocation\nFull description..."}
-              />
-            </label>
-            <button disabled={busy || !rawText.trim()} type="submit">
-              {busy ? "Processing…" : "Evaluate opportunity"}
-            </button>
-          </form>
         </section>
       </div>
       <CaptureHistory apiBase={API_BASE} onError={setError} />
@@ -344,6 +389,11 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           {error}
         </p>
       )}
+      {workflowNotice && (
+        <p className="application-move-notice" role="status">
+          {workflowNotice}
+        </p>
+      )}
       {intake && (
         <section className="panel result">
           <div>
@@ -355,37 +405,42 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           </div>
         </section>
       )}
+      {showManualIntake && manualIntakeForm}
       <section className="panel opportunity-workspace" aria-labelledby="queue-heading">
         <div className="section-heading opportunity-toolbar">
           <div>
-            <p className="eyebrow">Opportunity review workbench</p>
-            <h2 id="queue-heading">Opportunities</h2>
-            <p>Review newly captured opportunities before they move into the application pipeline.</p>
+            <p className="eyebrow">Pending review inbox</p>
+            <h2 id="queue-heading">Review Inbox</h2>
+            <p>Review newly captured or manually added jobs. A decision removes the item from this inbox.</p>
           </div>
-          <button
-            type="button"
-            className="secondary"
-            disabled={refreshing}
-            onClick={() => void refreshOpportunities(true)}
-          >
-            {refreshing ? "Refreshing…" : "Refresh queue"}
-          </button>
-        </div>
-        <div className="queue-filters" aria-label="Filter opportunities">
-          {(["all", "pending"] as QueueFilter[]).map((filter) => (
+          <div className="professional-source-editor-actions">
+            <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
+              Add job manually
+            </button>
             <button
               type="button"
-              className={queueFilter === filter ? "filter-active" : "secondary"}
-              onClick={() => changeFilter(filter)}
-              key={filter}
+              className="secondary"
+              disabled={refreshing || recalculating}
+              onClick={() => void refreshOpportunities()}
             >
-              {filter === "all" ? "review inbox" : filter} ({counts[filter]})
+              {refreshing ? "Refreshing…" : "Refresh list"}
             </button>
-          ))}
+            <button
+              type="button"
+              className="secondary"
+              disabled={refreshing || recalculating}
+              onClick={() => void recalculateScores()}
+            >
+              {recalculating ? "Recalculating…" : "Recalculate scores"}
+            </button>
+          </div>
+        </div>
+        <div className="queue-summary">
+          <strong>{opportunities.length}</strong> pending review items
         </div>
         <div className="opportunity-query-tools">
           <label>
-            <span>Search opportunities</span>
+            <span>Search inbox</span>
             <input
               type="search"
               value={searchQuery}
@@ -416,12 +471,12 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           <span>
             {hasLoaded
               ? `Showing ${pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of ${visibleOpportunities.length}`
-              : "Loading opportunities…"}
+              : "Loading review inbox…"}
           </span>
           <span>{hasLoaded ? `Page ${currentPage} of ${pageCount}` : ""}</span>
         </div>
         {hasLoaded && visibleOpportunities.length === 0 ? (
-          <p className="empty-queue">No opportunities match this view.</p>
+          <p className="empty-queue">No pending review items match this view.</p>
         ) : (
           <div className="opportunity-list">
             {pagedOpportunities.map((opportunity) => (
@@ -452,7 +507,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
                       onChange={(event) => {
                         const decision = event.target.value as ReviewChoice;
                         if (decision) {
-                          void reviewOpportunity(opportunity.posting_id, opportunity.evaluation_id, decision);
+                          void reviewOpportunity(opportunity, decision);
                         }
                       }}
                     >
@@ -546,7 +601,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
                       onChange={(event) => {
                         const decision = event.target.value as ReviewChoice;
                         if (decision) {
-                          void reviewOpportunity(selectedDetail.posting_id, selectedDetail.evaluation_id, decision);
+                          void reviewOpportunity(selectedDetail, decision);
                         }
                       }}
                     >
@@ -564,7 +619,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
                     </a>
                   )}
                   <a href={`${API_BASE}/api/opportunities/${selectedDetail.posting_id}/preparation-pack`} download>
-                    Preparation pack
+                    Download prep pack
                   </a>
                 </div>
                 <div className="opportunity-detail-grid compact-detail-grid">
