@@ -97,3 +97,43 @@ def test_linkedin_command_center_recommendations_and_export(tmp_path: Path) -> N
         dataset = archive.read("data/linkedin_command_center.json").decode("utf-8")
         assert "Publish support troubleshooting post" in dataset
         assert "Do not automate LinkedIn actions" in dataset
+        assert "/api/linkedin-command-center/recommendations/import" in dataset
+
+
+def test_linkedin_command_center_imports_chatgpt_recommendations(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    imported = client.post(
+        "/api/linkedin-command-center/recommendations/import",
+        json={
+            "source": "chatgpt_package",
+            "recommendations": [
+                {
+                    "recommendation_type": "profile_update",
+                    "target_area": "headline",
+                    "title": "Clarify Application Support positioning",
+                    "rationale": "The captured profile does not make the target role obvious.",
+                    "proposed_action": "Rewrite the headline manually in LinkedIn.",
+                    "proposed_text": "Application Support Engineer | IT Operations | SQL, Windows, M365",
+                    "priority": "high",
+                },
+                {
+                    "recommendation_type": "network_decision",
+                    "target_area": "target recruiters",
+                    "title": "Prioritize relevant recruiters",
+                    "rationale": "Focus on recruiters hiring for support roles rather than noisy contacts.",
+                    "proposed_action": "Review and manually connect with selected recruiters.",
+                    "priority": "medium",
+                },
+            ],
+        },
+    )
+    assert imported.status_code == 200
+    payload = imported.json()
+    assert payload["imported_count"] == 2
+
+    dashboard = client.get("/api/linkedin-command-center").json()
+    assert dashboard["recommendation_count"] == 2
+    assert dashboard["recommendation_types"]["profile_update"] == 1
+    assert dashboard["recommendation_types"]["network_decision"] == 1
+    assert {item["status"] for item in dashboard["recommendations"]} == {"pending"}
