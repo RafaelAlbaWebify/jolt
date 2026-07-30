@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
@@ -28,6 +28,7 @@ const WORKFLOW_STEPS = [
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("opportunities");
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
+  const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
     <div className="shell workspace-shell">
@@ -62,14 +63,14 @@ export function Workbench() {
         <RuntimeIdentityPanel apiBase={API_BASE} />
 
         <div className="workspace-sidebar-tools" aria-label="Global data tools">
-          {activeView !== "opportunities" && <DataTools apiBase={API_BASE} />}
+          <DataTools apiBase={API_BASE} />
         </div>
       </aside>
 
       <main className="workspace-content">
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
-            <App />
+            <App sidebarToolsTarget={hiddenReviewInboxToolsTarget} />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
