@@ -146,7 +146,7 @@ describe("LinkedInCommandCenter", () => {
     expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Import analysis" }));
-    fireEvent.change(screen.getByLabelText("Recommendations JSON"), {
+    fireEvent.change(screen.getByLabelText("Recommendations JSON fallback"), {
       target: {
         value: JSON.stringify({
           source: "chatgpt_package",
@@ -161,7 +161,7 @@ describe("LinkedInCommandCenter", () => {
         }),
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Import recommendations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import pasted JSON" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/linkedin-command-center/recommendations/import",
