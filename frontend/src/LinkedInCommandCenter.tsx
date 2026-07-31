@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 
 type CaptureCategory = "profile" | "public_profile" | "analytics" | "activity" | "network_contact" | "network_request" | "target_company" | "target_recruiter" | "job_search" | "other";
 type RecommendationType = "profile_update" | "network_decision" | "content_action" | "outreach" | "lead_research" | "cleanup";
@@ -87,6 +87,8 @@ const BOARD_LABELS: Record<RecommendationType, string> = {
 };
 
 function label(value: string) { return value.replaceAll("_", " "); }
+function readU16(data: DataView, offset: number) { return data.getUint16(offset, true); }
+function readU32(data: DataView, offset: number) { return data.getUint32(offset, true); }
 
 function loadStoredTargets(): CaptureTarget[] {
   if (typeof window === "undefined") return DEFAULT_CAPTURE_TARGETS;
@@ -115,6 +117,54 @@ async function errorFromResponse(response: Response, fallback: string) {
 
 function targetPayload(target: CaptureTarget) {
   return { category: target.category, title: target.name, url: target.url, wait_seconds: 4, full_page_screenshot: false };
+}
+
+async function inflateRaw(bytes: Uint8Array): Promise<Uint8Array> {
+  if (!("DecompressionStream" in globalThis)) {
+    throw new Error("This browser cannot extract ZIP files directly. Use the JSON paste fallback.");
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function extractLinkedInRecommendationsJson(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let eocd = -1;
+  for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 66000); offset -= 1) {
+    if (readU32(view, offset) === 0x06054b50) { eocd = offset; break; }
+  }
+  if (eocd < 0) throw new Error("This does not look like a ZIP file.");
+
+  const entryCount = readU16(view, eocd + 10);
+  let directoryOffset = readU32(view, eocd + 16);
+  const decoder = new TextDecoder();
+
+  for (let entry = 0; entry < entryCount; entry += 1) {
+    if (readU32(view, directoryOffset) !== 0x02014b50) break;
+    const compression = readU16(view, directoryOffset + 10);
+    const compressedSize = readU32(view, directoryOffset + 20);
+    const nameLength = readU16(view, directoryOffset + 28);
+    const extraLength = readU16(view, directoryOffset + 30);
+    const commentLength = readU16(view, directoryOffset + 32);
+    const localHeaderOffset = readU32(view, directoryOffset + 42);
+    const name = decoder.decode(bytes.slice(directoryOffset + 46, directoryOffset + 46 + nameLength));
+
+    if (name === "linkedin_recommendations.json" || name.endsWith("/linkedin_recommendations.json")) {
+      if (readU32(view, localHeaderOffset) !== 0x04034b50) throw new Error("ZIP local file header is invalid.");
+      const localNameLength = readU16(view, localHeaderOffset + 26);
+      const localExtraLength = readU16(view, localHeaderOffset + 28);
+      const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+      const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+      const extracted = compression === 0 ? compressed : compression === 8 ? await inflateRaw(compressed) : null;
+      if (!extracted) throw new Error("ZIP compression method is not supported.");
+      return decoder.decode(extracted);
+    }
+    directoryOffset += 46 + nameLength + extraLength + commentLength;
+  }
+
+  throw new Error("The ZIP does not contain linkedin_recommendations.json.");
 }
 
 export function LinkedInCommandCenter({ apiBase, active }: Props) {
@@ -218,16 +268,30 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn recommendation failed."); } finally { setBusy(false); }
   }
 
+  async function importRecommendationPayload(payload: unknown) {
+    const normalized = Array.isArray(payload) ? { source: "chatgpt_package", recommendations: payload } : payload;
+    const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/import`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(normalized) });
+    if (!response.ok) throw await errorFromResponse(response, "Unable to import LinkedIn recommendations.");
+    return (await response.json()) as { imported_count: number };
+  }
+
   async function submitImport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      const parsed = JSON.parse(importText) as unknown;
-      const payload = Array.isArray(parsed) ? { source: "chatgpt_package", recommendations: parsed } : parsed;
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/import`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to import LinkedIn recommendations.");
-      const imported = (await response.json()) as { imported_count: number };
+      const imported = await importRecommendationPayload(JSON.parse(importText));
       setImportText(""); setShowImportForm(false); setNotice(`${imported.imported_count} LinkedIn recommendations imported.`); await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn recommendation import failed."); } finally { setBusy(false); }
+  }
+
+  async function importZipFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true); setError(""); setNotice(`Importing ${file.name}...`);
+    try {
+      const jsonText = await extractLinkedInRecommendationsJson(file);
+      const imported = await importRecommendationPayload(JSON.parse(jsonText));
+      setImportText(""); setShowImportForm(false); setNotice(`${imported.imported_count} LinkedIn recommendations imported from ${file.name}.`); await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn ZIP import failed."); } finally { event.target.value = ""; setBusy(false); }
   }
 
   async function updateStatus(item: LinkedInRecommendation, status: RecommendationStatus) {
@@ -244,7 +308,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     <section className="panel linkedin-command-center" aria-labelledby="linkedin-command-heading">
       <div className="section-heading">
         <div><p className="eyebrow">LinkedIn presence and networking</p><h2 id="linkedin-command-heading">LinkedIn Command Center</h2><p>Configure LinkedIn sections once, then let JOLT open a visible Playwright browser and capture approved evidence. JOLT never sends LinkedIn actions for you.</p></div>
-        <div className="professional-source-editor-actions"><button type="button" disabled={!active || loading} onClick={() => void load()} className="secondary">{loading ? "Refreshing…" : loaded ? "Refresh" : "Load"}</button><button type="button" onClick={() => setShowCaptureTargets((value) => !value)} disabled={busy}>Capture targets</button><button type="button" className="secondary" onClick={() => setShowManualCaptureForm((value) => !value)} disabled={busy}>Manual evidence</button><button type="button" className="secondary" onClick={() => setShowRecommendationForm((value) => !value)} disabled={busy}>Add recommendation</button><button type="button" className="secondary" onClick={() => setShowImportForm((value) => !value)} disabled={busy}>Import analysis JSON</button><a href={`${apiBase}/api/linkedin-command-center/export`} download="JOLT_LINKEDIN_COMMAND_CENTER.zip">Export package</a></div>
+        <div className="professional-source-editor-actions"><button type="button" disabled={!active || loading} onClick={() => void load()} className="secondary">{loading ? "Refreshing…" : loaded ? "Refresh" : "Load"}</button><button type="button" onClick={() => setShowCaptureTargets((value) => !value)} disabled={busy}>Capture targets</button><button type="button" className="secondary" onClick={() => setShowManualCaptureForm((value) => !value)} disabled={busy}>Manual evidence</button><button type="button" className="secondary" onClick={() => setShowRecommendationForm((value) => !value)} disabled={busy}>Add recommendation</button><button type="button" className="secondary" onClick={() => setShowImportForm((value) => !value)} disabled={busy}>Import analysis</button><a href={`${apiBase}/api/linkedin-command-center/export`} download="JOLT_LINKEDIN_COMMAND_CENTER.zip">Export package</a></div>
       </div>
       {error && <p className="error" role="alert">{error}</p>}{notice && <p className="application-move-notice" role="status">{notice}</p>}{loading && !data && <p role="status">Loading LinkedIn Command Center…</p>}
       {data && <><div className="market-summary"><div><strong>{data.capture_count}</strong><span>Evidence snapshots</span></div><div><strong>{data.recommendation_count}</strong><span>Recommendations</span></div><div><strong>{data.open_recommendation_count}</strong><span>Open actions</span></div><div><strong>{categorySummary.length}</strong><span>Capture categories</span></div></div>{categorySummary.length > 0 && <p className="confidence">Captured categories: {categorySummary.map(([name, count]) => `${label(name)} (${count})`).join(" · ")}</p>}</>}
@@ -255,7 +319,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
 
       {showRecommendationForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-recommendation-form-heading"><div className="section-heading"><div><p className="eyebrow">Manual / imported action</p><h3 id="linkedin-recommendation-form-heading">Add LinkedIn recommendation</h3><p>Track profile updates, contact decisions, content actions, outreach, and cleanup ideas.</p></div><button type="button" className="secondary" onClick={() => setShowRecommendationForm(false)}>Close</button></div><form onSubmit={submitRecommendation}><label>Type<select value={recommendationType} onChange={(event) => setRecommendationType(event.target.value as RecommendationType)}>{RECOMMENDATION_TYPES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>Priority<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{PRIORITIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>Target area<input value={targetArea} onChange={(event) => setTargetArea(event.target.value)} placeholder="Headline, About, recruiter, contact, post topic..." /></label><label>Title<input value={recommendationTitle} onChange={(event) => setRecommendationTitle(event.target.value)} required /></label><label>Rationale<textarea value={rationale} onChange={(event) => setRationale(event.target.value)} rows={3} /></label><label>Proposed action<textarea value={proposedAction} onChange={(event) => setProposedAction(event.target.value)} rows={3} /></label><label>Proposed text <span>(optional)</span><textarea value={proposedText} onChange={(event) => setProposedText(event.target.value)} rows={4} /></label><button type="submit" disabled={busy || !recommendationTitle.trim()}>{busy ? "Saving…" : "Save recommendation"}</button></form></section>}
 
-      {showImportForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-import-form-heading"><div className="section-heading"><div><p className="eyebrow">Analysis import</p><h3 id="linkedin-import-form-heading">Import ChatGPT recommendations</h3><p>Paste the returned <code>linkedin_recommendations.json</code>. JOLT will add each item as a pending, reviewable action.</p></div><button type="button" className="secondary" onClick={() => setShowImportForm(false)}>Close</button></div><form onSubmit={submitImport}><label>Recommendations JSON<textarea value={importText} onChange={(event) => setImportText(event.target.value)} rows={10} placeholder={'{"source":"chatgpt_package","recommendations":[...]}'}/></label><button type="submit" disabled={busy || !importText.trim()}>{busy ? "Importing…" : "Import recommendations"}</button></form></section>}
+      {showImportForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-import-form-heading"><div className="section-heading"><div><p className="eyebrow">Analysis import</p><h3 id="linkedin-import-form-heading">Import ChatGPT recommendations</h3><p>Import the returned ZIP directly, or paste <code>linkedin_recommendations.json</code> as a fallback.</p></div><button type="button" className="secondary" onClick={() => setShowImportForm(false)}>Close</button></div><div className="workspace-view-stack"><label>Analysis return ZIP<input type="file" accept=".zip,application/zip" disabled={busy} onChange={(event) => void importZipFile(event)} /></label><form onSubmit={submitImport}><label>Recommendations JSON fallback<textarea value={importText} onChange={(event) => setImportText(event.target.value)} rows={10} placeholder={'{"source":"chatgpt_package","recommendations":[...]}'}/></label><button type="submit" disabled={busy || !importText.trim()}>{busy ? "Importing…" : "Import pasted JSON"}</button></form></div></section>}
 
       {data && <div className="workspace-view-stack"><section className="panel" aria-labelledby="linkedin-recommendations-heading"><div className="section-heading"><h3 id="linkedin-recommendations-heading">Action boards</h3></div>{data.recommendations.length === 0 ? <p>No LinkedIn recommendations yet.</p> : groupedRecommendations.map(([type, items]) => <section key={type} className="market-card" aria-labelledby={`linkedin-board-${type}`}><h4 id={`linkedin-board-${type}`}>{BOARD_LABELS[type]} ({items.length})</h4><div className="queue reviewed-decisions">{items.map((item) => <article key={item.id}><div><p className="eyebrow">{label(item.recommendation_type)} · {item.priority}</p><h3>{item.title}</h3>{item.target_area && <p>{item.target_area}</p>}{item.rationale && <p>{item.rationale}</p>}{item.proposed_action && <p><strong>Action:</strong> {item.proposed_action}</p>}{item.proposed_text && <pre className="evidence-json">{item.proposed_text}</pre>}</div><label className="decision-control"><span>Status</span><select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item, event.target.value as RecommendationStatus)}>{STATUSES.map((status) => <option value={status} key={status}>{label(status)}</option>)}</select></label></article>)}</div></section>)}</section><section className="panel" aria-labelledby="linkedin-captures-heading"><div className="section-heading"><h3 id="linkedin-captures-heading">Evidence timeline</h3></div>{data.captures.length === 0 ? <p>No LinkedIn evidence snapshots yet.</p> : <div className="capture-history-list">{data.captures.map((item) => <article key={item.id}><div><p className="eyebrow">{label(item.category)} · {new Date(item.captured_at).toLocaleString()}</p><h3>{item.title || "Untitled LinkedIn snapshot"}</h3>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Open source URL</a>}<p>{item.changed_since_previous ? "Changed since previous capture in this category." : "No previous change detected for this category."}</p>{item.visible_text && <details><summary>Visible text</summary><pre className="evidence-json">{item.visible_text}</pre></details>}{item.notes && <details><summary>Capture notes</summary><pre className="evidence-json">{item.notes}</pre></details>}</div></article>)}</div>}</section></div>}
     </section>
