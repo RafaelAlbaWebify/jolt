@@ -10,26 +10,26 @@ import { RuntimeIdentityPanel } from "./RuntimeIdentity";
 import "./Workbench.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-type WorkbenchView = "opportunities" | "applications" | "market" | "linkedin" | "professional";
+type WorkbenchView = "professional" | "opportunities" | "applications" | "linkedin" | "market";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
-  { id: "opportunities", label: "Review Inbox", description: "Review newly captured or manually added jobs before they move forward." },
+  { id: "professional", label: "Capture & Evidence", description: "Start supervised capture, store local evidence, and confirm how captured material routes through JOLT." },
+  { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added job opportunities before they move forward." },
   { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
-  { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
   { id: "linkedin", label: "LinkedIn Command Center", description: "Improve profile positioning, network quality, activity, and outreach from user-approved LinkedIn evidence." },
-  { id: "professional", label: "Sources & Evidence", description: "Configure trusted sources and local evidence storage." },
+  { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
 ];
 
 const WORKFLOW_STEPS = [
-  "Capture / intake",
-  "Review",
+  "Capture evidence",
+  "Route evidence",
+  "Review jobs",
   "Apply / track",
-  "Improve presence",
   "Learn from market",
 ];
 
 export function Workbench() {
-  const [activeView, setActiveView] = useState<WorkbenchView>("opportunities");
+  const [activeView, setActiveView] = useState<WorkbenchView>("professional");
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
@@ -72,20 +72,20 @@ export function Workbench() {
 
       <main className="workspace-content">
         <div className="workspace-view-stack">
+          <div className="workspace-view workspace-view-professional" hidden={activeView !== "professional"}>
+            <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />
+          </div>
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
             <App sidebarToolsTarget={hiddenReviewInboxToolsTarget} />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
           </div>
-          <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
-            <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
-          </div>
           <div className="workspace-view workspace-view-linkedin" hidden={activeView !== "linkedin"}>
             <LinkedInCommandCenter apiBase={API_BASE} active={activeView === "linkedin"} />
           </div>
-          <div className="workspace-view workspace-view-professional" hidden={activeView !== "professional"}>
-            <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />
+          <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
+            <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
           </div>
         </div>
       </main>
