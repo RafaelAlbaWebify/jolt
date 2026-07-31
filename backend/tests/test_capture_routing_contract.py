@@ -63,7 +63,10 @@ def test_verified_linkedin_job_capture_feeds_review_inbox(tmp_path: Path) -> Non
 
     market = client.get("/api/market-intelligence")
     assert market.status_code == 200
-    assert market.json()["total_active_records"] == 1
+    market_payload = market.json()
+    assert market_payload["total_unique_roles"] == 1
+    assert market_payload["target_role_count"] == 1
+    assert market_payload["target"]["total_roles"] == 1
 
 
 def test_linkedin_presence_capture_routes_to_command_center_not_review_inbox(tmp_path: Path) -> None:
@@ -92,7 +95,10 @@ def test_linkedin_presence_capture_routes_to_command_center_not_review_inbox(tmp
 
     market = client.get("/api/market-intelligence")
     assert market.status_code == 200
-    assert market.json()["total_active_records"] == 0
+    market_payload = market.json()
+    assert market_payload["total_unique_roles"] == 0
+    assert market_payload["target_role_count"] == 0
+    assert market_payload["all"]["total_roles"] == 0
 
 
 def test_unverified_linkedin_job_capture_records_noise_without_posting(tmp_path: Path) -> None:
