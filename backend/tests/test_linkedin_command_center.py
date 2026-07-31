@@ -141,6 +141,9 @@ def test_linkedin_command_center_imports_chatgpt_recommendations(tmp_path: Path)
 
 def test_market_preparation_import_stores_chatgpt_return_actions(tmp_path: Path) -> None:
     client = _client(tmp_path)
+    before = client.get("/api/market-intelligence/preparation-import")
+    assert before.status_code == 200
+    previous_import_count = before.json()["import_count"]
 
     imported = client.post(
         "/api/market-intelligence/preparation-import",
@@ -175,7 +178,7 @@ def test_market_preparation_import_stores_chatgpt_return_actions(tmp_path: Path)
     index = client.get("/api/market-intelligence/preparation-import")
     assert index.status_code == 200
     data = index.json()
-    assert data["import_count"] == 1
+    assert data["import_count"] == previous_import_count + 1
     assert data["latest_import"]["summary"].startswith("Focus search")
     assert {item["title"] for item in data["latest_import"]["actions"]} == {
         "Practice SQL support triage",
