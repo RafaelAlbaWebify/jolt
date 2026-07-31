@@ -135,8 +135,6 @@ class BoundedVisibleCaptureSession:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        # Do not close Chromium at normal function exit. The persistent context is
-        # process-owned so LinkedIn authentication survives retries.
         return None
 
     def _request_stop_after_failure(self, detail: str, *, auth_required: bool = False) -> None:
@@ -183,9 +181,6 @@ class BoundedVisibleCaptureSession:
         final_url = url
         page_title = ""
         try:
-            # Always use a dedicated capture tab. Persistent contexts may restore
-            # previous localhost/JOLT tabs; reusing context.pages[0] makes capture
-            # state ambiguous and hides which URL JOLT actually navigated.
             page = self.context.new_page()
             with suppress(Exception):
                 page.bring_to_front()
@@ -293,11 +288,17 @@ def start_bounded_professional_capture(
 
     if capture_session.browser_failed and options.stop_on_failure:
         run = session.get(ProfessionalCaptureRun, run_id)
-        if run is not None and run.status == "cancelled":
-            run.status = "failed"
-            run.stop_reason = (
-                "linkedin_login_required" if capture_session.auth_required else "stopped_after_first_source_failure"
-            )
-            session.commit()
-            response = get_professional_capture_run(session, run_id)
+        if run is not None:
+            if capture_session.auth_required:
+                run.status = "failed"
+                run.stop_reason = "linkedin_login_required"
+                run.cancel_requested = False
+                run.current_source_id = ""
+                session.commit()
+                response = get_professional_capture_run(session, run_id)
+            elif run.status == "cancelled":
+                run.status = "failed"
+                run.stop_reason = "stopped_after_first_source_failure"
+                session.commit()
+                response = get_professional_capture_run(session, run_id)
     return response
