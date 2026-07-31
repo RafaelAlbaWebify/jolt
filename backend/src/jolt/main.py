@@ -51,6 +51,13 @@ from jolt.linkedin_playwright_capture import (
 )
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
+from jolt.market_preparation_import import (
+    MarketPreparationImportIndex,
+    MarketPreparationImportRequest,
+    MarketPreparationImportResponse,
+    import_market_preparation,
+    list_market_preparation_imports,
+)
 from jolt.market_preparation_pack import build_market_preparation_pack
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
 from jolt.opportunity_workbench import get_opportunity_workbench, list_opportunity_workbench
@@ -407,6 +414,24 @@ def create_app(database_url: str | None = None) -> FastAPI:
                 "Content-Disposition": "attachment; filename=JOLT_MARKET_LINKEDIN_PREPARATION.zip"
             },
         )
+
+    @app.get(
+        "/api/market-intelligence/preparation-import",
+        response_model=MarketPreparationImportIndex,
+        tags=["analysis"],
+    )
+    def market_preparation_imports() -> MarketPreparationImportIndex:
+        return list_market_preparation_imports()
+
+    @app.post(
+        "/api/market-intelligence/preparation-import",
+        response_model=MarketPreparationImportResponse,
+        tags=["analysis"],
+    )
+    def import_market_preparation_result(
+        request: MarketPreparationImportRequest,
+    ) -> MarketPreparationImportResponse:
+        return import_market_preparation(request)
 
     @app.get(
         "/api/linkedin-command-center",
