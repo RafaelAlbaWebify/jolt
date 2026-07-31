@@ -5,7 +5,6 @@ from contextlib import suppress
 from pathlib import Path
 from threading import Lock
 from types import TracebackType
-from typing import Any
 
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 from sqlalchemy.orm import Session
@@ -81,12 +80,7 @@ atexit.register(_stop_browser_context)
 
 
 def _get_browser_context() -> BrowserContext:
-    """Return one visible persistent Chromium context for Professional Capture.
-
-    The first real LinkedIn run is user-present. If LinkedIn asks for login or a
-    checkpoint, Chromium must remain open so the user can authenticate inside the
-    same persistent profile and then retry the capture from JOLT.
-    """
+    """Return one visible persistent Chromium context for Professional Capture."""
     global _PLAYWRIGHT, _BROWSER_CONTEXT
     if _PLAYWRIGHT is None:
         _PLAYWRIGHT = sync_playwright().start()
@@ -130,7 +124,7 @@ class BoundedVisibleCaptureSession:
         self.auth_required = False
         self.failure_detail = ""
 
-    def __enter__(self) -> BoundedVisibleCaptureSession:
+    def __enter__(self) -> "BoundedVisibleCaptureSession":
         with _BROWSER_LOCK:
             self.context = _get_browser_context()
         return self
@@ -141,10 +135,6 @@ class BoundedVisibleCaptureSession:
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        # Do not close Chromium at normal function exit. The persistent context is
-        # intentionally process-owned so LinkedIn authentication survives retries.
-        # It is closed only at process shutdown or when a non-auth browser failure
-        # resets the context.
         return None
 
     def _request_stop_after_failure(self, detail: str, *, auth_required: bool = False) -> None:
@@ -188,12 +178,16 @@ class BoundedVisibleCaptureSession:
 
         page: Page | None = None
         keep_page_open = False
+        final_url = url
+        page_title = ""
         try:
-            page = self.context.pages[0] if self.context.pages else self.context.new_page()
+            page = self.context.new_page()
             with suppress(Exception):
                 page.bring_to_front()
             timeout_ms = self.options.timeout_seconds * 1_000
             response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            final_url = page.url
+            page_title = page.title()
             network_idle = True
             try:
                 page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 5_000))
@@ -201,6 +195,8 @@ class BoundedVisibleCaptureSession:
                 network_idle = False
 
             visible_text = page.locator("body").inner_text(timeout=timeout_ms)
+            final_url = page.url
+            page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
                 keep_page_open = True
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
@@ -221,6 +217,8 @@ class BoundedVisibleCaptureSession:
 
             detected_items, item_selector = self._bounded_items(page)
             visible_text = page.locator("body").inner_text(timeout=timeout_ms)
+            final_url = page.url
+            page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
                 keep_page_open = True
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
@@ -240,6 +238,8 @@ class BoundedVisibleCaptureSession:
                 else " No repeated result-card selector was detected."
             )
             readiness_detail = (
+                f"Requested URL: {url}. Final URL: {final_url}. Title: {page_title}. "
+                f"Visible text length: {len(visible_text.strip())}. "
                 f"Applied {self.options.max_scroll_batches} maximum scroll batches, "
                 f"{self.options.max_items_per_source} maximum items, and a "
                 f"{self.options.timeout_seconds}-second timeout. "
@@ -248,8 +248,8 @@ class BoundedVisibleCaptureSession:
             return CapturedProfessionalPage(
                 screenshot_png=page.screenshot(full_page=True),
                 visible_text=visible_text,
-                title=page.title(),
-                final_url=page.url,
+                title=page_title,
+                final_url=final_url,
                 http_status=response.status if response is not None else None,
                 readiness_status=readiness_status,
                 readiness_detail=readiness_detail,
@@ -257,13 +257,15 @@ class BoundedVisibleCaptureSession:
         except ProfessionalCaptureAuthenticationRequired:
             raise
         except Exception as exc:
-            self._request_stop_after_failure(str(exc))
+            detail = (
+                f"Requested URL: {url}. Last final URL: {final_url}. Last title: {page_title}. "
+                f"Browser capture error: {type(exc).__name__}: {exc}"
+            )
+            self._request_stop_after_failure(detail)
             _stop_browser_context()
-            raise
+            raise RuntimeError(detail) from exc
         finally:
             if page is not None and not keep_page_open:
-                # Keep the persistent context/browser alive, but close surplus pages
-                # after normal source capture. Auth pages stay open for user login.
                 with suppress(Exception):
                     page.close()
 
@@ -286,11 +288,17 @@ def start_bounded_professional_capture(
 
     if capture_session.browser_failed and options.stop_on_failure:
         run = session.get(ProfessionalCaptureRun, run_id)
-        if run is not None and run.status == "cancelled":
-            run.status = "failed"
-            run.stop_reason = (
-                "linkedin_login_required" if capture_session.auth_required else "stopped_after_first_source_failure"
-            )
-            session.commit()
-            response = get_professional_capture_run(session, run_id)
+        if run is not None:
+            if capture_session.auth_required:
+                run.status = "failed"
+                run.stop_reason = "linkedin_login_required"
+                run.cancel_requested = False
+                run.current_source_id = ""
+                session.commit()
+                response = get_professional_capture_run(session, run_id)
+            elif run.status == "cancelled":
+                run.status = "failed"
+                run.stop_reason = "stopped_after_first_source_failure"
+                session.commit()
+                response = get_professional_capture_run(session, run_id)
     return response
