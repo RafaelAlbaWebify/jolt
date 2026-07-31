@@ -85,6 +85,24 @@ type ProfessionalCaptureRoutingSummary = {
   explanation: string;
 };
 
+type OpportunityImportCandidate = {
+  title: string;
+  company: string;
+  location: string;
+  posting_id: string;
+  identity_status: string;
+  recommendation: string;
+  ranking_score: number;
+};
+
+type OpportunityImportResult = {
+  capture_run_id: string;
+  imported_count: number;
+  skipped_count: number;
+  candidates: OpportunityImportCandidate[];
+  warnings: string[];
+};
+
 type Props = {
   apiBase: string;
   active: boolean;
@@ -123,6 +141,10 @@ function shouldPollRun(run: ProfessionalCaptureRun) {
   return run.status === "authorized" || run.status === "running";
 }
 
+function isTerminalCapture(run: ProfessionalCaptureRun) {
+  return run.status === "completed" || run.status === "completed_with_gaps";
+}
+
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -132,6 +154,8 @@ export function ProfessionalCaptureRuns({
 }: Props) {
   const [runs, setRuns] = useState<ProfessionalCaptureRun[]>([]);
   const [routingSummaries, setRoutingSummaries] = useState<Record<string, ProfessionalCaptureRoutingSummary>>({});
+  const [opportunityImports, setOpportunityImports] = useState<Record<string, OpportunityImportResult>>({});
+  const [importingRunId, setImportingRunId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -202,10 +226,7 @@ export function ProfessionalCaptureRuns({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            confirmation_phrase: AUTHORIZATION_PHRASE,
-            user_present: true,
-          }),
+          body: JSON.stringify({ confirmation_phrase: AUTHORIZATION_PHRASE, user_present: true }),
         },
       );
       if (!authorization.ok) {
@@ -272,16 +293,34 @@ export function ProfessionalCaptureRuns({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(
-        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/cancel`,
-        { method: "POST" },
-      );
+      const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs/${runId}/cancel`, { method: "POST" });
       if (!response.ok) throw new Error("The capture could not be cancelled.");
       replaceRun((await response.json()) as ProfessionalCaptureRun);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture cancellation failed.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function importOpportunities(runId: string) {
+    setImportingRunId(runId);
+    setError("");
+    try {
+      const response = await fetch(
+        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/opportunity-candidates/import`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "Opportunity candidates could not be imported.");
+      }
+      const result = (await response.json()) as OpportunityImportResult;
+      setOpportunityImports((current) => ({ ...current, [runId]: result }));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Opportunity import failed.");
+    } finally {
+      setImportingRunId(null);
     }
   }
 
@@ -307,6 +346,11 @@ export function ProfessionalCaptureRuns({
         delete next[runId];
         return next;
       });
+      setOpportunityImports((current) => {
+        const next = { ...current };
+        delete next[runId];
+        return next;
+      });
       setDeletingRunId(null);
       setDeletePhrase("");
     } catch (caught) {
@@ -325,9 +369,7 @@ export function ProfessionalCaptureRuns({
         <p>{summary.explanation}</p>
         <div className="professional-routing-counts">
           {ROUTING_COUNT_LABELS.map(([key, label]) => (
-            <span key={key}>
-              <strong>{summary.counts[key]}</strong> {label}
-            </span>
+            <span key={key}><strong>{summary.counts[key]}</strong> {label}</span>
           ))}
         </div>
         <ol>
@@ -342,42 +384,56 @@ export function ProfessionalCaptureRuns({
     );
   }
 
+  function renderOpportunityImport(run: ProfessionalCaptureRun) {
+    const result = opportunityImports[run.id];
+    return (
+      <section className="professional-opportunity-import" aria-label="Opportunity candidate import">
+        <button
+          type="button"
+          disabled={importingRunId === run.id || !isTerminalCapture(run)}
+          onClick={() => void importOpportunities(run.id)}
+        >
+          {importingRunId === run.id ? "Importing candidates…" : "Import opportunity candidates to Review Inbox"}
+        </button>
+        <p>Use this after a completed career/job-source capture to create reviewed opportunity candidates from rendered evidence.</p>
+        {result && (
+          <div role="status">
+            <strong>{result.imported_count} opportunity candidates imported to Review Inbox.</strong>
+            {result.skipped_count > 0 && <p>{result.skipped_count} duplicate candidates skipped.</p>}
+            {result.warnings.map((warning) => <p key={warning}>{warning}</p>)}
+            {result.candidates.length > 0 && (
+              <ol>
+                {result.candidates.map((candidate) => (
+                  <li key={candidate.posting_id}>
+                    <strong>{candidate.title}</strong> · {candidate.company} · {candidate.location || "location not found"} · {candidate.recommendation} · score {candidate.ranking_score}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
-    <section
-      id="professional-run-ledger"
-      ref={ledgerRef}
-      className="panel professional-run-ledger"
-      aria-labelledby="professional-run-ledger-heading"
-    >
+    <section id="professional-run-ledger" ref={ledgerRef} className="panel professional-run-ledger" aria-labelledby="professional-run-ledger-heading">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Capture operations</p>
           <h2 id="professional-run-ledger-heading">Capture history</h2>
-          <p>Review completed captures, routing evidence, or remove a bad batch.</p>
+          <p>Review completed captures, routing evidence, import opportunity candidates, or remove a bad batch.</p>
         </div>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy || !active}
-          onClick={() => void startNewCapture()}
-        >
+        <button type="button" className="secondary" disabled={busy || !active} onClick={() => void startNewCapture()}>
           {busy ? "Capturing…" : "Start another capture"}
         </button>
       </div>
       <p className="professional-ledger-note">
         Current source revision: {planRefreshKey}. Each batch records the exact limits used. Job evidence must route to Review Inbox; LinkedIn presence evidence must route to LinkedIn Command Center.
       </p>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <p className="error" role="alert">{error}</p>}
       {loading && active && <p role="status">Loading capture history…</p>}
-      {error && !loaded && (
-        <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>
-          Retry capture history
-        </button>
-      )}
+      {error && !loaded && <button type="button" className="secondary" disabled={loading} onClick={() => void loadRuns()}>Retry capture history</button>}
       {loaded && runs.length === 0 && <p>No captures yet. Use “Start capture” at the top of this workspace.</p>}
       {runs.length > 0 && (
         <div className="professional-run-list">
@@ -388,9 +444,7 @@ export function ProfessionalCaptureRuns({
                 <span>{new Date(run.requested_at).toLocaleString()}</span>
               </div>
               <p>{run.planned_sources.length} sources · {run.artifact_count} artifacts</p>
-              <p>
-                Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s timeout
-              </p>
+              <p>Limits: {run.capture_options.max_sources} sources · {run.capture_options.max_scroll_batches} scroll batches · {run.capture_options.max_items_per_source} items/source · {run.capture_options.timeout_seconds}s timeout</p>
               <p>
                 Progress: {progressSummary(run)}
                 {run.current_source_id ? ` · Current: ${sourceLabel(run, run.current_source_id)}` : ""}
@@ -398,6 +452,7 @@ export function ProfessionalCaptureRuns({
               </p>
               {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
               {renderRoutingSummary(run)}
+              {isTerminalCapture(run) && renderOpportunityImport(run)}
               {run.source_progress.length > 0 && (
                 <details className="professional-source-progress" open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}>
                   <summary>Source progress and failure details</summary>
@@ -416,29 +471,15 @@ export function ProfessionalCaptureRuns({
               )}
               <code>{run.id}</code>
               {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
-                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>
-                  Start capture
-                </button>
+                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>Start capture</button>
               )}
               {run.status === "running" && (
-                <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>
-                  Request cancellation
-                </button>
+                <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>Request cancellation</button>
               )}
-              {(run.status === "completed" || run.status === "completed_with_gaps") && (
-                <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />
-              )}
+              {isTerminalCapture(run) && <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />}
               {run.stop_reason && <p>{humanize(run.stop_reason)}</p>}
               {run.status !== "running" && deletingRunId !== run.id && (
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => {
-                    setDeletingRunId(run.id);
-                    setDeletePhrase("");
-                  }}
-                >
+                <button type="button" className="danger" disabled={busy} onClick={() => { setDeletingRunId(run.id); setDeletePhrase(""); }}>
                   Delete this capture batch
                 </button>
               )}
@@ -448,32 +489,11 @@ export function ProfessionalCaptureRuns({
                   <p>This removes only this run and its governed local evidence. It cannot be undone.</p>
                   <label>
                     Type {DELETE_PHRASE}
-                    <input
-                      aria-label={`Deletion phrase for ${run.id}`}
-                      value={deletePhrase}
-                      onChange={(event) => setDeletePhrase(event.target.value)}
-                    />
+                    <input aria-label={`Deletion phrase for ${run.id}`} value={deletePhrase} onChange={(event) => setDeletePhrase(event.target.value)} />
                   </label>
                   <div className="professional-source-editor-actions">
-                    <button
-                      type="button"
-                      className="danger"
-                      disabled={busy || deletePhrase !== DELETE_PHRASE}
-                      onClick={() => void deleteRun(run.id)}
-                    >
-                      Permanently delete batch
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        setDeletingRunId(null);
-                        setDeletePhrase("");
-                      }}
-                    >
-                      Keep batch
-                    </button>
+                    <button type="button" className="danger" disabled={busy || deletePhrase !== DELETE_PHRASE} onClick={() => void deleteRun(run.id)}>Permanently delete batch</button>
+                    <button type="button" className="secondary" disabled={busy} onClick={() => { setDeletingRunId(null); setDeletePhrase(""); }}>Keep batch</button>
                   </div>
                 </div>
               )}
