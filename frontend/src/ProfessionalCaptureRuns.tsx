@@ -56,6 +56,35 @@ type ProfessionalCaptureRun = {
   progress_updated_at: string | null;
 };
 
+type ProfessionalRoutingCounts = {
+  job_opportunities: number;
+  linkedin_presence: number;
+  market_signals: number;
+  unclassified_evidence: number;
+  rejected_noise: number;
+};
+
+type ProfessionalSourceRoutingDecision = {
+  source_id: string;
+  label: string;
+  source_category: string;
+  target_bucket: string;
+  target_workspace: string;
+  routing_status: string;
+  reason: string;
+};
+
+type ProfessionalCaptureRoutingSummary = {
+  capture_run_id: string;
+  run_status: string;
+  artifact_count: number;
+  total_sources: number;
+  completed_sources: number;
+  counts: ProfessionalRoutingCounts;
+  decisions: ProfessionalSourceRoutingDecision[];
+  explanation: string;
+};
+
 type Props = {
   apiBase: string;
   active: boolean;
@@ -63,6 +92,14 @@ type Props = {
   captureOptions: ProfessionalCaptureOptions;
   startRequestKey?: number;
 };
+
+const ROUTING_COUNT_LABELS: Array<[keyof ProfessionalRoutingCounts, string]> = [
+  ["job_opportunities", "Review Inbox jobs"],
+  ["linkedin_presence", "LinkedIn presence"],
+  ["market_signals", "Market signals"],
+  ["unclassified_evidence", "Needs review"],
+  ["rejected_noise", "Rejected/noise"],
+];
 
 function humanize(value: string) {
   return value.replaceAll("_", " ");
@@ -94,6 +131,7 @@ export function ProfessionalCaptureRuns({
   startRequestKey = 0,
 }: Props) {
   const [runs, setRuns] = useState<ProfessionalCaptureRun[]>([]);
+  const [routingSummaries, setRoutingSummaries] = useState<Record<string, ProfessionalCaptureRoutingSummary>>({});
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -103,20 +141,34 @@ export function ProfessionalCaptureRuns({
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
 
+  const loadRoutingSummaries = useCallback(async (nextRuns: ProfessionalCaptureRun[]) => {
+    const entries = await Promise.all(
+      nextRuns.map(async (run) => {
+        const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs/${run.id}/routing-summary`);
+        if (!response.ok) return null;
+        const summary = (await response.json()) as ProfessionalCaptureRoutingSummary;
+        return [run.id, summary] as const;
+      }),
+    );
+    setRoutingSummaries(Object.fromEntries(entries.filter((entry): entry is readonly [string, ProfessionalCaptureRoutingSummary] => entry !== null)));
+  }, [apiBase]);
+
   const loadRuns = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const response = await fetch(`${apiBase}/api/professional-intelligence/capture-runs`);
       if (!response.ok) throw new Error("Unable to load the Capture & Evidence run ledger.");
-      setRuns((await response.json()) as ProfessionalCaptureRun[]);
+      const nextRuns = (await response.json()) as ProfessionalCaptureRun[];
+      setRuns(nextRuns);
+      await loadRoutingSummaries(nextRuns);
       setLoaded(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Run ledger failed.");
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, loadRoutingSummaries]);
 
   useEffect(() => {
     if (!active || loaded) return;
@@ -139,6 +191,7 @@ export function ProfessionalCaptureRuns({
 
   function replaceRun(changed: ProfessionalCaptureRun) {
     setRuns((current) => current.map((run) => (run.id === changed.id ? changed : run)));
+    void loadRoutingSummaries([changed]);
   }
 
   async function authorizeAndStart(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
@@ -190,6 +243,7 @@ export function ProfessionalCaptureRuns({
       }
       const created = (await response.json()) as ProfessionalCaptureRun;
       setRuns((current) => [created, ...current]);
+      await loadRoutingSummaries([created]);
       const queued = await authorizeAndStart(created);
       replaceRun(queued);
       ledgerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
@@ -248,6 +302,11 @@ export function ProfessionalCaptureRuns({
         throw new Error(payload?.detail || "The capture run could not be deleted.");
       }
       setRuns((current) => current.filter((run) => run.id !== runId));
+      setRoutingSummaries((current) => {
+        const next = { ...current };
+        delete next[runId];
+        return next;
+      });
       setDeletingRunId(null);
       setDeletePhrase("");
     } catch (caught) {
@@ -255,6 +314,32 @@ export function ProfessionalCaptureRuns({
     } finally {
       setBusy(false);
     }
+  }
+
+  function renderRoutingSummary(run: ProfessionalCaptureRun) {
+    const summary = routingSummaries[run.id];
+    if (!summary) return <p>Routing summary is loading…</p>;
+    return (
+      <details className="professional-routing-summary" open>
+        <summary>Routing summary / evidence inbox</summary>
+        <p>{summary.explanation}</p>
+        <div className="professional-routing-counts">
+          {ROUTING_COUNT_LABELS.map(([key, label]) => (
+            <span key={key}>
+              <strong>{summary.counts[key]}</strong> {label}
+            </span>
+          ))}
+        </div>
+        <ol>
+          {summary.decisions.map((decision) => (
+            <li key={decision.source_id}>
+              <strong>{decision.label}</strong>: {humanize(decision.target_bucket)} → {decision.target_workspace} · {humanize(decision.routing_status)}
+              <p>{decision.reason}</p>
+            </li>
+          ))}
+        </ol>
+      </details>
+    );
   }
 
   return (
@@ -312,6 +397,7 @@ export function ProfessionalCaptureRuns({
                 {run.cancel_requested ? " · cancellation requested" : ""}
               </p>
               {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
+              {renderRoutingSummary(run)}
               {run.source_progress.length > 0 && (
                 <details className="professional-source-progress" open={run.status === "running" || run.status === "completed_with_gaps" || run.status === "failed"}>
                   <summary>Source progress and failure details</summary>
