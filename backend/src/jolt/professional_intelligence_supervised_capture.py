@@ -56,6 +56,15 @@ class StagedProfessionalArtifact:
 CaptureSource = Callable[[str], CapturedProfessionalPage]
 
 
+def _truncate(value: str, limit: int = 1_500) -> str:
+    text = str(value)
+    return text if len(text) <= limit else f"{text[:limit]}…"
+
+
+def _exception_detail(exc: BaseException) -> str:
+    return _truncate(f"{type(exc).__name__}: {exc}")
+
+
 def capture_professional_source_visible(url: str) -> CapturedProfessionalPage:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=False)
@@ -218,6 +227,7 @@ def _capture_source(
         )
         rendered_text = {
             "source_id": source.source_id,
+            "source_label": source.label,
             "source_url": source.url,
             "extraction_method": "visible_rendered_dom_text",
             "derived": False,
@@ -225,21 +235,35 @@ def _capture_source(
         }
         metadata = {
             "source_id": source.source_id,
+            "source_label": source.label,
             "requested_url": source.url,
             "final_url": captured.final_url,
             "title": captured.title,
             "http_status": captured.http_status,
             "captured_at": captured_at.isoformat(),
-            "browser_mode": "visible_fresh_context",
-            "storage_state_persisted": False,
+            "browser_mode": "visible_persistent_context",
+            "storage_state_persisted": True,
             "readiness_status": captured.readiness_status,
             "readiness_detail": captured.readiness_detail,
+            "visible_text_length": len(captured.visible_text.strip()),
+            "screenshot_bytes": len(captured.screenshot_png),
         }
         diagnostics = {
             "source_id": source.source_id,
+            "source_label": source.label,
+            "requested_url": source.url,
+            "final_url": captured.final_url,
+            "title": captured.title,
+            "http_status": captured.http_status,
             "completeness_status": completeness,
             "readiness_status": captured.readiness_status,
+            "readiness_detail": captured.readiness_detail,
+            "visible_text_length": len(captured.visible_text.strip()),
+            "screenshot_attempted": True,
+            "screenshot_success": bool(captured.screenshot_png),
+            "artifact_write_attempted": True,
             "errors": [],
+            "captured_at": captured_at.isoformat(),
         }
         for artifact_type, filename, content in (
             ("screenshot_png", "page.png", captured.screenshot_png),
@@ -275,22 +299,36 @@ def _capture_source(
     except Exception as exc:
         diagnostics = {
             "source_id": source.source_id,
+            "source_label": source.label,
+            "requested_url": source.url,
             "completeness_status": "failed",
-            "errors": [str(exc)],
+            "readiness_status": "capture_exception",
+            "error_stage": "capture_or_artifact_write",
+            "errors": [_exception_detail(exc)],
             "captured_at": captured_at.isoformat(),
+            "screenshot_attempted": False,
+            "screenshot_success": False,
+            "artifact_write_attempted": True,
         }
-        staged_artifacts.append(
-            _write_artifact(
-                session,
-                root=root,
-                run_id=run_id,
-                source_id=source.source_id,
-                artifact_type="page_diagnostics_json",
-                filename="page-diagnostics.json",
-                content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
-                completeness_status="failed",
+        try:
+            staged_artifacts.append(
+                _write_artifact(
+                    session,
+                    root=root,
+                    run_id=run_id,
+                    source_id=source.source_id,
+                    artifact_type="page_diagnostics_json",
+                    filename="page-diagnostics.json",
+                    content=json.dumps(diagnostics, ensure_ascii=False, indent=2).encode("utf-8"),
+                    completeness_status="failed",
+                )
             )
-        )
+        except Exception as diagnostic_exc:
+            raise RuntimeError(
+                "Source capture failed and diagnostic artifact write also failed. "
+                f"Capture error: {_exception_detail(exc)}. "
+                f"Diagnostic write error: {_exception_detail(diagnostic_exc)}."
+            ) from diagnostic_exc
         return "failed"
 
 
@@ -342,6 +380,45 @@ def _mark_pending_sources_skipped(
     for item in progress:
         if item.status == "pending":
             _update_source_progress(progress, item.source_id, status="skipped", detail=detail)
+
+
+def _mark_source_crashed(
+    session: Session,
+    *,
+    run_id: str,
+    source: ProfessionalIntelligenceSource,
+    exc: BaseException,
+) -> ProfessionalCaptureRunResponse | None:
+    run = session.get(ProfessionalCaptureRun, run_id)
+    if run is None:
+        return None
+    now = utc_now()
+    progress = _load_progress(run)
+    detail = (
+        "Source capture crashed before diagnostics were committed. "
+        f"Source: {source.label}. Requested URL: {source.url}. Error: {_exception_detail(exc)}"
+    )
+    _update_source_progress(
+        progress,
+        source.source_id,
+        status="failed",
+        completed_at=now,
+        completeness_status="failed",
+        detail=detail,
+    )
+    if _stop_on_failure_enabled(run):
+        _mark_pending_sources_skipped(
+            progress,
+            detail="Skipped because stop_on_failure was enabled after a source crashed.",
+        )
+    run.status = "failed"
+    run.completed_at = now
+    run.current_source_id = ""
+    run.progress_updated_at = now
+    run.stop_reason = "source_capture_engine_failure"
+    _save_progress(run, progress)
+    session.commit()
+    return get_professional_capture_run(session, run_id)
 
 
 def start_professional_supervised_capture(
@@ -419,7 +496,7 @@ def start_professional_supervised_capture(
                 source.source_id,
                 status="running",
                 started_at=started_at,
-                detail="Visible supervised capture started.",
+                detail=f"Visible supervised capture started. Requested URL: {source.url}",
             )
             _save_progress(run, progress)
             session.commit()
@@ -444,7 +521,10 @@ def start_professional_supervised_capture(
                     status="completed" if status != "failed" else "failed",
                     completed_at=completed_at,
                     completeness_status=status,
-                    detail=f"Source capture finished with {status} completeness.",
+                    detail=(
+                        f"Source capture finished with {status} completeness. "
+                        f"Requested URL: {source.url}. Diagnostic artifact should be available."
+                    ),
                 )
                 run.completed_source_count += 1
                 run.current_source_id = ""
@@ -462,10 +542,13 @@ def start_professional_supervised_capture(
                     _save_progress(run, progress)
                     session.commit()
                     break
-            except Exception:
+            except Exception as exc:
                 session.rollback()
                 if not manifests_committed:
                     _discard_staged_artifacts(staged_artifacts)
+                response = _mark_source_crashed(session, run_id=run_id, source=source, exc=exc)
+                if response is not None:
+                    return response
                 raise
 
         run = session.get(ProfessionalCaptureRun, run_id)
@@ -484,7 +567,7 @@ def start_professional_supervised_capture(
             run.stop_reason = "one_or_more_sources_partial_or_failed"
         run.progress_updated_at = run.completed_at
         session.commit()
-    except Exception:
+    except Exception as exc:
         session.rollback()
         run = session.get(ProfessionalCaptureRun, run_id)
         if run is not None:
@@ -492,7 +575,7 @@ def start_professional_supervised_capture(
             run.completed_at = utc_now()
             run.current_source_id = ""
             run.progress_updated_at = run.completed_at
-            run.stop_reason = "capture_engine_failure"
+            run.stop_reason = f"capture_engine_failure: {_exception_detail(exc)}"
             session.commit()
         raise
 
