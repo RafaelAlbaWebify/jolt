@@ -139,6 +139,50 @@ def test_linkedin_command_center_imports_chatgpt_recommendations(tmp_path: Path)
     assert {item["status"] for item in dashboard["recommendations"]} == {"pending"}
 
 
+def test_market_preparation_import_stores_chatgpt_return_actions(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    imported = client.post(
+        "/api/market-intelligence/preparation-import",
+        json={
+            "source": "chatgpt_market_package",
+            "summary": "Focus search on application support and SQL/API readiness.",
+            "preparation_plan": [
+                {
+                    "action_type": "study",
+                    "title": "Practice SQL support triage",
+                    "rationale": "SQL appears in target support roles.",
+                    "proposed_action": "Complete three ticket-style SQL scenarios.",
+                    "priority": "high",
+                }
+            ],
+            "search_filter_improvements": [
+                {
+                    "action_type": "search_filter",
+                    "title": "Remove noisy onsite roles",
+                    "rationale": "Preferences prioritize remote and hybrid near Vigo.",
+                    "proposed_action": "Tighten future searches to remote/hybrid Spain, Ireland, UK and Europe.",
+                    "priority": "medium",
+                }
+            ],
+        },
+    )
+    assert imported.status_code == 200
+    payload = imported.json()
+    assert payload["imported_count"] == 2
+    assert payload["latest_import"]["action_count"] == 2
+
+    index = client.get("/api/market-intelligence/preparation-import")
+    assert index.status_code == 200
+    data = index.json()
+    assert data["import_count"] == 1
+    assert data["latest_import"]["summary"].startswith("Focus search")
+    assert {item["title"] for item in data["latest_import"]["actions"]} == {
+        "Practice SQL support triage",
+        "Remove noisy onsite roles",
+    }
+
+
 def test_linkedin_playwright_capture_endpoint_uses_service(tmp_path: Path, monkeypatch) -> None:
     from jolt import main as main_module
 
