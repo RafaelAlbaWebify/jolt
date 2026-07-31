@@ -51,6 +51,10 @@ from jolt.professional_intelligence_retention import (
     cleanup_expired_professional_evidence,
     preview_professional_retention_cleanup,
 )
+from jolt.professional_intelligence_routing_summary import (
+    ProfessionalCaptureRoutingSummary,
+    build_professional_capture_routing_summary,
+)
 from jolt.professional_intelligence_structured_extraction import (
     ProfessionalStructuredExtraction,
     extract_professional_intelligence,
@@ -257,6 +261,19 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.get(
+        "/api/professional-intelligence/capture-runs/{run_id}/routing-summary",
+        response_model=ProfessionalCaptureRoutingSummary,
+    )
+    def professional_capture_routing_summary(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalCaptureRoutingSummary:
+        try:
+            return build_professional_capture_routing_summary(session, run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get(
         "/api/professional-intelligence/capture-runs/{run_id}/structured-extraction",
