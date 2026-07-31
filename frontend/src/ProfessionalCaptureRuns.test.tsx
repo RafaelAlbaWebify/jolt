@@ -111,6 +111,36 @@ const IMPORT_RESULT = {
   warnings: [],
 };
 
+const LOGIN_REQUIRED_RUN = {
+  ...CAPTURE_RUN,
+  id: "run-login",
+  status: "failed",
+  completed_at: "2026-07-31T12:01:15.000Z",
+  stop_reason: "linkedin_login_required",
+  artifact_count: 1,
+  source_progress: [
+    {
+      source_id: "linkedin-jobs-preferences",
+      status: "failed",
+      started_at: "2026-07-31T12:00:15.000Z",
+      completed_at: "2026-07-31T12:01:15.000Z",
+      completeness_status: "failed",
+      detail: "LinkedIn login is required.",
+    },
+  ],
+  completed_source_count: 0,
+  total_source_count: 2,
+  cancel_requested: true,
+};
+
+const LOGIN_REQUIRED_ROUTING_SUMMARY = {
+  ...ROUTING_SUMMARY,
+  capture_run_id: "run-login",
+  run_status: "failed",
+  artifact_count: 1,
+  completed_sources: 0,
+};
+
 describe("ProfessionalCaptureRuns", () => {
   afterEach(() => {
     cleanup();
@@ -169,5 +199,58 @@ describe("ProfessionalCaptureRuns", () => {
     expect(await screen.findByText("1 opportunity candidates imported to Review Inbox.")).toBeInTheDocument();
     expect(screen.getByText(/Application Support Engineer/)).toBeInTheDocument();
     expect(screen.getByText(/Acme SaaS Operations/)).toBeInTheDocument();
+  });
+
+  it("lets the user start the same capture run again after LinkedIn login is required", async () => {
+    const authorizedRun = {
+      ...LOGIN_REQUIRED_RUN,
+      status: "authorized",
+      stop_reason: "",
+      cancel_requested: false,
+      completed_at: null,
+    };
+    const queuedRun = {
+      ...authorizedRun,
+      status: "running",
+      stop_reason: "capture_queued",
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/professional-intelligence/capture-runs") && !init?.method) {
+        return Promise.resolve(new Response(JSON.stringify([LOGIN_REQUIRED_RUN]), { status: 200 }));
+      }
+      if (url.endsWith("/api/professional-intelligence/capture-runs/run-login/routing-summary")) {
+        return Promise.resolve(new Response(JSON.stringify(LOGIN_REQUIRED_ROUTING_SUMMARY), { status: 200 }));
+      }
+      if (url.endsWith("/api/professional-intelligence/capture-runs/run-login/authorize") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify(authorizedRun), { status: 200 }));
+      }
+      if (url.endsWith("/api/professional-intelligence/capture-runs/run-login/start") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify(queuedRun), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active={true}
+        planRefreshKey={1}
+        captureOptions={CAPTURE_OPTIONS}
+      />,
+    );
+
+    expect(await screen.findByText(/LinkedIn asked for login or checkpoint/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start capture again" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/authorize",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/start",
+      { method: "POST" },
+    );
   });
 });
