@@ -19,6 +19,7 @@ from jolt.professional_intelligence_sources import ProfessionalIntelligenceSourc
 AUTHORIZATION_CONFIRMATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN"
 AUTHORIZATION_LIFETIME_MINUTES = 15
 STALE_RUNNING_MINUTES = 30
+LINKEDIN_LOGIN_REQUIRED_STOP_REASON = "linkedin_login_required"
 
 
 class ProfessionalCaptureAuthorizationRequest(BaseModel):
@@ -86,6 +87,10 @@ def effective_capture_run_status(run: ProfessionalCaptureRun, now: datetime | No
         if comparable_expiry <= comparable_current:
             return "expired"
     return run.status
+
+
+def is_linkedin_login_retry_run(run: ProfessionalCaptureRun) -> bool:
+    return run.status == "failed" and run.stop_reason == LINKEDIN_LOGIN_REQUIRED_STOP_REASON
 
 
 def recover_stale_professional_capture_runs(
@@ -232,8 +237,10 @@ def authorize_professional_capture_run(
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
-    if run.status != "planned":
-        raise ValueError("Only planned preview runs can be authorized.")
+    if run.status not in {"planned", "expired"} and not is_linkedin_login_retry_run(run):
+        raise ValueError(
+            "Only planned, expired, or LinkedIn-login-required capture runs can be authorized."
+        )
     if request.confirmation_phrase != AUTHORIZATION_CONFIRMATION_PHRASE:
         raise ValueError("The exact authorization confirmation phrase is required.")
     if request.user_present is not True:
@@ -244,6 +251,10 @@ def authorize_professional_capture_run(
     run.authorized_at = authorized_at
     run.authorization_expires_at = authorized_at + timedelta(minutes=AUTHORIZATION_LIFETIME_MINUTES)
     run.user_present_confirmed = True
+    run.completed_at = None
+    run.current_source_id = ""
+    run.cancel_requested = False
+    run.stop_reason = ""
     run.progress_updated_at = authorized_at
     session.commit()
     return _to_response(session, run)
