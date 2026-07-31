@@ -65,7 +65,15 @@ def test_linkedin_login_required_run_can_be_reauthorized_and_started_again(tmp_p
 
     created = client.post(
         "/api/professional-intelligence/capture-runs",
-        json={"options": {"max_sources": 1, "max_scroll_batches": 1, "max_items_per_source": 5, "timeout_seconds": 10, "stop_on_failure": True}},
+        json={
+            "options": {
+                "max_sources": 1,
+                "max_scroll_batches": 1,
+                "max_items_per_source": 5,
+                "timeout_seconds": 10,
+                "stop_on_failure": True,
+            }
+        },
     )
     assert created.status_code == 200
     run_id = created.json()["id"]
@@ -91,4 +99,3 @@ def test_linkedin_login_required_run_can_be_reauthorized_and_started_again(tmp_p
     assert payload["stop_reason"] == ""
     assert payload["cancel_requested"] is False
     assert payload["completed_at"] is None
-}
