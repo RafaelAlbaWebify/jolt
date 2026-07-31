@@ -82,6 +82,66 @@
   background: #335bd6;
 }
 
+.linkedin-market-fit,
+.preparation-plan {
+  margin: 14px 0;
+}
+
+.linkedin-signal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.linkedin-signal-list p {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.9rem;
+}
+
+.preparation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.preparation-card {
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.preparation-card h4 {
+  margin: 2px 0 6px;
+  font-size: 0.95rem;
+}
+
+.preparation-card p {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+
+.preparation-card details {
+  font-size: 0.86rem;
+}
+
+.preparation-card summary {
+  cursor: pointer;
+  color: #335bd6;
+  font-weight: 700;
+}
+
+.preparation-card ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.preparation-card li + li {
+  margin-top: 5px;
+}
+
 .market-salary {
   margin-top: 14px;
 }
@@ -115,7 +175,8 @@
 @media (max-width: 900px) {
   .market-summary,
   .market-grid,
-  .market-salary-list {
+  .market-salary-list,
+  .preparation-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -123,7 +184,8 @@
 @media (max-width: 620px) {
   .market-summary,
   .market-grid,
-  .market-salary-list {
+  .market-salary-list,
+  .preparation-grid {
     grid-template-columns: 1fr;
   }
 }
