@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
@@ -244,13 +244,15 @@ describe("ProfessionalCaptureRuns", () => {
     expect(await screen.findByText(/LinkedIn asked for login or checkpoint/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start capture again" }));
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/authorize",
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/start",
-      { method: "POST" },
-    );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/authorize",
+        expect.objectContaining({ method: "POST" }),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/professional-intelligence/capture-runs/run-login/start",
+        { method: "POST" },
+      );
+    });
   });
 });
