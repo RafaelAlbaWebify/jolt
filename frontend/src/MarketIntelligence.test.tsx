@@ -59,12 +59,32 @@ const LINKEDIN = {
   ],
 };
 
+const PREFERENCES = {
+  target_titles: ["Application Support Engineer"],
+  preferred_work_modes: ["remote", "hybrid"],
+  base_locality: "Vigo, Galicia, Spain",
+  max_hybrid_distance_km: 60,
+  countries: ["Spain"],
+  languages: ["Spanish", "English"],
+  expected_salary_eur_min: 35000,
+  expected_salary_eur_target: 45000,
+  preferred_shifts: ["business_hours"],
+  excluded_shifts: ["night", "rotating"],
+  preferred_workload: "normal",
+  excluded_keywords: ["dispatch"],
+  preferred_keywords: ["sql", "api"],
+  notes: "Remote first.",
+};
+
 function stubMarketFetch(markets: object[] = [MARKET]) {
   let marketIndex = 0;
   return vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes("/api/linkedin-command-center")) {
       return Promise.resolve({ ok: true, json: async () => LINKEDIN });
+    }
+    if (url.includes("/api/job-search-preferences")) {
+      return Promise.resolve({ ok: true, json: async () => PREFERENCES });
     }
     const payload = markets[Math.min(marketIndex, markets.length - 1)];
     marketIndex += 1;
@@ -78,18 +98,36 @@ describe("MarketIntelligence", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not fetch while hidden and loads market plus LinkedIn signals on activation", async () => {
+  it("does not fetch while hidden and loads market plus LinkedIn signals and preferences on activation", async () => {
     const fetchMock = stubMarketFetch();
     vi.stubGlobal("fetch", fetchMock);
     const { rerender } = render(<MarketIntelligence apiBase="http://api" active={false} />);
     expect(fetchMock).not.toHaveBeenCalled();
 
     rerender(<MarketIntelligence apiBase="http://api" active />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
     expect(screen.getByText("LinkedIn positioning vs market")).toBeInTheDocument();
     expect(screen.getByText("Preparation plan: study, practice, publish")).toBeInTheDocument();
     expect(screen.getByText("SQL troubleshooting")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Export Market + LinkedIn pack" })).toHaveAttribute("href", "http://api/api/market-intelligence/preparation-pack");
+  });
+
+  it("shows editable preferences and saves them", async () => {
+    const fetchMock = stubMarketFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MarketIntelligence apiBase="http://api" active />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Job preferences" }));
+    expect(screen.getByText("Editable job search preferences")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Base locality"), { target: { value: "Tui, Galicia, Spain" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save job preferences" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://api/api/job-search-preferences",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByText("Job search preferences saved.")).toBeInTheDocument();
   });
 
   it("shows a stable failure and retries only when requested", async () => {
@@ -97,9 +135,8 @@ describe("MarketIntelligence", () => {
       .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
       .mockImplementation((input: RequestInfo | URL) => {
         const url = String(input);
-        if (url.includes("/api/linkedin-command-center")) {
-          return Promise.resolve({ ok: true, json: async () => LINKEDIN });
-        }
+        if (url.includes("/api/linkedin-command-center")) return Promise.resolve({ ok: true, json: async () => LINKEDIN });
+        if (url.includes("/api/job-search-preferences")) return Promise.resolve({ ok: true, json: async () => PREFERENCES });
         return Promise.resolve({ ok: true, json: async () => MARKET });
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -108,7 +145,7 @@ describe("MarketIntelligence", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load market insights.");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry insights load" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
   });
 
@@ -121,6 +158,6 @@ describe("MarketIntelligence", () => {
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh insights" }));
     expect(await screen.findByText("Updated fit explanation.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 });
