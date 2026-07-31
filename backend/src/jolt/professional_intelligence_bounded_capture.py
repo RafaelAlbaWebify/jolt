@@ -177,7 +177,6 @@ class BoundedVisibleCaptureSession:
             raise RuntimeError("The bounded capture browser context is not available.")
 
         page: Page | None = None
-        keep_page_open = False
         final_url = url
         page_title = ""
         try:
@@ -198,7 +197,6 @@ class BoundedVisibleCaptureSession:
             final_url = page.url
             page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
-                keep_page_open = True
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
 
@@ -220,7 +218,6 @@ class BoundedVisibleCaptureSession:
             final_url = page.url
             page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
-                keep_page_open = True
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
 
@@ -262,12 +259,10 @@ class BoundedVisibleCaptureSession:
                 f"Browser capture error: {type(exc).__name__}: {exc}"
             )
             self._request_stop_after_failure(detail)
-            _stop_browser_context()
+            # Keep the persistent Chromium context open even after capture errors.
+            # The user-present session is part of the workflow and must remain
+            # available for inspection, login/checkpoint completion, and retry.
             raise RuntimeError(detail) from exc
-        finally:
-            if page is not None and not keep_page_open:
-                with suppress(Exception):
-                    page.close()
 
 
 def start_bounded_professional_capture(
