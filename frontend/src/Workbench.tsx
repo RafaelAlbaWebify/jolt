@@ -13,11 +13,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 type WorkbenchView = "opportunities" | "applications" | "market" | "linkedin" | "professional";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
+  { id: "professional", label: "Capture & Evidence", description: "Start user-present capture from trusted sources and review local evidence batches." },
   { id: "opportunities", label: "Review Inbox", description: "Review newly captured or manually added jobs before they move forward." },
   { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
   { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
   { id: "linkedin", label: "LinkedIn Command Center", description: "Improve profile positioning, network quality, activity, and outreach from user-approved LinkedIn evidence." },
-  { id: "professional", label: "Sources & Evidence", description: "Configure trusted sources and local evidence storage." },
 ];
 
 const WORKFLOW_STEPS = [
@@ -29,7 +29,7 @@ const WORKFLOW_STEPS = [
 ];
 
 export function Workbench() {
-  const [activeView, setActiveView] = useState<WorkbenchView>("opportunities");
+  const [activeView, setActiveView] = useState<WorkbenchView>("professional");
   const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
