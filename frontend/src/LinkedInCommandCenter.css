@@ -1,0 +1,62 @@
+.linkedin-command-center .market-summary {
+  margin: 12px 0;
+}
+
+.linkedin-command-center .manual-intake-panel,
+.linkedin-command-center .market-card,
+.linkedin-command-center .capture-history-list article,
+.linkedin-command-center .queue.reviewed-decisions article {
+  padding: 12px;
+}
+
+.linkedin-command-center .section-heading {
+  gap: 12px;
+}
+
+.linkedin-command-center .queue.reviewed-decisions {
+  display: grid;
+  gap: 10px;
+}
+
+.linkedin-command-center .queue.reviewed-decisions article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.linkedin-command-center .queue.reviewed-decisions h3 {
+  margin: 2px 0 4px;
+  font-size: 0.95rem;
+}
+
+.linkedin-command-center .queue.reviewed-decisions p {
+  margin: 4px 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.linkedin-command-center .queue.reviewed-decisions .eyebrow {
+  font-size: 0.68rem;
+}
+
+.linkedin-command-center .queue.reviewed-decisions .professional-source-editor-actions {
+  align-items: center;
+}
+
+.linkedin-command-center .evidence-json {
+  max-height: 180px;
+  overflow: auto;
+  font-size: 0.78rem;
+}
+
+.linkedin-command-center .capture-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .linkedin-command-center .queue.reviewed-decisions article {
+    grid-template-columns: 1fr;
+  }
+}
