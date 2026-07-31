@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
@@ -145,19 +145,24 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("Routing summary / evidence inbox")).toBeInTheDocument();
-    expect(screen.getByText(/Review Inbox jobs/)).toBeInTheDocument();
-    expect(screen.getByText(/LinkedIn presence/)).toBeInTheDocument();
-    expect(screen.getByText(/Market signals/)).toBeInTheDocument();
-    expect(screen.getByText(/Needs review/)).toBeInTheDocument();
-    expect(screen.getByText(/Rejected\/noise/)).toBeInTheDocument();
+    const summaryHeading = await screen.findByText("Routing summary / evidence inbox");
+    expect(summaryHeading).toBeInTheDocument();
+    const routingSummary = summaryHeading.closest("details");
+    expect(routingSummary).not.toBeNull();
+    const routing = within(routingSummary as HTMLElement);
 
-    expect(screen.getByText(/Main profile/)).toBeInTheDocument();
-    expect(screen.getByText(/Profile and activity evidence is routed to LinkedIn positioning review/)).toBeInTheDocument();
-    expect(screen.getByText(/Jobs based on preferences/)).toBeInTheDocument();
-    expect(screen.getByText(/Career\/job-search evidence must become verified job items/)).toBeInTheDocument();
-    expect(screen.getByText(/job opportunity → Review Inbox/)).toBeInTheDocument();
-    expect(screen.getByText(/linkedin presence → LinkedIn Command Center/)).toBeInTheDocument();
+    expect(routing.getByText(/Review Inbox jobs/)).toBeInTheDocument();
+    expect(routing.getByText(/LinkedIn presence/)).toBeInTheDocument();
+    expect(routing.getByText(/Market signals/)).toBeInTheDocument();
+    expect(routing.getByText(/Needs review/)).toBeInTheDocument();
+    expect(routing.getByText(/Rejected\/noise/)).toBeInTheDocument();
+
+    expect(routing.getByText(/Main profile/)).toBeInTheDocument();
+    expect(routing.getByText(/Profile and activity evidence is routed to LinkedIn positioning review/)).toBeInTheDocument();
+    expect(routing.getByText(/Jobs based on preferences/)).toBeInTheDocument();
+    expect(routing.getByText(/Career\/job-search evidence must become verified job items/)).toBeInTheDocument();
+    expect(routing.getByText(/job opportunity → Review Inbox/)).toBeInTheDocument();
+    expect(routing.getByText(/linkedin presence → LinkedIn Command Center/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Import opportunity candidates to Review Inbox" }));
 
