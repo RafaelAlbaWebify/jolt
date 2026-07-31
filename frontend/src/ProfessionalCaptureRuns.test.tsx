@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProfessionalCaptureRuns } from "./ProfessionalCaptureRuns";
@@ -93,20 +93,44 @@ const ROUTING_SUMMARY = {
   explanation: "This summary shows where captured evidence is allowed to route through JOLT.",
 };
 
+const IMPORT_RESULT = {
+  capture_run_id: "run-1",
+  imported_count: 1,
+  skipped_count: 0,
+  candidates: [
+    {
+      title: "Application Support Engineer",
+      company: "Acme SaaS Operations",
+      location: "Remote Spain",
+      posting_id: "posting-1",
+      identity_status: "new",
+      recommendation: "pursue",
+      ranking_score: 87,
+    },
+  ],
+  warnings: [],
+};
+
 describe("ProfessionalCaptureRuns", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("renders the routing summary and source-level routing reasons for capture runs", async () => {
-    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+  it("renders routing summary and imports opportunity candidates to Review Inbox", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/professional-intelligence/capture-runs")) {
+      if (url.endsWith("/api/professional-intelligence/capture-runs") && !init?.method) {
         return Promise.resolve(new Response(JSON.stringify([CAPTURE_RUN]), { status: 200 }));
       }
       if (url.endsWith("/api/professional-intelligence/capture-runs/run-1/routing-summary")) {
         return Promise.resolve(new Response(JSON.stringify(ROUTING_SUMMARY), { status: 200 }));
+      }
+      if (
+        url.endsWith("/api/professional-intelligence/capture-runs/run-1/opportunity-candidates/import")
+        && init?.method === "POST"
+      ) {
+        return Promise.resolve(new Response(JSON.stringify(IMPORT_RESULT), { status: 200 }));
       }
       return Promise.resolve(new Response("{}", { status: 404 }));
     });
@@ -134,5 +158,11 @@ describe("ProfessionalCaptureRuns", () => {
     expect(screen.getByText(/Career\/job-search evidence must become verified job items/)).toBeInTheDocument();
     expect(screen.getByText(/job opportunity → Review Inbox/)).toBeInTheDocument();
     expect(screen.getByText(/linkedin presence → LinkedIn Command Center/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Import opportunity candidates to Review Inbox" }));
+
+    expect(await screen.findByText("1 opportunity candidates imported to Review Inbox.")).toBeInTheDocument();
+    expect(screen.getByText(/Application Support Engineer/)).toBeInTheDocument();
+    expect(screen.getByText(/Acme SaaS Operations/)).toBeInTheDocument();
   });
 });
