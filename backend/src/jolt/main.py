@@ -21,6 +21,11 @@ from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
+from jolt.job_search_preferences import (
+    JobSearchPreferences,
+    load_job_search_preferences,
+    save_job_search_preferences,
+)
 from jolt.linkedin_command_center import (
     LinkedInCaptureRequest,
     LinkedInCaptureResponse,
@@ -46,6 +51,7 @@ from jolt.linkedin_playwright_capture import (
 )
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
+from jolt.market_preparation_pack import build_market_preparation_pack
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
 from jolt.opportunity_workbench import get_opportunity_workbench, list_opportunity_workbench
 from jolt.professional_intelligence_plan_api import build_professional_intelligence_plan_router
@@ -366,6 +372,40 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> dict[str, object]:
         return build_market_intelligence(
             session, timeframe=timeframe, source_scope=source_scope
+        )
+
+    @app.get(
+        "/api/job-search-preferences",
+        response_model=JobSearchPreferences,
+        tags=["preferences"],
+    )
+    def job_search_preferences() -> JobSearchPreferences:
+        return load_job_search_preferences()
+
+    @app.post(
+        "/api/job-search-preferences",
+        response_model=JobSearchPreferences,
+        tags=["preferences"],
+    )
+    def update_job_search_preferences(
+        request: JobSearchPreferences,
+    ) -> JobSearchPreferences:
+        return save_job_search_preferences(request)
+
+    @app.get(
+        "/api/market-intelligence/preparation-pack",
+        tags=["exports"],
+    )
+    def market_preparation_pack(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        content = build_market_preparation_pack(session)
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": "attachment; filename=JOLT_MARKET_LINKEDIN_PREPARATION.zip"
+            },
         )
 
     @app.get(
