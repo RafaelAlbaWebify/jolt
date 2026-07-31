@@ -4,6 +4,7 @@ import atexit
 import os
 import re
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -23,6 +24,15 @@ class LinkedInPlaywrightCaptureRequest(BaseModel):
     url: str = Field(min_length=1, max_length=4000)
     wait_seconds: float = Field(default=4.0, ge=0.0, le=60.0)
     full_page_screenshot: bool = False
+
+
+class LinkedInPlaywrightBatchCaptureRequest(BaseModel):
+    targets: list[LinkedInPlaywrightCaptureRequest] = Field(default_factory=list, max_length=25)
+
+
+class LinkedInPlaywrightBatchCaptureResponse(BaseModel):
+    captured_count: int
+    captures: list[LinkedInCaptureResponse]
 
 
 def _safe_slug(value: str) -> str:
@@ -50,6 +60,7 @@ def _browser_profile_dir() -> Path:
 
 _PLAYWRIGHT: Any | None = None
 _BROWSER_CONTEXT: Any | None = None
+_CAPTURE_LOCK = Lock()
 
 
 def _reset_browser_context() -> None:
@@ -79,10 +90,11 @@ atexit.register(_stop_playwright)
 def _get_browser_context() -> Any:
     """Return one visible persistent browser context for the backend process.
 
-    The earlier implementation opened and closed Chromium for every target. That made
-    multi-section capture look like Chromium was flashing or hiding repeatedly. Keeping
-    one context alive lets `Capture enabled` navigate the same visible browser through
-    the configured LinkedIn sections.
+    Multi-section capture must be backend-owned. The frontend must not create one
+    HTTP request per target, because FastAPI may serve those requests from different
+    threads and Playwright objects are not safe to hop between threads. The batch
+    endpoint uses this context inside one locked request so Chromium stays visible
+    while JOLT navigates through the enabled sections.
     """
     global _PLAYWRIGHT, _BROWSER_CONTEXT
     try:
@@ -111,8 +123,10 @@ def _get_browser_context() -> Any:
     return _BROWSER_CONTEXT
 
 
-def run_linkedin_playwright_capture(
-    session: Session, request: LinkedInPlaywrightCaptureRequest
+def _capture_with_context(
+    session: Session,
+    context: Any,
+    request: LinkedInPlaywrightCaptureRequest,
 ) -> LinkedInCaptureResponse:
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -129,32 +143,27 @@ def run_linkedin_playwright_capture(
     page_title = title
     visible_text = ""
 
-    context = _get_browser_context()
     page = context.pages[0] if context.pages else context.new_page()
     try:
         page.bring_to_front()
     except Exception:
         pass
+    page.goto(request.url.strip(), wait_until="domcontentloaded", timeout=60_000)
+    if request.wait_seconds > 0:
+        page.wait_for_timeout(int(request.wait_seconds * 1000))
     try:
-        page.goto(request.url.strip(), wait_until="domcontentloaded", timeout=60_000)
-        if request.wait_seconds > 0:
-            page.wait_for_timeout(int(request.wait_seconds * 1000))
-        try:
-            page.wait_for_load_state("networkidle", timeout=8_000)
-        except PlaywrightTimeoutError:
-            pass
-        final_url = page.url
-        page_title = page.title() or title
-        visible_text = page.locator("body").inner_text(timeout=10_000).strip()
-        page.screenshot(path=str(screenshot_path), full_page=request.full_page_screenshot)
-    except Exception:
-        _reset_browser_context()
-        raise
+        page.wait_for_load_state("networkidle", timeout=8_000)
+    except PlaywrightTimeoutError:
+        pass
+    final_url = page.url
+    page_title = page.title() or title
+    visible_text = page.locator("body").inner_text(timeout=10_000).strip()
+    page.screenshot(path=str(screenshot_path), full_page=request.full_page_screenshot)
 
     notes = "\n".join(
         [
             "Captured by JOLT LinkedIn Command Center Playwright flow.",
-            "Browser session kept open for multi-section captures.",
+            "Browser session is backend-owned for multi-section captures.",
             f"Page title: {page_title}",
             f"Final URL: {final_url}",
             f"Screenshot: {screenshot_path}",
@@ -170,3 +179,34 @@ def run_linkedin_playwright_capture(
             notes=notes,
         ),
     )
+
+
+def run_linkedin_playwright_capture(
+    session: Session, request: LinkedInPlaywrightCaptureRequest
+) -> LinkedInCaptureResponse:
+    with _CAPTURE_LOCK:
+        try:
+            context = _get_browser_context()
+            return _capture_with_context(session, context, request)
+        except Exception:
+            _reset_browser_context()
+            raise
+
+
+def run_linkedin_playwright_batch_capture(
+    session: Session, request: LinkedInPlaywrightBatchCaptureRequest
+) -> LinkedInPlaywrightBatchCaptureResponse:
+    captures: list[LinkedInCaptureResponse] = []
+    targets = [target for target in request.targets if target.url.strip()]
+    with _CAPTURE_LOCK:
+        try:
+            context = _get_browser_context()
+            for target in targets:
+                captures.append(_capture_with_context(session, context, target))
+            return LinkedInPlaywrightBatchCaptureResponse(
+                captured_count=len(captures),
+                captures=captures,
+            )
+        except Exception:
+            _reset_browser_context()
+            raise
