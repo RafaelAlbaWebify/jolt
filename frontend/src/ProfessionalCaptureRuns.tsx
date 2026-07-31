@@ -145,6 +145,14 @@ function isTerminalCapture(run: ProfessionalCaptureRun) {
   return run.status === "completed" || run.status === "completed_with_gaps";
 }
 
+function isLinkedInLoginRetry(run: ProfessionalCaptureRun) {
+  return run.status === "failed" && run.stop_reason === "linkedin_login_required";
+}
+
+function canStartRun(run: ProfessionalCaptureRun) {
+  return run.status === "planned" || run.status === "authorized" || run.status === "expired" || isLinkedInLoginRetry(run);
+}
+
 export function ProfessionalCaptureRuns({
   apiBase,
   active,
@@ -220,7 +228,7 @@ export function ProfessionalCaptureRuns({
 
   async function authorizeAndStart(run: ProfessionalCaptureRun): Promise<ProfessionalCaptureRun> {
     let ready = run;
-    if (ready.status === "planned" || ready.status === "expired") {
+    if (ready.status === "planned" || ready.status === "expired" || isLinkedInLoginRetry(ready)) {
       const authorization = await fetch(
         `${apiBase}/api/professional-intelligence/capture-runs/${ready.id}/authorize`,
         {
@@ -451,6 +459,9 @@ export function ProfessionalCaptureRuns({
                 {run.cancel_requested ? " · cancellation requested" : ""}
               </p>
               {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
+              {isLinkedInLoginRetry(run) && (
+                <p role="status">LinkedIn asked for login or checkpoint. Keep Chromium open, finish signing in there, then click Start capture again on this run.</p>
+              )}
               {renderRoutingSummary(run)}
               {isTerminalCapture(run) && renderOpportunityImport(run)}
               {run.source_progress.length > 0 && (
@@ -470,8 +481,8 @@ export function ProfessionalCaptureRuns({
                 </details>
               )}
               <code>{run.id}</code>
-              {(run.status === "planned" || run.status === "authorized" || run.status === "expired") && (
-                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>Start capture</button>
+              {canStartRun(run) && (
+                <button type="button" disabled={busy} onClick={() => void resumeRun(run)}>{isLinkedInLoginRetry(run) ? "Start capture again" : "Start capture"}</button>
               )}
               {run.status === "running" && (
                 <button type="button" className="secondary" disabled={busy} onClick={() => void cancelRun(run.id)}>Request cancellation</button>
