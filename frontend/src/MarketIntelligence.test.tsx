@@ -76,15 +76,30 @@ const PREFERENCES = {
   notes: "Remote first.",
 };
 
+const EMPTY_IMPORTS = { import_count: 0, latest_import: null, imports: [] };
+const IMPORTED = {
+  import_count: 1,
+  latest_import: {
+    id: "import-1",
+    source: "chatgpt_market_package",
+    summary: "Focus search and preparation.",
+    imported_at: "2026-07-31T00:00:00Z",
+    action_count: 1,
+    actions: [{ action_type: "study", title: "Practice SQL support triage", rationale: "SQL is important.", proposed_action: "Do three scenarios.", priority: "high", status: "pending", source: "chatgpt_market_package" }],
+  },
+  imports: [],
+};
+
 function stubMarketFetch(markets: object[] = [MARKET]) {
   let marketIndex = 0;
-  return vi.fn((input: RequestInfo | URL) => {
+  let imported = false;
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.includes("/api/linkedin-command-center")) {
-      return Promise.resolve({ ok: true, json: async () => LINKEDIN });
-    }
-    if (url.includes("/api/job-search-preferences")) {
-      return Promise.resolve({ ok: true, json: async () => PREFERENCES });
+    if (url.includes("/api/linkedin-command-center")) return Promise.resolve({ ok: true, json: async () => LINKEDIN });
+    if (url.includes("/api/job-search-preferences")) return Promise.resolve({ ok: true, json: async () => PREFERENCES });
+    if (url.includes("/api/market-intelligence/preparation-import")) {
+      if (init?.method === "POST") { imported = true; return Promise.resolve({ ok: true, json: async () => ({ imported_count: 1, latest_import: IMPORTED.latest_import }) }); }
+      return Promise.resolve({ ok: true, json: async () => (imported ? IMPORTED : EMPTY_IMPORTS) });
     }
     const payload = markets[Math.min(marketIndex, markets.length - 1)];
     marketIndex += 1;
@@ -105,7 +120,7 @@ describe("MarketIntelligence", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     rerender(<MarketIntelligence apiBase="http://api" active />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
     expect(screen.getByText("LinkedIn positioning vs market")).toBeInTheDocument();
     expect(screen.getByText("Preparation plan: study, practice, publish")).toBeInTheDocument();
@@ -130,6 +145,24 @@ describe("MarketIntelligence", () => {
     expect(await screen.findByText("Job search preferences saved.")).toBeInTheDocument();
   });
 
+  it("imports a market preparation return JSON", async () => {
+    const fetchMock = stubMarketFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MarketIntelligence apiBase="http://api" active />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Import analysis" }));
+    fireEvent.change(screen.getByLabelText("Market preparation JSON fallback"), { target: { value: JSON.stringify({ source: "chatgpt_market_package", preparation_plan: [{ action_type: "study", title: "Practice SQL support triage", rationale: "SQL is important.", proposed_action: "Do three scenarios.", priority: "high" }] }) } });
+    fireEvent.click(screen.getByRole("button", { name: "Import pasted JSON" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://api/api/market-intelligence/preparation-import",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByText("1 market preparation actions imported.")).toBeInTheDocument();
+    expect(screen.getByText("Latest imported market analysis")).toBeInTheDocument();
+    expect(screen.getByText("Practice SQL support triage")).toBeInTheDocument();
+  });
+
   it("shows a stable failure and retries only when requested", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
@@ -137,6 +170,7 @@ describe("MarketIntelligence", () => {
         const url = String(input);
         if (url.includes("/api/linkedin-command-center")) return Promise.resolve({ ok: true, json: async () => LINKEDIN });
         if (url.includes("/api/job-search-preferences")) return Promise.resolve({ ok: true, json: async () => PREFERENCES });
+        if (url.includes("/api/market-intelligence/preparation-import")) return Promise.resolve({ ok: true, json: async () => EMPTY_IMPORTS });
         return Promise.resolve({ ok: true, json: async () => MARKET });
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -145,7 +179,7 @@ describe("MarketIntelligence", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load market insights.");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Retry insights load" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
   });
 
@@ -158,6 +192,6 @@ describe("MarketIntelligence", () => {
     expect(await screen.findByText("Stable fit explanation.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh insights" }));
     expect(await screen.findByText("Updated fit explanation.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(8);
   });
 });
