@@ -43,6 +43,10 @@ from jolt.professional_intelligence_evidence_root import (
     configure_professional_evidence_root,
     get_professional_evidence_root,
 )
+from jolt.professional_intelligence_opportunity_import import (
+    ProfessionalOpportunityImportResult,
+    import_professional_opportunity_candidates,
+)
 from jolt.professional_intelligence_records import ProfessionalCaptureRun
 from jolt.professional_intelligence_retention import (
     ProfessionalRetentionCleanupRequest,
@@ -274,6 +278,21 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
             return build_professional_capture_routing_summary(session, run_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/professional-intelligence/capture-runs/{run_id}/opportunity-candidates/import",
+        response_model=ProfessionalOpportunityImportResult,
+    )
+    def professional_capture_opportunity_candidate_import(
+        run_id: str,
+        session: Session = session_dependency,
+    ) -> ProfessionalOpportunityImportResult:
+        try:
+            return import_professional_opportunity_candidates(session, run_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.get(
         "/api/professional-intelligence/capture-runs/{run_id}/structured-extraction",
