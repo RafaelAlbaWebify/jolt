@@ -35,6 +35,21 @@ class LinkedInPlaywrightBatchCaptureResponse(BaseModel):
     captures: list[LinkedInCaptureResponse]
 
 
+class LinkedInLoginRequired(RuntimeError):
+    """Raised when LinkedIn asks the visible browser to authenticate.
+
+    This must not reset/close the Playwright context. The whole point is to keep
+    Chromium open so Rafael can log in, then retry the same batch capture with
+    the persistent browser profile.
+    """
+
+
+LOGIN_REQUIRED_MESSAGE = (
+    "LinkedIn login required. Log in in the opened Chromium window, "
+    "then click Capture enabled again. JOLT kept the browser session open."
+)
+
+
 def _safe_slug(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip()).strip("-._")
     return slug[:80] or "linkedin-capture"
@@ -123,6 +138,34 @@ def _get_browser_context() -> Any:
     return _BROWSER_CONTEXT
 
 
+def _page_needs_linkedin_login(page: Any) -> bool:
+    """Detect login/checkpoint pages before JOLT tries to capture a section.
+
+    LinkedIn may redirect profile/detail URLs to login, checkpoint, challenge,
+    or authwall pages when the persistent browser profile has no active session.
+    In that case the correct workflow is to stop the batch and let the user log
+    in inside the already-open visible browser.
+    """
+    current_url = page.url.lower()
+    if any(marker in current_url for marker in ("/login", "/checkpoint", "/uas/login", "authwall", "session_redirect")):
+        return True
+    try:
+        body_text = page.locator("body").inner_text(timeout=3_000).lower()
+    except Exception:
+        return False
+    login_markers = (
+        "sign in",
+        "join linkedin",
+        "join now",
+        "email or phone",
+        "password",
+        "security verification",
+        "let's do a quick security check",
+        "verify your identity",
+    )
+    return any(marker in body_text for marker in login_markers)
+
+
 def _capture_with_context(
     session: Session,
     context: Any,
@@ -149,12 +192,17 @@ def _capture_with_context(
     except Exception:
         pass
     page.goto(request.url.strip(), wait_until="domcontentloaded", timeout=60_000)
+    page.wait_for_timeout(1_000)
+    if _page_needs_linkedin_login(page):
+        raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
     if request.wait_seconds > 0:
         page.wait_for_timeout(int(request.wait_seconds * 1000))
     try:
         page.wait_for_load_state("networkidle", timeout=8_000)
     except PlaywrightTimeoutError:
         pass
+    if _page_needs_linkedin_login(page):
+        raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
     final_url = page.url
     page_title = page.title() or title
     visible_text = page.locator("body").inner_text(timeout=10_000).strip()
@@ -188,6 +236,9 @@ def run_linkedin_playwright_capture(
         try:
             context = _get_browser_context()
             return _capture_with_context(session, context, request)
+        except LinkedInLoginRequired:
+            # Keep Chromium open so the user can log in and retry.
+            raise RuntimeError(LOGIN_REQUIRED_MESSAGE)
         except Exception:
             _reset_browser_context()
             raise
@@ -207,6 +258,10 @@ def run_linkedin_playwright_batch_capture(
                 captured_count=len(captures),
                 captures=captures,
             )
+        except LinkedInLoginRequired:
+            # Keep Chromium open on the login/checkpoint page. The frontend will
+            # show the 400 message, and the user can retry after authenticating.
+            raise RuntimeError(LOGIN_REQUIRED_MESSAGE)
         except Exception:
             _reset_browser_context()
             raise
