@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
@@ -27,7 +27,7 @@ const POPULATED_DASHBOARD = {
     title: "Profile baseline",
     source_url: "https://www.linkedin.com/in/example/",
     visible_text: "Application Support headline",
-    notes: "",
+    notes: "Screenshot: C:/Users/ralba/Downloads/JOLT_LINKEDIN_CAPTURES/profile.png",
     content_hash: "hash",
     previous_capture_id: null,
     changed_since_previous: false,
@@ -77,9 +77,10 @@ describe("LinkedInCommandCenter", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
-  it("loads only when active, saves captures, and displays recommendations", async () => {
+  it("loads only when active, saves manual fallback captures, and displays recommendations", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => EMPTY_DASHBOARD })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "capture-1" }) })
@@ -92,10 +93,10 @@ describe("LinkedInCommandCenter", () => {
     rerender(<LinkedInCommandCenter apiBase="http://api" active />);
     expect(await screen.findByText("No LinkedIn recommendations yet.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Capture LinkedIn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Manual evidence" }));
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Profile baseline" } });
     fireEvent.change(screen.getByLabelText("Visible text"), { target: { value: "Application Support headline" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save LinkedIn capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save manual evidence" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/linkedin-command-center/captures",
@@ -104,6 +105,34 @@ describe("LinkedInCommandCenter", () => {
     expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
     expect(screen.getByText("Profile updates (1)")).toBeInTheDocument();
     expect(screen.getByText("Profile baseline")).toBeInTheDocument();
+  });
+
+  it("shows editable default targets and captures a target through JOLT", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => EMPTY_DASHBOARD })
+      .mockResolvedValueOnce({ ok: true, json: async () => POPULATED_DASHBOARD.captures[0] })
+      .mockResolvedValueOnce({ ok: true, json: async () => POPULATED_DASHBOARD });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LinkedInCommandCenter apiBase="http://api" active />);
+    expect(await screen.findByRole("region", { name: "Capture targets" })).toBeInTheDocument();
+    expect(screen.getByText("Licenses & certifications")).toBeInTheDocument();
+    expect(screen.getByText("Jobs Based on my Preferences")).toBeInTheDocument();
+
+    const skillsCard = screen.getByText("Skills").closest("article");
+    expect(skillsCard).not.toBeNull();
+    fireEvent.click(within(skillsCard as HTMLElement).getByRole("button", { name: "Edit URL" }));
+    fireEvent.change(within(skillsCard as HTMLElement).getByLabelText("Name"), {
+      target: { value: "Skills and endorsements" },
+    });
+    expect(screen.getByText("Skills and endorsements")).toBeInTheDocument();
+
+    fireEvent.click(within(skillsCard as HTMLElement).getByRole("button", { name: "Capture" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://api/api/linkedin-command-center/captures/playwright",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByText("Skills and endorsements captured. Evidence was saved in JOLT.")).toBeInTheDocument();
   });
 
   it("imports ChatGPT recommendation JSON into grouped boards", async () => {
@@ -116,8 +145,8 @@ describe("LinkedInCommandCenter", () => {
     render(<LinkedInCommandCenter apiBase="http://api" active />);
     expect(await screen.findByText("Rewrite headline")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Import analysis JSON" }));
-    fireEvent.change(screen.getByLabelText("Recommendations JSON"), {
+    fireEvent.click(screen.getByRole("button", { name: "Import analysis" }));
+    fireEvent.change(screen.getByLabelText("Recommendations JSON fallback"), {
       target: {
         value: JSON.stringify({
           source: "chatgpt_package",
@@ -132,7 +161,7 @@ describe("LinkedInCommandCenter", () => {
         }),
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Import recommendations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import pasted JSON" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/linkedin-command-center/recommendations/import",

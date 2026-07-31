@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
@@ -30,9 +30,85 @@ type MarketData = {
   outside_title_examples: Metric[];
   fit_explanation: string;
 };
+type LinkedInRecommendation = {
+  id: string;
+  recommendation_type: string;
+  target_area: string;
+  title: string;
+  rationale: string;
+  proposed_action: string;
+  proposed_text: string;
+  priority: string;
+  status: string;
+};
+type LinkedInCommandCenterData = {
+  capture_count: number;
+  recommendation_count: number;
+  open_recommendation_count: number;
+  categories: Record<string, number>;
+  recommendations: LinkedInRecommendation[];
+};
+type PreparationItem = {
+  title: string;
+  reason: string;
+  study: string;
+  practice: string;
+  linkedin: string;
+  proof: string;
+  source: string;
+  priority: "High" | "Medium";
+};
 
 type Props = { apiBase: string; active: boolean };
 type Scope = "target" | "all";
+
+const PREPARATION_RULES: Record<string, Omit<PreparationItem, "source">> = {
+  sql: {
+    title: "SQL troubleshooting",
+    reason: "Target support roles frequently need data investigation, error triage, and evidence for engineering handoff.",
+    study: "SELECT/JOIN/GROUP BY, reading SQL errors, basic slow-query symptoms, and data-quality checks.",
+    practice: "Create 3 support-ticket scenarios where logs point to a SQL/data issue and write the triage notes.",
+    linkedin: "Make SQL troubleshooting visible in About, Skills, and one experience bullet.",
+    proof: "Add a short JOLT/WATCH-style case study: application support SQL triage from symptom to evidence.",
+    priority: "High",
+  },
+  api: {
+    title: "APIs, JSON, and integration troubleshooting",
+    reason: "Application Support and SaaS Support roles often sit between users, APIs, logs, and product engineering.",
+    study: "HTTP status codes, JSON payloads, auth failures, Postman basics, webhooks, and retry/failure patterns.",
+    practice: "Build a small broken-API lab and document how you isolate request, response, payload, and ownership.",
+    linkedin: "Add API/log troubleshooting language to About and technical support positioning.",
+    proof: "Publish a small support runbook or workflow screenshot from JOLT showing evidence-based escalation.",
+    priority: "High",
+  },
+  logs: {
+    title: "Logs and RCA evidence",
+    reason: "The market and LinkedIn feedback both reward clear incident evidence, not only tool names.",
+    study: "Timestamp correlation, error patterns, incident timelines, RCA structure, and escalation summaries.",
+    practice: "Write 2 anonymized incident/RCA summaries: impact, signal, cause, action, prevention.",
+    linkedin: "Rewrite experience bullets around incident triage, RCA, runbooks, escalation, and customer-facing support.",
+    proof: "Add one Featured item with an anonymized troubleshooting/RCA template.",
+    priority: "High",
+  },
+  powershell: {
+    title: "PowerShell automation for support operations",
+    reason: "Your profile already has IT operations credibility; automation turns that into practical support evidence.",
+    study: "File parsing, service checks, HTTP calls, CSV/JSON handling, and safe read-only diagnostics.",
+    practice: "Package one diagnostic script with sample output and a short explanation for support handoff.",
+    linkedin: "Position PowerShell as support automation, not generic scripting.",
+    proof: "Feature one read-only support diagnostic script or WATCH/JOLT utility.",
+    priority: "Medium",
+  },
+  active_directory: {
+    title: "Windows, AD, DNS, and identity support scenarios",
+    reason: "Infrastructure support roles are in your target market, and this is a credible existing strength.",
+    study: "AD user states, DNS lookup flow, DHCP basics, Entra ID/M365 support, and escalation boundaries.",
+    practice: "Document 3 support scenarios: locked user, DNS failure, M365 access issue.",
+    linkedin: "Keep AD/DNS/M365 visible but connect it to user/business support outcomes.",
+    proof: "Add a homelab/support scenario summary rather than a raw technology list.",
+    priority: "Medium",
+  },
+};
 
 function Ranking({ title, items, empty }: { title: string; items: Metric[]; empty?: string }) {
   const maximum = Math.max(1, ...items.map((item) => item.count));
@@ -57,8 +133,69 @@ function readable(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function normalized(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+}
+
+function buildPreparationPlan(scope: ScopeData, linkedin: LinkedInCommandCenterData | null): PreparationItem[] {
+  const tokens = new Set<string>();
+  for (const item of [...scope.top_skills, ...scope.top_gaps, ...scope.study_priorities]) {
+    const key = normalized(item.label);
+    if (key.includes("sql")) tokens.add("sql");
+    if (key.includes("api") || key.includes("rest") || key.includes("integration")) tokens.add("api");
+    if (key.includes("log") || key.includes("rca") || key.includes("incident") || key.includes("escalation")) tokens.add("logs");
+    if (key.includes("powershell")) tokens.add("powershell");
+    if (key.includes("active_directory") || key.includes("dns") || key.includes("microsoft_365") || key.includes("windows")) tokens.add("active_directory");
+  }
+
+  for (const recommendation of linkedin?.recommendations ?? []) {
+    const text = `${recommendation.title} ${recommendation.target_area} ${recommendation.rationale} ${recommendation.proposed_action}`.toLowerCase();
+    if (text.includes("sql")) tokens.add("sql");
+    if (text.includes("api") || text.includes("integration") || text.includes("json")) tokens.add("api");
+    if (text.includes("log") || text.includes("rca") || text.includes("incident") || text.includes("escalation")) tokens.add("logs");
+    if (text.includes("powershell") || text.includes("automation")) tokens.add("powershell");
+    if (text.includes("active directory") || text.includes("dns") || text.includes("microsoft 365") || text.includes("windows")) tokens.add("active_directory");
+  }
+
+  if (tokens.size === 0 && linkedin?.recommendation_count) {
+    tokens.add("logs");
+    tokens.add("sql");
+  }
+
+  return [...tokens].slice(0, 5).map((token) => ({
+    ...PREPARATION_RULES[token],
+    source: linkedin?.recommendation_count ? "Market demand + LinkedIn feedback" : "Market demand",
+  }));
+}
+
+function linkedInFitSignals(data: MarketData, linkedin: LinkedInCommandCenterData | null): string[] {
+  const recommendations = linkedin?.recommendations ?? [];
+  const signals: string[] = [];
+  if (!linkedin || linkedin.capture_count === 0) {
+    signals.push("No LinkedIn evidence has been captured yet, so Market Insights cannot compare your profile against the target market.");
+    return signals;
+  }
+  if (recommendations.some((item) => item.title.toLowerCase().includes("headline") || item.target_area.toLowerCase().includes("headline"))) {
+    signals.push("LinkedIn headline/positioning needs to match the target roles more directly.");
+  }
+  if (recommendations.some((item) => item.title.toLowerCase().includes("skill") || item.target_area.toLowerCase().includes("skill"))) {
+    signals.push("LinkedIn skills need reordering or strengthening against the most requested market skills.");
+  }
+  if (data.target.top_skills.some((item) => item.label.toLowerCase().includes("sql")) && !recommendations.some((item) => `${item.title} ${item.rationale}`.toLowerCase().includes("sql"))) {
+    signals.push("SQL appears in target-market skills; verify it is visible in LinkedIn headline/About/Skills.");
+  }
+  if (recommendations.some((item) => `${item.title} ${item.rationale}`.toLowerCase().includes("featured") || `${item.title} ${item.rationale}`.toLowerCase().includes("proof"))) {
+    signals.push("Profile proof-of-work should be more visible: JOLT/WATCH/TRACE need to support employability, not only exist as side projects.");
+  }
+  if (signals.length === 0) {
+    signals.push("LinkedIn evidence is available. Imported recommendations can now be used to guide study, practice, and profile updates.");
+  }
+  return signals.slice(0, 5);
+}
+
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
+  const [linkedin, setLinkedin] = useState<LinkedInCommandCenterData | null>(null);
   const [scope, setScope] = useState<Scope>("target");
   const [timeframe, setTimeframe] = useState<Timeframe>("all");
   const [sourceScope, setSourceScope] = useState<SourceScope>("all");
@@ -73,8 +210,14 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       const params = new URLSearchParams({ timeframe, source_scope: sourceScope });
       const response = await fetch(`${apiBase}/api/market-intelligence?${params.toString()}`, { signal });
       if (!response.ok) throw new Error("Unable to load market insights.");
-      setData((await response.json()) as MarketData);
+      const market = (await response.json()) as MarketData;
+      setData(market);
       setLastRefreshedAt(new Date().toISOString());
+
+      const linkedinResponse = await fetch(`${apiBase}/api/linkedin-command-center`, { signal }).catch(() => null);
+      if (linkedinResponse?.ok) {
+        setLinkedin((await linkedinResponse.json()) as LinkedInCommandCenterData);
+      }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(caught instanceof Error ? caught.message : "Market insights failed.");
@@ -93,6 +236,8 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   const selected = data?.[scope] ?? null;
   const appliedTimeframe = data?.filters?.timeframe ?? timeframe;
   const appliedSource = data?.filters?.source_scope ?? sourceScope;
+  const preparationPlan = useMemo(() => selected ? buildPreparationPlan(selected, linkedin) : [], [selected, linkedin]);
+  const linkedinSignals = useMemo(() => data ? linkedInFitSignals(data, linkedin) : [], [data, linkedin]);
 
   return (
     <section className="panel market-workspace" aria-labelledby="market-heading">
@@ -100,7 +245,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
         <div>
           <p className="eyebrow">Market insights</p>
           <h2 id="market-heading">Market Insights</h2>
-          <p>Learn from active retained records. Archived capture batches are excluded from this view.</p>
+          <p>Learn from active retained records and compare market demand with LinkedIn positioning.</p>
           {lastRefreshedAt && <p className="market-refreshed">Last refreshed {new Date(lastRefreshedAt).toLocaleString()}</p>}
         </div>
         <div className="market-heading-actions">
@@ -148,7 +293,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <div><strong>{selected.total_roles}</strong><span>{scope === "target" ? "Active target roles" : "Active records"}</span></div>
             <div><strong>{selected.strong_roles}</strong><span>Strong matches</span></div>
             <div><strong>{selected.viable_roles}</strong><span>Strong or viable</span></div>
-            <div><strong>{selected.salary_coverage}</strong><span>With salary evidence</span></div>
+            <div><strong>{linkedin?.open_recommendation_count ?? 0}</strong><span>LinkedIn actions</span></div>
           </div>
 
           <div className="market-guidance">
@@ -158,6 +303,45 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <p>Applied filters: {readable(appliedTimeframe)} · {readable(appliedSource)}.</p>
             {scope === "target" && <p><strong>{data.outside_target_count}</strong> active records are outside your target path and are excluded from this view.</p>}
           </div>
+
+          <section className="market-card linkedin-market-fit" aria-labelledby="linkedin-market-fit-heading">
+            <div className="market-card-heading">
+              <h3 id="linkedin-market-fit-heading">LinkedIn positioning vs market</h3>
+              <span>{linkedin?.capture_count ?? 0} captures · {linkedin?.recommendation_count ?? 0} recommendations</span>
+            </div>
+            <div className="linkedin-signal-list">
+              {linkedinSignals.map((signal) => <p key={signal}>{signal}</p>)}
+            </div>
+          </section>
+
+          <section className="market-card preparation-plan" aria-labelledby="preparation-plan-heading">
+            <div className="market-card-heading">
+              <h3 id="preparation-plan-heading">Preparation plan: study, practice, publish</h3>
+              <span>{preparationPlan.length} priorities</span>
+            </div>
+            {preparationPlan.length === 0 ? (
+              <p>No preparation priorities yet. Add target roles and LinkedIn recommendations to generate a plan.</p>
+            ) : (
+              <div className="preparation-grid">
+                {preparationPlan.map((item) => (
+                  <article key={item.title} className="preparation-card">
+                    <p className="eyebrow">{item.priority} · {item.source}</p>
+                    <h4>{item.title}</h4>
+                    <p>{item.reason}</p>
+                    <details>
+                      <summary>Study / practice / LinkedIn action</summary>
+                      <ul>
+                        <li><strong>Study:</strong> {item.study}</li>
+                        <li><strong>Practice:</strong> {item.practice}</li>
+                        <li><strong>LinkedIn:</strong> {item.linkedin}</li>
+                        <li><strong>Proof:</strong> {item.proof}</li>
+                      </ul>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
           <div className="market-grid">
             <Ranking title="Target role families" items={selected.role_families} />

@@ -37,6 +37,13 @@ from jolt.linkedin_command_center import (
     list_linkedin_command_center,
     update_linkedin_recommendation_status,
 )
+from jolt.linkedin_playwright_capture import (
+    LinkedInPlaywrightBatchCaptureRequest,
+    LinkedInPlaywrightBatchCaptureResponse,
+    LinkedInPlaywrightCaptureRequest,
+    run_linkedin_playwright_batch_capture,
+    run_linkedin_playwright_capture,
+)
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
 from jolt.opportunity_index import OpportunityIndexItem, list_opportunity_index
@@ -381,6 +388,38 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> LinkedInCaptureResponse:
         return create_linkedin_capture(session, request)
+
+    @app.post(
+        "/api/linkedin-command-center/captures/playwright",
+        response_model=LinkedInCaptureResponse,
+        tags=["linkedin-command-center"],
+    )
+    def create_linkedin_playwright_capture(
+        request: LinkedInPlaywrightCaptureRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInCaptureResponse:
+        try:
+            return run_linkedin_playwright_capture(session, request)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/linkedin-command-center/captures/playwright-batch",
+        response_model=LinkedInPlaywrightBatchCaptureResponse,
+        tags=["linkedin-command-center"],
+    )
+    def create_linkedin_playwright_batch_capture(
+        request: LinkedInPlaywrightBatchCaptureRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> LinkedInPlaywrightBatchCaptureResponse:
+        try:
+            return run_linkedin_playwright_batch_capture(session, request)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post(
         "/api/linkedin-command-center/recommendations",

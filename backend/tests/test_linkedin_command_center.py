@@ -137,3 +137,33 @@ def test_linkedin_command_center_imports_chatgpt_recommendations(tmp_path: Path)
     assert dashboard["recommendation_types"]["profile_update"] == 1
     assert dashboard["recommendation_types"]["network_decision"] == 1
     assert {item["status"] for item in dashboard["recommendations"]} == {"pending"}
+
+
+def test_linkedin_playwright_capture_endpoint_uses_service(tmp_path: Path, monkeypatch) -> None:
+    from jolt import main as main_module
+
+    def fake_capture(session, request):
+        return main_module.create_linkedin_capture(
+            session,
+            main_module.LinkedInCaptureRequest(
+                category=request.category,
+                title=request.title,
+                source_url=request.url,
+                visible_text="captured visible LinkedIn text",
+                notes="Browser session kept open for multi-section captures.",
+            ),
+        )
+
+    monkeypatch.setattr(main_module, "run_linkedin_playwright_capture", fake_capture)
+    client = _client(tmp_path)
+
+    captured = client.post(
+        "/api/linkedin-command-center/captures/playwright",
+        json={"category": "profile", "title": "Profile", "url": "https://www.linkedin.com/in/example/"},
+    )
+
+    assert captured.status_code == 200
+    payload = captured.json()
+    assert payload["title"] == "Profile"
+    assert payload["source_url"] == "https://www.linkedin.com/in/example/"
+    assert "multi-section" in payload["notes"]
