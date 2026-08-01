@@ -54,7 +54,8 @@ _SHIFT_TERMS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _preference_blockers(text: str) -> list[str]:
+def preference_blockers(text: str) -> list[str]:
+    """Return only blockers explicitly configured in the current saved preferences."""
     preferences = load_job_search_preferences()
     lowered = text.casefold()
     blockers = [
@@ -77,7 +78,7 @@ def _preference_blockers(text: str) -> list[str]:
 
 def evaluate_text_with_preferences(text: str) -> EvaluationResult:
     recommendation, confidence, score, reasons = _ORIGINAL_EVALUATE_TEXT(text)
-    blockers = _preference_blockers(text)
+    blockers = preference_blockers(text)
     if blockers:
         return (
             "reject",

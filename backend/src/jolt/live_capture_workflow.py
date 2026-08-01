@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from jolt.capture_artifacts import stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
-from jolt.database import CaptureItem, CapturePage, CaptureRun, utc_now
+from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, utc_now
 from jolt.schemas import (
     CaptureItemResponse,
     CapturePageResponse,
@@ -15,6 +15,7 @@ from jolt.schemas import (
     LinkedInLiveCaptureRequest,
     ManualIntakeRequest,
 )
+from jolt.strategy_runtime import ensure_strategy_review, load_active_strategy_profile
 
 
 def _posting_text(title: str, company: str, location: str, description: str) -> str:
@@ -91,6 +92,7 @@ def run_linkedin_live_capture(
                 )
             )
 
+        profile = load_active_strategy_profile()
         responses: list[CaptureItemResponse] = []
         warnings: list[str] = []
         for evidence in request.items:
@@ -120,6 +122,10 @@ def run_linkedin_live_capture(
                 source_document_id = intake.source_document_id
                 posting_id = intake.posting_id
                 identity_status = intake.identity_status
+                if profile is not None:
+                    posting = session.get(Posting, posting_id)
+                    if posting is not None:
+                        ensure_strategy_review(session, profile, posting, commit=False)
             else:
                 warnings.append(f"LinkedIn job {evidence.source_job_id} was not ingested.")
 
