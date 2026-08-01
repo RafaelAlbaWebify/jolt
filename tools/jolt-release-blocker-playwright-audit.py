@@ -109,8 +109,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         )
 
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
-        page.get_by_role("button", name="Opportunities", exact=True).click()
-        page.get_by_role("heading", name="Opportunities", exact=True).wait_for(timeout=30_000)
+        page.get_by_role("button", name="Review Inbox", exact=True).click()
+        page.get_by_role("heading", name="Review Inbox", exact=True).wait_for(timeout=30_000)
         page.get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
         page.locator(".opportunity-row .score").first.wait_for(timeout=30_000)
 
@@ -135,8 +135,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
             )
         page.screenshot(path=output_dir / "opportunity-score-badges.png", full_page=True)
 
-        page.get_by_role("button", name="Professional", exact=True).click()
-        page.get_by_role("heading", name="Professional", exact=True).wait_for(timeout=30_000)
+        page.get_by_role("button", name="Capture & Evidence", exact=True).click()
+        page.get_by_role("heading", name="Capture & Evidence", exact=True).wait_for(timeout=30_000)
         evidence_panel = page.locator(".professional-evidence-root")
         evidence_panel.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
         primary = page.get_by_role("button", name="Start capture", exact=True).first
