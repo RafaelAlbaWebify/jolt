@@ -87,6 +87,7 @@ describe("ProfessionalIntelligence", () => {
       initial_scope: false,
       enabled: false,
     };
+    let updatePayload: Record<string, unknown> | null = null;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/sources") && !init?.method) {
@@ -99,12 +100,7 @@ describe("ProfessionalIntelligence", () => {
         return new Response(JSON.stringify([]), { status: 200 });
       }
       if (url.endsWith("/linkedin-profile/update")) {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          label: "Profile positioning review",
-          url: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt",
-          initial_scope: false,
-          enabled: false,
-        });
+        updatePayload = JSON.parse(String(init?.body)) as Record<string, unknown>;
         return new Response(JSON.stringify(updated), { status: 200 });
       }
       if (url.endsWith("/linkedin-profile/reset")) {
@@ -130,6 +126,12 @@ describe("ProfessionalIntelligence", () => {
 
     const updatedHeading = await screen.findByRole("heading", { name: "Profile positioning review" });
     expect(screen.getByText("Disabled")).toBeInTheDocument();
+    expect(updatePayload).toEqual({
+      label: "Profile positioning review",
+      url: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt",
+      initial_scope: false,
+      enabled: false,
+    });
 
     const updatedCard = updatedHeading.closest("article");
     expect(updatedCard).not.toBeNull();
