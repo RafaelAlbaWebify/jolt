@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import os
 import re
+from contextlib import suppress
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -81,10 +82,8 @@ _CAPTURE_LOCK = Lock()
 def _reset_browser_context() -> None:
     global _BROWSER_CONTEXT
     if _BROWSER_CONTEXT is not None:
-        try:
+        with suppress(Exception):
             _BROWSER_CONTEXT.close()
-        except Exception:
-            pass
     _BROWSER_CONTEXT = None
 
 
@@ -92,10 +91,8 @@ def _stop_playwright() -> None:
     global _PLAYWRIGHT
     _reset_browser_context()
     if _PLAYWRIGHT is not None:
-        try:
+        with suppress(Exception):
             _PLAYWRIGHT.stop()
-        except Exception:
-            pass
     _PLAYWRIGHT = None
 
 
@@ -124,7 +121,7 @@ def _get_browser_context() -> Any:
 
     if _BROWSER_CONTEXT is not None:
         try:
-            _BROWSER_CONTEXT.pages
+            _ = _BROWSER_CONTEXT.pages
             return _BROWSER_CONTEXT
         except Exception:
             _BROWSER_CONTEXT = None
@@ -147,7 +144,10 @@ def _page_needs_linkedin_login(page: Any) -> bool:
     in inside the already-open visible browser.
     """
     current_url = page.url.lower()
-    if any(marker in current_url for marker in ("/login", "/checkpoint", "/uas/login", "authwall", "session_redirect")):
+    if any(
+        marker in current_url
+        for marker in ("/login", "/checkpoint", "/uas/login", "authwall", "session_redirect")
+    ):
         return True
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
@@ -187,20 +187,16 @@ def _capture_with_context(
     visible_text = ""
 
     page = context.pages[0] if context.pages else context.new_page()
-    try:
+    with suppress(Exception):
         page.bring_to_front()
-    except Exception:
-        pass
     page.goto(request.url.strip(), wait_until="domcontentloaded", timeout=60_000)
     page.wait_for_timeout(1_000)
     if _page_needs_linkedin_login(page):
         raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
     if request.wait_seconds > 0:
         page.wait_for_timeout(int(request.wait_seconds * 1000))
-    try:
+    with suppress(PlaywrightTimeoutError):
         page.wait_for_load_state("networkidle", timeout=8_000)
-    except PlaywrightTimeoutError:
-        pass
     if _page_needs_linkedin_login(page):
         raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
     final_url = page.url
@@ -236,9 +232,9 @@ def run_linkedin_playwright_capture(
         try:
             context = _get_browser_context()
             return _capture_with_context(session, context, request)
-        except LinkedInLoginRequired:
+        except LinkedInLoginRequired as exc:
             # Keep Chromium open so the user can log in and retry.
-            raise RuntimeError(LOGIN_REQUIRED_MESSAGE)
+            raise RuntimeError(LOGIN_REQUIRED_MESSAGE) from exc
         except Exception:
             _reset_browser_context()
             raise
@@ -258,10 +254,10 @@ def run_linkedin_playwright_batch_capture(
                 captured_count=len(captures),
                 captures=captures,
             )
-        except LinkedInLoginRequired:
+        except LinkedInLoginRequired as exc:
             # Keep Chromium open on the login/checkpoint page. The frontend will
             # show the 400 message, and the user can retry after authenticating.
-            raise RuntimeError(LOGIN_REQUIRED_MESSAGE)
+            raise RuntimeError(LOGIN_REQUIRED_MESSAGE) from exc
         except Exception:
             _reset_browser_context()
             raise
