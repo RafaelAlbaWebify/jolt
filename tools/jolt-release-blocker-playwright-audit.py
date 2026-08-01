@@ -13,7 +13,6 @@ from playwright.sync_api import Page, Route, sync_playwright
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
-DELETE_PHRASE = "DELETE CAPTURE RUN"
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -182,9 +181,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.screenshot(path=output_dir / "professional-one-click-capture-completed.png", full_page=True)
 
         delete_button.click()
-        deletion_input = page.get_by_label("Deletion phrase for", exact=False)
-        deletion_input.fill(DELETE_PHRASE)
         permanent_delete = page.get_by_role("button", name="Permanently delete batch", exact=True)
+        permanent_delete.wait_for(timeout=30_000)
         assert_true(permanent_delete.is_enabled(), "Confirmed deletion action did not become enabled")
         permanent_delete.click()
         page.get_by_text("No captures yet", exact=False).wait_for(timeout=30_000)
