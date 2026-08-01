@@ -352,8 +352,7 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
     return {
         "total_roles": len(postings),
         "strong_roles": score_bands.get(ordered_bands[0], 0),
-        "viable_roles": score_bands.get(ordered_bands[0], 0)
-        + score_bands.get(ordered_bands[1], 0),
+        "viable_roles": score_bands.get(ordered_bands[0], 0) + score_bands.get(ordered_bands[1], 0),
         "role_families": _ranked(role_families),
         "work_modes": _ranked(work_modes),
         "seniority": _ranked(seniority),
@@ -383,9 +382,7 @@ def build_market_intelligence(
     production_postings = [
         posting for posting in active_postings if not _is_synthetic_audit_posting(posting)
     ]
-    source_filtered = _filter_by_source_scope(
-        production_postings, capture_statuses, source_scope
-    )
+    source_filtered = _filter_by_source_scope(production_postings, capture_statuses, source_scope)
     postings = _filter_by_timeframe(source_filtered, timeframe)
     evaluations, evaluation_coverage = _effective_evaluations(session, postings)
 
