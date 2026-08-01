@@ -7,6 +7,7 @@ from importlib import import_module
 from typing import Protocol, cast
 
 from jolt import linkedin_capture
+from jolt.linkedin_source_urls import install_linkedin_url_normalization
 
 
 class _ConsoleReader(Protocol):
@@ -36,6 +37,7 @@ def install_console_input() -> Callable[[str], str] | None:
 
 def main() -> int:
     install_console_input()
+    install_linkedin_url_normalization()
     return linkedin_capture.main()
 
 
