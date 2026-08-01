@@ -226,7 +226,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
             path=output_dir / "applications-after-forward-drag.png", full_page=True
         )
 
-        backward_control = moved_card.get_by_label(f"Move {title} to lane")
+        backward_control = moved_card.get_by_label(f"Move {title} to stage")
         backward_control.select_option("applied")
         page.get_by_text(f"{title} moved to Applied.", exact=True).wait_for(timeout=30_000)
         corrected_card = applied_lane.locator(
