@@ -87,7 +87,7 @@ def _get_browser_context() -> BrowserContext:
 
     if _BROWSER_CONTEXT is not None:
         try:
-            _BROWSER_CONTEXT.pages
+            _ = _BROWSER_CONTEXT.pages
             return _BROWSER_CONTEXT
         except Exception:
             _BROWSER_CONTEXT = None
@@ -124,7 +124,7 @@ class BoundedVisibleCaptureSession:
         self.auth_required = False
         self.failure_detail = ""
 
-    def __enter__(self) -> "BoundedVisibleCaptureSession":
+    def __enter__(self) -> BoundedVisibleCaptureSession:
         with _BROWSER_LOCK:
             self.context = _get_browser_context()
         return self
