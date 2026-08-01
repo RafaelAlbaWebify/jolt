@@ -36,7 +36,8 @@ class _FakeSession:
 class _FakeLocator:
     def __init__(
         self,
-        text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents. " * 3,
+        text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents. "
+        * 3,
     ) -> None:
         self.text = text
 
@@ -167,7 +168,9 @@ def test_professional_capture_uses_project_local_persistent_profile() -> None:
     assert "JOLT kept the browser session open" in AUTH_REQUIRED_MESSAGE
 
 
-def test_successful_capture_attempt_keeps_capture_page_open_and_records_runtime_diagnostics() -> None:
+def test_successful_capture_attempt_keeps_capture_page_open_and_records_runtime_diagnostics() -> (
+    None
+):
     page = _SuccessfulPage()
     captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
