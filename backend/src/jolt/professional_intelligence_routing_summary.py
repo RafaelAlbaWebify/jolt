@@ -52,7 +52,9 @@ def _progress_by_source(run) -> dict[str, object]:
     return {progress.source_id: progress for progress in run.source_progress}
 
 
-def _routing_status(run_status: str, source_status: str, target_bucket: RoutingBucket) -> RoutingStatus:
+def _routing_status(
+    run_status: str, source_status: str, target_bucket: RoutingBucket
+) -> RoutingStatus:
     if source_status in {"failed", "skipped", "cancelled"}:
         return "rejected"
     if run_status == "running" or source_status == "running":

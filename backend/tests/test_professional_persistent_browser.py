@@ -33,7 +33,10 @@ class _FakeSession:
 
 
 class _FakeLocator:
-    def __init__(self, text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents.") -> None:
+    def __init__(
+        self,
+        text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents.",
+    ) -> None:
         self.text = text
 
     def inner_text(self, timeout: int) -> str:

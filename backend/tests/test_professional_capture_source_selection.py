@@ -36,7 +36,9 @@ def test_one_source_professional_capture_selects_career_source_first(tmp_path: P
     assert "career_sources_prioritized_for_small_runs" in payload["safety_constraints"]
 
 
-def test_bounded_professional_capture_keeps_career_sources_before_profile_sources(tmp_path: Path) -> None:
+def test_bounded_professional_capture_keeps_career_sources_before_profile_sources(
+    tmp_path: Path,
+) -> None:
     client = _client(tmp_path)
 
     created = client.post(

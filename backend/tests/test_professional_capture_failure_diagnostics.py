@@ -16,7 +16,9 @@ def _client_and_factory(tmp_path: Path):
     return TestClient(create_app(database_url)), create_session_factory(database_url)
 
 
-def test_failed_source_capture_records_diagnostic_artifact_and_progress_detail(tmp_path: Path) -> None:
+def test_failed_source_capture_records_diagnostic_artifact_and_progress_detail(
+    tmp_path: Path,
+) -> None:
     client, factory = _client_and_factory(tmp_path)
     evidence_root = tmp_path / "evidence"
     configured = client.post(

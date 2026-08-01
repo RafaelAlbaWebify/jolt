@@ -15,7 +15,9 @@ def test_capture_run_deletion_requires_confirmation_and_removes_only_selected_go
     evidence_root = Path(
         client.get("/api/professional-intelligence/evidence-root").json()["root_path"]
     )
-    governed_directory = evidence_root / "professional-intelligence" / first["id"] / "linkedin-profile"
+    governed_directory = (
+        evidence_root / "professional-intelligence" / first["id"] / "linkedin-profile"
+    )
     governed_directory.mkdir(parents=True)
     (governed_directory / "page.html").write_text("fixture", encoding="utf-8")
     legacy_wrong_directory = evidence_root / first["id"]

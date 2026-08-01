@@ -42,12 +42,78 @@ SKILL_TERMS = (
 )
 
 TARGET_ROLE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Application support", ("application support", "application analyst", "business application", "enterprise application")),
-    ("Production support", ("production support", "production operations", "site reliability", " sre ", "noc engineer", "operations support")),
-    ("Technical / product support", ("technical support", "support engineer", "product support", "software support", "solutions support", "customer technical")),
-    ("Service desk / workplace support", ("service desk", "help desk", "helpdesk", "it support", "desktop support", "deskside", "workplace support", "end user support", "2nd line support", "second line support")),
-    ("Cloud / infrastructure operations", ("cloud operations", "cloud support", "infrastructure support", "infrastructure engineer", "systems administrator", "system administrator", "sysadmin", "network support", "platform operations", "azure cloud engineer")),
-    ("IT service management", ("service manager", "service delivery", "incident manager", "problem manager", "change manager", "it operations manager")),
+    (
+        "Application support",
+        (
+            "application support",
+            "application analyst",
+            "business application",
+            "enterprise application",
+        ),
+    ),
+    (
+        "Production support",
+        (
+            "production support",
+            "production operations",
+            "site reliability",
+            " sre ",
+            "noc engineer",
+            "operations support",
+        ),
+    ),
+    (
+        "Technical / product support",
+        (
+            "technical support",
+            "support engineer",
+            "product support",
+            "software support",
+            "solutions support",
+            "customer technical",
+        ),
+    ),
+    (
+        "Service desk / workplace support",
+        (
+            "service desk",
+            "help desk",
+            "helpdesk",
+            "it support",
+            "desktop support",
+            "deskside",
+            "workplace support",
+            "end user support",
+            "2nd line support",
+            "second line support",
+        ),
+    ),
+    (
+        "Cloud / infrastructure operations",
+        (
+            "cloud operations",
+            "cloud support",
+            "infrastructure support",
+            "infrastructure engineer",
+            "systems administrator",
+            "system administrator",
+            "sysadmin",
+            "network support",
+            "platform operations",
+            "azure cloud engineer",
+        ),
+    ),
+    (
+        "IT service management",
+        (
+            "service manager",
+            "service delivery",
+            "incident manager",
+            "problem manager",
+            "change manager",
+            "it operations manager",
+        ),
+    ),
 )
 
 
@@ -129,7 +195,9 @@ def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
 def _capture_statuses_by_posting(session: Session) -> dict[str, set[str]]:
     runs = {run.id: run for run in session.scalars(select(CaptureRun)).all()}
     statuses: dict[str, set[str]] = {}
-    for item in session.scalars(select(CaptureItem).where(CaptureItem.posting_id.is_not(None))).all():
+    for item in session.scalars(
+        select(CaptureItem).where(CaptureItem.posting_id.is_not(None))
+    ).all():
         if not item.posting_id:
             continue
         run = runs.get(item.capture_run_id)
@@ -140,7 +208,9 @@ def _capture_statuses_by_posting(session: Session) -> dict[str, set[str]]:
 
 
 def _is_archived_capture_import(capture_statuses: set[str]) -> bool:
-    return bool(capture_statuses) and all(status == ARCHIVED_CAPTURE_STATUS for status in capture_statuses)
+    return bool(capture_statuses) and all(
+        status == ARCHIVED_CAPTURE_STATUS for status in capture_statuses
+    )
 
 
 def _as_aware(value: datetime | None) -> datetime | None:
@@ -158,10 +228,16 @@ def _filter_by_timeframe(postings: list[Posting], timeframe: str) -> list[Postin
         threshold = datetime.now(UTC) - timedelta(days=30)
     else:
         return postings
-    return [posting for posting in postings if (_as_aware(posting.created_at) or datetime.min.replace(tzinfo=UTC)) >= threshold]
+    return [
+        posting
+        for posting in postings
+        if (_as_aware(posting.created_at) or datetime.min.replace(tzinfo=UTC)) >= threshold
+    ]
 
 
-def _filter_by_source_scope(postings: list[Posting], capture_statuses: dict[str, set[str]], source_scope: str) -> list[Posting]:
+def _filter_by_source_scope(
+    postings: list[Posting], capture_statuses: dict[str, set[str]], source_scope: str
+) -> list[Posting]:
     if source_scope == "capture_batches":
         return [posting for posting in postings if posting.id in capture_statuses]
     if source_scope == "manual_intake":
@@ -194,7 +270,11 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
         searchable = f"{posting.title}\n{posting.description}".lower()
         for skill in SKILL_TERMS:
             if skill in searchable:
-                label = skill.upper() if skill in {"sql", "aws", "dns", "dhcp", "api"} else skill.title()
+                label = (
+                    skill.upper()
+                    if skill in {"sql", "aws", "dns", "dhcp", "api"}
+                    else skill.title()
+                )
                 skills[label] += 1
 
         evaluation = evaluations.get(posting.id)
@@ -212,7 +292,9 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
                         study_topics[topic] += 1
 
         for mention in _salary_mentions(posting.description):
-            salary_mentions.append({"title": posting.title, "company": posting.company, "mention": mention})
+            salary_mentions.append(
+                {"title": posting.title, "company": posting.company, "mention": mention}
+            )
 
     ordered_bands = (
         "Strong match · 80–100",
@@ -230,7 +312,9 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
         "top_companies": _ranked(companies),
         "top_locations": _ranked(locations),
         "top_skills": _ranked(skills, 20),
-        "fit_distribution": [{"label": label, "count": score_bands.get(label, 0)} for label in ordered_bands],
+        "fit_distribution": [
+            {"label": label, "count": score_bands.get(label, 0)} for label in ordered_bands
+        ],
         "top_gaps": _ranked(gaps, 12),
         "study_priorities": _ranked(study_topics, 12),
         "salary_mentions": salary_mentions[:20],
@@ -238,14 +322,26 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
     }
 
 
-def build_market_intelligence(session: Session, *, timeframe: str = "all", source_scope: str = "all") -> dict[str, object]:
+def build_market_intelligence(
+    session: Session, *, timeframe: str = "all", source_scope: str = "all"
+) -> dict[str, object]:
     all_postings = list(session.scalars(select(Posting).order_by(Posting.created_at.desc())).all())
     capture_statuses = _capture_statuses_by_posting(session)
-    active_postings = [posting for posting in all_postings if not _is_archived_capture_import(capture_statuses.get(posting.id, set()))]
+    active_postings = [
+        posting
+        for posting in all_postings
+        if not _is_archived_capture_import(capture_statuses.get(posting.id, set()))
+    ]
     source_filtered = _filter_by_source_scope(active_postings, capture_statuses, source_scope)
     postings = _filter_by_timeframe(source_filtered, timeframe)
 
-    evaluations = list(session.scalars(select(Evaluation).where(Evaluation.engine_version == ENGINE_VERSION).order_by(Evaluation.created_at.desc())).all())
+    evaluations = list(
+        session.scalars(
+            select(Evaluation)
+            .where(Evaluation.engine_version == ENGINE_VERSION)
+            .order_by(Evaluation.created_at.desc())
+        ).all()
+    )
     latest_evaluations: dict[str, Evaluation] = {}
     for evaluation in evaluations:
         latest_evaluations.setdefault(evaluation.posting_id, evaluation)

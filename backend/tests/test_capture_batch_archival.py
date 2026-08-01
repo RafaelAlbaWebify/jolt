@@ -33,7 +33,9 @@ def _capture_payload(title: str, source_job_id: str = "job-1") -> dict[str, obje
 def test_archiving_capture_batch_hides_unreviewed_import_from_opportunity_inbox(tmp_path) -> None:
     client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
 
-    captured = client.post("/api/captures/linkedin/live", json=_capture_payload("Support Engineer")).json()
+    captured = client.post(
+        "/api/captures/linkedin/live", json=_capture_payload("Support Engineer")
+    ).json()
     assert captured["verified_items"] == 1
     assert len(client.get("/api/opportunity-index").json()) == 1
 

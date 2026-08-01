@@ -65,7 +65,9 @@ class LinkedInRecommendationImportItem(LinkedInRecommendationRequest):
 
 class LinkedInRecommendationImportRequest(BaseModel):
     source: str = "chatgpt_package"
-    recommendations: list[LinkedInRecommendationImportItem] = Field(default_factory=list, max_length=100)
+    recommendations: list[LinkedInRecommendationImportItem] = Field(
+        default_factory=list, max_length=100
+    )
 
 
 class LinkedInRecommendationStatusRequest(BaseModel):
@@ -145,7 +147,9 @@ def _capture_response(capture: LinkedInPresenceCapture) -> LinkedInCaptureRespon
     )
 
 
-def _recommendation_response(recommendation: LinkedInPresenceRecommendation) -> LinkedInRecommendationResponse:
+def _recommendation_response(
+    recommendation: LinkedInPresenceRecommendation,
+) -> LinkedInRecommendationResponse:
     return LinkedInRecommendationResponse(
         id=recommendation.id,
         capture_id=recommendation.capture_id,
@@ -168,7 +172,8 @@ def list_linkedin_command_center(session: Session) -> LinkedInCommandCenterRespo
     ).all()
     recommendations = session.scalars(
         select(LinkedInPresenceRecommendation).order_by(
-            LinkedInPresenceRecommendation.updated_at.desc(), LinkedInPresenceRecommendation.created_at.desc()
+            LinkedInPresenceRecommendation.updated_at.desc(),
+            LinkedInPresenceRecommendation.created_at.desc(),
         )
     ).all()
     status_counts = Counter(item.status for item in recommendations)
@@ -186,7 +191,9 @@ def list_linkedin_command_center(session: Session) -> LinkedInCommandCenterRespo
     )
 
 
-def create_linkedin_capture(session: Session, request: LinkedInCaptureRequest) -> LinkedInCaptureResponse:
+def create_linkedin_capture(
+    session: Session, request: LinkedInCaptureRequest
+) -> LinkedInCaptureResponse:
     content_hash = _hash_capture(request)
     previous = session.scalars(
         select(LinkedInPresenceCapture)
@@ -364,7 +371,7 @@ Return:
 """
     readme = f"""# JOLT LinkedIn Command Center package
 
-Generated: {dataset['generated_at']}
+Generated: {dataset["generated_at"]}
 
 This package is for manual analysis of Rafael's LinkedIn presence and networking strategy.
 
@@ -372,7 +379,7 @@ Included:
 
 - Captures: {len(captures)}
 - Recommendations already tracked in JOLT: {len(recommendations)}
-- Market target roles from JOLT: {dataset['market_summary']['target_role_count']}
+- Market target roles from JOLT: {dataset["market_summary"]["target_role_count"]}
 
 Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis. Import the returned `linkedin_recommendations.json` through the LinkedIn Command Center import panel.
 """

@@ -156,9 +156,9 @@ This package is for a ChatGPT analysis round that combines:
 Dataset size:
 
 - Jobs: {len(jobs)}
-- LinkedIn captures: {linkedin.get('capture_count', 0)}
-- LinkedIn recommendations: {linkedin.get('recommendation_count', 0)}
-- Target roles in market view: {market.get('target_role_count', 0)}
+- LinkedIn captures: {linkedin.get("capture_count", 0)}
+- LinkedIn recommendations: {linkedin.get("recommendation_count", 0)}
+- Target roles in market view: {market.get("target_role_count", 0)}
 
 Upload this ZIP to ChatGPT and use `prompt.md` as the operating instruction.
 """
@@ -166,8 +166,12 @@ Upload this ZIP to ChatGPT and use `prompt.md` as the operating instruction.
     files = {
         "README.md": readme.encode("utf-8"),
         "prompt.md": prompt.encode("utf-8"),
-        "data/market_linkedin_preparation.json": json.dumps(dataset, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8"),
-        "data/job_search_preferences.json": json.dumps(preferences.model_dump(), indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8"),
+        "data/market_linkedin_preparation.json": json.dumps(
+            dataset, indent=2, ensure_ascii=False, sort_keys=True
+        ).encode("utf-8"),
+        "data/job_search_preferences.json": json.dumps(
+            preferences.model_dump(), indent=2, ensure_ascii=False, sort_keys=True
+        ).encode("utf-8"),
         "data/jobs.csv": _csv_bytes(
             jobs,
             [
@@ -208,7 +212,9 @@ Upload this ZIP to ChatGPT and use `prompt.md` as the operating instruction.
             for name, content in sorted(files.items())
         },
     }
-    files["manifest.json"] = json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    files["manifest.json"] = json.dumps(
+        manifest, indent=2, ensure_ascii=False, sort_keys=True
+    ).encode("utf-8")
     output = io.BytesIO()
     with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
         for name, content in sorted(files.items()):

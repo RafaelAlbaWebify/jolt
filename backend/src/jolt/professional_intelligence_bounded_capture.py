@@ -103,7 +103,9 @@ def _get_browser_context() -> BrowserContext:
 
 def _page_needs_linkedin_login(url: str, visible_text: str) -> bool:
     lowered_url = url.casefold()
-    if "linkedin.com" in lowered_url and any(marker in lowered_url for marker in _LOGIN_URL_MARKERS):
+    if "linkedin.com" in lowered_url and any(
+        marker in lowered_url for marker in _LOGIN_URL_MARKERS
+    ):
         return True
     lowered_text = visible_text.casefold()
     return any(marker in lowered_text for marker in _LOGIN_TEXT_MARKERS)

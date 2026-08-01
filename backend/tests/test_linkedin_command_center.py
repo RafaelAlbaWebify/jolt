@@ -206,7 +206,11 @@ def test_linkedin_playwright_capture_endpoint_uses_service(tmp_path: Path, monke
 
     captured = client.post(
         "/api/linkedin-command-center/captures/playwright",
-        json={"category": "profile", "title": "Profile", "url": "https://www.linkedin.com/in/example/"},
+        json={
+            "category": "profile",
+            "title": "Profile",
+            "url": "https://www.linkedin.com/in/example/",
+        },
     )
 
     assert captured.status_code == 200
