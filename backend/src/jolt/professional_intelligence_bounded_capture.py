@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import atexit
+import threading
 from contextlib import suppress
 from pathlib import Path
 from threading import Lock
 from types import TracebackType
+
+try:  # pragma: no cover - greenlet is an implementation detail of Playwright sync.
+    from greenlet import getcurrent as _get_current_greenlet
+except Exception:  # pragma: no cover - keep diagnostics optional.
+    _get_current_greenlet = None
 
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 from sqlalchemy.orm import Session
@@ -51,11 +57,38 @@ AUTH_REQUIRED_MESSAGE = (
 
 _PLAYWRIGHT: Playwright | None = None
 _BROWSER_CONTEXT: BrowserContext | None = None
+_BROWSER_OWNER_THREAD_ID: int | None = None
+_BROWSER_OWNER_THREAD_NAME = ""
+_BROWSER_OWNER_GREENLET_ID: int | None = None
 _BROWSER_LOCK = Lock()
 
 
 class ProfessionalCaptureAuthenticationRequired(RuntimeError):
     """Raised when LinkedIn blocks capture behind login/checkpoint/authwall."""
+
+
+def _current_greenlet_id() -> int | None:
+    if _get_current_greenlet is None:
+        return None
+    with suppress(Exception):
+        return id(_get_current_greenlet())
+    return None
+
+
+def _runtime_diagnostics() -> str:
+    current_thread = threading.current_thread()
+    current_thread_id = threading.get_ident()
+    current_greenlet_id = _current_greenlet_id()
+    return (
+        "Runtime diagnostics: "
+        f"current_thread_id={current_thread_id}; "
+        f"current_thread_name={current_thread.name}; "
+        f"current_greenlet_id={current_greenlet_id}; "
+        f"context_owner_thread_id={_BROWSER_OWNER_THREAD_ID}; "
+        f"context_owner_thread_name={_BROWSER_OWNER_THREAD_NAME or 'unknown'}; "
+        f"context_owner_greenlet_id={_BROWSER_OWNER_GREENLET_ID}; "
+        f"context_reused={_BROWSER_CONTEXT is not None}."
+    )
 
 
 def _browser_profile_dir() -> Path:
@@ -66,10 +99,14 @@ def _browser_profile_dir() -> Path:
 
 def _stop_browser_context() -> None:
     global _PLAYWRIGHT, _BROWSER_CONTEXT
+    global _BROWSER_OWNER_THREAD_ID, _BROWSER_OWNER_THREAD_NAME, _BROWSER_OWNER_GREENLET_ID
     if _BROWSER_CONTEXT is not None:
         with suppress(Exception):
             _BROWSER_CONTEXT.close()
     _BROWSER_CONTEXT = None
+    _BROWSER_OWNER_THREAD_ID = None
+    _BROWSER_OWNER_THREAD_NAME = ""
+    _BROWSER_OWNER_GREENLET_ID = None
     if _PLAYWRIGHT is not None:
         with suppress(Exception):
             _PLAYWRIGHT.stop()
@@ -82,6 +119,7 @@ atexit.register(_stop_browser_context)
 def _get_browser_context() -> BrowserContext:
     """Return one visible persistent Chromium context for Professional Capture."""
     global _PLAYWRIGHT, _BROWSER_CONTEXT
+    global _BROWSER_OWNER_THREAD_ID, _BROWSER_OWNER_THREAD_NAME, _BROWSER_OWNER_GREENLET_ID
     if _PLAYWRIGHT is None:
         _PLAYWRIGHT = sync_playwright().start()
 
@@ -91,6 +129,9 @@ def _get_browser_context() -> BrowserContext:
             return _BROWSER_CONTEXT
         except Exception:
             _BROWSER_CONTEXT = None
+            _BROWSER_OWNER_THREAD_ID = None
+            _BROWSER_OWNER_THREAD_NAME = ""
+            _BROWSER_OWNER_GREENLET_ID = None
 
     _BROWSER_CONTEXT = _PLAYWRIGHT.chromium.launch_persistent_context(
         user_data_dir=str(_browser_profile_dir()),
@@ -98,6 +139,10 @@ def _get_browser_context() -> BrowserContext:
         no_viewport=True,
         args=["--start-maximized"],
     )
+    current_thread = threading.current_thread()
+    _BROWSER_OWNER_THREAD_ID = threading.get_ident()
+    _BROWSER_OWNER_THREAD_NAME = current_thread.name
+    _BROWSER_OWNER_GREENLET_ID = _current_greenlet_id()
     return _BROWSER_CONTEXT
 
 
@@ -199,8 +244,9 @@ class BoundedVisibleCaptureSession:
             final_url = page.url
             page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
-                self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
-                raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
+                detail = f"{AUTH_REQUIRED_MESSAGE} {_runtime_diagnostics()}"
+                self._request_stop_after_failure(detail, auth_required=True)
+                raise ProfessionalCaptureAuthenticationRequired(detail)
 
             detected_items = 0
             item_selector: str | None = None
@@ -220,8 +266,9 @@ class BoundedVisibleCaptureSession:
             final_url = page.url
             page_title = page.title()
             if _page_needs_linkedin_login(page.url, visible_text):
-                self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
-                raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
+                detail = f"{AUTH_REQUIRED_MESSAGE} {_runtime_diagnostics()}"
+                self._request_stop_after_failure(detail, auth_required=True)
+                raise ProfessionalCaptureAuthenticationRequired(detail)
 
             body_ready = len(visible_text.strip()) >= 100
             if network_idle and body_ready:
@@ -242,7 +289,8 @@ class BoundedVisibleCaptureSession:
                 f"Applied {self.options.max_scroll_batches} maximum scroll batches, "
                 f"{self.options.max_items_per_source} maximum items, and a "
                 f"{self.options.timeout_seconds}-second timeout. "
-                f"Using persistent browser profile {_browser_profile_dir()}.{item_detail}"
+                f"Using persistent browser profile {_browser_profile_dir()}.{item_detail} "
+                f"{_runtime_diagnostics()}"
             )
             return CapturedProfessionalPage(
                 screenshot_png=page.screenshot(full_page=True),
@@ -258,7 +306,8 @@ class BoundedVisibleCaptureSession:
         except Exception as exc:
             detail = (
                 f"Requested URL: {url}. Last final URL: {final_url}. Last title: {page_title}. "
-                f"Browser capture error: {type(exc).__name__}: {exc}"
+                f"Browser capture error: {type(exc).__name__}: {exc}. "
+                f"{_runtime_diagnostics()}"
             )
             self._request_stop_after_failure(detail)
             # Keep the persistent Chromium context open even after capture errors.
