@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
@@ -113,11 +112,12 @@ def test_precommit_failure_discards_staged_files_and_manifest_rows(
 
     monkeypatch.setattr(capture_module, "_write_artifact", fail_after_first_write)
 
-    with (
-        factory() as session,
-        pytest.raises(OSError, match="fixture staged write failure"),
-    ):
-        start_professional_supervised_capture(session, run_id, capture_source=_fixture_page)
+    with factory() as session:
+        failed = start_professional_supervised_capture(
+            session, run_id, capture_source=_fixture_page
+        )
+        assert failed.status == "failed"
+        assert failed.stop_reason == "source_capture_engine_failure"
 
     with factory() as session:
         artifact_count = session.scalar(
