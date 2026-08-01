@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import asdict, replace
 from pathlib import Path
 from uuid import uuid4
@@ -21,6 +22,20 @@ from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers
 
 ENGINE_VERSION = "profile-rules-v4"
+_PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
+_EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS = (
+    r"\bmanage(?:s|d|ment|ing)?\s+(?:a|the|our)?\s*team\b",
+    r"\blead(?:s|ing)?\s+(?:a|the|our)?\s*team\b",
+    r"\bteam\s+of\s+\d+\b",
+    r"\bdirect\s+reports?\b",
+    r"\bline\s+management\b",
+    r"\bpeople\s+manager\b",
+    r"\bstaff\s+management\b",
+    r"\bpersonnel\s+management\b",
+    r"\bperformance\s+reviews?\b",
+    r"\b(?:hire|hiring),?\s+(?:coach|coaching|develop|developing)\b",
+    r"\bcoach(?:ing)?\s+(?:and\s+mentor(?:ing)?\s+)?(?:a|the|our)?\s*team\b",
+)
 
 
 def load_active_strategy_profile(path: Path | None = None) -> StrategyProfile | None:
@@ -116,6 +131,47 @@ def ensure_private_profile_version(session: Session, profile: StrategyProfile) -
     return record
 
 
+def _has_explicit_people_management_requirement(text: str) -> bool:
+    normalized = " ".join(text.casefold().split())
+    return any(re.search(pattern, normalized) for pattern in _EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS)
+
+
+def _remove_unsubstantiated_people_management_gap(
+    assessment: StrategyAssessment,
+    *,
+    title: str,
+    location: str,
+    description: str,
+) -> StrategyAssessment:
+    text = "\n".join((title, location, description))
+    if _has_explicit_people_management_requirement(text):
+        return assessment
+
+    removed_gaps = tuple(
+        gap for gap in assessment.gaps if gap.label.casefold() == _PEOPLE_MANAGEMENT_LABEL
+    )
+    if not removed_gaps:
+        return assessment
+
+    removed_topics = {
+        topic for gap in removed_gaps for topic in gap.preparation_topics if topic.strip()
+    }
+    return replace(
+        assessment,
+        strengths=tuple(
+            strength
+            for strength in assessment.strengths
+            if not strength.casefold().startswith(_PEOPLE_MANAGEMENT_LABEL)
+        ),
+        gaps=tuple(
+            gap for gap in assessment.gaps if gap.label.casefold() != _PEOPLE_MANAGEMENT_LABEL
+        ),
+        preparation_plan=tuple(
+            topic for topic in assessment.preparation_plan if topic not in removed_topics
+        ),
+    )
+
+
 def _apply_saved_preferences(
     assessment: StrategyAssessment,
     *,
@@ -154,6 +210,12 @@ def ensure_strategy_review(
     """Assess one posting and append a new evaluation only when the result changed."""
     profile_record = ensure_private_profile_version(session, profile)
     assessment = assess_posting(profile, posting.title, posting.location, posting.description)
+    assessment = _remove_unsubstantiated_people_management_gap(
+        assessment,
+        title=posting.title,
+        location=posting.location,
+        description=posting.description,
+    )
     assessment = _apply_saved_preferences(
         assessment,
         title=posting.title,
