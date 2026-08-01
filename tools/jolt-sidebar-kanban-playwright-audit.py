@@ -186,9 +186,10 @@ def audit(output_dir: Path) -> dict[str, Any]:
         )
 
         title = fixture["title"]
-        card = page.locator(
+        card_selector = (
             f'article.application-card[data-application-id="{fixture["application_id"]}"]'
         )
+        card = page.locator(card_selector)
         assert_true(
             card.count() == 1,
             "Audit application is not rendered exactly once before the move",
@@ -208,10 +209,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(
             timeout=30_000
         )
-        moved_card = interviewing_lane.locator(
-            f'article[data-application-id="{fixture["application_id"]}"]'
-        )
-        moved_card.wait_for()
+        moved_card = page.locator(card_selector)
+        moved_card.wait_for(timeout=30_000)
         assert_true(
             applied_lane.locator(
                 f'article[data-application-id="{fixture["application_id"]}"]'
@@ -220,10 +219,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
             "Moved card remains in the source lane",
         )
         assert_true(
-            page.locator(
-                f'article[data-application-id="{fixture["application_id"]}"]'
-            ).count()
-            == 1,
+            page.locator(card_selector).count() == 1,
             "Moved card is duplicated after the transition",
         )
         page.screenshot(
@@ -245,10 +241,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
             "Corrected card remains in Interviewing",
         )
         assert_true(
-            page.locator(
-                f'article[data-application-id="{fixture["application_id"]}"]'
-            ).count()
-            == 1,
+            page.locator(card_selector).count() == 1,
             "Corrected card is duplicated after the backward move",
         )
         page.screenshot(
@@ -264,10 +257,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         ).filter(has_text=title)
         persisted_card.wait_for(timeout=30_000)
         assert_true(
-            page.locator(
-                f'article[data-application-id="{fixture["application_id"]}"]'
-            ).count()
-            == 1,
+            page.locator(card_selector).count() == 1,
             "Corrected card is duplicated after reload",
         )
         persisted_card.get_by_role("button", name=f"Open {title}").click()
