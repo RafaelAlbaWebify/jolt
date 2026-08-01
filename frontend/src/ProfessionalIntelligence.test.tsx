@@ -54,6 +54,7 @@ describe("ProfessionalIntelligence", () => {
       if (url.endsWith("/evidence-root")) {
         return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
       }
+      if (url.endsWith("/capture-runs")) return new Response(JSON.stringify([]), { status: 200 });
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -68,7 +69,7 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
     expect(screen.getAllByText("Trusted source")).toHaveLength(2);
-    expect(screen.queryByRole("button", { name: "Start capture" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start capture" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
     expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
@@ -93,6 +94,9 @@ describe("ProfessionalIntelligence", () => {
       }
       if (url.endsWith("/evidence-root") && !init?.method) {
         return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
+      }
+      if (url.endsWith("/capture-runs") && !init?.method) {
+        return new Response(JSON.stringify([]), { status: 200 });
       }
       if (url.endsWith("/linkedin-profile/update")) {
         expect(JSON.parse(String(init?.body))).toEqual({
@@ -135,7 +139,7 @@ describe("ProfessionalIntelligence", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
   });
 
   it("retries an evidence-root failure and clears the stale error", async () => {
