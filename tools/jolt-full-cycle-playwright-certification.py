@@ -158,14 +158,16 @@ def exercise_board(page: Page, fixture: dict[str, str], actions: list[dict[str, 
     click_workspace(page, "Application Pipeline")
     app_id = fixture["application_id"]
     title = fixture["title"]
-    card = page.locator(f'article.application-card[data-application-id="{app_id}"]')
+    card_selector = f'article.application-card[data-application-id="{app_id}"]'
+    card = page.locator(card_selector)
     card.wait_for(timeout=30_000)
     interviewing = page.locator("section.application-lane-interviewing")
     card.drag_to(interviewing)
     page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
     record_action(actions, "Move application Applied → Interviewing", "passed")
 
-    moved = page.locator(f'section.application-lane-interviewing article[data-application-id="{app_id}"]')
+    moved = page.locator(card_selector)
+    moved.wait_for(timeout=30_000)
     moved.get_by_label(f"Move {title} to lane").select_option("applied")
     page.get_by_text(f"{title} moved to Applied.", exact=True).wait_for(timeout=30_000)
     record_action(actions, "Correct application Interviewing → Applied", "passed")
