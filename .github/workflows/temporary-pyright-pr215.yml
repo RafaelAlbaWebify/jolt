@@ -1,0 +1,58 @@
+name: Temporary Pyright PR215
+
+on:
+  push:
+    branches:
+      - agent/fix-capture-source-selection
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-pyright-pr215-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-capture-source-selection
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.8.4'
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv --project backend sync --dev
+      - name: Patch LinkedIn pack typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/src/jolt/linkedin_command_center.py')
+          text = path.read_text(encoding='utf-8')
+          old = '    market = build_market_intelligence(session, timeframe="all", source_scope="all")\n    captures = [item.model_dump() for item in command_center.captures]\n'
+          new = '    market = build_market_intelligence(session, timeframe="all", source_scope="all")\n    market_target = market.get("target", {})\n    if not isinstance(market_target, dict):\n        market_target = {}\n    captures = [item.model_dump() for item in command_center.captures]\n'
+          if old not in text:
+              raise SystemExit('Expected market block was not found')
+          text = text.replace(old, new, 1)
+          text = text.replace('market.get("target", {}).get', 'market_target.get')
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Format touched backend files
+        run: uv --project backend run ruff format backend/src/jolt/linkedin_command_center.py backend/src/jolt/capture_archival.py
+      - name: Commit Pyright fix
+        run: |
+          if git diff --quiet; then
+            echo 'No changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/src/jolt/linkedin_command_center.py backend/src/jolt/capture_archival.py
+          git commit -m 'Fix LinkedIn pack typing for Pyright'
+          git push origin HEAD:agent/fix-capture-source-selection
