@@ -111,6 +111,30 @@ def _page_needs_linkedin_login(url: str, visible_text: str) -> bool:
     return any(marker in lowered_text for marker in _LOGIN_TEXT_MARKERS)
 
 
+def _safe_page_title(page: Page) -> str:
+    with suppress(Exception):
+        return page.title()
+    return ""
+
+
+def _safe_body_text(page: Page, timeout_ms: int) -> tuple[str, str]:
+    try:
+        return page.locator("body").inner_text(timeout=timeout_ms), ""
+    except Exception as exc:
+        with suppress(Exception):
+            fallback = page.evaluate("document.body ? document.body.innerText : ''")
+            if isinstance(fallback, str):
+                return fallback, f" body.innerText fallback used after {type(exc).__name__}: {exc}."
+        return "", f" body text capture failed: {type(exc).__name__}: {exc}."
+
+
+def _safe_screenshot(page: Page) -> tuple[bytes, str]:
+    try:
+        return page.screenshot(full_page=True), ""
+    except Exception as exc:
+        return b"", f" screenshot failed: {type(exc).__name__}: {exc}."
+
+
 class BoundedVisibleCaptureSession:
     def __init__(
         self,
@@ -181,23 +205,29 @@ class BoundedVisibleCaptureSession:
         page: Page | None = None
         final_url = url
         page_title = ""
+        navigation_error = ""
+        text_warning = ""
         try:
             page = self.context.new_page()
             with suppress(Exception):
                 page.bring_to_front()
             timeout_ms = self.options.timeout_seconds * 1_000
-            response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            response = None
+            try:
+                response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            except Exception as exc:
+                navigation_error = f" navigation reported {type(exc).__name__}: {exc}."
             final_url = page.url
-            page_title = page.title()
+            page_title = _safe_page_title(page)
             network_idle = True
             try:
                 page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 5_000))
             except Exception:
                 network_idle = False
 
-            visible_text = page.locator("body").inner_text(timeout=timeout_ms)
+            visible_text, text_warning = _safe_body_text(page, timeout_ms)
             final_url = page.url
-            page_title = page.title()
+            page_title = _safe_page_title(page)
             if _page_needs_linkedin_login(page.url, visible_text):
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
@@ -216,9 +246,10 @@ class BoundedVisibleCaptureSession:
                     break
 
             detected_items, item_selector = self._bounded_items(page)
-            visible_text = page.locator("body").inner_text(timeout=timeout_ms)
+            visible_text, second_text_warning = _safe_body_text(page, timeout_ms)
+            text_warning = f"{text_warning}{second_text_warning}"
             final_url = page.url
-            page_title = page.title()
+            page_title = _safe_page_title(page)
             if _page_needs_linkedin_login(page.url, visible_text):
                 self._request_stop_after_failure(AUTH_REQUIRED_MESSAGE, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(AUTH_REQUIRED_MESSAGE)
@@ -236,6 +267,7 @@ class BoundedVisibleCaptureSession:
                 if item_selector
                 else " No repeated result-card selector was detected."
             )
+            screenshot_png, screenshot_warning = _safe_screenshot(page)
             readiness_detail = (
                 f"Requested URL: {url}. Final URL: {final_url}. Title: {page_title}. "
                 f"Visible text length: {len(visible_text.strip())}. "
@@ -243,9 +275,10 @@ class BoundedVisibleCaptureSession:
                 f"{self.options.max_items_per_source} maximum items, and a "
                 f"{self.options.timeout_seconds}-second timeout. "
                 f"Using persistent browser profile {_browser_profile_dir()}.{item_detail}"
+                f"{navigation_error}{text_warning}{screenshot_warning}"
             )
             return CapturedProfessionalPage(
-                screenshot_png=page.screenshot(full_page=True),
+                screenshot_png=screenshot_png,
                 visible_text=visible_text,
                 title=page_title,
                 final_url=final_url,
