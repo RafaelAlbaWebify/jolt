@@ -56,10 +56,8 @@ def test_shift_is_blocked_only_when_saved_preferences_exclude_it(monkeypatch) ->
         "load_job_search_preferences",
         lambda: JobSearchPreferences(excluded_shifts=[]),
     )
-    recommendation, _, score, reasons = (
-        preference_aware_evaluation.evaluate_text_with_preferences(
-            "Technical Support Engineer night shifts SQL API incident"
-        )
+    recommendation, _, score, reasons = preference_aware_evaluation.evaluate_text_with_preferences(
+        "Technical Support Engineer night shifts SQL API incident"
     )
     assert recommendation == "pursue"
     assert score > 0
@@ -70,10 +68,8 @@ def test_shift_is_blocked_only_when_saved_preferences_exclude_it(monkeypatch) ->
         "load_job_search_preferences",
         lambda: JobSearchPreferences(excluded_shifts=["night"]),
     )
-    recommendation, _, score, reasons = (
-        preference_aware_evaluation.evaluate_text_with_preferences(
-            "Technical Support Engineer night shifts SQL API incident"
-        )
+    recommendation, _, score, reasons = preference_aware_evaluation.evaluate_text_with_preferences(
+        "Technical Support Engineer night shifts SQL API incident"
     )
     assert recommendation == "reject"
     assert score == 0
@@ -89,10 +85,8 @@ def test_required_language_uses_current_saved_language_preferences(monkeypatch) 
         "load_job_search_preferences",
         lambda: JobSearchPreferences(languages=["Spanish", "English"]),
     )
-    recommendation, _, score, reasons = (
-        preference_aware_evaluation.evaluate_text_with_preferences(
-            "French-speaking Technical Support Engineer SQL API incident"
-        )
+    recommendation, _, score, reasons = preference_aware_evaluation.evaluate_text_with_preferences(
+        "French-speaking Technical Support Engineer SQL API incident"
     )
     assert recommendation == "reject"
     assert score == 0
@@ -103,10 +97,8 @@ def test_required_language_uses_current_saved_language_preferences(monkeypatch) 
         "load_job_search_preferences",
         lambda: JobSearchPreferences(languages=["Spanish", "English", "French"]),
     )
-    recommendation, _, score, reasons = (
-        preference_aware_evaluation.evaluate_text_with_preferences(
-            "French-speaking Technical Support Engineer SQL API incident"
-        )
+    recommendation, _, score, reasons = preference_aware_evaluation.evaluate_text_with_preferences(
+        "French-speaking Technical Support Engineer SQL API incident"
     )
     assert recommendation == "pursue"
     assert score > 0
