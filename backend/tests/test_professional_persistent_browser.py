@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from jolt import professional_intelligence_bounded_capture as bounded_capture
@@ -166,31 +167,37 @@ def test_professional_capture_uses_project_local_persistent_profile() -> None:
     assert "JOLT kept the browser session open" in AUTH_REQUIRED_MESSAGE
 
 
-def test_successful_capture_attempt_keeps_capture_page_open() -> None:
+def test_successful_capture_attempt_keeps_capture_page_open_and_records_runtime_diagnostics() -> None:
     page = _SuccessfulPage()
     captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
     assert captured.visible_text
     assert page.closed is False
+    assert "Runtime diagnostics:" in captured.readiness_detail
+    assert "current_thread_id=" in captured.readiness_detail
+    assert "context_owner_thread_id=" in captured.readiness_detail
 
 
-def test_navigation_timeout_with_visible_text_returns_partial_evidence() -> None:
+def test_navigation_failure_still_raises_but_records_runtime_diagnostics() -> None:
     page = _FailingPage()
-    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
-    assert "Application Support Engineer" in captured.visible_text
-    assert captured.screenshot_png == b"fake-png"
-    assert "navigation reported RuntimeError" in captured.readiness_detail
+    with pytest.raises(RuntimeError) as caught:
+        _capture_session(page)("https://www.linkedin.com/jobs/search/")
+
+    assert "synthetic navigation failure" in str(caught.value)
+    assert "Runtime diagnostics:" in str(caught.value)
+    assert "context_owner_thread_id=" in str(caught.value)
     assert page.closed is False
 
 
-def test_screenshot_failure_with_visible_text_returns_partial_evidence() -> None:
+def test_screenshot_failure_still_raises_but_records_runtime_diagnostics() -> None:
     page = _ScreenshotFailingPage()
-    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
-    assert "Application Support Engineer" in captured.visible_text
-    assert captured.screenshot_png == b""
-    assert "screenshot failed" in captured.readiness_detail
+    with pytest.raises(RuntimeError) as caught:
+        _capture_session(page)("https://www.linkedin.com/jobs/search/")
+
+    assert "synthetic screenshot failure" in str(caught.value)
+    assert "Runtime diagnostics:" in str(caught.value)
     assert page.closed is False
 
 
@@ -204,9 +211,9 @@ def test_non_auth_capture_exception_does_not_stop_or_close_browser(monkeypatch) 
     monkeypatch.setattr(bounded_capture, "_stop_browser_context", fake_stop_browser_context)
     page = _FailingPage()
 
-    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
+    with pytest.raises(RuntimeError):
+        _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
-    assert "Application Support Engineer" in captured.visible_text
     assert stopped is False
     assert page.closed is False
 
