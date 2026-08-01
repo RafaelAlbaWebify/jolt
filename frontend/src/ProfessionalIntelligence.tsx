@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { LinkedInJobCaptureLauncher } from "./LinkedInJobCaptureLauncher";
 import {
   ProfessionalCaptureRuns,
   type ProfessionalCaptureOptions,
@@ -171,6 +172,22 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
             LinkedIn Command Center.
           </p>
         </div>
+        <div className="professional-safety-boundary" role="note">
+          <strong>Read-only boundary</strong>
+          <span>No messages, reactions, applications, invitations, or account changes.</span>
+        </div>
+      </section>
+
+      <LinkedInJobCaptureLauncher apiBase={apiBase} active={active} />
+
+      <section className="panel" aria-labelledby="other-source-capture-heading">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Other evidence sources</p>
+            <h2 id="other-source-capture-heading">Profile, activity, and configured-source capture</h2>
+            <p>Use this secondary workflow for trusted profile, network, and broader evidence sources.</p>
+          </div>
+        </div>
         <div className="professional-overview-actions">
           <div className="professional-capture-controls" aria-label="Capture settings">
             <div className="professional-capture-settings-grid">
@@ -232,13 +249,9 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
               aria-controls="professional-run-ledger"
               onClick={() => setCaptureStartRequestKey((current) => current + 1)}
             >
-              Start capture
+              Start configured-source capture
             </button>
             <span>One click prepares, authorizes, and starts the supervised capture run.</span>
-          </div>
-          <div className="professional-safety-boundary" role="note">
-            <strong>Read-only boundary</strong>
-            <span>No messages, reactions, applications, invitations, or account changes.</span>
           </div>
         </div>
       </section>
