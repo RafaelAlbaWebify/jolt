@@ -67,10 +67,12 @@ TARGET_ROLE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
         (
             "technical support",
             "support engineer",
+            "tech support",
             "product support",
             "software support",
             "solutions support",
             "customer technical",
+            "support specialist",
         ),
     ),
     (
@@ -86,6 +88,8 @@ TARGET_ROLE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "end user support",
             "2nd line support",
             "second line support",
+            "3rd level support",
+            "it maintenance and support",
         ),
     ),
     (
@@ -144,15 +148,16 @@ def _seniority(title: str) -> str:
         return "Lead / management"
     if any(term in value for term in (" senior ", " sr ", " level 3 ", " l3 ")):
         return "Senior"
-    if any(term in value for term in (" junior ", " jr ", " entry ")):
-        return "Junior"
+    if any(term in value for term in (" junior ", " jr ", " entry ", " intern ")):
+        return "Junior / internship"
     return "Mid / unspecified"
 
 
 def _salary_mentions(text: str) -> list[str]:
     patterns = (
-        r"(?:€|eur\s*)\s?\d{2,3}(?:[.,]\d{3})?(?:\s?[-–]\s?(?:€|eur\s*)?\s?\d{2,3}(?:[.,]\d{3})?)?",
-        r"\d{2,3}(?:[.,]\d{3})?\s?(?:€|eur)(?:\s?[-–]\s?\d{2,3}(?:[.,]\d{3})?\s?(?:€|eur))?",
+        r"(?:€|eur\s*)\s?\d{2,3}(?:[.,]\d{3})(?:\s?[-–]\s?(?:€|eur\s*)?\s?\d{2,3}(?:[.,]\d{3}))?",
+        r"\d{2,3}(?:[.,]\d{3})\s?(?:€|eur)(?:\s?[-–]\s?\d{2,3}(?:[.,]\d{3})\s?(?:€|eur))?",
+        r"(?:€|eur\s*)\s?\d{2,3}(?:\.\d{3})?\s?(?:per year|annually|annual|yearly|\/year)",
     )
     matches: list[str] = []
     for pattern in patterns:
@@ -213,6 +218,16 @@ def _is_archived_capture_import(capture_statuses: set[str]) -> bool:
     )
 
 
+def _is_synthetic_audit_posting(posting: Posting) -> bool:
+    title = posting.title.casefold()
+    company = posting.company.casefold()
+    return (
+        title.startswith("jolt daily workflow audit")
+        or title.startswith("jolt stage reversal audit")
+        or company in {"audit systems", "audit systems ltd"}
+    )
+
+
 def _as_aware(value: datetime | None) -> datetime | None:
     if value is None:
         return None
@@ -243,6 +258,38 @@ def _filter_by_source_scope(
     if source_scope == "manual_intake":
         return [posting for posting in postings if posting.id not in capture_statuses]
     return postings
+
+
+def _effective_evaluations(
+    session: Session, postings: list[Posting]
+) -> tuple[dict[str, Evaluation], dict[str, object]]:
+    evaluations = list(
+        session.scalars(select(Evaluation).order_by(Evaluation.created_at.desc())).all()
+    )
+    latest: dict[str, Evaluation] = {}
+    current: dict[str, Evaluation] = {}
+    for evaluation in evaluations:
+        latest.setdefault(evaluation.posting_id, evaluation)
+        if evaluation.engine_version == ENGINE_VERSION:
+            current.setdefault(evaluation.posting_id, evaluation)
+
+    effective: dict[str, Evaluation] = {}
+    for posting in postings:
+        evaluation = current.get(posting.id) or latest.get(posting.id)
+        if evaluation is not None:
+            effective[posting.id] = evaluation
+
+    coverage = {
+        "posting_count": len(postings),
+        "evaluated_count": len(effective),
+        "missing_count": len(postings) - len(effective),
+        "current_engine_count": sum(1 for posting in postings if posting.id in current),
+        "fallback_engine_count": sum(
+            1 for posting in postings if posting.id in effective and posting.id not in current
+        ),
+        "current_engine": ENGINE_VERSION,
+    }
+    return effective, coverage
 
 
 def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> dict[str, object]:
@@ -305,7 +352,8 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
     return {
         "total_roles": len(postings),
         "strong_roles": score_bands.get(ordered_bands[0], 0),
-        "viable_roles": score_bands.get(ordered_bands[0], 0) + score_bands.get(ordered_bands[1], 0),
+        "viable_roles": score_bands.get(ordered_bands[0], 0)
+        + score_bands.get(ordered_bands[1], 0),
         "role_families": _ranked(role_families),
         "work_modes": _ranked(work_modes),
         "seniority": _ranked(seniority),
@@ -332,19 +380,14 @@ def build_market_intelligence(
         for posting in all_postings
         if not _is_archived_capture_import(capture_statuses.get(posting.id, set()))
     ]
-    source_filtered = _filter_by_source_scope(active_postings, capture_statuses, source_scope)
-    postings = _filter_by_timeframe(source_filtered, timeframe)
-
-    evaluations = list(
-        session.scalars(
-            select(Evaluation)
-            .where(Evaluation.engine_version == ENGINE_VERSION)
-            .order_by(Evaluation.created_at.desc())
-        ).all()
+    production_postings = [
+        posting for posting in active_postings if not _is_synthetic_audit_posting(posting)
+    ]
+    source_filtered = _filter_by_source_scope(
+        production_postings, capture_statuses, source_scope
     )
-    latest_evaluations: dict[str, Evaluation] = {}
-    for evaluation in evaluations:
-        latest_evaluations.setdefault(evaluation.posting_id, evaluation)
+    postings = _filter_by_timeframe(source_filtered, timeframe)
+    evaluations, evaluation_coverage = _effective_evaluations(session, postings)
 
     target_postings: list[Posting] = []
     outside_postings: list[Posting] = []
@@ -362,12 +405,15 @@ def build_market_intelligence(
         "total_unique_roles": len(postings),
         "target_role_count": len(target_postings),
         "outside_target_count": len(outside_postings),
-        "target": _scope_data(target_postings, latest_evaluations),
-        "all": _scope_data(postings, latest_evaluations),
+        "target": _scope_data(target_postings, evaluations),
+        "all": _scope_data(postings, evaluations),
+        "evaluation_coverage": evaluation_coverage,
+        "excluded_synthetic_count": len(active_postings) - len(production_postings),
         "outside_title_examples": _ranked(outside_titles, 15),
         "fit_explanation": (
             "Fit scores measure alignment with the active target profile, not general employability. "
-            "Archived capture batches are excluded from this active market view. "
-            "Outside-target captures should be used to improve search filters, not to judge career fit."
+            "The current strategy engine is preferred and the latest compatible evaluation is used as a fallback. "
+            "Archived capture batches and confirmed JOLT audit fixtures are excluded from this active market view. "
+            "Outside-target captures should improve search filters, not judge career fit."
         ),
     }
