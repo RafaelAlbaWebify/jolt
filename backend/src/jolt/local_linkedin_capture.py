@@ -9,6 +9,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from jolt.linkedin_capture import run_capture
+from jolt.linkedin_source_urls import install_linkedin_url_normalization
+
+install_linkedin_url_normalization()
 
 
 class LocalLinkedInCaptureRequest(BaseModel):
