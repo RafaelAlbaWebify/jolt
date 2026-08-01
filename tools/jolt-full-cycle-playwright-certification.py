@@ -168,7 +168,7 @@ def exercise_board(page: Page, fixture: dict[str, str], actions: list[dict[str, 
 
     moved = page.locator(card_selector)
     moved.wait_for(timeout=30_000)
-    moved.get_by_label(f"Move {title} to lane").select_option("applied")
+    moved.get_by_label(f"Move {title} to stage").select_option("applied")
     page.get_by_text(f"{title} moved to Applied.", exact=True).wait_for(timeout=30_000)
     record_action(actions, "Correct application Interviewing → Applied", "passed")
 
