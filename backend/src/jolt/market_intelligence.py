@@ -394,12 +394,10 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
         "top_locations": _ranked(locations),
         "top_skills": _ranked(skills, 20),
         "fit_distribution": [
-            {"label": label, "count": decision_bands.get(label, 0)}
-            for label in _DECISION_BANDS
+            {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
         ],
         "decision_distribution": [
-            {"label": label, "count": decision_bands.get(label, 0)}
-            for label in _DECISION_BANDS
+            {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
         ],
         "technical_fit_distribution": [
             {"label": label, "count": technical_fit_bands.get(label, 0)}
