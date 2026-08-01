@@ -120,6 +120,21 @@ TARGET_ROLE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
 )
 
+_DECISION_BANDS = (
+    "Actionable strong match",
+    "Actionable viable match",
+    "Conditional / preparation needed",
+    "Manual review needed",
+    "Blocked / do not pursue",
+)
+_TECHNICAL_FIT_BANDS = (
+    "Strong technical fit · 80–100",
+    "Viable technical fit · 60–79",
+    "Stretch technical fit · 40–59",
+    "Low technical fit · 0–39",
+)
+_BLOCKED_RECOMMENDATIONS = {"do_not_pursue", "reject"}
+
 
 def _normalized_title(title: str) -> str:
     return f" {re.sub(r'[^a-z0-9]+', ' ', title.lower()).strip()} "
@@ -183,14 +198,32 @@ def _assessment_payload(evaluation: Evaluation | None) -> dict[str, Any]:
     return {}
 
 
-def _fit_band(score: int) -> str:
+def _technical_fit_band(score: int) -> str:
     if score >= 80:
-        return "Strong match · 80–100"
+        return _TECHNICAL_FIT_BANDS[0]
     if score >= 60:
-        return "Viable with preparation · 60–79"
+        return _TECHNICAL_FIT_BANDS[1]
     if score >= 40:
-        return "Stretch · 40–59"
-    return "Low priority · 0–39"
+        return _TECHNICAL_FIT_BANDS[2]
+    return _TECHNICAL_FIT_BANDS[3]
+
+
+def _decision_band(recommendation: str) -> str:
+    if recommendation == "strong_pursue":
+        return _DECISION_BANDS[0]
+    if recommendation in {"pursue", "apply"}:
+        return _DECISION_BANDS[1]
+    if recommendation in {"pursue_if_condition_met", "defer", "consider"}:
+        return _DECISION_BANDS[2]
+    if recommendation in _BLOCKED_RECOMMENDATIONS:
+        return _DECISION_BANDS[4]
+    return _DECISION_BANDS[3]
+
+
+def _is_blocked(evaluation: Evaluation) -> bool:
+    assessment = _assessment_payload(evaluation)
+    eligibility = assessment.get("eligibility")
+    return evaluation.recommendation in _BLOCKED_RECOMMENDATIONS or eligibility == "ineligible"
 
 
 def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
@@ -299,7 +332,8 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
     companies: Counter[str] = Counter()
     locations: Counter[str] = Counter()
     skills: Counter[str] = Counter()
-    score_bands: Counter[str] = Counter()
+    decision_bands: Counter[str] = Counter()
+    technical_fit_bands: Counter[str] = Counter()
     gaps: Counter[str] = Counter()
     study_topics: Counter[str] = Counter()
     salary_mentions: list[dict[str, str]] = []
@@ -326,33 +360,33 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
 
         evaluation = evaluations.get(posting.id)
         if evaluation:
-            score_bands[_fit_band(evaluation.ranking_score)] += 1
-            assessment = _assessment_payload(evaluation)
-            for gap in assessment.get("gaps", []):
-                if not isinstance(gap, dict):
-                    continue
-                label = gap.get("label")
-                if isinstance(label, str) and label:
-                    gaps[label] += 1
-                for topic in gap.get("preparation_topics", []):
-                    if isinstance(topic, str) and topic:
-                        study_topics[topic] += 1
+            technical_fit_bands[_technical_fit_band(evaluation.ranking_score)] += 1
+            decision_bands[_decision_band(evaluation.recommendation)] += 1
+            if not _is_blocked(evaluation):
+                assessment = _assessment_payload(evaluation)
+                for gap in assessment.get("gaps", []):
+                    if not isinstance(gap, dict):
+                        continue
+                    label = gap.get("label")
+                    if isinstance(label, str) and label:
+                        gaps[label] += 1
+                    for topic in gap.get("preparation_topics", []):
+                        if isinstance(topic, str) and topic:
+                            study_topics[topic] += 1
 
         for mention in _salary_mentions(posting.description):
             salary_mentions.append(
                 {"title": posting.title, "company": posting.company, "mention": mention}
             )
 
-    ordered_bands = (
-        "Strong match · 80–100",
-        "Viable with preparation · 60–79",
-        "Stretch · 40–59",
-        "Low priority · 0–39",
-    )
     return {
         "total_roles": len(postings),
-        "strong_roles": score_bands.get(ordered_bands[0], 0),
-        "viable_roles": score_bands.get(ordered_bands[0], 0) + score_bands.get(ordered_bands[1], 0),
+        "strong_roles": decision_bands.get(_DECISION_BANDS[0], 0),
+        "viable_roles": decision_bands.get(_DECISION_BANDS[0], 0)
+        + decision_bands.get(_DECISION_BANDS[1], 0),
+        "blocked_roles": decision_bands.get(_DECISION_BANDS[4], 0),
+        "review_roles": decision_bands.get(_DECISION_BANDS[2], 0)
+        + decision_bands.get(_DECISION_BANDS[3], 0),
         "role_families": _ranked(role_families),
         "work_modes": _ranked(work_modes),
         "seniority": _ranked(seniority),
@@ -360,7 +394,16 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
         "top_locations": _ranked(locations),
         "top_skills": _ranked(skills, 20),
         "fit_distribution": [
-            {"label": label, "count": score_bands.get(label, 0)} for label in ordered_bands
+            {"label": label, "count": decision_bands.get(label, 0)}
+            for label in _DECISION_BANDS
+        ],
+        "decision_distribution": [
+            {"label": label, "count": decision_bands.get(label, 0)}
+            for label in _DECISION_BANDS
+        ],
+        "technical_fit_distribution": [
+            {"label": label, "count": technical_fit_bands.get(label, 0)}
+            for label in _TECHNICAL_FIT_BANDS
         ],
         "top_gaps": _ranked(gaps, 12),
         "study_priorities": _ranked(study_topics, 12),
@@ -408,9 +451,10 @@ def build_market_intelligence(
         "excluded_synthetic_count": len(active_postings) - len(production_postings),
         "outside_title_examples": _ranked(outside_titles, 15),
         "fit_explanation": (
-            "Fit scores measure alignment with the active target profile, not general employability. "
+            "Actionable fit combines the final recommendation with eligibility and saved preferences. "
+            "Technical fit is reported separately and may remain high for a role blocked by language, relocation, shift, or another explicit requirement. "
+            "Gaps and study priorities exclude blocked roles so unsuitable vacancies do not distort the development plan. "
             "The current strategy engine is preferred and the latest compatible evaluation is used as a fallback. "
-            "Archived capture batches and confirmed JOLT audit fixtures are excluded from this active market view. "
-            "Outside-target captures should improve search filters, not judge career fit."
+            "Archived capture batches and confirmed JOLT audit fixtures are excluded from this active market view."
         ),
     }
