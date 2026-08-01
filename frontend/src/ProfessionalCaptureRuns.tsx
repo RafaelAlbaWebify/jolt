@@ -123,6 +123,10 @@ function humanize(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function isCareerSource(source: ProfessionalIntelligenceSource) {
+  return source.category === "career" || source.source_id.toLowerCase().includes("job");
+}
+
 function sourceLabel(run: ProfessionalCaptureRun, sourceId: string) {
   return run.planned_sources.find((source) => source.source_id === sourceId)?.label || sourceId;
 }
@@ -151,6 +155,23 @@ function isLinkedInLoginRetry(run: ProfessionalCaptureRun) {
 
 function canStartRun(run: ProfessionalCaptureRun) {
   return run.status === "planned" || run.status === "authorized" || run.status === "expired" || isLinkedInLoginRetry(run);
+}
+
+function runHasCareerSource(run: ProfessionalCaptureRun) {
+  return run.planned_sources.some(isCareerSource);
+}
+
+function runHasCompletedCareerEvidence(run: ProfessionalCaptureRun) {
+  const careerSourceIds = new Set(run.planned_sources.filter(isCareerSource).map((source) => source.source_id));
+  return run.source_progress.some((progress) => (
+    careerSourceIds.has(progress.source_id)
+    && progress.status === "completed"
+    && progress.completeness_status !== "failed"
+  ));
+}
+
+function canImportOpportunities(run: ProfessionalCaptureRun) {
+  return isTerminalCapture(run) && runHasCareerSource(run) && runHasCompletedCareerEvidence(run);
 }
 
 export function ProfessionalCaptureRuns({
@@ -311,12 +332,13 @@ export function ProfessionalCaptureRuns({
     }
   }
 
-  async function importOpportunities(runId: string) {
-    setImportingRunId(runId);
+  async function importOpportunities(run: ProfessionalCaptureRun) {
+    if (!canImportOpportunities(run)) return;
+    setImportingRunId(run.id);
     setError("");
     try {
       const response = await fetch(
-        `${apiBase}/api/professional-intelligence/capture-runs/${runId}/opportunity-candidates/import`,
+        `${apiBase}/api/professional-intelligence/capture-runs/${run.id}/opportunity-candidates/import`,
         { method: "POST" },
       );
       if (!response.ok) {
@@ -324,7 +346,7 @@ export function ProfessionalCaptureRuns({
         throw new Error(payload?.detail || "Opportunity candidates could not be imported.");
       }
       const result = (await response.json()) as OpportunityImportResult;
-      setOpportunityImports((current) => ({ ...current, [runId]: result }));
+      setOpportunityImports((current) => ({ ...current, [run.id]: result }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Opportunity import failed.");
     } finally {
@@ -368,6 +390,22 @@ export function ProfessionalCaptureRuns({
     }
   }
 
+  function renderPlannedSources(run: ProfessionalCaptureRun) {
+    return (
+      <details className="professional-selected-sources" open={run.status === "planned" || run.status === "authorized" || run.status === "running"}>
+        <summary>Selected capture sources</summary>
+        <ol>
+          {run.planned_sources.map((source) => (
+            <li key={source.source_id}>
+              <strong>{source.label}</strong> · {source.category}
+              {isCareerSource(source) ? " · can feed Review Inbox after import" : " · positioning/evidence only"}
+            </li>
+          ))}
+        </ol>
+      </details>
+    );
+  }
+
   function renderRoutingSummary(run: ProfessionalCaptureRun) {
     const summary = routingSummaries[run.id];
     if (!summary) return <p>Routing summary is loading…</p>;
@@ -394,19 +432,29 @@ export function ProfessionalCaptureRuns({
 
   function renderOpportunityImport(run: ProfessionalCaptureRun) {
     const result = opportunityImports[run.id];
+    const importReady = canImportOpportunities(run);
+    if (!runHasCareerSource(run)) {
+      return (
+        <section className="professional-opportunity-import" aria-label="Opportunity candidate import">
+          <p>This run has no career/job source, so it cannot create Review Inbox candidates.</p>
+        </section>
+      );
+    }
     return (
       <section className="professional-opportunity-import" aria-label="Opportunity candidate import">
         <button
           type="button"
-          disabled={importingRunId === run.id || !isTerminalCapture(run)}
-          onClick={() => void importOpportunities(run.id)}
+          disabled={importingRunId === run.id || !importReady}
+          onClick={() => void importOpportunities(run)}
         >
           {importingRunId === run.id ? "Importing candidates…" : "Import opportunity candidates to Review Inbox"}
         </button>
-        <p>Use this after a completed career/job-source capture to create reviewed opportunity candidates from rendered evidence.</p>
+        {!importReady && <p>Career/job evidence was selected, but no completed career source is ready to import yet.</p>}
+        {importReady && <p>Use this after a completed career/job-source capture to create pending Review Inbox candidates from rendered evidence.</p>}
         {result && (
           <div role="status">
             <strong>{result.imported_count} opportunity candidates imported to Review Inbox.</strong>
+            {result.imported_count > 0 && <p>Open Review Inbox and refresh the list to review the imported candidates.</p>}
             {result.skipped_count > 0 && <p>{result.skipped_count} duplicate candidates skipped.</p>}
             {result.warnings.map((warning) => <p key={warning}>{warning}</p>)}
             {result.candidates.length > 0 && (
@@ -437,7 +485,7 @@ export function ProfessionalCaptureRuns({
         </button>
       </div>
       <p className="professional-ledger-note">
-        Current source revision: {planRefreshKey}. Each batch records the exact limits used. Job evidence must route to Review Inbox; LinkedIn presence evidence must route to LinkedIn Command Center.
+        Current source revision: {planRefreshKey}. Small captures prioritize career/job sources first; profile evidence routes to LinkedIn Command Center and career/job evidence can be imported into Review Inbox after capture.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
       {loading && active && <p role="status">Loading capture history…</p>}
@@ -459,6 +507,7 @@ export function ProfessionalCaptureRuns({
                 {run.cancel_requested ? " · cancellation requested" : ""}
               </p>
               {run.progress_updated_at && <p>Progress updated: {formatDate(run.progress_updated_at)}</p>}
+              {renderPlannedSources(run)}
               {isLinkedInLoginRetry(run) && (
                 <p role="status">LinkedIn asked for login or checkpoint. Keep Chromium open, finish signing in there, then click Start capture again on this run.</p>
               )}
