@@ -20,7 +20,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers
 
-ENGINE_VERSION = "profile-rules-v5"
+ENGINE_VERSION = "profile-rules-v4"
 
 
 def load_active_strategy_profile(path: Path | None = None) -> StrategyProfile | None:
