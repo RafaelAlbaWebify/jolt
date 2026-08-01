@@ -4,7 +4,6 @@ import { ProfessionalEvidenceReview } from "./ProfessionalEvidenceReview";
 import type { ProfessionalIntelligenceSource } from "./ProfessionalIntelligence";
 
 const AUTHORIZATION_PHRASE = "I UNDERSTAND THIS WILL OPEN LINKEDIN";
-const DELETE_PHRASE = "DELETE CAPTURE RUN";
 const CAPTURE_POLL_MS = 2_000;
 
 export type ProfessionalCaptureOptions = {
@@ -189,7 +188,6 @@ export function ProfessionalCaptureRuns({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
-  const [deletePhrase, setDeletePhrase] = useState("");
   const [error, setError] = useState("");
   const ledgerRef = useRef<HTMLElement | null>(null);
   const previousStartRequestKey = useRef(startRequestKey);
@@ -363,7 +361,7 @@ export function ProfessionalCaptureRuns({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirmation_phrase: deletePhrase }),
+          body: JSON.stringify({ confirmation_phrase: "DELETE CAPTURE RUN" }),
         },
       );
       if (!response.ok) {
@@ -382,7 +380,6 @@ export function ProfessionalCaptureRuns({
         return next;
       });
       setDeletingRunId(null);
-      setDeletePhrase("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Capture deletion failed.");
     } finally {
@@ -539,7 +536,7 @@ export function ProfessionalCaptureRuns({
               {isTerminalCapture(run) && <ProfessionalEvidenceReview apiBase={apiBase} runId={run.id} />}
               {run.stop_reason && <p>{humanize(run.stop_reason)}</p>}
               {run.status !== "running" && deletingRunId !== run.id && (
-                <button type="button" className="danger" disabled={busy} onClick={() => { setDeletingRunId(run.id); setDeletePhrase(""); }}>
+                <button type="button" className="danger" disabled={busy} onClick={() => setDeletingRunId(run.id)}>
                   Delete this capture batch
                 </button>
               )}
@@ -547,13 +544,9 @@ export function ProfessionalCaptureRuns({
                 <div className="professional-delete-confirmation">
                   <strong>Delete this capture batch?</strong>
                   <p>This removes only this run and its governed local evidence. It cannot be undone.</p>
-                  <label>
-                    Type {DELETE_PHRASE}
-                    <input aria-label={`Deletion phrase for ${run.id}`} value={deletePhrase} onChange={(event) => setDeletePhrase(event.target.value)} />
-                  </label>
                   <div className="professional-source-editor-actions">
-                    <button type="button" className="danger" disabled={busy || deletePhrase !== DELETE_PHRASE} onClick={() => void deleteRun(run.id)}>Permanently delete batch</button>
-                    <button type="button" className="secondary" disabled={busy} onClick={() => { setDeletingRunId(null); setDeletePhrase(""); }}>Keep batch</button>
+                    <button type="button" className="danger" disabled={busy} onClick={() => void deleteRun(run.id)}>Permanently delete batch</button>
+                    <button type="button" className="secondary" disabled={busy} onClick={() => setDeletingRunId(null)}>Keep batch</button>
                   </div>
                 </div>
               )}
