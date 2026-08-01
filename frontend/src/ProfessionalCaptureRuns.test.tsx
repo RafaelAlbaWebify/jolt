@@ -216,9 +216,13 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
-    expect(await screen.findByText("Selected capture sources")).toBeInTheDocument();
-    expect(screen.getByText(/Jobs based on preferences/)).toBeInTheDocument();
-    expect(screen.getByText(/can feed Review Inbox after import/)).toBeInTheDocument();
+    const selectedHeading = await screen.findByText("Selected capture sources");
+    expect(selectedHeading).toBeInTheDocument();
+    const selectedSources = selectedHeading.closest("details");
+    expect(selectedSources).not.toBeNull();
+    const selected = within(selectedSources as HTMLElement);
+    expect(selected.getByText(/Jobs based on preferences/)).toBeInTheDocument();
+    expect(selected.getByText(/can feed Review Inbox after import/)).toBeInTheDocument();
 
     const summaryHeading = await screen.findByText("Routing summary / evidence inbox");
     expect(summaryHeading).toBeInTheDocument();
