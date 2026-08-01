@@ -36,9 +36,7 @@ def test_market_uses_latest_fallback_evaluation_and_excludes_audit_fixture(
         },
     )
 
-    payload = client.get(
-        "/api/market-intelligence?timeframe=all&source_scope=manual_intake"
-    ).json()
+    payload = client.get("/api/market-intelligence?timeframe=all&source_scope=manual_intake").json()
 
     assert payload["total_unique_roles"] == 1
     assert payload["excluded_synthetic_count"] == 1
