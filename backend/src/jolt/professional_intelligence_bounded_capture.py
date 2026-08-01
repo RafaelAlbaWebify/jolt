@@ -87,7 +87,7 @@ def _get_browser_context() -> BrowserContext:
 
     if _BROWSER_CONTEXT is not None:
         try:
-            _BROWSER_CONTEXT.pages
+            _ = _BROWSER_CONTEXT.pages
             return _BROWSER_CONTEXT
         except Exception:
             _BROWSER_CONTEXT = None
@@ -103,7 +103,9 @@ def _get_browser_context() -> BrowserContext:
 
 def _page_needs_linkedin_login(url: str, visible_text: str) -> bool:
     lowered_url = url.casefold()
-    if "linkedin.com" in lowered_url and any(marker in lowered_url for marker in _LOGIN_URL_MARKERS):
+    if "linkedin.com" in lowered_url and any(
+        marker in lowered_url for marker in _LOGIN_URL_MARKERS
+    ):
         return True
     lowered_text = visible_text.casefold()
     return any(marker in lowered_text for marker in _LOGIN_TEXT_MARKERS)
@@ -124,7 +126,7 @@ class BoundedVisibleCaptureSession:
         self.auth_required = False
         self.failure_detail = ""
 
-    def __enter__(self) -> "BoundedVisibleCaptureSession":
+    def __enter__(self) -> BoundedVisibleCaptureSession:
         with _BROWSER_LOCK:
             self.context = _get_browser_context()
         return self

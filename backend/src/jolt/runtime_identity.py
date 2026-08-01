@@ -1,10 +1,11 @@
+# ruff: noqa: I001
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import platform
 import subprocess
 import sys
-from pathlib import Path
 
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -122,7 +123,9 @@ def _database_url(session: Session) -> tuple[str, str | None]:
 
 def _alembic_revision(session: Session) -> str:
     try:
-        revision = session.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+        revision = session.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one_or_none()
     except Exception:
         return "unavailable"
     return str(revision or "")
@@ -132,7 +135,9 @@ def _record_counts(session: Session) -> dict[str, int | None]:
     counts: dict[str, int | None] = {}
     for table in RECORD_COUNT_TABLES:
         try:
-            counts[table] = int(session.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar_one())
+            counts[table] = int(
+                session.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar_one()
+            )
         except Exception:
             counts[table] = None
     return counts

@@ -37,9 +37,11 @@ def _posting_has_user_state(session: Session, posting_id: str) -> bool:
 
 
 def _run_items(session: Session, capture_run_id: str) -> list[CaptureItem]:
-    return session.scalars(
-        select(CaptureItem).where(CaptureItem.capture_run_id == capture_run_id)
-    ).all()
+    return list(
+        session.scalars(
+            select(CaptureItem).where(CaptureItem.capture_run_id == capture_run_id)
+        ).all()
+    )
 
 
 def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchArchiveResult:
@@ -87,11 +89,13 @@ def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchAr
 
 
 def list_archivable_capture_runs(session: Session) -> list[CaptureRun]:
-    return session.scalars(
-        select(CaptureRun)
-        .where(CaptureRun.status != ARCHIVED_CAPTURE_STATUS)
-        .order_by(CaptureRun.started_at.desc())
-    ).all()
+    return list(
+        session.scalars(
+            select(CaptureRun)
+            .where(CaptureRun.status != ARCHIVED_CAPTURE_STATUS)
+            .order_by(CaptureRun.started_at.desc())
+        ).all()
+    )
 
 
 def archive_imported_capture_runs(session: Session) -> CaptureBatchArchiveSummary:

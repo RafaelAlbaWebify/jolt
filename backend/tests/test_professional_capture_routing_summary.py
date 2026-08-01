@@ -29,9 +29,7 @@ def test_professional_capture_routing_summary_classifies_sources(tmp_path: Path)
     assert created.status_code == 200
     run = created.json()
 
-    summary = client.get(
-        f"/api/professional-intelligence/capture-runs/{run['id']}/routing-summary"
-    )
+    summary = client.get(f"/api/professional-intelligence/capture-runs/{run['id']}/routing-summary")
     assert summary.status_code == 200
     payload = summary.json()
 
@@ -50,14 +48,15 @@ def test_professional_capture_routing_summary_classifies_sources(tmp_path: Path)
         "market_signal",
     }
     assert all(item["routing_status"] == "pending" for item in payload["decisions"])
-    assert "Verified job-item capture uses the canonical opportunity pipeline" in payload["explanation"]
+    assert (
+        "Verified job-item capture uses the canonical opportunity pipeline"
+        in payload["explanation"]
+    )
 
 
 def test_professional_capture_routing_summary_404s_for_missing_run(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
-    response = client.get(
-        "/api/professional-intelligence/capture-runs/missing/routing-summary"
-    )
+    response = client.get("/api/professional-intelligence/capture-runs/missing/routing-summary")
 
     assert response.status_code == 404

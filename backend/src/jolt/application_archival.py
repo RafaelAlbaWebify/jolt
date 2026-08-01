@@ -101,12 +101,16 @@ def restore_application_card(
     archive_event = _latest_archive_event(session, application.id)
     restored_status = (
         archive_event.from_status
-        if archive_event and archive_event.from_status and archive_event.from_status != ARCHIVED_APPLICATION_STATUS
+        if archive_event
+        and archive_event.from_status
+        and archive_event.from_status != ARCHIVED_APPLICATION_STATUS
         else DEFAULT_RESTORE_STATUS
     )
     previous = application.status
     now = utc_now()
-    notes = (request.notes if request else "") or f"Restored to {restored_status} from the Applications board."
+    notes = (
+        request.notes if request else ""
+    ) or f"Restored to {restored_status} from the Applications board."
     application.status = restored_status
     application.updated_at = now
     session.add(

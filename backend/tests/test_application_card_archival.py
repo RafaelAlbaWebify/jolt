@@ -71,6 +71,5 @@ def test_archiving_and_restoring_application_card_keeps_history(tmp_path) -> Non
 
     restored_history = client.get(f"/api/applications/{application_id}").json()
     assert any(
-        event["event_type"] == "application_restored"
-        for event in restored_history["events"]
+        event["event_type"] == "application_restored" for event in restored_history["events"]
     )

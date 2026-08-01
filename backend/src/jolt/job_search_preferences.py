@@ -32,12 +32,18 @@ class JobSearchPreferences(BaseModel):
     preferred_work_modes: list[WorkMode] = Field(default_factory=lambda: ["remote", "hybrid"])
     base_locality: str = "Vigo, Galicia, Spain"
     max_hybrid_distance_km: int = Field(default=60, ge=0, le=500)
-    countries: list[str] = Field(default_factory=lambda: ["Spain", "Ireland", "United Kingdom", "European Union"])
+    countries: list[str] = Field(
+        default_factory=lambda: ["Spain", "Ireland", "United Kingdom", "European Union"]
+    )
     languages: list[str] = Field(default_factory=lambda: ["Spanish", "English"])
     expected_salary_eur_min: int | None = Field(default=35000, ge=0, le=250000)
     expected_salary_eur_target: int | None = Field(default=45000, ge=0, le=250000)
-    preferred_shifts: list[ShiftPreference] = Field(default_factory=lambda: ["business_hours", "flexible"])
-    excluded_shifts: list[ShiftPreference] = Field(default_factory=lambda: ["night", "rotating", "weekend"])
+    preferred_shifts: list[ShiftPreference] = Field(
+        default_factory=lambda: ["business_hours", "flexible"]
+    )
+    excluded_shifts: list[ShiftPreference] = Field(
+        default_factory=lambda: ["night", "rotating", "weekend"]
+    )
     preferred_workload: WorkloadPreference = "normal"
     excluded_keywords: list[str] = Field(
         default_factory=lambda: ["dispatch", "field sales", "door to door", "commission only"]

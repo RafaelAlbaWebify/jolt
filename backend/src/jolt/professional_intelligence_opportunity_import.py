@@ -97,9 +97,7 @@ def _looks_like_noise(line: str) -> bool:
         return True
     if lowered.startswith(("recommended", "jobs based", "show all", "see more", "sort by")):
         return True
-    if "linkedin" in lowered and not _line_has_role(line):
-        return True
-    return False
+    return "linkedin" in lowered and not _line_has_role(line)
 
 
 def _looks_like_location(line: str) -> bool:
@@ -134,7 +132,7 @@ def _extract_candidates_from_text(
     candidates: list[ManualIntakeRequest] = []
     seen_titles: set[str] = set()
     for index, line in enumerate(lines):
-        if not _line_has_role(line) or _looks_like_noise(line):
+        if _looks_like_noise(line) or not _line_has_role(line):
             continue
         normalized_title = line.casefold()
         if normalized_title in seen_titles:
@@ -178,23 +176,24 @@ def _extract_candidates_from_text(
 
 
 def import_professional_opportunity_candidates(
-    session: Session, run_id: str
+    session: Session,
+    capture_run_id: str,
 ) -> ProfessionalOpportunityImportResult:
-    run = get_professional_capture_run(session, run_id)
-    review = review_professional_capture_evidence(session, run_id)
-    if not review.ready_for_analysis:
-        raise ValueError(
-            "Opportunity import requires a completed run with integrity-verified rendered text."
-        )
-
+    run = get_professional_capture_run(session, capture_run_id)
     career_source_ids = _career_sources(run.planned_sources)
     if not career_source_ids:
         return ProfessionalOpportunityImportResult(
-            capture_run_id=run_id,
+            capture_run_id=capture_run_id,
             imported_count=0,
             skipped_count=0,
             candidates=[],
-            warnings=["The capture run did not include career/job sources."],
+            warnings=["Capture run has no career/job sources that can feed Review Inbox."],
+        )
+
+    review = review_professional_capture_evidence(session, capture_run_id)
+    if not review.ready_for_analysis:
+        raise ValueError(
+            "Opportunity import requires a completed run with integrity-verified rendered text."
         )
 
     imported: list[ProfessionalOpportunityCandidateImport] = []
@@ -203,15 +202,16 @@ def import_professional_opportunity_candidates(
     for source_id, source_url, text in _rendered_text_sources(review):
         if source_id not in career_source_ids:
             continue
-        source_candidates = _extract_candidates_from_text(
+        candidates = _extract_candidates_from_text(
             source_id=source_id,
             source_url=source_url,
             text=text,
         )
-        if not source_candidates:
-            warnings.append(f"No job-like candidates found in {source_id}.")
-        for request in source_candidates:
-            intake = ingest_capture_item(session, request)
+        if not candidates:
+            warnings.append(f"No job-like rows were extracted from career source {source_id}.")
+            continue
+        for candidate in candidates:
+            intake = ingest_capture_item(session, candidate)
             if intake.identity_status == "confirmed_duplicate":
                 skipped += 1
                 continue
@@ -230,10 +230,9 @@ def import_professional_opportunity_candidates(
                     ranking_score=intake.ranking_score,
                 )
             )
-
     session.commit()
     return ProfessionalOpportunityImportResult(
-        capture_run_id=run_id,
+        capture_run_id=capture_run_id,
         imported_count=len(imported),
         skipped_count=skipped,
         candidates=imported,

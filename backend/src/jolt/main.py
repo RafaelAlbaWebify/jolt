@@ -377,9 +377,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         timeframe: str = "all",
         source_scope: str = "all",
     ) -> dict[str, object]:
-        return build_market_intelligence(
-            session, timeframe=timeframe, source_scope=source_scope
-        )
+        return build_market_intelligence(session, timeframe=timeframe, source_scope=source_scope)
 
     @app.get(
         "/api/job-search-preferences",
@@ -570,7 +568,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return StreamingResponse(
             BytesIO(content),
             media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=JOLT_LINKEDIN_COMMAND_CENTER.zip"},
+            headers={
+                "Content-Disposition": "attachment; filename=JOLT_LINKEDIN_COMMAND_CENTER.zip"
+            },
         )
 
     return app

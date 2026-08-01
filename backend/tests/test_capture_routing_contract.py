@@ -69,7 +69,9 @@ def test_verified_linkedin_job_capture_feeds_review_inbox(tmp_path: Path) -> Non
     assert market_payload["target"]["total_roles"] == 1
 
 
-def test_linkedin_presence_capture_routes_to_command_center_not_review_inbox(tmp_path: Path) -> None:
+def test_linkedin_presence_capture_routes_to_command_center_not_review_inbox(
+    tmp_path: Path,
+) -> None:
     client = _client(tmp_path)
 
     captured = client.post(

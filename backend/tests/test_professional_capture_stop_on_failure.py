@@ -11,7 +11,9 @@ from jolt.professional_intelligence_supervised_capture import (
 )
 
 
-def create_authorized_capture_run(client: TestClient, *, stop_on_failure: bool) -> dict[str, object]:
+def create_authorized_capture_run(
+    client: TestClient, *, stop_on_failure: bool
+) -> dict[str, object]:
     created = client.post(
         "/api/professional-intelligence/capture-runs",
         json={

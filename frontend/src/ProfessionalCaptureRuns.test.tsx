@@ -49,12 +49,38 @@ const CAPTURE_RUN = {
   completed_at: "2026-07-31T12:01:15.000Z",
   stop_reason: "submitted_batch_completed",
   artifact_count: 4,
-  source_progress: [],
+  source_progress: [
+    {
+      source_id: "linkedin-profile",
+      status: "completed",
+      started_at: "2026-07-31T12:00:15.000Z",
+      completed_at: "2026-07-31T12:00:30.000Z",
+      completeness_status: "complete",
+      detail: "Source capture finished with complete completeness.",
+    },
+    {
+      source_id: "linkedin-jobs-preferences",
+      status: "completed",
+      started_at: "2026-07-31T12:00:30.000Z",
+      completed_at: "2026-07-31T12:01:15.000Z",
+      completeness_status: "complete",
+      detail: "Source capture finished with complete completeness.",
+    },
+  ],
   completed_source_count: 2,
   total_source_count: 2,
   current_source_id: "",
   cancel_requested: false,
   progress_updated_at: "2026-07-31T12:01:15.000Z",
+};
+
+const PROFILE_ONLY_RUN = {
+  ...CAPTURE_RUN,
+  id: "run-profile-only",
+  planned_sources: [CAPTURE_RUN.planned_sources[0]],
+  source_progress: [CAPTURE_RUN.source_progress[0]],
+  completed_source_count: 1,
+  total_source_count: 1,
 };
 
 const ROUTING_SUMMARY = {
@@ -91,6 +117,21 @@ const ROUTING_SUMMARY = {
     },
   ],
   explanation: "This summary shows where captured evidence is allowed to route through JOLT.",
+};
+
+const PROFILE_ONLY_ROUTING_SUMMARY = {
+  ...ROUTING_SUMMARY,
+  capture_run_id: "run-profile-only",
+  total_sources: 1,
+  completed_sources: 1,
+  counts: {
+    job_opportunities: 0,
+    linkedin_presence: 1,
+    market_signals: 0,
+    unclassified_evidence: 0,
+    rejected_noise: 0,
+  },
+  decisions: [ROUTING_SUMMARY.decisions[0]],
 };
 
 const IMPORT_RESULT = {
@@ -147,7 +188,7 @@ describe("ProfessionalCaptureRuns", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders routing summary and imports opportunity candidates to Review Inbox", async () => {
+  it("renders selected sources, routing summary, and imports opportunity candidates to Review Inbox", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/professional-intelligence/capture-runs") && !init?.method) {
@@ -175,6 +216,12 @@ describe("ProfessionalCaptureRuns", () => {
       />,
     );
 
+    const selectedSourcesHeading = await screen.findByText("Selected capture sources");
+    const selectedSources = selectedSourcesHeading.closest("details");
+    expect(selectedSources).not.toBeNull();
+    expect(within(selectedSources as HTMLElement).getByText(/Jobs based on preferences/)).toBeInTheDocument();
+    expect(within(selectedSources as HTMLElement).getByText(/can feed Review Inbox after import/)).toBeInTheDocument();
+
     const summaryHeading = await screen.findByText("Routing summary / evidence inbox");
     expect(summaryHeading).toBeInTheDocument();
     const routingSummary = summaryHeading.closest("details");
@@ -197,8 +244,35 @@ describe("ProfessionalCaptureRuns", () => {
     fireEvent.click(screen.getByRole("button", { name: "Import opportunity candidates to Review Inbox" }));
 
     expect(await screen.findByText("1 opportunity candidates imported to Review Inbox.")).toBeInTheDocument();
+    expect(screen.getByText(/Open Review Inbox and refresh the list/)).toBeInTheDocument();
     expect(screen.getByText(/Application Support Engineer/)).toBeInTheDocument();
     expect(screen.getByText(/Acme SaaS Operations/)).toBeInTheDocument();
+  });
+
+  it("does not offer opportunity import for profile-only captures", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/professional-intelligence/capture-runs")) {
+        return Promise.resolve(new Response(JSON.stringify([PROFILE_ONLY_RUN]), { status: 200 }));
+      }
+      if (url.endsWith("/api/professional-intelligence/capture-runs/run-profile-only/routing-summary")) {
+        return Promise.resolve(new Response(JSON.stringify(PROFILE_ONLY_ROUTING_SUMMARY), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ProfessionalCaptureRuns
+        apiBase="http://127.0.0.1:8000"
+        active={true}
+        planRefreshKey={1}
+        captureOptions={CAPTURE_OPTIONS}
+      />,
+    );
+
+    expect(await screen.findByText(/This run has no career\/job source/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import opportunity candidates to Review Inbox" })).not.toBeInTheDocument();
   });
 
   it("lets the user start the same capture run again after LinkedIn login is required", async () => {
