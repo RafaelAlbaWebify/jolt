@@ -27,5 +27,5 @@ def install_linkedin_url_normalization() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
-    setattr(multipage_capture, "_card_identity", _normalized_card_identity)
+    multipage_capture._card_identity = _normalized_card_identity
     _INSTALLED = True
