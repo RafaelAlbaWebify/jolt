@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import platform
 import subprocess
 import sys
-from pathlib import Path
 
 from pydantic import BaseModel
 from sqlalchemy import text
