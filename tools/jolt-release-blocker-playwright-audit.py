@@ -138,9 +138,19 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("heading", name="Capture & Evidence", exact=True).wait_for(timeout=30_000)
         evidence_panel = page.locator(".professional-evidence-root")
         evidence_panel.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
-        primary = page.get_by_role("button", name="Start capture", exact=True).first
+
+        primary = page.get_by_role("button", name="Start LinkedIn job capture", exact=True)
         primary.wait_for(timeout=30_000)
-        assert_true(primary.is_visible(), "Primary capture action is not visible")
+        assert_true(primary.is_visible(), "Primary LinkedIn job capture action is not visible")
+        assert_true(page.get_by_label("LinkedIn search URL").is_visible(), "LinkedIn search URL field is missing")
+        assert_true(page.get_by_label("Maximum jobs").is_visible(), "Maximum jobs setting is missing")
+        assert_true(page.get_by_label("Maximum pages").is_visible(), "Maximum pages setting is missing")
+
+        configured_capture = page.get_by_role(
+            "button", name="Start configured-source capture", exact=True
+        )
+        configured_capture.wait_for(timeout=30_000)
+        assert_true(configured_capture.is_visible(), "Configured-source capture action is not visible")
         assert_true(page.get_by_label("Maximum sources").is_visible(), "Maximum sources setting is missing")
         assert_true(page.get_by_label("Scroll batches per source").is_visible(), "Scroll batch setting is missing")
         assert_true(page.get_by_label("Maximum items per source").is_visible(), "Maximum item setting is missing")
@@ -166,7 +176,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
             route.fulfill(status=200, content_type="application/json", body=json.dumps(run))
 
         page.route("**/api/professional-intelligence/capture-runs/*/start", mock_external_capture)
-        primary.click()
+        configured_capture.click()
         page.get_by_text("completed", exact=True).first.wait_for(timeout=30_000)
         assert_true(
             page.get_by_text("Type the exact phrase", exact=False).count() == 0,
@@ -196,7 +206,9 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "all_score_badges_bounded": True,
         "all_score_labels_human_readable": True,
         "default_evidence_directory_ready": True,
-        "primary_capture_action_visible": True,
+        "primary_linkedin_capture_action_visible": True,
+        "url_and_multipage_settings_visible": True,
+        "configured_source_capture_action_visible": True,
         "bounded_capture_settings_visible": True,
         "one_click_capture_completed": True,
         "authorization_form_absent": True,
