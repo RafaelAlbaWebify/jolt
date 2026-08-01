@@ -130,31 +130,44 @@ def _extract_candidates_from_text(
 ) -> list[ManualIntakeRequest]:
     lines = _clean_lines(text)
     candidates: list[ManualIntakeRequest] = []
+    seen_titles: set[str] = set()
     for index, line in enumerate(lines):
         if _looks_like_noise(line) or not _line_has_role(line):
             continue
-        company = ""
+        normalized_title = line.casefold()
+        if normalized_title in seen_titles:
+            continue
+        seen_titles.add(normalized_title)
+
+        company = "LinkedIn captured source"
         location = ""
-        description_lines = [line]
-        for lookahead in lines[index + 1 : index + 8]:
-            if not company and not _looks_like_location(lookahead) and not _line_has_role(lookahead):
-                company = lookahead
-                description_lines.append(lookahead)
-                continue
-            if not location and _looks_like_location(lookahead):
-                location = lookahead
-                description_lines.append(lookahead)
-                continue
-            if len(description_lines) < _MAX_DESCRIPTION_LINES:
-                description_lines.append(lookahead)
-        if not company:
-            company = "Unknown company"
-        if not location:
-            location = "Unknown location"
+        following = lines[index + 1 : index + 1 + _MAX_DESCRIPTION_LINES]
+        if following:
+            first = following[0]
+            if not _looks_like_location(first) and not _line_has_role(first) and len(first) <= 90:
+                company = first
+                following = following[1:]
+        for candidate_line in following[:3]:
+            if _looks_like_location(candidate_line):
+                location = candidate_line
+                break
+
+        description_lines = [line, *following]
+        raw_text = "\n".join(
+            part
+            for part in [
+                line,
+                company,
+                f"Location: {location}" if location else "",
+                "\n".join(description_lines),
+            ]
+            if part
+        )
         candidates.append(
             ManualIntakeRequest(
+                raw_text=raw_text,
                 source_url=source_url,
-                raw_text="\n".join([line, company, f"Location: {location}", *description_lines]),
+                source_type="professional_career_capture",
             )
         )
         if len(candidates) >= _MAX_CANDIDATES_PER_SOURCE:
@@ -178,6 +191,11 @@ def import_professional_opportunity_candidates(
         )
 
     review = review_professional_capture_evidence(session, capture_run_id)
+    if not review.ready_for_analysis:
+        raise ValueError(
+            "Opportunity import requires a completed run with integrity-verified rendered text."
+        )
+
     imported: list[ProfessionalOpportunityCandidateImport] = []
     skipped = 0
     warnings: list[str] = []
@@ -194,7 +212,7 @@ def import_professional_opportunity_candidates(
             continue
         for candidate in candidates:
             intake = ingest_capture_item(session, candidate)
-            if intake.identity_status == "duplicate_confirmed":
+            if intake.identity_status == "confirmed_duplicate":
                 skipped += 1
                 continue
             imported.append(
@@ -212,6 +230,7 @@ def import_professional_opportunity_candidates(
                     ranking_score=intake.ranking_score,
                 )
             )
+    session.commit()
     return ProfessionalOpportunityImportResult(
         capture_run_id=capture_run_id,
         imported_count=len(imported),
