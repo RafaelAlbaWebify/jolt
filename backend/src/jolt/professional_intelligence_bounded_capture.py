@@ -67,6 +67,11 @@ class ProfessionalCaptureAuthenticationRequired(RuntimeError):
     """Raised when LinkedIn blocks capture behind login/checkpoint/authwall."""
 
 
+def _truncate(value: str, limit: int = 500) -> str:
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    return text if len(text) <= limit else f"{text[:limit]}…"
+
+
 def _current_greenlet_id() -> int | None:
     if _get_current_greenlet is None:
         return None
@@ -88,6 +93,25 @@ def _runtime_diagnostics() -> str:
         f"context_owner_thread_name={_BROWSER_OWNER_THREAD_NAME or 'unknown'}; "
         f"context_owner_greenlet_id={_BROWSER_OWNER_GREENLET_ID}; "
         f"context_reused={_BROWSER_CONTEXT is not None}."
+    )
+
+
+def _login_detection_detail(url: str, visible_text: str) -> str | None:
+    lowered_url = url.casefold()
+    url_markers = [
+        marker for marker in _LOGIN_URL_MARKERS if "linkedin.com" in lowered_url and marker in lowered_url
+    ]
+    lowered_text = visible_text.casefold()
+    text_markers = [marker for marker in _LOGIN_TEXT_MARKERS if marker in lowered_text]
+    if not url_markers and not text_markers:
+        return None
+    return (
+        "Login detection detail: "
+        f"final_url={url}; "
+        f"url_markers={url_markers}; "
+        f"text_markers={text_markers}; "
+        f"visible_text_length={len(visible_text.strip())}; "
+        f"visible_text_excerpt={_truncate(visible_text)}."
     )
 
 
@@ -147,13 +171,7 @@ def _get_browser_context() -> BrowserContext:
 
 
 def _page_needs_linkedin_login(url: str, visible_text: str) -> bool:
-    lowered_url = url.casefold()
-    if "linkedin.com" in lowered_url and any(
-        marker in lowered_url for marker in _LOGIN_URL_MARKERS
-    ):
-        return True
-    lowered_text = visible_text.casefold()
-    return any(marker in lowered_text for marker in _LOGIN_TEXT_MARKERS)
+    return _login_detection_detail(url, visible_text) is not None
 
 
 class BoundedVisibleCaptureSession:
@@ -243,8 +261,12 @@ class BoundedVisibleCaptureSession:
             visible_text = page.locator("body").inner_text(timeout=timeout_ms)
             final_url = page.url
             page_title = page.title()
-            if _page_needs_linkedin_login(page.url, visible_text):
-                detail = f"{AUTH_REQUIRED_MESSAGE} {_runtime_diagnostics()}"
+            login_detail = _login_detection_detail(page.url, visible_text)
+            if login_detail is not None:
+                detail = (
+                    f"{AUTH_REQUIRED_MESSAGE} Page title: {page_title}. "
+                    f"{login_detail} {_runtime_diagnostics()}"
+                )
                 self._request_stop_after_failure(detail, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(detail)
 
@@ -265,8 +287,12 @@ class BoundedVisibleCaptureSession:
             visible_text = page.locator("body").inner_text(timeout=timeout_ms)
             final_url = page.url
             page_title = page.title()
-            if _page_needs_linkedin_login(page.url, visible_text):
-                detail = f"{AUTH_REQUIRED_MESSAGE} {_runtime_diagnostics()}"
+            login_detail = _login_detection_detail(page.url, visible_text)
+            if login_detail is not None:
+                detail = (
+                    f"{AUTH_REQUIRED_MESSAGE} Page title: {page_title}. "
+                    f"{login_detail} {_runtime_diagnostics()}"
+                )
                 self._request_stop_after_failure(detail, auth_required=True)
                 raise ProfessionalCaptureAuthenticationRequired(detail)
 
