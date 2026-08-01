@@ -22,9 +22,30 @@ from jolt.strategy_runtime import (
     ENGINE_VERSION as STRATEGY_ENGINE_VERSION,
 )
 from jolt.strategy_runtime import (
+    _apply_saved_preferences,
+    _remove_unsubstantiated_people_management_gap,
     load_active_strategy_profile,
     proposed_decision,
 )
+
+
+def _authoritative_assessment(posting: Posting) -> StrategyAssessment | None:
+    profile = load_active_strategy_profile()
+    if profile is None:
+        return None
+    assessment = assess_posting(profile, posting.title, posting.location, posting.description)
+    assessment = _remove_unsubstantiated_people_management_gap(
+        assessment,
+        title=posting.title,
+        location=posting.location,
+        description=posting.description,
+    )
+    return _apply_saved_preferences(
+        assessment,
+        title=posting.title,
+        location=posting.location,
+        description=posting.description,
+    )
 
 
 def _build_summary(session: Session, posting: Posting) -> OpportunitySummary | None:
@@ -32,10 +53,9 @@ def _build_summary(session: Session, posting: Posting) -> OpportunitySummary | N
     if evaluation is None:
         return None
 
-    profile = load_active_strategy_profile()
     assessment: StrategyAssessment | None = None
-    if profile is not None and evaluation.engine_version == STRATEGY_ENGINE_VERSION:
-        assessment = assess_posting(profile, posting.title, posting.location, posting.description)
+    if evaluation.engine_version == STRATEGY_ENGINE_VERSION:
+        assessment = _authoritative_assessment(posting)
     legacy_analysis = analyze_posting(posting.title, posting.location, posting.description)
 
     readiness_report = latest_readiness_report(session, posting.id)
