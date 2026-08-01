@@ -295,6 +295,9 @@ def _csv_bytes(rows: list[dict[str, object]], fieldnames: list[str]) -> bytes:
 def build_linkedin_analysis_pack(session: Session) -> bytes:
     command_center = list_linkedin_command_center(session)
     market = build_market_intelligence(session, timeframe="all", source_scope="all")
+    market_target = market.get("target", {})
+    if not isinstance(market_target, dict):
+        market_target = {}
     captures = [item.model_dump() for item in command_center.captures]
     recommendations = [item.model_dump() for item in command_center.recommendations]
     dataset = {
@@ -331,9 +334,9 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
             "total_unique_roles": market.get("total_unique_roles", 0),
             "target_role_count": market.get("target_role_count", 0),
             "fit_explanation": market.get("fit_explanation", ""),
-            "target_top_skills": market.get("target", {}).get("top_skills", []),
-            "target_top_gaps": market.get("target", {}).get("top_gaps", []),
-            "study_priorities": market.get("target", {}).get("study_priorities", []),
+            "target_top_skills": market_target.get("top_skills", []),
+            "target_top_gaps": market_target.get("top_gaps", []),
+            "study_priorities": market_target.get("study_priorities", []),
         },
     }
     prompt = """# JOLT LinkedIn Command Center Analysis Prompt
