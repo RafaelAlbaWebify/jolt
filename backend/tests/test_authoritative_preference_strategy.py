@@ -29,8 +29,8 @@ def _assessment() -> StrategyAssessment:
     )
 
 
-def test_strategy_engine_version_is_preference_aware_v5() -> None:
-    assert ENGINE_VERSION == "profile-rules-v5"
+def test_preference_overlay_preserves_immutable_strategy_engine_version() -> None:
+    assert ENGINE_VERSION == "profile-rules-v4"
 
 
 def test_strategy_keeps_assessment_when_current_preferences_do_not_block(monkeypatch) -> None:
