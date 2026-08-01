@@ -41,6 +41,17 @@ const verifiedEvidenceRoot = {
   verified_at: "2026-07-27T00:00:00Z",
 };
 
+const idleLocalCapture = {
+  status: "idle",
+  search_url: "",
+  max_jobs: 0,
+  max_pages: 0,
+  output_zip: "",
+  started_at: "",
+  completed_at: "",
+  error: "",
+};
+
 describe("ProfessionalIntelligence", () => {
   afterEach(() => {
     cleanup();
@@ -55,6 +66,9 @@ describe("ProfessionalIntelligence", () => {
         return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
       }
       if (url.endsWith("/capture-runs")) return new Response(JSON.stringify([]), { status: 200 });
+      if (url.endsWith("/captures/linkedin/local/status")) {
+        return new Response(JSON.stringify(idleLocalCapture), { status: 200 });
+      }
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -69,7 +83,8 @@ describe("ProfessionalIntelligence", () => {
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
     expect(screen.getAllByText("Trusted source")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Start capture" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start LinkedIn job capture" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start configured-source capture" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
     expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
@@ -98,6 +113,9 @@ describe("ProfessionalIntelligence", () => {
       }
       if (url.endsWith("/capture-runs") && !init?.method) {
         return new Response(JSON.stringify([]), { status: 200 });
+      }
+      if (url.endsWith("/captures/linkedin/local/status") && !init?.method) {
+        return new Response(JSON.stringify(idleLocalCapture), { status: 200 });
       }
       if (url.endsWith("/linkedin-profile/update")) {
         updatePayload = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -141,7 +159,7 @@ describe("ProfessionalIntelligence", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   });
 
   it("retries an evidence-root failure and clears the stale error", async () => {

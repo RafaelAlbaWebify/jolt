@@ -5,6 +5,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
+from jolt.local_linkedin_capture import (
+    LocalLinkedInCaptureRequest,
+    LocalLinkedInCaptureStatus,
+    get_local_linkedin_capture_status,
+    queue_local_linkedin_capture,
+    run_queued_local_linkedin_capture,
+)
 from jolt.professional_intelligence_capture_deletion import (
     ProfessionalCaptureDeletionRequest,
     ProfessionalCaptureDeletionResult,
@@ -117,6 +124,30 @@ def _queued_capture_response(
 def build_professional_intelligence_plan_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["professional-intelligence"])
     session_dependency = Depends(get_session)
+
+    @router.post(
+        "/api/captures/linkedin/local",
+        response_model=LocalLinkedInCaptureStatus,
+        tags=["captures"],
+    )
+    def start_local_linkedin_capture(
+        request: LocalLinkedInCaptureRequest,
+        background_tasks: BackgroundTasks,
+    ) -> LocalLinkedInCaptureStatus:
+        try:
+            queued = queue_local_linkedin_capture(request)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        background_tasks.add_task(run_queued_local_linkedin_capture)
+        return queued
+
+    @router.get(
+        "/api/captures/linkedin/local/status",
+        response_model=LocalLinkedInCaptureStatus,
+        tags=["captures"],
+    )
+    def local_linkedin_capture_status() -> LocalLinkedInCaptureStatus:
+        return get_local_linkedin_capture_status()
 
     @router.get(
         "/api/professional-intelligence/capture-plan",
