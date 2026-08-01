@@ -1,0 +1,44 @@
+name: Temporary Format PR215
+
+on:
+  push:
+    branches:
+      - agent/fix-capture-source-selection
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-format-pr215-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-capture-source-selection
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.8.4'
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv --project backend sync --dev
+      - name: Apply Ruff format
+        run: uv --project backend run ruff format backend
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            echo 'No formatting changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend
+          git commit -m 'Apply backend Ruff formatting'
+          git push origin HEAD:agent/fix-capture-source-selection
