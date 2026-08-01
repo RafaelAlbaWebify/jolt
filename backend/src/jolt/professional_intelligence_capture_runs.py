@@ -165,13 +165,33 @@ def _to_response(session: Session, run: ProfessionalCaptureRun) -> ProfessionalC
     )
 
 
+def _is_career_source(source: ProfessionalIntelligenceSource) -> bool:
+    return str(source.category) == "career" or "job" in source.source_id.casefold()
+
+
+def _select_bounded_sources(
+    planned_sources: list[ProfessionalIntelligenceSource], max_sources: int
+) -> list[ProfessionalIntelligenceSource]:
+    """Select bounded capture sources with job/career evidence first.
+
+    The Capture & Evidence workspace is primarily used to create job-review
+    evidence. The previous implementation sliced registry order, so a one-source
+    capture always captured the LinkedIn profile before any job page. Keep the
+    registry order inside each bucket, but prioritize career/job sources so small
+    capture runs exercise the Review Inbox workflow.
+    """
+    career_sources = [source for source in planned_sources if _is_career_source(source)]
+    other_sources = [source for source in planned_sources if not _is_career_source(source)]
+    return [*career_sources, *other_sources][:max_sources]
+
+
 def create_professional_capture_preview_run(
     session: Session,
     request: ProfessionalCaptureCreateRequest | None = None,
 ) -> ProfessionalCaptureRunResponse:
     options = (request or ProfessionalCaptureCreateRequest()).options
     plan = build_professional_capture_plan(session)
-    sources = plan.planned_sources[: options.max_sources]
+    sources = _select_bounded_sources(plan.planned_sources, options.max_sources)
     run = ProfessionalCaptureRun(
         id=str(uuid4()),
         mode="preview_only",
@@ -184,6 +204,7 @@ def create_professional_capture_preview_run(
                 "bounded_scroll_batches",
                 "bounded_item_count",
                 "bounded_source_timeout",
+                "career_sources_prioritized_for_small_runs",
                 "single_browser_process_per_run",
             ]
         ),
