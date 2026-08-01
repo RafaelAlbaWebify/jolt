@@ -65,7 +65,7 @@ describe("ProfessionalIntelligence", () => {
 
     rerender(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByRole("heading", { name: "Sources & Evidence" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Capture & Evidence" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
     expect(screen.getAllByText("Trusted source")).toHaveLength(2);
