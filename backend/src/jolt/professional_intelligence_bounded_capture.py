@@ -101,7 +101,9 @@ def _runtime_diagnostics() -> str:
 def _login_detection_detail(url: str, visible_text: str) -> str | None:
     lowered_url = url.casefold()
     url_markers = [
-        marker for marker in _LOGIN_URL_MARKERS if "linkedin.com" in lowered_url and marker in lowered_url
+        marker
+        for marker in _LOGIN_URL_MARKERS
+        if "linkedin.com" in lowered_url and marker in lowered_url
     ]
     lowered_text = visible_text.casefold()
     text_markers = [marker for marker in _LOGIN_TEXT_MARKERS if marker in lowered_text]
