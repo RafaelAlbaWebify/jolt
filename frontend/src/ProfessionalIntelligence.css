@@ -106,12 +106,13 @@
 .professional-run-card {
   display: grid;
   gap: 0.6rem;
+  min-width: 0;
   padding: 0.85rem;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
 }
 
-.professional-run-card > div {
+.professional-run-card > div:not(.professional-delete-confirmation) {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
@@ -125,6 +126,41 @@
 
 .professional-run-card button {
   width: fit-content;
+}
+
+.professional-delete-confirmation {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.7rem;
+  min-width: 0;
+  width: 100%;
+  padding: 0.9rem;
+  border: 1px solid #f0a0a0;
+  border-radius: 0.75rem;
+  background: #fff5f5;
+}
+
+.professional-delete-confirmation strong,
+.professional-delete-confirmation p,
+.professional-delete-confirmation label {
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
+}
+
+.professional-delete-confirmation label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.professional-delete-confirmation input {
+  width: 100%;
+  min-width: 14rem;
+}
+
+.professional-delete-confirmation .professional-source-editor-actions {
+  justify-content: flex-start;
 }
 
 .professional-evidence-review-launch {
@@ -288,7 +324,7 @@
   }
 
   .professional-source-card-heading,
-  .professional-run-card > div,
+  .professional-run-card > div:not(.professional-delete-confirmation),
   .professional-evidence-review-summary {
     flex-direction: column;
   }
