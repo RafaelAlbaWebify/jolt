@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,8 +17,10 @@ from jolt.evaluation_strategy import (
     default_profile_path,
     load_strategy_profile,
 )
+from jolt.job_search_preferences import load_job_search_preferences
+from jolt.preference_aware_evaluation import preference_blockers
 
-ENGINE_VERSION = "profile-rules-v4"
+ENGINE_VERSION = "profile-rules-v5"
 
 
 def load_active_strategy_profile(path: Path | None = None) -> StrategyProfile | None:
@@ -33,6 +35,12 @@ def profile_fingerprint(profile: StrategyProfile) -> str:
         profile.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
+
+
+def preferences_fingerprint() -> str:
+    preferences = load_job_search_preferences()
+    canonical = preferences.model_dump_json(exclude_none=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def public_profile_metadata(profile: StrategyProfile) -> dict[str, object]:
@@ -63,6 +71,7 @@ def assessment_reasons(assessment: StrategyAssessment) -> list[str]:
             f"Interview preparation window: {assessment.interview_days} days; "
             f"estimated preparation {assessment.estimated_preparation_hours} hours."
         ),
+        f"Job-search preferences SHA256: {preferences_fingerprint()}.",
     ]
     reasons.extend(f"Strength: {item}" for item in assessment.strengths)
     reasons.extend(f"Blocker: {item}" for item in assessment.blockers)
@@ -107,20 +116,69 @@ def ensure_private_profile_version(session: Session, profile: StrategyProfile) -
     return record
 
 
-def ensure_strategy_review(
-    session: Session, profile: StrategyProfile, posting: Posting
+def _apply_saved_preferences(
+    assessment: StrategyAssessment,
+    *,
+    title: str,
+    location: str,
+    description: str,
 ) -> StrategyAssessment:
-    """Assess and persist one posting without recalculating the complete dataset."""
+    text = "\n".join((title, location, description))
+    configured_blockers = preference_blockers(text)
+    if not configured_blockers:
+        return assessment
+    blockers = tuple(
+        dict.fromkeys(
+            [
+                *assessment.blockers,
+                *(f"Job-search preference: {item}." for item in configured_blockers),
+            ]
+        )
+    )
+    return replace(
+        assessment,
+        eligibility="ineligible",
+        recommendation="do_not_pursue",
+        confidence="high",
+        blockers=blockers,
+    )
+
+
+def ensure_strategy_review(
+    session: Session,
+    profile: StrategyProfile,
+    posting: Posting,
+    *,
+    commit: bool = True,
+) -> StrategyAssessment:
+    """Assess one posting and append a new evaluation only when the result changed."""
     profile_record = ensure_private_profile_version(session, profile)
     assessment = assess_posting(profile, posting.title, posting.location, posting.description)
+    assessment = _apply_saved_preferences(
+        assessment,
+        title=posting.title,
+        location=posting.location,
+        description=posting.description,
+    )
+    reasons = assessment_reasons(assessment)
+    reasons_json = json.dumps(reasons)
     existing = session.scalar(
-        select(Evaluation).where(
+        select(Evaluation)
+        .where(
             Evaluation.posting_id == posting.id,
             Evaluation.profile_version_id == profile_record.id,
             Evaluation.engine_version == ENGINE_VERSION,
         )
+        .order_by(Evaluation.created_at.desc())
     )
-    if existing is None:
+    unchanged = bool(
+        existing
+        and existing.recommendation == assessment.recommendation
+        and existing.confidence == assessment.confidence
+        and existing.ranking_score == assessment.fit_by_interview
+        and existing.reasons_json == reasons_json
+    )
+    if not unchanged:
         session.add(
             Evaluation(
                 id=str(uuid4()),
@@ -130,10 +188,11 @@ def ensure_strategy_review(
                 recommendation=assessment.recommendation,
                 confidence=assessment.confidence,
                 ranking_score=assessment.fit_by_interview,
-                reasons_json=json.dumps(assessment_reasons(assessment)),
+                reasons_json=reasons_json,
                 created_at=utc_now(),
             )
         )
+    if commit:
         session.commit()
     return assessment
 
@@ -143,7 +202,8 @@ def ensure_strategy_reviews(
 ) -> dict[str, StrategyAssessment]:
     assessments: dict[str, StrategyAssessment] = {}
     for posting in session.scalars(select(Posting)).all():
-        assessments[posting.id] = ensure_strategy_review(session, profile, posting)
+        assessments[posting.id] = ensure_strategy_review(session, profile, posting, commit=False)
+    session.commit()
     return assessments
 
 
