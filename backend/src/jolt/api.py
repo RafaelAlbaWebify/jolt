@@ -32,7 +32,14 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
-from jolt.workflow import create_application, get_application, ingest_manual, record_outcome, record_review, transition_application
+from jolt.workflow import (
+    create_application,
+    get_application,
+    ingest_manual,
+    record_outcome,
+    record_review,
+    transition_application,
+)
 
 LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
 
