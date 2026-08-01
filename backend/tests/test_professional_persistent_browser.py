@@ -35,7 +35,7 @@ class _FakeSession:
 class _FakeLocator:
     def __init__(
         self,
-        text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents.",
+        text: str = "Application Support Engineer\nAcme SaaS Operations\nRemote Spain\nTroubleshoot SQL incidents. " * 3,
     ) -> None:
         self.text = text
 
@@ -71,7 +71,9 @@ class _SuccessfulPage:
     def locator(self, selector: str) -> _FakeLocator:
         return _FakeLocator()
 
-    def evaluate(self, script: str, arg: object | None = None) -> int | None:
+    def evaluate(self, script: str, arg: object | None = None) -> int | str | None:
+        if "innerText" in script:
+            return _FakeLocator().text
         if "scrollHeight" in script:
             return 100
         return None
@@ -90,6 +92,11 @@ class _FailingPage(_SuccessfulPage):
     def goto(self, url: str, wait_until: str, timeout: int) -> _FakeResponse:
         self.url = url
         raise RuntimeError("synthetic navigation failure")
+
+
+class _ScreenshotFailingPage(_SuccessfulPage):
+    def screenshot(self, full_page: bool) -> bytes:
+        raise RuntimeError("synthetic screenshot failure")
 
 
 class _FakeContext:
@@ -167,6 +174,26 @@ def test_successful_capture_attempt_keeps_capture_page_open() -> None:
     assert page.closed is False
 
 
+def test_navigation_timeout_with_visible_text_returns_partial_evidence() -> None:
+    page = _FailingPage()
+    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
+
+    assert "Application Support Engineer" in captured.visible_text
+    assert captured.screenshot_png == b"fake-png"
+    assert "navigation reported RuntimeError" in captured.readiness_detail
+    assert page.closed is False
+
+
+def test_screenshot_failure_with_visible_text_returns_partial_evidence() -> None:
+    page = _ScreenshotFailingPage()
+    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
+
+    assert "Application Support Engineer" in captured.visible_text
+    assert captured.screenshot_png == b""
+    assert "screenshot failed" in captured.readiness_detail
+    assert page.closed is False
+
+
 def test_non_auth_capture_exception_does_not_stop_or_close_browser(monkeypatch) -> None:
     stopped = False
 
@@ -177,13 +204,9 @@ def test_non_auth_capture_exception_does_not_stop_or_close_browser(monkeypatch) 
     monkeypatch.setattr(bounded_capture, "_stop_browser_context", fake_stop_browser_context)
     page = _FailingPage()
 
-    try:
-        _capture_session(page)("https://www.linkedin.com/jobs/search/")
-    except RuntimeError as exc:
-        assert "synthetic navigation failure" in str(exc)
-    else:
-        raise AssertionError("Capture failure should raise a diagnostic RuntimeError.")
+    captured = _capture_session(page)("https://www.linkedin.com/jobs/search/")
 
+    assert "Application Support Engineer" in captured.visible_text
     assert stopped is False
     assert page.closed is False
 
