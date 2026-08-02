@@ -42,6 +42,7 @@ jobs:
       - name: Start disposable JOLT services
         run: |
           mkdir -p artifacts/full-cycle-certification/evidence
+          mkdir -p artifacts/full-cycle-certification/viewport-fit
           (
             cd backend
             setsid uv run uvicorn jolt.main:app --host 127.0.0.1 --port 8000 > "$JOLT_CERT_BACKEND_LOG" 2>&1 &
@@ -67,6 +68,13 @@ jobs:
           uv run python ../tools/jolt-full-cycle-playwright-certification-recovery.py \
             --output-dir ../artifacts/full-cycle-certification/evidence \
             2>&1 | tee ../artifacts/full-cycle-certification/certification.log
+      - name: Enforce 1680x945 viewport fit
+        working-directory: backend
+        run: |
+          set -o pipefail
+          uv run python ../tools/jolt-viewport-fit-playwright-audit.py \
+            --output-dir ../artifacts/full-cycle-certification/viewport-fit \
+            2>&1 | tee ../artifacts/full-cycle-certification/viewport-fit.log
       - name: Record disposable database summary
         if: always()
         run: |
