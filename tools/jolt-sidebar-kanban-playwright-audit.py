@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, Response, sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
@@ -85,6 +85,10 @@ def assert_true(value: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def assert_success(response: Response, action: str) -> None:
+    assert_true(response.ok, f"{action} returned HTTP {response.status}: {response.url}")
+
+
 def verify_shell(page: Page, workspace: str) -> dict[str, Any]:
     metrics = page.evaluate(
         """() => {
@@ -156,15 +160,23 @@ def audit(output_dir: Path) -> dict[str, Any]:
 
         title = fixture["title"]
         app_id = fixture["application_id"]
+        transition_url = f"/api/applications/{app_id}/transitions"
         card_selector = f'article.application-card[data-application-id="{app_id}"]'
         card = page.locator(card_selector)
         card.wait_for(timeout=30_000)
         assert_true(page.locator(card_selector).count() == 1, "Application is not rendered exactly once")
-        card.drag_to(page.locator("section.application-lane-interviewing"))
+
+        with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as forward_info:
+            card.drag_to(page.locator("section.application-lane-interviewing"))
+        assert_success(forward_info.value, "Forward application transition")
         page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
+
         moved = page.locator(card_selector)
-        moved.get_by_label(f"Move {title} to stage").select_option("applied")
+        with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as backward_info:
+            moved.get_by_label(f"Move {title} to stage").select_option("applied")
+        assert_success(backward_info.value, "Backward application transition")
         page.get_by_text(f"{title} moved to Applied.", exact=True).wait_for(timeout=30_000)
+        page.wait_for_load_state("networkidle")
 
         page.reload(wait_until="networkidle")
         open_workspace(page, "Applications", "Application Pipeline")
