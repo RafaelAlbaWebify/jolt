@@ -116,6 +116,9 @@ describe("LinkedInCommandCenter", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
+    await screen.findByRole("heading", { name: "LinkedIn Profile" });
+    expect(screen.queryByRole("region", { name: "Capture targets" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Capture targets" }));
     expect(await screen.findByRole("region", { name: "Capture targets" })).toBeInTheDocument();
     expect(screen.getByText("Licenses & certifications")).toBeInTheDocument();
     expect(screen.getByText("Jobs Based on my Preferences")).toBeInTheDocument();
