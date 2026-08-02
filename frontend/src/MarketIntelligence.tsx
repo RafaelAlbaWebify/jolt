@@ -31,18 +31,23 @@ type MarketData = {
   fit_explanation: string;
 };
 type Scope = "target" | "all";
+type MarketView = "overview" | "demand" | "salary";
 type Props = { apiBase: string; active: boolean };
+
+function readable(value: string) {
+  return value.replaceAll("_", " ");
+}
 
 function Ranking({ title, items, empty }: { title: string; items: Metric[]; empty?: string }) {
   const maximum = Math.max(1, ...items.map((item) => item.count));
   return (
-    <section className="market-card">
+    <section className="market-card market-ranking-card">
       <h3>{title}</h3>
       {items.length === 0 ? <p>{empty ?? "No evidence detected in this scope."}</p> : (
         <div className="market-ranking">
-          {items.slice(0, 10).map((item) => (
+          {items.slice(0, 5).map((item) => (
             <div className="market-ranking-row" key={item.label}>
-              <div><strong>{item.label.replaceAll("_", " ")}</strong><span>{item.count}</span></div>
+              <div><strong>{readable(item.label)}</strong><span>{item.count}</span></div>
               <div className="market-bar"><span style={{ width: `${(item.count / maximum) * 100}%` }} /></div>
             </div>
           ))}
@@ -57,6 +62,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   const [scope, setScope] = useState<Scope>("target");
   const [timeframe, setTimeframe] = useState<Timeframe>("all");
   const [sourceScope, setSourceScope] = useState<SourceScope>("all");
+  const [view, setView] = useState<MarketView>("overview");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
@@ -91,60 +97,79 @@ export function MarketIntelligence({ apiBase, active }: Props) {
 
   return (
     <main className="market-intelligence" aria-labelledby="market-insights-heading">
-      <section className="panel">
-        <div className="section-heading">
+      <section className="panel market-control-panel">
+        <div className="section-heading market-heading-row">
           <div>
             <p className="eyebrow">Search strategy evidence</p>
             <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Only retained job evidence is analysed here. Use it to change search scope, preparation priorities, or application decisions.</p>
+            <p>Use retained job evidence to change search scope, preparation priorities, or application decisions.</p>
           </div>
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh insights"}</button>
         </div>
 
-        <div className="market-filters" aria-label="Market insight filters">
-          <label>Timeframe<select value={timeframe} onChange={(event) => setTimeframe(event.target.value as Timeframe)}><option value="all">All retained evidence</option><option value="last_30_days">Last 30 days</option><option value="last_7_days">Last 7 days</option></select></label>
-          <label>Source<select value={sourceScope} onChange={(event) => setSourceScope(event.target.value as SourceScope)}><option value="all">All sources</option><option value="capture_batches">Captured jobs</option><option value="manual_intake">Manual intake</option></select></label>
-          <label>Scope<select value={scope} onChange={(event) => setScope(event.target.value as Scope)}><option value="target">Target roles</option><option value="all">All retained roles</option></select></label>
+        <div className="market-filter-row">
+          <div className="market-filters" aria-label="Market insight filters">
+            <label>Timeframe<select value={timeframe} onChange={(event) => setTimeframe(event.target.value as Timeframe)}><option value="all">All retained evidence</option><option value="last_30_days">Last 30 days</option><option value="last_7_days">Last 7 days</option></select></label>
+            <label>Source<select value={sourceScope} onChange={(event) => setSourceScope(event.target.value as SourceScope)}><option value="all">All sources</option><option value="capture_batches">Captured jobs</option><option value="manual_intake">Manual intake</option></select></label>
+            <label>Scope<select value={scope} onChange={(event) => setScope(event.target.value as Scope)}><option value="target">Target roles</option><option value="all">All retained roles</option></select></label>
+          </div>
+          <div className="market-view-tabs" role="tablist" aria-label="Market insight views">
+            <button type="button" role="tab" aria-selected={view === "overview"} className={view === "overview" ? "workspace-nav-active" : "secondary"} onClick={() => setView("overview")}>Overview</button>
+            <button type="button" role="tab" aria-selected={view === "demand"} className={view === "demand" ? "workspace-nav-active" : "secondary"} onClick={() => setView("demand")}>Demand signals</button>
+            <button type="button" role="tab" aria-selected={view === "salary"} className={view === "salary" ? "workspace-nav-active" : "secondary"} onClick={() => setView("salary")}>Salary evidence</button>
+          </div>
         </div>
         {error && <p className="error" role="alert">{error}</p>}
         {lastRefreshedAt && <p className="market-refresh-note">Last refreshed {new Date(lastRefreshedAt).toLocaleString()}.</p>}
       </section>
 
       {!current ? <section className="panel"><p role="status">{loading ? "Loading market evidence…" : "No market evidence loaded."}</p></section> : (
-        <>
-          <section className="market-summary-grid" aria-label="Market summary">
-            <article className="market-card"><span>Roles in scope</span><strong>{current.total_roles}</strong></article>
-            <article className="market-card"><span>Strong fit</span><strong>{current.strong_roles}</strong></article>
-            <article className="market-card"><span>Viable fit</span><strong>{current.viable_roles}</strong></article>
-            <article className="market-card"><span>Salary evidence</span><strong>{Math.round(current.salary_coverage * 100)}%</strong></article>
-          </section>
-
-          <section className="panel">
-            <div className="section-heading"><div><h3>What to do next</h3><p>{data?.fit_explanation}</p></div></div>
-            <div className="market-action-grid">
-              <article className="market-card"><h3>Double down on</h3>{strongest.length ? <ul>{strongest.map((item) => <li key={item.label}>{item.label.replaceAll("_", " ")} ({item.count})</li>)}</ul> : <p>No repeated strength signal yet.</p>}</article>
-              <article className="market-card"><h3>Prepare next</h3>{priorities.length ? <ol>{priorities.slice(0, 5).map((item) => <li key={item.label}>{item.label.replaceAll("_", " ")} ({item.count})</li>)}</ol> : <p>No repeated preparation gap yet.</p>}</article>
-            </div>
-          </section>
-
-          <div className="market-grid">
-            <Ranking title="Fit distribution" items={current.fit_distribution} />
-            <Ranking title="Role families" items={current.role_families} />
-            <Ranking title="Work modes" items={current.work_modes} />
-            <Ranking title="Most requested skills" items={current.top_skills} />
-            <Ranking title="Repeated blockers and gaps" items={current.top_gaps} />
-            <Ranking title="Locations" items={current.top_locations} />
-          </div>
-
-          <section className="panel">
-            <h3>Salary mentions</h3>
-            {current.salary_mentions.length === 0 ? <p>No salary evidence in this scope.</p> : (
-              <div className="professional-source-grid">
-                {current.salary_mentions.slice(0, 12).map((item, index) => <article className="professional-source-card" key={`${item.title}-${index}`}><strong>{item.title}</strong><p>{item.company}</p><p>{item.mention}</p></article>)}
+        <section className="market-view-panel" aria-live="polite">
+          {view === "overview" && (
+            <div role="tabpanel" aria-label="Overview">
+              <section className="market-summary-grid" aria-label="Market summary">
+                <article className="market-card"><span>Roles in scope</span><strong>{current.total_roles}</strong></article>
+                <article className="market-card"><span>Strong fit</span><strong>{current.strong_roles}</strong></article>
+                <article className="market-card"><span>Viable fit</span><strong>{current.viable_roles}</strong></article>
+                <article className="market-card"><span>Salary evidence</span><strong>{Math.round(current.salary_coverage * 100)}%</strong></article>
+              </section>
+              <div className="market-overview-grid">
+                <article className="market-card market-next-action-card">
+                  <h3>What to do next</h3>
+                  <p>{data?.fit_explanation}</p>
+                  <div className="market-action-columns">
+                    <div><h4>Double down on</h4>{strongest.length ? <ul>{strongest.map((item) => <li key={item.label}>{readable(item.label)} ({item.count})</li>)}</ul> : <p>No repeated strength signal yet.</p>}</div>
+                    <div><h4>Prepare next</h4>{priorities.length ? <ol>{priorities.slice(0, 5).map((item) => <li key={item.label}>{readable(item.label)} ({item.count})</li>)}</ol> : <p>No repeated preparation gap yet.</p>}</div>
+                  </div>
+                </article>
+                <Ranking title="Fit distribution" items={current.fit_distribution} />
+                <Ranking title="Role families" items={current.role_families} />
               </div>
-            )}
-          </section>
-        </>
+            </div>
+          )}
+
+          {view === "demand" && (
+            <div className="market-demand-grid" role="tabpanel" aria-label="Demand signals">
+              <Ranking title="Work modes" items={current.work_modes} />
+              <Ranking title="Most requested skills" items={current.top_skills} />
+              <Ranking title="Repeated blockers and gaps" items={current.top_gaps} />
+              <Ranking title="Locations" items={current.top_locations} />
+              <Ranking title="Seniority" items={current.seniority} />
+              <Ranking title="Companies" items={current.top_companies} />
+            </div>
+          )}
+
+          {view === "salary" && (
+            <div role="tabpanel" aria-label="Salary evidence" className="market-salary-panel">
+              <div className="market-salary-heading"><div><h3>Salary mentions</h3><p>{Math.round(current.salary_coverage * 100)}% of roles in this scope contain salary evidence.</p></div></div>
+              {current.salary_mentions.length === 0 ? <p>No salary evidence in this scope.</p> : (
+                <div className="market-salary-grid">
+                  {current.salary_mentions.slice(0, 9).map((item, index) => <article className="market-card" key={`${item.title}-${index}`}><strong>{item.title}</strong><span>{item.company}</span><p>{item.mention}</p></article>)}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       )}
     </main>
   );
