@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
 
+API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
 WORKSPACES = {
@@ -17,6 +21,62 @@ WORKSPACES = {
     "Market Insights": "Market Insights",
     "Settings & Data": "Settings & Data",
 }
+
+
+def request_json(method: str, path: str, payload: dict[str, object] | None = None) -> Any:
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {"Content-Type": "application/json"} if payload is not None else {}
+    request = urllib.request.Request(f"{API_BASE}{path}", data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"{method} {path} failed with HTTP {exc.code}: {detail}") from exc
+
+
+def seed_high_volume_applications(count: int = 12) -> None:
+    stamp = time.time_ns()
+    for index in range(count):
+        title = (
+            f"Viewport Volume Certification {index + 1:02d} — Senior Application Support, "
+            "Cloud Operations and Production Reliability Engineer"
+        )
+        source_url = f"https://example.test/jobs/viewport-volume-{stamp}-{index}"
+        intake = request_json(
+            "POST",
+            "/api/intake/manual",
+            {
+                "source_url": source_url,
+                "raw_text": (
+                    f"{title}\nCertification Systems International and Enterprise Services\n"
+                    "Remote across Spain with occasional European customer coordination\n"
+                    "Windows Active Directory SQL APIs incident management production support "
+                    "customer communication troubleshooting and operational documentation."
+                ),
+            },
+        )
+        posting_id = str(intake["posting_id"])
+        evaluation_id = str(intake["evaluation_id"])
+        request_json(
+            "POST",
+            f"/api/opportunities/{posting_id}/reviews",
+            {"evaluation_id": evaluation_id, "decision": "pursue"},
+        )
+        application = request_json(
+            "POST",
+            f"/api/opportunities/{posting_id}/applications",
+            {
+                "application_url": f"https://example.test/applications/viewport-{stamp}-{index}",
+                "resume_used": "Viewport_Certification_Long_Filename_Resume.pdf",
+                "notes": "High-volume viewport certification fixture.",
+            },
+        )
+        request_json(
+            "POST",
+            f"/api/applications/{application['application_id']}/transitions",
+            {"status": "submitted", "notes": "Seeded for high-volume viewport certification."},
+        )
 
 
 def inspect_workspace(page: Page, label: str) -> dict[str, Any]:
@@ -30,17 +90,43 @@ def inspect_workspace(page: Page, label: str) -> dict[str, Any]:
             if (!shell || !sidebar || !content || !active) {
                 throw new Error(`Incomplete workspace shell while inspecting ${label}.`);
             }
+
+            const clippedRect = (node) => {
+                const rect = node.getBoundingClientRect();
+                let top = rect.top;
+                let right = rect.right;
+                let bottom = rect.bottom;
+                let left = rect.left;
+                let ancestor = node.parentElement;
+                while (ancestor) {
+                    const style = getComputedStyle(ancestor);
+                    const clipsX = ['hidden', 'auto', 'scroll', 'clip'].includes(style.overflowX);
+                    const clipsY = ['hidden', 'auto', 'scroll', 'clip'].includes(style.overflowY);
+                    if (clipsX || clipsY) {
+                        const ancestorRect = ancestor.getBoundingClientRect();
+                        if (clipsX) {
+                            left = Math.max(left, ancestorRect.left);
+                            right = Math.min(right, ancestorRect.right);
+                        }
+                        if (clipsY) {
+                            top = Math.max(top, ancestorRect.top);
+                            bottom = Math.min(bottom, ancestorRect.bottom);
+                        }
+                    }
+                    ancestor = ancestor.parentElement;
+                }
+                return { top, right, bottom, left, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+            };
+
             const shellBox = shell.getBoundingClientRect();
             const sidebarBox = sidebar.getBoundingClientRect();
             const contentBox = content.getBoundingClientRect();
             const activeBox = active.getBoundingClientRect();
-            const visibleElements = [...active.querySelectorAll('*')].filter((node) => {
-                const style = getComputedStyle(node);
-                const box = node.getBoundingClientRect();
-                return style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0;
-            });
-            const furthestBottom = Math.max(activeBox.bottom, ...visibleElements.map((node) => node.getBoundingClientRect().bottom));
-            const furthestRight = Math.max(activeBox.right, ...visibleElements.map((node) => node.getBoundingClientRect().right));
+            const paintedElements = [...active.querySelectorAll('*')]
+                .map((node) => ({ node, style: getComputedStyle(node), box: clippedRect(node) }))
+                .filter(({ style, box }) => style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0);
+            const furthestBottom = Math.max(activeBox.bottom, ...paintedElements.map(({ box }) => box.bottom));
+            const furthestRight = Math.max(activeBox.right, ...paintedElements.map(({ box }) => box.right));
             return {
                 label,
                 viewportWidth: window.innerWidth,
@@ -82,9 +168,9 @@ def assert_workspace_fits(metrics: dict[str, Any]) -> None:
     if metrics["documentHorizontalOverflow"] > 1:
         failures.append(f"document horizontal overflow={metrics['documentHorizontalOverflow']:.1f}px")
     if metrics["verticalOverflow"] > 1:
-        failures.append(f"visible content below viewport={metrics['verticalOverflow']:.1f}px")
+        failures.append(f"painted content below viewport={metrics['verticalOverflow']:.1f}px")
     if metrics["horizontalOverflow"] > 1:
-        failures.append(f"visible content beyond viewport={metrics['horizontalOverflow']:.1f}px")
+        failures.append(f"painted content beyond viewport={metrics['horizontalOverflow']:.1f}px")
     if metrics["active"]["scrollHeight"] > metrics["active"]["clientHeight"] + 1:
         failures.append(
             "active workspace requires vertical scrolling="
@@ -103,11 +189,20 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     screenshots = output_dir / "screenshots"
     screenshots.mkdir(exist_ok=True)
+    seed_high_volume_applications()
     metrics: dict[str, dict[str, Any]] = {}
     console_errors: list[dict[str, Any]] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
+    aborted_requests: list[str] = []
     http_errors: list[str] = []
+
+    def record_failed_request(request) -> None:
+        detail = f"{request.method} {request.url}: {request.failure}"
+        if request.method == "GET" and "ERR_ABORTED" in str(request.failure):
+            aborted_requests.append(detail)
+        else:
+            failed_requests.append(detail)
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=not headed)
@@ -120,7 +215,7 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
             else None,
         )
         page.on("pageerror", lambda error: page_errors.append(str(error)))
-        page.on("requestfailed", lambda request: failed_requests.append(f"{request.method} {request.url}: {request.failure}"))
+        page.on("requestfailed", record_failed_request)
         page.on(
             "response",
             lambda response: http_errors.append(f"{response.status} {response.request.method} {response.url}")
@@ -139,6 +234,12 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
                     raise AssertionError(
                         f"Review Inbox rendered {visible_rows} visible rows; maximum is 5 at 1680x945."
                     )
+            if label == "Applications":
+                application_count = page.locator("article.application-card").count()
+                if application_count < 12:
+                    raise AssertionError(
+                        f"High-volume Applications fixture was not rendered: expected at least 12 cards, found {application_count}."
+                    )
             workspace_metrics = inspect_workspace(page, label)
             metrics[label] = workspace_metrics
             page.screenshot(path=screenshots / f"{sequence:02d}-{label.lower().replace(' ', '-')}.png", full_page=False)
@@ -148,6 +249,7 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
             "console_errors": console_errors,
             "page_errors": page_errors,
             "failed_requests": failed_requests,
+            "aborted_requests": aborted_requests,
             "http_errors": http_errors,
         }
         (output_dir / "browser-diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
@@ -166,6 +268,7 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
     summary = {
         "result": "passed",
         "viewport": VIEWPORT,
+        "high_volume_application_count": 12,
         "workspaces": metrics,
         "browser_diagnostics": diagnostics,
     }
