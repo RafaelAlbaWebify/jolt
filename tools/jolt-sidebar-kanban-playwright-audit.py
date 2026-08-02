@@ -85,8 +85,10 @@ def assert_true(value: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def assert_success(response: Response, action: str) -> None:
+def assert_response_complete(response: Response, action: str) -> None:
     assert_true(response.ok, f"{action} returned HTTP {response.status}: {response.url}")
+    completion_error = response.finished()
+    assert_true(completion_error is None, f"{action} response did not finish: {completion_error}")
 
 
 def verify_shell(page: Page, workspace: str) -> dict[str, Any]:
@@ -168,13 +170,13 @@ def audit(output_dir: Path) -> dict[str, Any]:
 
         with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as forward_info:
             card.drag_to(page.locator("section.application-lane-interviewing"))
-        assert_success(forward_info.value, "Forward application transition")
+        assert_response_complete(forward_info.value, "Forward application transition")
         page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
 
         moved = page.locator(card_selector)
         with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as backward_info:
             moved.get_by_label(f"Move {title} to stage").select_option("applied")
-        assert_success(backward_info.value, "Backward application transition")
+        assert_response_complete(backward_info.value, "Backward application transition")
         page.get_by_text(f"{title} moved to Applied.", exact=True).wait_for(timeout=30_000)
         page.wait_for_load_state("networkidle")
 
