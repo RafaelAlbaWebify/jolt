@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from jolt import workflow
@@ -52,16 +53,48 @@ _SHIFT_TERMS: dict[str, tuple[str, ...]] = {
     "weekend": ("weekend coverage", "weekend shift", "weekend shifts"),
     "evening": ("evening shift", "evening shifts"),
 }
+_DISPATCH_REQUIREMENT_PATTERNS = (
+    r"\bdispatch(?:er|ing)?\s+(?:activities|operations|coordination|support|role|team|work)\b",
+    r"\b(?:field|service|logistics|transport|delivery)\s+dispatch\b",
+    r"\bresponsible\s+for\s+(?:the\s+)?dispatch\b",
+    r"\bcoordinate\s+(?:the\s+)?dispatch\b",
+    r"\bsupport\s+(?:for\s+)?dispatch\s+activities\b",
+)
+
+
+def sanitize_capture_text(text: str) -> str:
+    """Remove known platform chrome that must not influence vacancy assessment."""
+    start = text.casefold().find("job search faster with premium")
+    if start >= 0:
+        end = text.casefold().find("about the company", start)
+        if end >= 0:
+            text = text[:start] + text[end:]
+    return text
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    normalized = " ".join(phrase.casefold().split())
+    if not normalized:
+        return False
+    pattern = re.escape(normalized).replace(r"\ ", r"\s+")
+    return re.search(rf"(?<!\w){pattern}(?!\w)", text) is not None
+
+
+def _excluded_keyword_matches(text: str, phrase: str) -> bool:
+    normalized = " ".join(phrase.casefold().split())
+    if normalized == "dispatch":
+        return any(re.search(pattern, text) for pattern in _DISPATCH_REQUIREMENT_PATTERNS)
+    return _contains_phrase(text, normalized)
 
 
 def preference_blockers(text: str) -> list[str]:
     """Return only blockers explicitly configured in the current saved preferences."""
     preferences = load_job_search_preferences()
-    lowered = text.casefold()
+    lowered = " ".join(sanitize_capture_text(text).casefold().split())
     blockers = [
         f"excluded keyword: {phrase}"
         for phrase in preferences.excluded_keywords
-        if phrase.strip() and phrase.casefold() in lowered
+        if phrase.strip() and _excluded_keyword_matches(lowered, phrase)
     ]
 
     allowed_languages = {language.casefold() for language in preferences.languages}
@@ -77,8 +110,9 @@ def preference_blockers(text: str) -> list[str]:
 
 
 def evaluate_text_with_preferences(text: str) -> EvaluationResult:
-    recommendation, confidence, score, reasons = _ORIGINAL_EVALUATE_TEXT(text)
-    blockers = preference_blockers(text)
+    sanitized = sanitize_capture_text(text)
+    recommendation, confidence, score, reasons = _ORIGINAL_EVALUATE_TEXT(sanitized)
+    blockers = preference_blockers(sanitized)
     if blockers:
         return (
             "reject",

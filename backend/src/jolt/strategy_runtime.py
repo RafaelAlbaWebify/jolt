@@ -19,7 +19,7 @@ from jolt.evaluation_strategy import (
     load_strategy_profile,
 )
 from jolt.job_search_preferences import load_job_search_preferences
-from jolt.preference_aware_evaluation import preference_blockers
+from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
 ENGINE_VERSION = "profile-rules-v4"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
@@ -200,6 +200,29 @@ def _apply_saved_preferences(
     )
 
 
+def calibrated_strategy_assessment(
+    profile: StrategyProfile,
+    *,
+    title: str,
+    location: str,
+    description: str,
+) -> StrategyAssessment:
+    sanitized_description = sanitize_capture_text(description)
+    assessment = assess_posting(profile, title, location, sanitized_description)
+    assessment = _remove_unsubstantiated_people_management_gap(
+        assessment,
+        title=title,
+        location=location,
+        description=sanitized_description,
+    )
+    return _apply_saved_preferences(
+        assessment,
+        title=title,
+        location=location,
+        description=sanitized_description,
+    )
+
+
 def ensure_strategy_review(
     session: Session,
     profile: StrategyProfile,
@@ -209,15 +232,8 @@ def ensure_strategy_review(
 ) -> StrategyAssessment:
     """Assess one posting and append a new evaluation only when the result changed."""
     profile_record = ensure_private_profile_version(session, profile)
-    assessment = assess_posting(profile, posting.title, posting.location, posting.description)
-    assessment = _remove_unsubstantiated_people_management_gap(
-        assessment,
-        title=posting.title,
-        location=posting.location,
-        description=posting.description,
-    )
-    assessment = _apply_saved_preferences(
-        assessment,
+    assessment = calibrated_strategy_assessment(
+        profile,
         title=posting.title,
         location=posting.location,
         description=posting.description,
