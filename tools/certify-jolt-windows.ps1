@@ -35,8 +35,11 @@ $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $outputRoot = Join-Path $RepositoryRoot "artifacts\windows-certification\$timestamp"
 $viewportOutput = Join-Path $outputRoot 'viewport-fit'
 $fullCycleOutput = Join-Path $outputRoot 'full-cycle'
+$certificationDataRoot = Join-Path $outputRoot 'data'
+$certificationDatabasePath = Join-Path $certificationDataRoot 'jolt-certification.db'
 New-Item -ItemType Directory -Path $viewportOutput -Force | Out-Null
 New-Item -ItemType Directory -Path $fullCycleOutput -Force | Out-Null
+New-Item -ItemType Directory -Path $certificationDataRoot -Force | Out-Null
 
 $startScript = Join-Path $RepositoryRoot 'tools\start-jolt.ps1'
 $stopScript = Join-Path $RepositoryRoot 'tools\stop-jolt.ps1'
@@ -45,6 +48,7 @@ if (-not (Test-Path $startScript)) { throw "Missing $startScript" }
 if (-not (Test-Path $stopScript)) { throw "Missing $stopScript" }
 
 $certificationEnvironmentNames = @(
+    'JOLT_DATABASE_URL',
     'JOLT_CERT_BACKEND_PID_FILE',
     'JOLT_CERT_FRONTEND_PID_FILE',
     'JOLT_CERT_BACKEND_LOG',
@@ -60,20 +64,21 @@ $startedHere = $false
 try {
     Set-Location $RepositoryRoot
 
-    try {
-        Invoke-WebRequest -Uri 'http://127.0.0.1:8000/api/health' -UseBasicParsing -TimeoutSec 2 | Out-Null
-        Invoke-WebRequest -Uri 'http://127.0.0.1:5173' -UseBasicParsing -TimeoutSec 2 | Out-Null
-    }
-    catch {
-        & $startScript -NoBrowser
-        $startedHere = $true
-    }
+    # Certification must never reuse the user's normal services or database. A fresh
+    # database makes repeated Windows runs deterministic and directly comparable to CI.
+    & $stopScript
+    Remove-Item -LiteralPath $certificationDatabasePath -Force -ErrorAction SilentlyContinue
+    $sqlitePath = $certificationDatabasePath.Replace('\', '/')
+    [Environment]::SetEnvironmentVariable('JOLT_DATABASE_URL', "sqlite:///$sqlitePath", 'Process')
+
+    & $startScript -NoBrowser
+    $startedHere = $true
 
     Wait-ForUrl -Url 'http://127.0.0.1:8000/api/health'
     Wait-ForUrl -Url 'http://127.0.0.1:5173'
 
     if (-not (Test-Path $serviceStatePath)) {
-        throw "Windows certification requires JOLT service state at $serviceStatePath. Stop JOLT and rerun the certification so it can start managed services."
+        throw "Windows certification requires JOLT service state at $serviceStatePath."
     }
     $serviceState = Get-Content -LiteralPath $serviceStatePath -Raw | ConvertFrom-Json
     if (-not $serviceState.backend_pid -or -not $serviceState.frontend_pid) {
@@ -117,6 +122,7 @@ try {
         repository_root = $RepositoryRoot
         git_head = (git rev-parse HEAD).Trim()
         viewport = '1680x945'
+        isolated_database = $certificationDatabasePath
         services_started_by_certification = $startedHere
         viewport_evidence = $viewportOutput
         full_cycle_evidence = $fullCycleOutput
@@ -125,11 +131,11 @@ try {
     Write-Host "JOLT Windows certification passed. Evidence: $outputRoot" -ForegroundColor Green
 }
 finally {
-    foreach ($name in $certificationEnvironmentNames) {
-        [Environment]::SetEnvironmentVariable($name, $originalEnvironment[$name], 'Process')
-    }
     Set-Location $originalLocation
     if ($startedHere -and -not $KeepServicesRunning) {
         & $stopScript
+    }
+    foreach ($name in $certificationEnvironmentNames) {
+        [Environment]::SetEnvironmentVariable($name, $originalEnvironment[$name], 'Process')
     }
 }
