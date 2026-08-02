@@ -31,6 +31,7 @@
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(250px, 1fr));
+  align-items: stretch;
   gap: 14px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -40,9 +41,10 @@
 
 .application-lane {
   min-width: 250px;
-  min-height: 420px;
+  min-height: 0;
+  height: min(500px, calc(100vh - 390px));
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   padding: 12px;
   border: 1px solid #d8dde7;
@@ -80,7 +82,16 @@
 .application-lane-interviewing { border-top: 3px solid #9b6bca; }
 .application-lane-offer { border-top: 3px solid #2f8f61; }
 .application-lane-closed { border-top: 3px solid #8b95a5; }
-.application-lane-cards { display: grid; align-content: start; gap: 10px; }
+.application-lane-cards {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
 .application-lane-empty { margin: 0; padding: 24px 10px; border: 1px dashed #c7ced9; border-radius: 10px; color: #8a94a6; text-align: center; font-size: 0.82rem; }
 .application-card { overflow: hidden; border: 1px solid #d9dee8; border-radius: 12px; background: #fff; box-shadow: 0 4px 12px rgba(31, 41, 55, 0.05); cursor: grab; transition: opacity 140ms ease, transform 140ms ease, box-shadow 140ms ease; }
 .application-card:active { cursor: grabbing; }
@@ -151,6 +162,7 @@
   .application-board-toolbar,
   .application-detail-header { align-items: stretch; flex-direction: column; }
   .application-board-toolbar .application-boundary { text-align: left; }
+  .application-lane { height: min(520px, calc(100vh - 360px)); }
   .application-workspace-overlay { padding: 10px; }
   .application-detail-workspace { height: calc(100vh - 20px); min-height: 0; border-radius: 12px; }
   .application-detail-body { padding: 14px; }
