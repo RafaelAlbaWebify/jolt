@@ -1,5 +1,15 @@
 import { LinkedInJobCaptureLauncher } from "./LinkedInJobCaptureLauncher";
 
+export type ProfessionalIntelligenceSource = {
+  source_id: string;
+  label: string;
+  category: "profile" | "network" | "career";
+  url: string;
+  initial_scope: boolean;
+  enabled: boolean;
+  capture_mode: "supervised_read_only";
+};
+
 type Props = {
   apiBase: string;
   active: boolean;
