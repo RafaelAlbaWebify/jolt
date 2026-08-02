@@ -5,9 +5,9 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.application_response import build_application_response
 from jolt.database import Application, ApplicationEvent, Outcome, utc_now
 from jolt.schemas import ApplicationResponse, ApplicationTransitionRequest
-from jolt.workflow import _application_response
 
 VALID_APPLICATION_STATUSES = {
     "preparing",
@@ -49,7 +49,7 @@ def transition_application_reversibly(
     if request.status not in VALID_APPLICATION_STATUSES:
         raise ValueError(f"Unknown application status: {request.status}.")
     if request.status == application.status:
-        return _application_response(session, application)
+        return build_application_response(session, application)
 
     previous = application.status
     now = utc_now()
@@ -84,4 +84,4 @@ def transition_application_reversibly(
         )
     )
     session.commit()
-    return _application_response(session, application)
+    return build_application_response(session, application)
