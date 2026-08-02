@@ -13,19 +13,39 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 type WorkbenchView = "professional" | "opportunities" | "applications" | "linkedin" | "market";
 
 const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
-  { id: "professional", label: "Capture & Evidence", description: "Start supervised capture, store local evidence, and confirm how captured material routes through JOLT." },
-  { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added job opportunities before they move forward." },
-  { id: "applications", label: "Application Pipeline", description: "Track applications, interviews, offers, outcomes, and archived cards." },
-  { id: "linkedin", label: "LinkedIn Command Center", description: "Improve profile positioning, network quality, activity, and outreach from user-approved LinkedIn evidence." },
-  { id: "market", label: "Market Insights", description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit." },
+  {
+    id: "professional",
+    label: "Capture Jobs",
+    description: "Capture LinkedIn job searches and send verified opportunities into JOLT.",
+  },
+  {
+    id: "opportunities",
+    label: "Review Inbox",
+    description: "Review captured or manually added job opportunities before they move forward.",
+  },
+  {
+    id: "applications",
+    label: "Applications",
+    description: "Track preparation, submissions, interviews, offers, outcomes, and archived records.",
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn Profile",
+    description: "Capture and improve profile positioning, skills, activity, and professional presence.",
+  },
+  {
+    id: "market",
+    label: "Market Insights",
+    description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit.",
+  },
 ];
 
 const WORKFLOW_STEPS = [
-  "Capture evidence",
-  "Route evidence",
-  "Review jobs",
-  "Apply / track",
-  "Learn from market",
+  "Capture jobs",
+  "Review opportunities",
+  "Prepare and apply",
+  "Track outcomes",
+  "Learn from the market",
 ];
 
 export function Workbench() {
@@ -40,7 +60,7 @@ export function Workbench() {
           <div className="hero">
             <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Turn job evidence into review decisions, application tracking, market learning, and public career positioning.</p>
+            <p>Capture suitable jobs, make review decisions, track applications, and improve your market positioning.</p>
           </div>
 
           <ol className="workspace-flow" aria-label="JOLT workflow order">

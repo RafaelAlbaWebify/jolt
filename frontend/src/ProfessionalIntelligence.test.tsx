@@ -1,180 +1,30 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ProfessionalEvidenceRoot } from "./ProfessionalEvidenceRoot";
+vi.mock("./LinkedInJobCaptureLauncher", () => ({
+  LinkedInJobCaptureLauncher: () => (
+    <section>
+      <h3>Capture a LinkedIn job search</h3>
+      <button type="button">Start LinkedIn job capture</button>
+    </section>
+  ),
+}));
+
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
 
-const sources = [
-  {
-    source_id: "linkedin-profile",
-    label: "Main profile",
-    category: "profile",
-    url: "https://www.linkedin.com/in/rafael-alba-tech/",
-    initial_scope: true,
-    enabled: true,
-    capture_mode: "supervised_read_only",
-  },
-  {
-    source_id: "linkedin-feed",
-    label: "Feed",
-    category: "network",
-    url: "https://www.linkedin.com/feed/",
-    initial_scope: false,
-    enabled: true,
-    capture_mode: "supervised_read_only",
-  },
-];
-
-const emptyEvidenceRoot = {
-  configured: false,
-  root_path: null,
-  exists: false,
-  writable: false,
-  verified_at: null,
-};
-
-const verifiedEvidenceRoot = {
-  configured: true,
-  root_path: "C:\\Evidence",
-  exists: true,
-  writable: true,
-  verified_at: "2026-07-27T00:00:00Z",
-};
-
-const idleLocalCapture = {
-  status: "idle",
-  search_url: "",
-  max_jobs: 0,
-  max_pages: 0,
-  output_zip: "",
-  started_at: "",
-  completed_at: "",
-  error: "",
-};
-
 describe("ProfessionalIntelligence", () => {
-  afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
-  });
+  afterEach(() => cleanup());
 
-  it("loads only when active and shows source and evidence configuration", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/sources")) return new Response(JSON.stringify(sources), { status: 200 });
-      if (url.endsWith("/evidence-root")) {
-        return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
-      }
-      if (url.endsWith("/capture-runs")) return new Response(JSON.stringify([]), { status: 200 });
-      if (url.endsWith("/captures/linkedin/local/status")) {
-        return new Response(JSON.stringify(idleLocalCapture), { status: 200 });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    const { rerender } = render(
-      <ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active={false} />,
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    rerender(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
-
-    expect(await screen.findByRole("heading", { name: "Capture & Evidence" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Feed" })).toBeInTheDocument();
-    expect(screen.getAllByText("Trusted source")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Start LinkedIn job capture" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start configured-source capture" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Evidence directory" })).toBeInTheDocument();
-    expect(screen.getByText(/Supervised captures write their evidence files and manifests/)).toBeInTheDocument();
-    expect(screen.getByText("Not configured")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Primary sources" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Secondary sources" })).toBeInTheDocument();
-    expect(screen.getAllByText("Use as primary source")).toHaveLength(2);
-    expect(screen.getAllByText("Keep source enabled")).toHaveLength(2);
-  });
-
-  it("updates the source registry after saving and resetting a source override", async () => {
-    const updated = {
-      ...sources[0],
-      label: "Profile positioning review",
-      url: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt",
-      initial_scope: false,
-      enabled: false,
-    };
-    let updatePayload: Record<string, unknown> | null = null;
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = String(input);
-      if (url.endsWith("/sources") && !init?.method) {
-        return new Response(JSON.stringify(sources), { status: 200 });
-      }
-      if (url.endsWith("/evidence-root") && !init?.method) {
-        return new Response(JSON.stringify(emptyEvidenceRoot), { status: 200 });
-      }
-      if (url.endsWith("/capture-runs") && !init?.method) {
-        return new Response(JSON.stringify([]), { status: 200 });
-      }
-      if (url.endsWith("/captures/linkedin/local/status") && !init?.method) {
-        return new Response(JSON.stringify(idleLocalCapture), { status: 200 });
-      }
-      if (url.endsWith("/linkedin-profile/update")) {
-        updatePayload = JSON.parse(String(init?.body)) as Record<string, unknown>;
-        return new Response(JSON.stringify(updated), { status: 200 });
-      }
-      if (url.endsWith("/linkedin-profile/reset")) {
-        return new Response(JSON.stringify(sources[0]), { status: 200 });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
+  it("keeps Capture Jobs focused on the proven job-search workflow", () => {
     render(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
-    const profileHeading = await screen.findByRole("heading", { name: "Main profile" });
-    const profileCard = profileHeading.closest("article");
-    expect(profileCard).not.toBeNull();
-    fireEvent.click(within(profileCard as HTMLElement).getByText("Edit approved source"));
-    fireEvent.change(screen.getByLabelText("Source label for linkedin-profile"), {
-      target: { value: "Profile positioning review" },
-    });
-    fireEvent.change(screen.getByLabelText("LinkedIn URL for linkedin-profile"), {
-      target: { value: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt" },
-    });
-    fireEvent.click(screen.getByLabelText("Primary source for linkedin-profile"));
-    fireEvent.click(screen.getByLabelText("Enabled source linkedin-profile"));
-    fireEvent.click(within(profileCard as HTMLElement).getByRole("button", { name: "Save source" }));
 
-    const updatedHeading = await screen.findByRole("heading", { name: "Profile positioning review" });
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
-    expect(updatePayload).toEqual({
-      label: "Profile positioning review",
-      url: "https://www.linkedin.com/in/rafael-alba-tech/?source=jolt",
-      initial_scope: false,
-      enabled: false,
-    });
-
-    const updatedCard = updatedHeading.closest("article");
-    expect(updatedCard).not.toBeNull();
-    fireEvent.click(within(updatedCard as HTMLElement).getByText("Edit approved source"));
-    fireEvent.click(
-      within(updatedCard as HTMLElement).getByRole("button", { name: "Reset verified default" }),
-    );
-
-    expect(await screen.findByRole("heading", { name: "Main profile" })).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
-  });
-
-  it("retries an evidence-root failure and clears the stale error", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(verifiedEvidenceRoot), { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(<ProfessionalEvidenceRoot apiBase="http://api" active onChanged={vi.fn()} />);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to load the local evidence directory.");
-    fireEvent.click(screen.getByRole("button", { name: "Retry evidence directory" }));
-
-    expect(await screen.findByDisplayValue("C:\\Evidence")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("heading", { name: "Capture Jobs" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Capture a LinkedIn job search" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start LinkedIn job capture" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Profile capture has moved" })).toBeInTheDocument();
+    expect(screen.getByText(/belong in LinkedIn Profile/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start configured-source capture" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Evidence directory" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Primary sources" })).not.toBeInTheDocument();
   });
 });
