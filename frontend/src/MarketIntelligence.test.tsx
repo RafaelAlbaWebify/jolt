@@ -9,8 +9,8 @@ const SCOPE = {
   viable_roles: 4,
   role_families: [{ label: "application_support", count: 5 }],
   work_modes: [{ label: "remote", count: 6 }],
-  seniority: [],
-  top_companies: [],
+  seniority: [{ label: "mid_level", count: 4 }],
+  top_companies: [{ label: "Example", count: 3 }],
   top_locations: [{ label: "Spain", count: 7 }],
   top_skills: [{ label: "SQL", count: 6 }, { label: "API troubleshooting", count: 5 }],
   fit_distribution: [{ label: "strong", count: 3 }, { label: "viable", count: 4 }],
@@ -49,6 +49,23 @@ describe("MarketIntelligence", () => {
     expect(screen.queryByRole("button", { name: /Import/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Job-search preferences/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/preparation pack/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps demand and salary evidence available in focused non-stacked views", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
+    render(<MarketIntelligence apiBase="http://api" active />);
+    await screen.findByText("Double down on");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Demand signals" }));
+    expect(screen.getByRole("tabpanel", { name: "Demand signals" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Most requested skills" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Companies" })).toBeInTheDocument();
+    expect(screen.queryByText("Double down on")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Salary evidence" }));
+    expect(screen.getByRole("tabpanel", { name: "Salary evidence" })).toBeInTheDocument();
+    expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
+    expect(screen.getByText("€45,000")).toBeInTheDocument();
   });
 
   it("applies timeframe and source filters directly to the market endpoint", async () => {
