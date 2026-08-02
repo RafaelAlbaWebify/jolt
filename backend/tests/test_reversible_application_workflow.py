@@ -48,14 +48,18 @@ class FakeSession:
         self.committed = True
 
 
+def _patch_response(monkeypatch) -> None:
+    monkeypatch.setattr(
+        reversible,
+        "build_application_response",
+        lambda _session, value: SimpleNamespace(status=value.status),
+    )
+
+
 def test_application_can_move_backward_with_audited_event(monkeypatch) -> None:
     application = FakeApplication(status="technical_interview")
     session = FakeSession(application)
-    monkeypatch.setattr(
-        reversible,
-        "_application_response",
-        lambda _session, value: SimpleNamespace(status=value.status),
-    )
+    _patch_response(monkeypatch)
 
     response = reversible.transition_application_reversibly(
         session,
@@ -76,11 +80,7 @@ def test_closed_application_can_reopen_and_preserve_outcome_in_history(monkeypat
     application = FakeApplication(status="rejected")
     outcome = FakeOutcome()
     session = FakeSession(application, outcome)
-    monkeypatch.setattr(
-        reversible,
-        "_application_response",
-        lambda _session, value: SimpleNamespace(status=value.status),
-    )
+    _patch_response(monkeypatch)
 
     response = reversible.transition_application_reversibly(
         session,
@@ -103,11 +103,7 @@ def test_closed_application_can_reopen_and_preserve_outcome_in_history(monkeypat
 def test_selecting_the_current_stage_is_a_safe_no_op(monkeypatch) -> None:
     application = FakeApplication(status="submitted")
     session = FakeSession(application)
-    monkeypatch.setattr(
-        reversible,
-        "_application_response",
-        lambda _session, value: SimpleNamespace(status=value.status),
-    )
+    _patch_response(monkeypatch)
 
     response = reversible.transition_application_reversibly(
         session,
@@ -116,6 +112,28 @@ def test_selecting_the_current_stage_is_a_safe_no_op(monkeypatch) -> None:
     )
 
     assert response.status == "submitted"
+    assert session.added == []
+    assert session.deleted == []
+    assert session.committed is False
+
+
+def test_unknown_status_is_rejected_before_mutation(monkeypatch) -> None:
+    application = FakeApplication(status="submitted")
+    session = FakeSession(application)
+    _patch_response(monkeypatch)
+
+    try:
+        reversible.transition_application_reversibly(
+            session,
+            application.id,
+            ApplicationTransitionRequest.model_construct(status="invented", notes="Invalid."),
+        )
+    except ValueError as exc:
+        assert str(exc) == "Unknown application status: invented."
+    else:
+        raise AssertionError("Unknown application status was accepted.")
+
+    assert application.status == "submitted"
     assert session.added == []
     assert session.deleted == []
     assert session.committed is False
