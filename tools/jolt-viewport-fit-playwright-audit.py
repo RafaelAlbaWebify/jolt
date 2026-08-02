@@ -104,17 +104,29 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
     screenshots = output_dir / "screenshots"
     screenshots.mkdir(exist_ok=True)
     metrics: dict[str, dict[str, Any]] = {}
-    console_errors: list[str] = []
+    console_errors: list[dict[str, Any]] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
+    http_errors: list[str] = []
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=not headed)
         context = browser.new_context(viewport=VIEWPORT)
         page = context.new_page()
-        page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
+        page.on(
+            "console",
+            lambda message: console_errors.append({"text": message.text, "location": message.location})
+            if message.type == "error"
+            else None,
+        )
         page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.on("requestfailed", lambda request: failed_requests.append(f"{request.method} {request.url}: {request.failure}"))
+        page.on(
+            "response",
+            lambda response: http_errors.append(f"{response.status} {response.request.method} {response.url}")
+            if response.status >= 400
+            else None,
+        )
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
 
         for sequence, (label, heading) in enumerate(WORKSPACES.items(), start=1):
@@ -132,6 +144,16 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
             page.screenshot(path=screenshots / f"{sequence:02d}-{label.lower().replace(' ', '-')}.png", full_page=False)
             assert_workspace_fits(workspace_metrics)
 
+        diagnostics = {
+            "console_errors": console_errors,
+            "page_errors": page_errors,
+            "failed_requests": failed_requests,
+            "http_errors": http_errors,
+        }
+        (output_dir / "browser-diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
+
+        if http_errors:
+            raise AssertionError(f"HTTP resource errors: {http_errors}")
         if console_errors:
             raise AssertionError(f"Browser console errors: {console_errors}")
         if page_errors:
@@ -145,11 +167,7 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
         "result": "passed",
         "viewport": VIEWPORT,
         "workspaces": metrics,
-        "browser_diagnostics": {
-            "console_errors": console_errors,
-            "page_errors": page_errors,
-            "failed_requests": failed_requests,
-        },
+        "browser_diagnostics": diagnostics,
     }
     (output_dir / "viewport-fit-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
