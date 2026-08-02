@@ -137,6 +137,4 @@ def test_real_24_7_requirement_remains_visible(monkeypatch) -> None:
     )
 
     assert assessment.eligibility == "eligible_with_conditions"
-    assert assessment.uncertainties == (
-        "Shift, weekend or on-call requirement: 24/7.",
-    )
+    assert assessment.uncertainties == ("Shift, weekend or on-call requirement: 24/7.",)
