@@ -10,47 +10,23 @@ import { RuntimeIdentityPanel } from "./RuntimeIdentity";
 import "./Workbench.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-type WorkbenchView = "professional" | "opportunities" | "applications" | "linkedin" | "market";
+type PrimaryView = "professional" | "opportunities" | "applications" | "linkedin" | "market";
+type WorkbenchView = PrimaryView | "settings";
 
-const VIEWS: Array<{ id: WorkbenchView; label: string; description: string }> = [
-  {
-    id: "professional",
-    label: "Capture Jobs",
-    description: "Capture LinkedIn job searches and send verified opportunities into JOLT.",
-  },
-  {
-    id: "opportunities",
-    label: "Review Inbox",
-    description: "Review captured or manually added job opportunities before they move forward.",
-  },
-  {
-    id: "applications",
-    label: "Applications",
-    description: "Track preparation, submissions, interviews, offers, outcomes, and archived records.",
-  },
-  {
-    id: "linkedin",
-    label: "LinkedIn Profile",
-    description: "Capture and improve profile positioning, skills, activity, and professional presence.",
-  },
-  {
-    id: "market",
-    label: "Market Insights",
-    description: "Learn from active retained jobs: roles, skills, locations, salaries, and fit.",
-  },
+const PRIMARY_VIEWS: Array<{ id: PrimaryView; label: string; description: string }> = [
+  { id: "professional", label: "Capture Jobs", description: "Capture LinkedIn job searches and send verified opportunities into JOLT." },
+  { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added jobs and decide what moves forward." },
+  { id: "applications", label: "Applications", description: "Track preparation, submissions, interviews, offers, outcomes, and archived records." },
+  { id: "linkedin", label: "LinkedIn Profile", description: "Refresh profile evidence and manage concrete profile improvements." },
+  { id: "market", label: "Market Insights", description: "Use retained job evidence to improve search strategy and preparation priorities." },
 ];
 
-const WORKFLOW_STEPS = [
-  "Capture jobs",
-  "Review opportunities",
-  "Prepare and apply",
-  "Track outcomes",
-  "Learn from the market",
-];
+const WORKFLOW_STEPS = ["Capture jobs", "Review opportunities", "Prepare and apply", "Track outcomes", "Learn from the market"];
 
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("professional");
-  const view = VIEWS.find((item) => item.id === activeView) ?? VIEWS[0];
+  const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
+  const description = primary?.description ?? "Manage capture history, reviewed decisions, exports, and developer diagnostics.";
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
@@ -68,7 +44,7 @@ export function Workbench() {
           </ol>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
-            {VIEWS.map((item) => (
+            {PRIMARY_VIEWS.map((item) => (
               <button
                 type="button"
                 className={activeView === item.id ? "workspace-nav-active" : "secondary"}
@@ -80,14 +56,17 @@ export function Workbench() {
               </button>
             ))}
           </nav>
-          <p className="workspace-description">{view.description}</p>
+
+          <button
+            type="button"
+            className={activeView === "settings" ? "workspace-nav-active" : "secondary"}
+            aria-pressed={activeView === "settings"}
+            onClick={() => setActiveView("settings")}
+          >
+            Settings & Data
+          </button>
+          <p className="workspace-description">{description}</p>
         </header>
-
-        <RuntimeIdentityPanel apiBase={API_BASE} />
-
-        <div className="workspace-sidebar-tools" aria-label="Global data tools">
-          <DataTools apiBase={API_BASE} />
-        </div>
       </aside>
 
       <main className="workspace-content">
@@ -106,6 +85,19 @@ export function Workbench() {
           </div>
           <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
             <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
+          </div>
+          <div className="workspace-view workspace-view-settings" hidden={activeView !== "settings"}>
+            <section className="panel" aria-labelledby="settings-data-heading">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Secondary utility</p>
+                  <h2 id="settings-data-heading">Settings & Data</h2>
+                  <p>Operational history, reviewed decisions, exports, and diagnostics live here instead of competing with daily work.</p>
+                </div>
+              </div>
+              <DataTools apiBase={API_BASE} />
+              <RuntimeIdentityPanel apiBase={API_BASE} />
+            </section>
           </div>
         </div>
       </main>
