@@ -8,7 +8,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import Page, Route, sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
@@ -35,14 +35,6 @@ def request_json(method: str, path: str, payload: dict[str, object]) -> dict[str
         raise RuntimeError(f"{method} {path} failed with HTTP {exc.code}: {detail}") from exc
     if not isinstance(loaded, dict):
         raise RuntimeError(f"{method} {path} did not return an object")
-    return loaded
-
-
-def read_json(path: str) -> dict[str, Any]:
-    with urllib.request.urlopen(f"{API_BASE}{path}", timeout=30) as response:  # noqa: S310
-        loaded = json.loads(response.read().decode("utf-8"))
-    if not isinstance(loaded, dict):
-        raise RuntimeError(f"GET {path} did not return an object")
     return loaded
 
 
@@ -108,6 +100,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         )
 
         page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
+
         page.get_by_role("button", name="Review Inbox", exact=True).click()
         page.get_by_role("heading", name="Review Inbox", exact=True).wait_for(timeout=30_000)
         page.get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
@@ -134,10 +127,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
             )
         page.screenshot(path=output_dir / "opportunity-score-badges.png", full_page=True)
 
-        page.get_by_role("button", name="Capture & Evidence", exact=True).click()
-        page.get_by_role("heading", name="Capture & Evidence", exact=True).wait_for(timeout=30_000)
-        evidence_panel = page.locator(".professional-evidence-root")
-        evidence_panel.get_by_text("Ready", exact=True).wait_for(timeout=30_000)
+        page.get_by_role("button", name="Capture Jobs", exact=True).click()
+        page.get_by_role("heading", name="Capture Jobs", exact=True).wait_for(timeout=30_000)
 
         primary = page.get_by_role("button", name="Start LinkedIn job capture", exact=True)
         primary.wait_for(timeout=30_000)
@@ -145,58 +136,40 @@ def audit(output_dir: Path) -> dict[str, Any]:
         assert_true(page.get_by_label("LinkedIn search URL").is_visible(), "LinkedIn search URL field is missing")
         assert_true(page.get_by_label("Maximum jobs").is_visible(), "Maximum jobs setting is missing")
         assert_true(page.get_by_label("Maximum pages").is_visible(), "Maximum pages setting is missing")
-
-        configured_capture = page.get_by_role(
-            "button", name="Start configured-source capture", exact=True
-        )
-        configured_capture.wait_for(timeout=30_000)
-        assert_true(configured_capture.is_visible(), "Configured-source capture action is not visible")
-        assert_true(page.get_by_label("Maximum sources").is_visible(), "Maximum sources setting is missing")
-        assert_true(page.get_by_label("Scroll batches per source").is_visible(), "Scroll batch setting is missing")
-        assert_true(page.get_by_label("Maximum items per source").is_visible(), "Maximum item setting is missing")
-        assert_true(page.get_by_label("Timeout per source (seconds)").is_visible(), "Timeout setting is missing")
+        page.get_by_role("heading", name="Profile capture has moved", exact=True).wait_for(timeout=30_000)
         assert_true(
-            page.get_by_label("Stop the run after the first failed source.").is_visible(),
-            "Stop-on-failure setting is missing",
+            page.get_by_text(
+                "Profile, experience, skills, certifications, and activity belong in LinkedIn Profile.",
+                exact=False,
+            ).is_visible(),
+            "Capture Jobs does not explain the LinkedIn Profile boundary",
         )
-        page.screenshot(path=output_dir / "professional-ready-and-start-visible.png", full_page=True)
 
-        def mock_external_capture(route: Route) -> None:
-            run_id = route.request.url.rsplit("/", 2)[-2]
-            run = read_json(f"/api/professional-intelligence/capture-runs/{run_id}")
-            run.update(
-                {
-                    "mode": "supervised_read_only",
-                    "status": "completed",
-                    "started_at": run.get("authorized_at"),
-                    "completed_at": run.get("authorized_at"),
-                    "stop_reason": "audit_capture_mocked_before_external_navigation",
-                }
-            )
-            route.fulfill(status=200, content_type="application/json", body=json.dumps(run))
-
-        page.route("**/api/professional-intelligence/capture-runs/*/start", mock_external_capture)
-        configured_capture.click()
-        page.get_by_text("completed", exact=True).first.wait_for(timeout=30_000)
         assert_true(
-            page.get_by_text("Type the exact phrase", exact=False).count() == 0,
-            "One-click capture still exposes an authorization phrase form",
+            page.get_by_role("button", name="Start configured-source capture", exact=True).count() == 0,
+            "Configured-source capture is still exposed in Capture Jobs",
         )
         assert_true(
-            page.get_by_label("User present for", exact=False).count() == 0,
-            "One-click capture still exposes a user-presence checkbox",
+            page.get_by_label("Maximum sources").count() == 0,
+            "Configured-source limits are still exposed in Capture Jobs",
         )
-        delete_button = page.get_by_role("button", name="Delete this capture batch", exact=True).first
-        delete_button.wait_for(timeout=30_000)
-        page.screenshot(path=output_dir / "professional-one-click-capture-completed.png", full_page=True)
+        assert_true(
+            page.locator(".professional-evidence-root").count() == 0,
+            "Professional evidence-root settings are still exposed in Capture Jobs",
+        )
+        assert_true(
+            page.get_by_text("Capture history", exact=True).count() == 0,
+            "Professional capture history is still exposed in Capture Jobs",
+        )
+        page.screenshot(path=output_dir / "capture-jobs-boundary.png", full_page=True)
 
-        delete_button.click()
-        permanent_delete = page.get_by_role("button", name="Permanently delete batch", exact=True)
-        permanent_delete.wait_for(timeout=30_000)
-        assert_true(permanent_delete.is_enabled(), "Confirmed deletion action did not become enabled")
-        permanent_delete.click()
-        page.get_by_text("No captures yet", exact=False).wait_for(timeout=30_000)
-        page.screenshot(path=output_dir / "professional-run-deleted.png", full_page=True)
+        page.get_by_role("button", name="LinkedIn Profile", exact=True).click()
+        page.get_by_role("heading", name="LinkedIn Profile", exact=True).wait_for(timeout=30_000)
+        assert_true(
+            page.get_by_role("button", name="Capture targets", exact=True).is_visible(),
+            "LinkedIn Profile does not expose its profile-capture entry point",
+        )
+        page.screenshot(path=output_dir / "linkedin-profile-boundary.png", full_page=True)
         browser.close()
 
     summary = {
@@ -205,14 +178,12 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "badge_metrics": badge_metrics,
         "all_score_badges_bounded": True,
         "all_score_labels_human_readable": True,
-        "default_evidence_directory_ready": True,
         "primary_linkedin_capture_action_visible": True,
         "url_and_multipage_settings_visible": True,
-        "configured_source_capture_action_visible": True,
-        "bounded_capture_settings_visible": True,
-        "one_click_capture_completed": True,
-        "authorization_form_absent": True,
-        "confirmed_run_deletion_completed": True,
+        "profile_capture_moved_notice_visible": True,
+        "configured_source_capture_absent_from_capture_jobs": True,
+        "professional_evidence_root_absent_from_capture_jobs": True,
+        "linkedin_profile_workspace_available": True,
         "console_errors": console_errors,
         "page_errors": page_errors,
         "failed_requests": failed_requests,
