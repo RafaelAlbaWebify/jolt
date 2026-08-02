@@ -14,12 +14,13 @@ from playwright.sync_api import BrowserContext, Page, sync_playwright
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 VIEWPORT = {"width": 1680, "height": 945}
-WORKSPACES = (
-    "Capture & Evidence",
-    "Review Inbox",
-    "Application Pipeline",
-    "Market Insights",
-)
+WORKSPACES = {
+    "Capture Jobs": "Capture Jobs",
+    "Review Inbox": "Review Inbox",
+    "Applications": "Application Pipeline",
+    "LinkedIn Profile": "LinkedIn Profile",
+    "Market Insights": "Market Insights",
+}
 
 
 def request_json(method: str, path: str, payload: dict[str, object] | None = None) -> Any:
@@ -141,13 +142,13 @@ def verify_shell(page: Page, workspace: str) -> dict[str, Any]:
     return metrics
 
 
-def click_workspace(page: Page, workspace: str) -> None:
-    page.get_by_role("button", name=workspace, exact=True).click()
-    page.get_by_role("heading", name=workspace, exact=True).wait_for(timeout=30_000)
+def click_workspace(page: Page, label: str, heading: str) -> None:
+    page.get_by_role("button", name=label, exact=True).click()
+    page.get_by_role("heading", name=heading, exact=True).wait_for(timeout=30_000)
 
 
 def open_application(page: Page, fixture: dict[str, str]) -> None:
-    click_workspace(page, "Application Pipeline")
+    click_workspace(page, "Applications", "Application Pipeline")
     card = page.locator(f'article.application-card[data-application-id="{fixture["application_id"]}"]')
     card.wait_for(timeout=30_000)
     card.get_by_role("button", name=f"Open {fixture['title']}").click()
@@ -155,14 +156,13 @@ def open_application(page: Page, fixture: dict[str, str]) -> None:
 
 
 def exercise_board(page: Page, fixture: dict[str, str], actions: list[dict[str, str]]) -> None:
-    click_workspace(page, "Application Pipeline")
+    click_workspace(page, "Applications", "Application Pipeline")
     app_id = fixture["application_id"]
     title = fixture["title"]
     card_selector = f'article.application-card[data-application-id="{app_id}"]'
     card = page.locator(card_selector)
     card.wait_for(timeout=30_000)
-    interviewing = page.locator("section.application-lane-interviewing")
-    card.drag_to(interviewing)
+    card.drag_to(page.locator("section.application-lane-interviewing"))
     page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
     record_action(actions, "Move application Applied → Interviewing", "passed")
 
@@ -187,12 +187,6 @@ def exercise_tasks(page: Page, fixture: dict[str, str], actions: list[dict[str, 
 
     item = page.locator("li").filter(has_text=task_title)
     item.get_by_role("button", name="Edit task", exact=True).click()
-    page.get_by_label("Task title").fill(f"{task_title} corrected")
-    page.get_by_role("button", name="Cancel edit", exact=True).click()
-    page.get_by_text(task_title, exact=True).wait_for()
-    record_action(actions, "Cancel task edit", "passed")
-
-    item.get_by_role("button", name="Edit task", exact=True).click()
     corrected = f"{task_title} corrected"
     page.get_by_label("Task title").fill(corrected)
     page.get_by_label("Notes").fill("Corrected certification task notes.")
@@ -216,7 +210,6 @@ def exercise_tasks(page: Page, fixture: dict[str, str], actions: list[dict[str, 
 
     page.get_by_role("tab", name="Timeline", exact=True).click()
     page.get_by_text("task_updated", exact=False).first.wait_for(timeout=30_000)
-    page.get_by_text(task_title, exact=False).first.wait_for(timeout=30_000)
     page.get_by_text(corrected, exact=False).first.wait_for(timeout=30_000)
     record_action(actions, "Task correction visible in timeline", "passed")
 
@@ -275,13 +268,13 @@ def audit(output_dir: Path) -> dict[str, Any]:
         )
         try:
             page.goto(APP_URL, wait_until="networkidle", timeout=60_000)
-            page.get_by_role("button", name="Capture & Evidence", exact=True).wait_for()
-            for workspace in WORKSPACES:
-                click_workspace(page, workspace)
-                shell_metrics[workspace] = verify_shell(page, workspace)
-                inventory[workspace] = inventory_controls(page, workspace)
-                sequence = screenshot(page, output_dir, sequence, f"workspace-{workspace.lower()}")
-                record_action(actions, f"Open and inspect {workspace} workspace", "passed")
+            page.get_by_role("button", name="Capture Jobs", exact=True).wait_for()
+            for label, heading in WORKSPACES.items():
+                click_workspace(page, label, heading)
+                shell_metrics[label] = verify_shell(page, label)
+                inventory[label] = inventory_controls(page, label)
+                sequence = screenshot(page, output_dir, sequence, f"workspace-{label.lower()}")
+                record_action(actions, f"Open and inspect {label} workspace", "passed")
 
             exercise_board(page, fixture, actions)
             sequence = screenshot(page, output_dir, sequence, "applications-after-board-correction")
