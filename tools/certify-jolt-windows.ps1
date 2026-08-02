@@ -40,8 +40,20 @@ New-Item -ItemType Directory -Path $fullCycleOutput -Force | Out-Null
 
 $startScript = Join-Path $RepositoryRoot 'tools\start-jolt.ps1'
 $stopScript = Join-Path $RepositoryRoot 'tools\stop-jolt.ps1'
+$serviceStatePath = Join-Path $RepositoryRoot '.jolt\services.json'
 if (-not (Test-Path $startScript)) { throw "Missing $startScript" }
 if (-not (Test-Path $stopScript)) { throw "Missing $stopScript" }
+
+$certificationEnvironmentNames = @(
+    'JOLT_CERT_BACKEND_PID_FILE',
+    'JOLT_CERT_FRONTEND_PID_FILE',
+    'JOLT_CERT_BACKEND_LOG',
+    'JOLT_CERT_FRONTEND_LOG'
+)
+$originalEnvironment = @{}
+foreach ($name in $certificationEnvironmentNames) {
+    $originalEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
 
 $originalLocation = Get-Location
 $startedHere = $false
@@ -53,12 +65,31 @@ try {
         Invoke-WebRequest -Uri 'http://127.0.0.1:5173' -UseBasicParsing -TimeoutSec 2 | Out-Null
     }
     catch {
-        & $startScript
+        & $startScript -NoBrowser
         $startedHere = $true
     }
 
     Wait-ForUrl -Url 'http://127.0.0.1:8000/api/health'
     Wait-ForUrl -Url 'http://127.0.0.1:5173'
+
+    if (-not (Test-Path $serviceStatePath)) {
+        throw "Windows certification requires JOLT service state at $serviceStatePath. Stop JOLT and rerun the certification so it can start managed services."
+    }
+    $serviceState = Get-Content -LiteralPath $serviceStatePath -Raw | ConvertFrom-Json
+    if (-not $serviceState.backend_pid -or -not $serviceState.frontend_pid) {
+        throw "JOLT service state does not contain backend_pid and frontend_pid."
+    }
+
+    $backendPidFile = Join-Path $fullCycleOutput 'backend.pid'
+    $frontendPidFile = Join-Path $fullCycleOutput 'frontend.pid'
+    $backendRestartLog = Join-Path $fullCycleOutput 'backend-restart.log'
+    $frontendRestartLog = Join-Path $fullCycleOutput 'frontend-restart.log'
+    [string]$serviceState.backend_pid | Set-Content -LiteralPath $backendPidFile -Encoding ascii
+    [string]$serviceState.frontend_pid | Set-Content -LiteralPath $frontendPidFile -Encoding ascii
+    [Environment]::SetEnvironmentVariable('JOLT_CERT_BACKEND_PID_FILE', $backendPidFile, 'Process')
+    [Environment]::SetEnvironmentVariable('JOLT_CERT_FRONTEND_PID_FILE', $frontendPidFile, 'Process')
+    [Environment]::SetEnvironmentVariable('JOLT_CERT_BACKEND_LOG', $backendRestartLog, 'Process')
+    [Environment]::SetEnvironmentVariable('JOLT_CERT_FRONTEND_LOG', $frontendRestartLog, 'Process')
 
     Push-Location (Join-Path $RepositoryRoot 'backend')
     try {
@@ -94,6 +125,9 @@ try {
     Write-Host "JOLT Windows certification passed. Evidence: $outputRoot" -ForegroundColor Green
 }
 finally {
+    foreach ($name in $certificationEnvironmentNames) {
+        [Environment]::SetEnvironmentVariable($name, $originalEnvironment[$name], 'Process')
+    }
     Set-Location $originalLocation
     if ($startedHere -and -not $KeepServicesRunning) {
         & $stopScript
