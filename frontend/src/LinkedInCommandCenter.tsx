@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
+import type { FormEvent } from "react";
 
-type CaptureCategory = "profile" | "public_profile" | "analytics" | "activity" | "network_contact" | "network_request" | "target_company" | "target_recruiter" | "job_search" | "other";
-type RecommendationType = "profile_update" | "network_decision" | "content_action" | "outreach" | "lead_research" | "cleanup";
-type Priority = "high" | "medium" | "low";
+type CaptureCategory = "profile" | "public_profile" | "analytics" | "activity" | "network_contact" | "network_request" | "target_company" | "target_recruiter" | "other";
 type RecommendationStatus = "pending" | "accepted" | "rejected" | "implemented" | "snoozed";
 
 type LinkedInCapture = {
@@ -13,34 +11,27 @@ type LinkedInCapture = {
   source_url: string;
   visible_text: string;
   notes: string;
-  content_hash: string;
-  previous_capture_id: string | null;
   changed_since_previous: boolean;
   captured_at: string;
 };
 
 type LinkedInRecommendation = {
   id: string;
-  capture_id: string | null;
-  recommendation_type: RecommendationType;
+  recommendation_type: string;
   target_area: string;
   title: string;
   rationale: string;
   proposed_action: string;
   proposed_text: string;
-  priority: Priority;
+  priority: string;
   status: RecommendationStatus;
-  created_at: string;
-  updated_at: string;
 };
 
-type LinkedInCommandCenterData = {
+type LinkedInProfileData = {
   capture_count: number;
   recommendation_count: number;
   open_recommendation_count: number;
   categories: Record<string, number>;
-  recommendation_statuses: Record<string, number>;
-  recommendation_types?: Record<string, number>;
   captures: LinkedInCapture[];
   recommendations: LinkedInRecommendation[];
 };
@@ -56,62 +47,53 @@ type CaptureTarget = {
 
 type Props = { apiBase: string; active: boolean };
 
-const CAPTURE_CATEGORIES: CaptureCategory[] = ["profile", "public_profile", "analytics", "activity", "network_contact", "network_request", "target_company", "target_recruiter", "job_search", "other"];
-const RECOMMENDATION_TYPES: RecommendationType[] = ["profile_update", "network_decision", "content_action", "outreach", "lead_research", "cleanup"];
-const PRIORITIES: Priority[] = ["high", "medium", "low"];
+const TARGETS_STORAGE_KEY = "jolt.linkedin.profileTargets.v1";
+const LEGACY_STORAGE_KEY = "jolt.linkedin.captureTargets.v2";
+const CATEGORIES: CaptureCategory[] = ["profile", "public_profile", "analytics", "activity", "network_contact", "network_request", "target_company", "target_recruiter", "other"];
 const STATUSES: RecommendationStatus[] = ["pending", "accepted", "rejected", "implemented", "snoozed"];
-const TARGETS_STORAGE_KEY = "jolt.linkedin.captureTargets.v2";
 
-const DEFAULT_CAPTURE_TARGETS: CaptureTarget[] = [
+const DEFAULT_TARGETS: CaptureTarget[] = [
   { id: "profile", name: "Profile", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/", enabled: true, isDefault: true },
-  { id: "all-activity", name: "All Activity", category: "activity", url: "https://www.linkedin.com/in/rafael-alba-tech/recent-activity/all/", enabled: true, isDefault: true },
   { id: "experience", name: "Experience", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/experience/", enabled: true, isDefault: true },
-  { id: "certifications", name: "Licenses & certifications", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/certifications/", enabled: true, isDefault: true },
   { id: "skills", name: "Skills", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/skills/", enabled: true, isDefault: true },
+  { id: "certifications", name: "Licenses & certifications", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/certifications/", enabled: true, isDefault: true },
   { id: "recommendations", name: "Recommendations", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/recommendations/?detailScreenTabIndex=0", enabled: true, isDefault: true },
-  { id: "interests", name: "Interests", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/interests/?initialTabId=interest_top_voices", enabled: true, isDefault: true },
-  { id: "job-tracker", name: "Job Tracker", category: "job_search", url: "https://www.linkedin.com/jobs-tracker/?stage=applied", enabled: true, isDefault: true },
-  { id: "jobs-preferences", name: "Jobs Based on my Preferences", category: "job_search", url: "https://www.linkedin.com/jobs/search-results/?currentJobId=4445359749&keywords=Information%20Technology%20Operations%20Engineer%20or%20Information%20Technology%20Infrastructure%20Engineer%20or%20System%20Administrator%20or%20Information%20Technology%20Support%20Engineer%20or%20Technical%20Support%20Engineer%2C%20remote%20or%20hybrid&origin=PREFERENCES_LANDING&originToLandingJobPostings=4445359749%2C4445622133%2C4423231546&geoId=101165590%2C103644278%2C104524525%2C104738515", enabled: true, isDefault: true },
+  { id: "activity", name: "All activity", category: "activity", url: "https://www.linkedin.com/in/rafael-alba-tech/recent-activity/all/", enabled: true, isDefault: true },
   { id: "connections", name: "Connections", category: "network_contact", url: "https://www.linkedin.com/mynetwork/invite-connect/connections/", enabled: false, isDefault: true },
-  { id: "feed", name: "Feed", category: "activity", url: "https://www.linkedin.com/feed/", enabled: false, isDefault: true },
-  { id: "groups", name: "Groups", category: "activity", url: "https://www.linkedin.com/groups/", enabled: false, isDefault: true },
 ];
 
-const BOARD_LABELS: Record<RecommendationType, string> = {
-  profile_update: "Profile updates",
-  network_decision: "Network decisions",
-  content_action: "Content and activity",
-  outreach: "Outreach",
-  lead_research: "Lead research",
-  cleanup: "Cleanup",
-};
-
-function label(value: string) { return value.replaceAll("_", " "); }
-function readU16(data: DataView, offset: number) { return data.getUint16(offset, true); }
-function readU32(data: DataView, offset: number) { return data.getUint32(offset, true); }
-
-function loadStoredTargets(): CaptureTarget[] {
-  if (typeof window === "undefined") return DEFAULT_CAPTURE_TARGETS;
-  const raw = window.localStorage.getItem(TARGETS_STORAGE_KEY);
-  if (!raw) return DEFAULT_CAPTURE_TARGETS;
-  try {
-    const parsed = JSON.parse(raw) as CaptureTarget[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_CAPTURE_TARGETS;
-    return parsed.map((item) => ({
-      id: String(item.id || crypto.randomUUID()),
-      name: String(item.name || "LinkedIn target"),
-      category: CAPTURE_CATEGORIES.includes(item.category) ? item.category : "other",
-      url: String(item.url || ""),
-      enabled: Boolean(item.enabled),
-      isDefault: Boolean(item.isDefault),
-    }));
-  } catch {
-    return DEFAULT_CAPTURE_TARGETS;
-  }
+function readable(value: string) {
+  return value.replaceAll("_", " ");
 }
 
-async function errorFromResponse(response: Response, fallback: string) {
-  const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+function normalizeTarget(value: Partial<CaptureTarget>): CaptureTarget | null {
+  const id = String(value.id || crypto.randomUUID());
+  const url = String(value.url || "");
+  const name = String(value.name || "LinkedIn target");
+  const category = CATEGORIES.includes(value.category as CaptureCategory) ? value.category as CaptureCategory : "other";
+  if (category === "other" && /linkedin\.com\/jobs|jobs-tracker/i.test(url)) return null;
+  return { id, name, category, url, enabled: Boolean(value.enabled), isDefault: Boolean(value.isDefault) };
+}
+
+function loadTargets(): CaptureTarget[] {
+  if (typeof window === "undefined") return DEFAULT_TARGETS;
+  const current = window.localStorage.getItem(TARGETS_STORAGE_KEY);
+  const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+  for (const raw of [current, legacy]) {
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as Partial<CaptureTarget>[];
+      const targets = parsed.map(normalizeTarget).filter((item): item is CaptureTarget => item !== null);
+      if (targets.length > 0) return targets;
+    } catch {
+      // Ignore malformed browser state and restore safe defaults.
+    }
+  }
+  return DEFAULT_TARGETS;
+}
+
+async function responseError(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => null) as { detail?: string } | null;
   return new Error(payload?.detail || fallback);
 }
 
@@ -119,172 +101,226 @@ function targetPayload(target: CaptureTarget) {
   return { category: target.category, title: target.name, url: target.url, wait_seconds: 4, full_page_screenshot: false };
 }
 
-async function extractLinkedInRecommendationsJson(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let offset = 0;
-  while (offset + 30 <= bytes.length) {
-    if (readU32(view, offset) !== 0x04034b50) break;
-    const compression = readU16(view, offset + 8);
-    const compressedSize = readU32(view, offset + 18);
-    const filenameLength = readU16(view, offset + 26);
-    const extraLength = readU16(view, offset + 28);
-    const nameStart = offset + 30;
-    const dataStart = nameStart + filenameLength + extraLength;
-    const filename = new TextDecoder().decode(bytes.slice(nameStart, nameStart + filenameLength));
-    if (filename.endsWith("linkedin_recommendations.json")) {
-      if (compression !== 0) throw new Error("The recommendation JSON must be stored without compression in the ZIP.");
-      return new TextDecoder().decode(bytes.slice(dataStart, dataStart + compressedSize));
-    }
-    offset = dataStart + compressedSize;
-  }
-  throw new Error("linkedin_recommendations.json was not found in the ZIP.");
-}
-
 export function LinkedInCommandCenter({ apiBase, active }: Props) {
-  const [data, setData] = useState<LinkedInCommandCenterData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [data, setData] = useState<LinkedInProfileData | null>(null);
+  const [targets, setTargets] = useState<CaptureTarget[]>(loadTargets);
+  const [showTargets, setShowTargets] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [capturingId, setCapturingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [showCaptureTargets, setShowCaptureTargets] = useState(false);
-  const [showManualCaptureForm, setShowManualCaptureForm] = useState(false);
-  const [showRecommendationForm, setShowRecommendationForm] = useState(false);
-  const [showImportForm, setShowImportForm] = useState(false);
-  const [captureTargets, setCaptureTargets] = useState<CaptureTarget[]>(loadStoredTargets);
-  const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
-  const [capturingTargetId, setCapturingTargetId] = useState<string | null>(null);
-  const [category, setCategory] = useState<CaptureCategory>("profile");
-  const [captureTitle, setCaptureTitle] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [visibleText, setVisibleText] = useState("");
-  const [notes, setNotes] = useState("");
-  const [recommendationType, setRecommendationType] = useState<RecommendationType>("profile_update");
-  const [targetArea, setTargetArea] = useState("");
-  const [recommendationTitle, setRecommendationTitle] = useState("");
-  const [rationale, setRationale] = useState("");
-  const [proposedAction, setProposedAction] = useState("");
-  const [proposedText, setProposedText] = useState("");
-  const [priority, setPriority] = useState<Priority>("medium");
-  const [importText, setImportText] = useState("");
+  const [manualCategory, setManualCategory] = useState<CaptureCategory>("profile");
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualText, setManualText] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
 
   const load = useCallback(async () => {
     if (!active) return;
-    setLoading(true); setError("");
-    try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center`);
-      if (!response.ok) throw await errorFromResponse(response, "Unable to load LinkedIn profile data.");
-      setData((await response.json()) as LinkedInCommandCenterData); setLoaded(true);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn profile load failed."); } finally { setLoading(false); }
+    setError("");
+    const response = await fetch(`${apiBase}/api/linkedin-command-center`);
+    if (!response.ok) throw await responseError(response, "Unable to load LinkedIn profile evidence.");
+    setData(await response.json() as LinkedInProfileData);
   }, [active, apiBase]);
 
-  useEffect(() => { if (active && !loaded) void load(); }, [active, load, loaded]);
-  useEffect(() => { window.localStorage.setItem(TARGETS_STORAGE_KEY, JSON.stringify(captureTargets)); }, [captureTargets]);
+  useEffect(() => {
+    if (active) void load().catch((caught) => setError(caught instanceof Error ? caught.message : "LinkedIn profile load failed."));
+  }, [active, load]);
 
-  const categorySummary = useMemo(() => Object.entries(data?.categories ?? {}).sort((a, b) => b[1] - a[1]), [data]);
-  const groupedRecommendations = useMemo(() => RECOMMENDATION_TYPES.map((type) => [type, data?.recommendations.filter((item) => item.recommendation_type === type) ?? []] as const).filter(([, items]) => items.length > 0), [data]);
+  useEffect(() => {
+    window.localStorage.setItem(TARGETS_STORAGE_KEY, JSON.stringify(targets));
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  }, [targets]);
 
-  function updateTarget(id: string, patch: Partial<CaptureTarget>) { setCaptureTargets((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item)); }
-  function addTarget() { const id = crypto.randomUUID(); setCaptureTargets((items) => [...items, { id, name: "Custom LinkedIn target", category: "other", url: "", enabled: true, isDefault: false }]); setEditingTargetId(id); }
-  function resetTargets() { setCaptureTargets(DEFAULT_CAPTURE_TARGETS); setEditingTargetId(null); setNotice("LinkedIn capture targets reset to defaults."); }
+  const enabledTargets = useMemo(() => targets.filter((target) => target.enabled && target.url.trim()), [targets]);
+
+  function patchTarget(id: string, patch: Partial<CaptureTarget>) {
+    setTargets((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }
+
+  function addTarget() {
+    const id = crypto.randomUUID();
+    setTargets((items) => [...items, { id, name: "Custom profile target", category: "other", url: "", enabled: true, isDefault: false }]);
+    setEditingId(id);
+  }
 
   async function captureTarget(target: CaptureTarget) {
-    setCapturingTargetId(target.id); setBusy(true); setError(""); setNotice(`Opening browser for ${target.name}...`);
+    setBusy(true); setCapturingId(target.id); setError(""); setNotice(`Opening ${target.name} in the managed browser…`);
     try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(targetPayload(target)) });
-      if (!response.ok) throw await errorFromResponse(response, `Unable to capture ${target.name}.`);
-      setNotice(`${target.name} captured. Evidence was saved in JOLT.`); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : `${target.name} capture failed.`); } finally { setCapturingTargetId(null); setBusy(false); }
-  }
-
-  async function captureEnabledTargets() {
-    const targets = captureTargets.filter((target) => target.enabled && target.url.trim());
-    if (targets.length === 0) return;
-    setCapturingTargetId("__batch__"); setBusy(true); setError(""); setNotice(`Opening browser and capturing ${targets.length} LinkedIn sections...`);
-    try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright-batch`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: targets.map(targetPayload) }) });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to capture enabled LinkedIn targets.");
-      const result = (await response.json()) as { captured_count: number };
-      setNotice(`${result.captured_count} LinkedIn sections captured. Evidence was saved in JOLT.`);
+      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(targetPayload(target)),
+      });
+      if (!response.ok) throw await responseError(response, `Unable to capture ${target.name}.`);
+      setNotice(`${target.name} captured and stored as LinkedIn profile evidence.`);
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "LinkedIn enabled capture failed.");
-    } finally { setCapturingTargetId(null); setBusy(false); }
+      setError(caught instanceof Error ? caught.message : `${target.name} capture failed.`);
+    } finally {
+      setBusy(false); setCapturingId(null);
+    }
   }
 
-  async function submitManualCapture(event: FormEvent<HTMLFormElement>) {
+  async function captureEnabled() {
+    if (enabledTargets.length === 0) return;
+    setBusy(true); setCapturingId("batch"); setError(""); setNotice(`Capturing ${enabledTargets.length} enabled profile sections…`);
+    try {
+      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright-batch`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: enabledTargets.map(targetPayload) }),
+      });
+      if (!response.ok) throw await responseError(response, "Unable to refresh LinkedIn profile evidence.");
+      const result = await response.json() as { captured_count: number };
+      setNotice(`${result.captured_count} LinkedIn profile sections captured.`);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "LinkedIn profile refresh failed.");
+    } finally {
+      setBusy(false); setCapturingId(null);
+    }
+  }
+
+  async function saveManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ category, title: captureTitle, source_url: sourceUrl, visible_text: visibleText, notes }) });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to save LinkedIn capture.");
-      setCaptureTitle(""); setSourceUrl(""); setVisibleText(""); setNotes(""); setShowManualCaptureForm(false); setNotice("LinkedIn evidence snapshot saved."); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn capture failed."); } finally { setBusy(false); }
+      const response = await fetch(`${apiBase}/api/linkedin-command-center/captures`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: manualCategory, title: manualTitle, source_url: manualUrl, visible_text: manualText, notes: manualNotes }),
+      });
+      if (!response.ok) throw await responseError(response, "Unable to save manual LinkedIn evidence.");
+      setManualTitle(""); setManualUrl(""); setManualText(""); setManualNotes(""); setShowManual(false);
+      setNotice("Manual LinkedIn evidence saved.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Manual LinkedIn evidence failed.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function submitRecommendation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+  async function updateStatus(id: string, status: RecommendationStatus) {
+    setBusy(true); setError("");
     try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recommendation_type: recommendationType, target_area: targetArea, title: recommendationTitle, rationale, proposed_action: proposedAction, proposed_text: proposedText, priority }) });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to save LinkedIn recommendation.");
-      setTargetArea(""); setRecommendationTitle(""); setRationale(""); setProposedAction(""); setProposedText(""); setPriority("medium"); setShowRecommendationForm(false); setNotice("LinkedIn recommendation saved."); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn recommendation failed."); } finally { setBusy(false); }
-  }
-
-  async function importRecommendationPayload(payload: unknown) {
-    const normalized = Array.isArray(payload) ? { source: "chatgpt_package", recommendations: payload } : payload;
-    const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/import`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(normalized) });
-    if (!response.ok) throw await errorFromResponse(response, "Unable to import LinkedIn recommendations.");
-    return (await response.json()) as { imported_count: number };
-  }
-
-  async function submitImport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setNotice("");
-    try {
-      const imported = await importRecommendationPayload(JSON.parse(importText));
-      setImportText(""); setShowImportForm(false); setNotice(`${imported.imported_count} LinkedIn recommendations imported.`); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn recommendation import failed."); } finally { setBusy(false); }
-  }
-
-  async function importZipFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setBusy(true); setError(""); setNotice(`Importing ${file.name}...`);
-    try {
-      const jsonText = await extractLinkedInRecommendationsJson(file);
-      const imported = await importRecommendationPayload(JSON.parse(jsonText));
-      setImportText(""); setShowImportForm(false); setNotice(`${imported.imported_count} LinkedIn recommendations imported from ${file.name}.`); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "LinkedIn ZIP import failed."); } finally { event.target.value = ""; setBusy(false); }
-  }
-
-  async function updateStatus(item: LinkedInRecommendation, status: RecommendationStatus) {
-    if (item.status === status) return;
-    setBusy(true); setError(""); setNotice("");
-    try {
-      const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/${item.id}/status`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to update recommendation status.");
-      setNotice("LinkedIn recommendation status updated."); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Unable to update recommendation."); } finally { setBusy(false); }
+      const response = await fetch(`${apiBase}/api/linkedin-command-center/recommendations/${id}/status`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw await responseError(response, "Unable to update recommendation status.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Recommendation update failed.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <section className="panel linkedin-command-center" aria-labelledby="linkedin-command-heading">
-      <div className="section-heading">
-        <div><p className="eyebrow">LinkedIn presence and networking</p><h2 id="linkedin-command-heading">LinkedIn Profile</h2><p>Configure LinkedIn sections once, then let JOLT open a visible Playwright browser and capture approved evidence. JOLT never sends LinkedIn actions for you.</p></div>
-        <div className="professional-source-editor-actions"><button type="button" disabled={!active || loading} onClick={() => void load()} className="secondary">{loading ? "Refreshing…" : loaded ? "Refresh" : "Load"}</button><button type="button" onClick={() => setShowCaptureTargets((value) => !value)} disabled={busy}>Capture targets</button><button type="button" className="secondary" onClick={() => setShowManualCaptureForm((value) => !value)} disabled={busy}>Manual evidence</button><button type="button" className="secondary" onClick={() => setShowRecommendationForm((value) => !value)} disabled={busy}>Add recommendation</button><button type="button" className="secondary" onClick={() => setShowImportForm((value) => !value)} disabled={busy}>Import analysis</button><a href={`${apiBase}/api/linkedin-command-center/export`} download="JOLT_LINKEDIN_PROFILE.zip">Export package</a></div>
-      </div>
-      {error && <p className="error" role="alert">{error}</p>}{notice && <p className="application-move-notice" role="status">{notice}</p>}{loading && !data && <p role="status">Loading LinkedIn Profile…</p>}
-      {data && <><div className="market-summary"><div><strong>{data.capture_count}</strong><span>Evidence snapshots</span></div><div><strong>{data.recommendation_count}</strong><span>Recommendations</span></div><div><strong>{data.open_recommendation_count}</strong><span>Open actions</span></div><div><strong>{categorySummary.length}</strong><span>Capture categories</span></div></div>{categorySummary.length > 0 && <p className="confidence">Captured categories: {categorySummary.map(([name, count]) => `${label(name)} (${count})`).join(" · ")}</p>}</>}
+    <main className="linkedin-command-center" aria-labelledby="linkedin-profile-heading">
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Professional positioning</p>
+            <h2 id="linkedin-profile-heading">LinkedIn Profile</h2>
+            <p>One profile workflow: choose profile sections, capture evidence, review changes, and act on recommendations.</p>
+          </div>
+          <button type="button" disabled={busy || enabledTargets.length === 0} onClick={() => void captureEnabled()}>
+            {capturingId === "batch" ? "Refreshing profile…" : "Refresh enabled profile evidence"}
+          </button>
+        </div>
+        <div className="professional-safety-boundary" role="note">
+          <strong>Read-only boundary</strong>
+          <span>JOLT captures visible evidence. It does not message, react, connect, apply, or edit LinkedIn.</span>
+        </div>
+        <div className="button-row">
+          <button type="button" className="secondary" onClick={() => setShowTargets((value) => !value)}>Capture targets</button>
+          <button type="button" className="secondary" onClick={() => setShowManual((value) => !value)}>Manual evidence</button>
+          <button type="button" className="secondary" onClick={() => void load()} disabled={busy}>Refresh results</button>
+        </div>
+        {error && <p className="error" role="alert">{error}</p>}
+        {notice && <p role="status">{notice}</p>}
+      </section>
 
-      {showCaptureTargets && <section className="panel manual-intake-panel" aria-labelledby="linkedin-targets-heading"><div className="section-heading"><div><p className="eyebrow">Editable LinkedIn sections</p><h3 id="linkedin-targets-heading">Capture targets</h3><p>Click Capture. JOLT opens a visible browser, captures the configured page, and saves the evidence. Edit only when a LinkedIn URL changes.</p></div><div className="professional-source-editor-actions"><button type="button" disabled={busy || captureTargets.every((item) => !item.enabled || !item.url.trim())} onClick={() => void captureEnabledTargets()}>{capturingTargetId === "__batch__" ? "Capturing enabled…" : "Capture enabled"}</button><button type="button" className="secondary" onClick={addTarget}>Add custom target</button><button type="button" className="secondary" onClick={resetTargets}>Reset defaults</button></div></div><div className="queue reviewed-decisions">{captureTargets.map((target) => { const editing = editingTargetId === target.id; const disabled = busy || !target.enabled || !target.url.trim(); return <article key={target.id}><div><p className="eyebrow">{target.enabled ? "Enabled" : "Disabled"} · {label(target.category)}</p><h3>{target.name || "Untitled LinkedIn target"}</h3><p className="confidence">{target.url.trim() ? "URL configured" : "URL missing"}</p>{editing && <div className="workspace-view-stack" aria-label={`Edit ${target.name || "LinkedIn target"}`}><label>Name<input value={target.name} onChange={(event) => updateTarget(target.id, { name: event.target.value })} /></label><label>Category<select value={target.category} onChange={(event) => updateTarget(target.id, { category: event.target.value as CaptureCategory })}>{CAPTURE_CATEGORIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>URL<input value={target.url} onChange={(event) => updateTarget(target.id, { url: event.target.value })} /></label></div>}</div><div className="professional-source-editor-actions"><button type="button" disabled={disabled} onClick={() => void captureTarget(target)}>{capturingTargetId === target.id ? "Capturing…" : "Capture"}</button><button type="button" className="secondary" onClick={() => setEditingTargetId(editing ? null : target.id)}>{editing ? "Done" : "Edit URL"}</button><label className="decision-control"><span>Enabled</span><input type="checkbox" checked={target.enabled} onChange={(event) => updateTarget(target.id, { enabled: event.target.checked })} /></label>{!target.isDefault && <button type="button" className="secondary" onClick={() => setCaptureTargets((items) => items.filter((item) => item.id !== target.id))}>Delete</button>}</div></article>; })}</div></section>}
+      {showTargets && (
+        <section className="panel" role="region" aria-label="Capture targets">
+          <div className="section-heading">
+            <div><h3>Authoritative profile targets</h3><p>Job searches and application tracking do not belong in this registry.</p></div>
+            <div className="button-row">
+              <button type="button" className="secondary" onClick={addTarget}>Add target</button>
+              <button type="button" className="secondary" onClick={() => { setTargets(DEFAULT_TARGETS); setEditingId(null); }}>Reset defaults</button>
+            </div>
+          </div>
+          <div className="professional-source-grid">
+            {targets.map((target) => (
+              <article key={target.id} className="professional-source-card">
+                {editingId === target.id ? (
+                  <div className="form-grid">
+                    <label>Name<input value={target.name} onChange={(event) => patchTarget(target.id, { name: event.target.value })} /></label>
+                    <label>Category<select value={target.category} onChange={(event) => patchTarget(target.id, { category: event.target.value as CaptureCategory })}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label>
+                    <label className="full-width">URL<input value={target.url} onChange={(event) => patchTarget(target.id, { url: event.target.value })} /></label>
+                    <button type="button" className="secondary" onClick={() => setEditingId(null)}>Done</button>
+                    {!target.isDefault && <button type="button" className="danger" onClick={() => setTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>}
+                  </div>
+                ) : (
+                  <>
+                    <div><strong>{target.name}</strong><p>{readable(target.category)}</p><small>{target.url}</small></div>
+                    <label><input type="checkbox" checked={target.enabled} onChange={(event) => patchTarget(target.id, { enabled: event.target.checked })} /> Include in profile refresh</label>
+                    <div className="button-row">
+                      <button type="button" className="secondary" onClick={() => setEditingId(target.id)}>Edit URL</button>
+                      <button type="button" disabled={busy || !target.url.trim()} onClick={() => void captureTarget(target)}>{capturingId === target.id ? "Capturing…" : "Capture"}</button>
+                    </div>
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {showManualCaptureForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-capture-form-heading"><div className="section-heading"><div><p className="eyebrow">Fallback evidence paste</p><h3 id="linkedin-capture-form-heading">Manual LinkedIn evidence</h3><p>Use this only if Playwright capture fails and you need to paste visible text yourself.</p></div><button type="button" className="secondary" onClick={() => setShowManualCaptureForm(false)}>Close</button></div><form onSubmit={submitManualCapture}><label>Category<select value={category} onChange={(event) => setCategory(event.target.value as CaptureCategory)}>{CAPTURE_CATEGORIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>Title<input value={captureTitle} onChange={(event) => setCaptureTitle(event.target.value)} placeholder="Profile baseline, activity snapshot, recruiter profile..." /></label><label>LinkedIn URL <span>(optional)</span><input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} type="url" /></label><label>Visible text<textarea value={visibleText} onChange={(event) => setVisibleText(event.target.value)} rows={8} placeholder="Paste visible text from the page snapshot." /></label><label>Notes <span>(optional)</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} /></label><button type="submit" disabled={busy || (!visibleText.trim() && !notes.trim() && !sourceUrl.trim())}>{busy ? "Saving…" : "Save manual evidence"}</button></form></section>}
+      {showManual && (
+        <section className="panel">
+          <h3>Manual evidence fallback</h3>
+          <form onSubmit={saveManual} className="form-grid">
+            <label>Category<select value={manualCategory} onChange={(event) => setManualCategory(event.target.value as CaptureCategory)}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label>
+            <label>Title<input required value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} /></label>
+            <label className="full-width">Source URL<input value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} /></label>
+            <label className="full-width">Visible text<textarea required value={manualText} onChange={(event) => setManualText(event.target.value)} /></label>
+            <label className="full-width">Notes<textarea value={manualNotes} onChange={(event) => setManualNotes(event.target.value)} /></label>
+            <button type="submit" disabled={busy}>Save manual evidence</button>
+          </form>
+        </section>
+      )}
 
-      {showRecommendationForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-recommendation-form-heading"><div className="section-heading"><div><p className="eyebrow">Manual / imported action</p><h3 id="linkedin-recommendation-form-heading">Add LinkedIn recommendation</h3><p>Track profile updates, contact decisions, content actions, outreach, and cleanup ideas.</p></div><button type="button" className="secondary" onClick={() => setShowRecommendationForm(false)}>Close</button></div><form onSubmit={submitRecommendation}><label>Type<select value={recommendationType} onChange={(event) => setRecommendationType(event.target.value as RecommendationType)}>{RECOMMENDATION_TYPES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>Priority<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{PRIORITIES.map((item) => <option value={item} key={item}>{label(item)}</option>)}</select></label><label>Target area<input value={targetArea} onChange={(event) => setTargetArea(event.target.value)} placeholder="Headline, About, recruiter, contact, post topic..." /></label><label>Title<input value={recommendationTitle} onChange={(event) => setRecommendationTitle(event.target.value)} required /></label><label>Rationale<textarea value={rationale} onChange={(event) => setRationale(event.target.value)} rows={3} /></label><label>Proposed action<textarea value={proposedAction} onChange={(event) => setProposedAction(event.target.value)} rows={3} /></label><label>Proposed text <span>(optional)</span><textarea value={proposedText} onChange={(event) => setProposedText(event.target.value)} rows={4} /></label><button type="submit" disabled={busy || !recommendationTitle.trim()}>{busy ? "Saving…" : "Save recommendation"}</button></form></section>}
+      <section className="panel">
+        <div className="section-heading"><div><h3>Evidence snapshots</h3><p>{data?.capture_count ?? 0} retained snapshots.</p></div></div>
+        {!data?.captures.length ? <p>No LinkedIn profile evidence yet.</p> : (
+          <div className="professional-source-grid">
+            {data.captures.map((capture) => (
+              <article key={capture.id} className="professional-source-card">
+                <strong>{capture.title}</strong>
+                <p>{readable(capture.category)} · {new Date(capture.captured_at).toLocaleString()}</p>
+                {capture.changed_since_previous && <span className="application-card-alert">Changed since previous capture</span>}
+                {capture.visible_text && <p>{capture.visible_text.slice(0, 320)}</p>}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {showImportForm && <section className="panel manual-intake-panel" aria-labelledby="linkedin-import-form-heading"><div className="section-heading"><div><p className="eyebrow">Analysis import</p><h3 id="linkedin-import-form-heading">Import ChatGPT recommendations</h3><p>Import the returned ZIP directly, or paste <code>linkedin_recommendations.json</code> as a fallback.</p></div><button type="button" className="secondary" onClick={() => setShowImportForm(false)}>Close</button></div><div className="workspace-view-stack"><label>Analysis return ZIP<input type="file" accept=".zip,application/zip" disabled={busy} onChange={(event) => void importZipFile(event)} /></label><form onSubmit={submitImport}><label>Recommendations JSON fallback<textarea value={importText} onChange={(event) => setImportText(event.target.value)} rows={10} placeholder={'{"source":"chatgpt_package","recommendations":[...]}'}/></label><button type="submit" disabled={busy || !importText.trim()}>{busy ? "Importing…" : "Import pasted JSON"}</button></form></div></section>}
-
-      {data && <div className="workspace-view-stack"><section className="panel" aria-labelledby="linkedin-recommendations-heading"><div className="section-heading"><h3 id="linkedin-recommendations-heading">Action boards</h3></div>{data.recommendations.length === 0 ? <p>No LinkedIn recommendations yet.</p> : groupedRecommendations.map(([type, items]) => <section key={type} className="market-card" aria-labelledby={`linkedin-board-${type}`}><h4 id={`linkedin-board-${type}`}>{BOARD_LABELS[type]} ({items.length})</h4><div className="queue reviewed-decisions">{items.map((item) => <article key={item.id}><div><p className="eyebrow">{label(item.recommendation_type)} · {item.priority}</p><h3>{item.title}</h3>{item.target_area && <p>{item.target_area}</p>}{item.rationale && <p>{item.rationale}</p>}{item.proposed_action && <p><strong>Action:</strong> {item.proposed_action}</p>}{item.proposed_text && <pre className="evidence-json">{item.proposed_text}</pre>}</div><label className="decision-control"><span>Status</span><select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item, event.target.value as RecommendationStatus)}>{STATUSES.map((status) => <option value={status} key={status}>{label(status)}</option>)}</select></label></article>)}</div></section>)}</section><section className="panel" aria-labelledby="linkedin-captures-heading"><div className="section-heading"><h3 id="linkedin-captures-heading">Evidence timeline</h3></div>{data.captures.length === 0 ? <p>No LinkedIn evidence snapshots yet.</p> : <div className="capture-history-list">{data.captures.map((item) => <article key={item.id}><div><p className="eyebrow">{label(item.category)} · {new Date(item.captured_at).toLocaleString()}</p><h3>{item.title || "Untitled LinkedIn snapshot"}</h3>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Open source URL</a>}<p>{item.changed_since_previous ? "Changed since previous capture in this category." : "No previous change detected for this category."}</p>{item.visible_text && <details><summary>Visible text</summary><pre className="evidence-json">{item.visible_text}</pre></details>}{item.notes && <p>{item.notes}</p>}</div></article>)}</div>}</section></div>}
-    </section>
+      <section className="panel">
+        <div className="section-heading"><div><h3>Profile improvements</h3><p>{data?.open_recommendation_count ?? 0} open recommendations.</p></div></div>
+        {!data?.recommendations.length ? <p>No LinkedIn recommendations yet.</p> : (
+          <div className="professional-source-grid">
+            {data.recommendations.map((item) => (
+              <article key={item.id} className="professional-source-card">
+                <div><strong>{item.title}</strong><p>{item.target_area} · {item.priority}</p></div>
+                <p>{item.rationale}</p>
+                <p><b>Action:</b> {item.proposed_action}</p>
+                {item.proposed_text && <blockquote>{item.proposed_text}</blockquote>}
+                <label>Status<select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item.id, event.target.value as RecommendationStatus)}>{STATUSES.map((status) => <option key={status} value={status}>{readable(status)}</option>)}</select></label>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
