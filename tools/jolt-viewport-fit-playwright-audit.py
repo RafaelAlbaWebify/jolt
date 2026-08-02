@@ -121,6 +121,12 @@ def audit(output_dir: Path, headed: bool) -> dict[str, Any]:
             page.get_by_role("button", name=label, exact=True).click()
             page.get_by_role("heading", name=heading, exact=True).wait_for(timeout=30_000)
             page.wait_for_timeout(250)
+            if label == "Review Inbox":
+                visible_rows = page.locator(".opportunity-row:visible").count()
+                if visible_rows > 5:
+                    raise AssertionError(
+                        f"Review Inbox rendered {visible_rows} visible rows; maximum is 5 at 1680x945."
+                    )
             workspace_metrics = inspect_workspace(page, label)
             metrics[label] = workspace_metrics
             page.screenshot(path=screenshots / f"{sequence:02d}-{label.lower().replace(' ', '-')}.png", full_page=False)
@@ -160,6 +166,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
