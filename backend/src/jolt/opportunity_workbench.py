@@ -16,14 +16,13 @@ from jolt.application_readiness import (
 from jolt.automated_review import analyze_posting
 from jolt.database import Application, Outcome, Posting, ReviewDecision
 from jolt.evaluation_authority import authoritative_evaluation, latest_readiness_report
-from jolt.evaluation_strategy import StrategyAssessment, assess_posting
+from jolt.evaluation_strategy import StrategyAssessment
 from jolt.schemas import ApplicationReadinessSummary, OpportunitySummary, StrategyGapSummary
 from jolt.strategy_runtime import (
     ENGINE_VERSION as STRATEGY_ENGINE_VERSION,
 )
 from jolt.strategy_runtime import (
-    _apply_saved_preferences,
-    _remove_unsubstantiated_people_management_gap,
+    calibrated_strategy_assessment,
     load_active_strategy_profile,
     proposed_decision,
 )
@@ -33,15 +32,8 @@ def _authoritative_assessment(posting: Posting) -> StrategyAssessment | None:
     profile = load_active_strategy_profile()
     if profile is None:
         return None
-    assessment = assess_posting(profile, posting.title, posting.location, posting.description)
-    assessment = _remove_unsubstantiated_people_management_gap(
-        assessment,
-        title=posting.title,
-        location=posting.location,
-        description=posting.description,
-    )
-    return _apply_saved_preferences(
-        assessment,
+    return calibrated_strategy_assessment(
+        profile,
         title=posting.title,
         location=posting.location,
         description=posting.description,
