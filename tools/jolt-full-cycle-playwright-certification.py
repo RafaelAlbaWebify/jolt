@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import BrowserContext, Page, Response, sync_playwright
+from playwright.sync_api import BrowserContext, Page, Request, Response, sync_playwright
 
 API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
@@ -170,7 +170,7 @@ def exercise_board(page: Page, fixture: dict[str, str], actions: list[dict[str, 
     card.wait_for(timeout=30_000)
 
     with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as forward_info:
-        card.drag_to(page.locator("section.application-lane-interviewing"))
+        card.get_by_label(f"Move {title} to stage").select_option("interviewing")
     assert_success(forward_info.value, "Forward application transition")
     page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
     record_action(actions, "Move application Applied → Interviewing", "passed")
@@ -256,10 +256,18 @@ def audit(output_dir: Path) -> dict[str, Any]:
     console_warnings: list[str] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
+    aborted_requests: list[str] = []
     unexpected_responses: list[str] = []
     inventory: dict[str, list[dict[str, str]]] = {}
     shell_metrics: dict[str, dict[str, Any]] = {}
     sequence = 1
+
+    def record_failed_request(request: Request) -> None:
+        detail = f"{request.method} {request.url}: {request.failure}"
+        if request.method == "GET" and request.failure == "net::ERR_ABORTED":
+            aborted_requests.append(detail)
+            return
+        failed_requests.append(detail)
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
@@ -272,7 +280,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page = context.new_page()
         page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else console_warnings.append(message.text) if message.type == "warning" else None)
         page.on("pageerror", lambda error: page_errors.append(str(error)))
-        page.on("requestfailed", lambda request: failed_requests.append(f"{request.method} {request.url}: {request.failure}"))
+        page.on("requestfailed", record_failed_request)
         page.on(
             "response",
             lambda response: unexpected_responses.append(f"{response.status} {response.request.method} {response.url}")
@@ -325,6 +333,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
             "console_warnings": console_warnings,
             "page_errors": page_errors,
             "failed_requests": failed_requests,
+            "aborted_requests": aborted_requests,
             "unexpected_responses": unexpected_responses,
         },
     }

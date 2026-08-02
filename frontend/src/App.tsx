@@ -58,7 +58,7 @@ type AppProps = {
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 5;
 const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject", "needs_more_information"];
 
 function decisionLabel(value: ReviewChoice | null) {
@@ -652,3 +652,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     </main>
   );
 }
+
+
+
