@@ -89,6 +89,7 @@ describe("LinkedInCommandCenter", () => {
 
     const { rerender } = render(<LinkedInCommandCenter apiBase="http://api" active={false} />);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "LinkedIn Profile" })).toBeInTheDocument();
 
     rerender(<LinkedInCommandCenter apiBase="http://api" active />);
     expect(await screen.findByText("No LinkedIn recommendations yet.")).toBeInTheDocument();
