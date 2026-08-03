@@ -39,6 +39,7 @@ def _add_legacy_run(
         completed_at=now,
     )
     session.add(run)
+    session.flush()
     session.add(
         CapturePage(
             id=f"page-{run_id}",
