@@ -361,7 +361,10 @@ def record_outcome(
     existing = session.scalar(select(Outcome).where(Outcome.application_id == application_id))
     if existing is not None:
         raise ValueError("This application already has an outcome.")
-    if request.outcome_type in {"offer_accepted", "offer_declined"} and application.status != "offer":
+    if (
+        request.outcome_type in {"offer_accepted", "offer_declined"}
+        and application.status != "offer"
+    ):
         raise ValueError("Offer outcomes can only be recorded from the offer stage.")
     terminal_status = {
         "rejected_by_employer": "rejected",
