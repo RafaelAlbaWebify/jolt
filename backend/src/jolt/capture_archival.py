@@ -8,7 +8,6 @@ from jolt.database import Application, CaptureItem, CaptureRun, Posting, ReviewD
 
 ARCHIVED_CAPTURE_STATUS = "archived"
 LEGACY_UNKNOWN_STOP_REASON = "legacy_unknown"
-ARCHIVED_LEGACY_UNKNOWN_STOP_REASON = "archived_legacy_unknown"
 ARCHIVABLE_CAPTURE_SOURCES = {"linkedin"}
 ARCHIVABLE_CAPTURE_MODES = {"fixture", "supervised_live"}
 
@@ -90,9 +89,8 @@ def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchAr
 
     legacy_unknown_count = _has_legacy_unknown_count(run, items)
     run.status = ARCHIVED_CAPTURE_STATUS
-    run.stop_reason = (
-        ARCHIVED_LEGACY_UNKNOWN_STOP_REASON if legacy_unknown_count else "archived_by_user"
-    )
+    if not legacy_unknown_count:
+        run.stop_reason = "archived_by_user"
     session.commit()
 
     return CaptureBatchArchiveResult(
