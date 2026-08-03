@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 export type ApplicationStatus =
@@ -131,10 +131,18 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [workflowOpen, setWorkflowOpen] = useState(false);
+  const loadRequestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    loadRequestRef.current?.abort();
+    loadRequestRef.current = null;
     setWorkflowOpen(false);
     setApplication(null);
+    setLoading(false);
+
+    return () => {
+      loadRequestRef.current?.abort();
+    };
   }, [applicationId]);
   useEffect(() => {
     const status = application?.status ?? applicationStatus;
@@ -147,17 +155,36 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
 
   async function loadApplication() {
     if (!applicationId || application || loading) return;
+
+    loadRequestRef.current?.abort();
+    const controller = new AbortController();
+    loadRequestRef.current = controller;
+
     setLoading(true);
     onError("");
+
     try {
-      const response = await fetch(`${apiBase}/api/applications/${applicationId}`);
+      const response = await fetch(`${apiBase}/api/applications/${applicationId}`, {
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error("Unable to load application history.");
+
       const loaded = (await response.json()) as ApplicationData;
+      if (loadRequestRef.current !== controller) return;
+
       setApplication(loaded);
       setSelectedStage(loaded.status);
     } catch (caught) {
-      onError(caught instanceof Error ? caught.message : "Application history failed.");
-    } finally { setLoading(false); }
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (loadRequestRef.current === controller) {
+        onError(caught instanceof Error ? caught.message : "Application history failed.");
+      }
+    } finally {
+      if (loadRequestRef.current === controller) {
+        loadRequestRef.current = null;
+        setLoading(false);
+      }
+    }
   }
 
   function toggleWorkflow() {

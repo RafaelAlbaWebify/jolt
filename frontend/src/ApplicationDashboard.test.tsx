@@ -263,7 +263,7 @@ describe("ApplicationDashboard", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/api/application-index")) return jsonResponse(currentPipeline);
-      if (url.endsWith("/api/applications/application-1") && !init) return jsonResponse(currentApplication);
+      if (url.endsWith("/api/applications/application-1") && !init?.method) return jsonResponse(currentApplication);
       if (url.endsWith("/api/applications/application-1/transitions") && init?.method === "POST") {
         currentApplication = {
           ...currentApplication,
