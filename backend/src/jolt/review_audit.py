@@ -60,6 +60,71 @@ def _get_bytes(url: str) -> bytes:
         return response.read()
 
 
+def _load_current_opportunities() -> tuple[
+    list[dict[str, object]],
+    list[dict[str, object]],
+    list[dict[str, str]],
+]:
+    """Load current Review Inbox records through compact index/detail APIs."""
+
+    raw_index = _get_json(f"{API_BASE}/api/opportunity-index")
+    if not isinstance(raw_index, list):
+        raise RuntimeError("Opportunity index API did not return a list.")
+
+    index: list[dict[str, object]] = []
+    details: list[dict[str, object]] = []
+    findings: list[dict[str, str]] = []
+
+    for position, row in enumerate(raw_index):
+        if not isinstance(row, dict):
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": (
+                        f"Opportunity index contains a non-object row at position {position}."
+                    ),
+                }
+            )
+            continue
+
+        index.append(row)
+        posting_id = str(row.get("posting_id") or "").strip()
+        title = str(row.get("title") or f"Opportunity {position + 1}")
+
+        if not posting_id:
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"{title}: opportunity index row is missing posting_id.",
+                }
+            )
+            continue
+
+        try:
+            detail = _get_json(f"{API_BASE}/api/opportunity-detail/{posting_id}")
+        except Exception as exc:  # noqa: BLE001
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"{title}: opportunity detail failed: {exc}",
+                }
+            )
+            continue
+
+        if not isinstance(detail, dict):
+            findings.append(
+                {
+                    "severity": "error",
+                    "message": f"{title}: opportunity detail did not return an object.",
+                }
+            )
+            continue
+
+        details.append(detail)
+
+    return index, details, findings
+
+
 def _contains_text(text: str, expected: str) -> bool:
     return expected.casefold() in text.casefold()
 
@@ -149,13 +214,10 @@ def _validate_evaluation_contract(item: dict[str, object], title: str) -> list[d
 def audit(output_dir: Path) -> dict[str, object]:
     output_dir.mkdir(parents=True, exist_ok=True)
     health = _get_json(f"{API_BASE}/api/health")
-    opportunities = _get_json(f"{API_BASE}/api/opportunities")
+    opportunity_index, opportunities, opportunity_findings = _load_current_opportunities()
     captures = _get_json(f"{API_BASE}/api/captures")
 
-    if not isinstance(opportunities, list):
-        raise RuntimeError("Opportunity API did not return a list.")
-
-    findings: list[dict[str, str]] = []
+    findings: list[dict[str, str]] = list(opportunity_findings)
     readiness_histories: dict[str, object] = {}
     pack_dir = output_dir / "preparation-packs"
     pack_dir.mkdir(exist_ok=True)
@@ -278,6 +340,9 @@ def audit(output_dir: Path) -> dict[str, object]:
                 )
 
     (output_dir / "health.json").write_text(json.dumps(health, indent=2), encoding="utf-8")
+    (output_dir / "opportunity-index.json").write_text(
+        json.dumps(opportunity_index, indent=2), encoding="utf-8"
+    )
     (output_dir / "opportunities.json").write_text(
         json.dumps(opportunities, indent=2), encoding="utf-8"
     )
@@ -308,8 +373,8 @@ def audit(output_dir: Path) -> dict[str, object]:
         )
 
         first_title = ""
-        if opportunities and isinstance(opportunities[0], dict):
-            first_title = str(opportunities[0].get("title") or "").strip()
+        if opportunity_index:
+            first_title = str(opportunity_index[0].get("title") or "").strip()
 
         page.wait_for_function(
             """([expectedCount, expectedTitle]) => {
@@ -321,7 +386,7 @@ def audit(output_dir: Path) -> dict[str, object]:
                     text.includes(expectedTitle);
                 return countReady || titleReady;
             }""",
-            arg=[len(opportunities), first_title],
+            arg=[len(opportunity_index), first_title],
             timeout=60_000,
         )
         page.screenshot(
@@ -330,7 +395,7 @@ def audit(output_dir: Path) -> dict[str, object]:
         )
         visible_text = page.locator("body").inner_text()
         history_details = page.locator("details").filter(has_text="Readiness report history")
-        if opportunities and history_details.count() > 0:
+        if opportunity_index and history_details.count() > 0:
             first_history = history_details.first
             first_history.evaluate("element => { element.open = true; }")
             page.wait_for_timeout(250)
@@ -354,35 +419,35 @@ def audit(output_dir: Path) -> dict[str, object]:
     readiness_visible = _contains_text(visible_text, "Application readiness")
     preparation_download_visible = _contains_text(visible_text, "Download preparation pack")
     readiness_history_control_visible = _contains_text(visible_text, "Readiness report history")
-    if opportunities and not automated_review_visible:
+    if opportunity_index and not automated_review_visible:
         findings.append(
             {
                 "severity": "error",
                 "message": "Automated review data exists but is not visible in the workbench.",
             }
         )
-    if opportunities and not readiness_visible:
+    if opportunity_index and not readiness_visible:
         findings.append(
             {
                 "severity": "error",
                 "message": "Readiness data exists but is not visible in the workbench.",
             }
         )
-    if opportunities and not preparation_download_visible:
+    if opportunity_index and not preparation_download_visible:
         findings.append(
             {
                 "severity": "error",
                 "message": "Preparation-pack download is not visible in the workbench.",
             }
         )
-    if opportunities and not readiness_history_control_visible:
+    if opportunity_index and not readiness_history_control_visible:
         findings.append(
             {
                 "severity": "error",
                 "message": "Readiness-history controls are not visible in the workbench.",
             }
         )
-    if opportunities and not expanded_history_visible:
+    if opportunity_index and not expanded_history_visible:
         findings.append(
             {
                 "severity": "error",
@@ -392,7 +457,8 @@ def audit(output_dir: Path) -> dict[str, object]:
 
     summary: dict[str, object] = {
         "status": "failed" if any(item["severity"] == "error" for item in findings) else "passed",
-        "opportunity_count": len(opportunities),
+        "opportunity_count": len(opportunity_index),
+        "opportunity_detail_count": len(opportunities),
         "capture_count": len(captures) if isinstance(captures, list) else None,
         "preparation_pack_count": preparation_pack_count,
         "readiness_history_count": readiness_history_count,

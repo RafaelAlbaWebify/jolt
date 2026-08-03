@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from jolt.review_audit import _is_versioned_private_profile, _validate_evaluation_contract
+from jolt import review_audit
+from jolt.review_audit import (
+    _is_versioned_private_profile,
+    _load_current_opportunities,
+    _validate_evaluation_contract,
+)
 
 
 def _private_item() -> dict[str, object]:
@@ -58,3 +63,64 @@ def test_private_profile_identity_validation() -> None:
     assert _is_versioned_private_profile("candidate-profile:v12")
     assert not _is_versioned_private_profile("candidate-profile")
     assert not _is_versioned_private_profile("Candidate Profile:v2")
+
+
+def test_current_opportunity_loader_uses_compact_index_and_bounded_details(
+    monkeypatch,
+) -> None:
+    index = [
+        {
+            "posting_id": f"posting-{position}",
+            "title": f"Opportunity {position}",
+        }
+        for position in range(40)
+    ]
+    calls: list[str] = []
+
+    def fake_get_json(url: str) -> object:
+        calls.append(url)
+        if url.endswith("/api/opportunity-index"):
+            return index
+        posting_id = url.rsplit("/", 1)[-1]
+        return {
+            "posting_id": posting_id,
+            "title": f"Detail {posting_id}",
+        }
+
+    monkeypatch.setattr(review_audit, "_get_json", fake_get_json)
+
+    loaded_index, details, findings = _load_current_opportunities()
+
+    assert loaded_index == index
+    assert len(details) == 40
+    assert findings == []
+    assert calls[0].endswith("/api/opportunity-index")
+    assert all("/api/opportunity-detail/" in url for url in calls[1:])
+    assert not any(url.endswith("/api/opportunities") for url in calls)
+
+
+def test_current_opportunity_loader_reports_bad_rows_without_unbounded_fallback(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+
+    def fake_get_json(url: str) -> object:
+        calls.append(url)
+        if url.endswith("/api/opportunity-index"):
+            return [
+                "not-an-object",
+                {"title": "Missing identity"},
+                {"posting_id": "posting-1", "title": "Valid"},
+            ]
+        return {"posting_id": "posting-1", "title": "Valid"}
+
+    monkeypatch.setattr(review_audit, "_get_json", fake_get_json)
+
+    index, details, findings = _load_current_opportunities()
+
+    assert len(index) == 2
+    assert details == [{"posting_id": "posting-1", "title": "Valid"}]
+    assert len(findings) == 2
+    assert any("non-object row" in finding["message"] for finding in findings)
+    assert any("missing posting_id" in finding["message"] for finding in findings)
+    assert not any(url.endswith("/api/opportunities") for url in calls)
