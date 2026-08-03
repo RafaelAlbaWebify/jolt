@@ -148,7 +148,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const [opportunities, setOpportunities] = useState<OpportunityIndex[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [recalculating, setRecalculating] = useState(false);
   const [showManualIntake, setShowManualIntake] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("score_desc");
@@ -179,22 +178,6 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
       setError(caught instanceof Error ? caught.message : "Unable to load opportunities.");
     } finally {
       setRefreshing(false);
-    }
-  }, [loadOpportunityIndex]);
-
-  const recalculateScores = useCallback(async () => {
-    setRecalculating(true);
-    setError("");
-    setWorkflowNotice("");
-    try {
-      const refreshResponse = await fetch(`${API_BASE}/api/evaluations/refresh`, { method: "POST" });
-      if (!refreshResponse.ok) throw await errorFromResponse(refreshResponse, "Unable to recalculate opportunity scores.");
-      await loadOpportunityIndex();
-      setWorkflowNotice("Scores recalculated and review inbox refreshed.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to recalculate opportunity scores.");
-    } finally {
-      setRecalculating(false);
     }
   }, [loadOpportunityIndex]);
 
@@ -420,18 +403,10 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
             <button
               type="button"
               className="secondary"
-              disabled={refreshing || recalculating}
+              disabled={refreshing}
               onClick={() => void refreshOpportunities()}
             >
               {refreshing ? "Refreshing…" : "Refresh list"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={refreshing || recalculating}
-              onClick={() => void recalculateScores()}
-            >
-              {recalculating ? "Recalculating…" : "Recalculate scores"}
             </button>
           </div>
         </div>
