@@ -57,9 +57,7 @@ def _visible_job_ids(pages: list[CapturePage]) -> list[str] | None:
     return visible_ids
 
 
-def _candidate_for_run(
-    session: Session, run: CaptureRun
-) -> CaptureMetadataRepairCandidate | None:
+def _candidate_for_run(session: Session, run: CaptureRun) -> CaptureMetadataRepairCandidate | None:
     if run.status != ARCHIVED_CAPTURE_STATUS:
         return None
     if run.requested_item_limit is not None or run.observed_item_count != 0:
