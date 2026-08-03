@@ -132,6 +132,22 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("does not expose unsupported score recalculation", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse([]));
+
+    render(<App />);
+
+    expect(
+      await screen.findByText("No pending review items match this view."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Recalculate scores" }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the network error without an unhandled rejection", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     render(<App />);
