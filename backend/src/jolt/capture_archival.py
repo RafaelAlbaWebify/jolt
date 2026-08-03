@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from jolt.database import Application, CaptureItem, CaptureRun, Posting, ReviewDecision
 
 ARCHIVED_CAPTURE_STATUS = "archived"
+LEGACY_UNKNOWN_STOP_REASON = "legacy_unknown"
 ARCHIVABLE_CAPTURE_SOURCES = {"linkedin"}
 ARCHIVABLE_CAPTURE_MODES = {"fixture", "supervised_live"}
 
@@ -44,6 +45,15 @@ def _run_items(session: Session, capture_run_id: str) -> list[CaptureItem]:
     )
 
 
+def _has_legacy_unknown_count(run: CaptureRun, items: list[CaptureItem]) -> bool:
+    return (
+        run.requested_item_limit is None
+        and run.observed_item_count == 0
+        and bool(items)
+        and run.stop_reason in {"", LEGACY_UNKNOWN_STOP_REASON}
+    )
+
+
 def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchArchiveResult:
     """Archive a capture run without physically deleting shared opportunity records.
 
@@ -51,6 +61,9 @@ def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchAr
     Opportunities review inbox excludes postings whose only capture backing is archived.
     This avoids foreign-key failures around central Posting records while giving the user
     a safe way to clear stale imported batches from the review queue.
+
+    Legacy rows created before observed-count metadata existed retain explicit unknown
+    provenance. Archival must not reinterpret their default zero as an observed count.
     """
     run = session.get(CaptureRun, capture_run_id)
     if run is None:
@@ -74,8 +87,10 @@ def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchAr
         else:
             hidden_pending_posting_ids.add(posting.id)
 
+    legacy_unknown_count = _has_legacy_unknown_count(run, items)
     run.status = ARCHIVED_CAPTURE_STATUS
-    run.stop_reason = "archived_by_user"
+    if not legacy_unknown_count:
+        run.stop_reason = "archived_by_user"
     session.commit()
 
     return CaptureBatchArchiveResult(
