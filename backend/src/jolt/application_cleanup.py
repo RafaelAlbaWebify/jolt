@@ -40,28 +40,48 @@ def delete_archived_application(
 
     posting_id = application.posting_id
     try:
-        event_count = session.execute(
-            delete(ApplicationEvent).where(ApplicationEvent.application_id == application_id)
-        ).rowcount or 0
-        outcome_count = session.execute(
-            delete(Outcome).where(Outcome.application_id == application_id)
-        ).rowcount or 0
-        task_count = session.execute(
-            delete(ApplicationTask).where(ApplicationTask.application_id == application_id)
-        ).rowcount or 0
-        interview_count = session.execute(
-            delete(ApplicationInterview).where(
-                ApplicationInterview.application_id == application_id
-            )
-        ).rowcount or 0
-        contact_count = session.execute(
-            delete(ApplicationContact).where(ApplicationContact.application_id == application_id)
-        ).rowcount or 0
-        document_count = session.execute(
-            delete(ApplicationDocument).where(
-                ApplicationDocument.application_id == application_id
-            )
-        ).rowcount or 0
+        event_count = (
+            session.execute(
+                delete(ApplicationEvent).where(ApplicationEvent.application_id == application_id)
+            ).rowcount
+            or 0
+        )
+        outcome_count = (
+            session.execute(
+                delete(Outcome).where(Outcome.application_id == application_id)
+            ).rowcount
+            or 0
+        )
+        task_count = (
+            session.execute(
+                delete(ApplicationTask).where(ApplicationTask.application_id == application_id)
+            ).rowcount
+            or 0
+        )
+        interview_count = (
+            session.execute(
+                delete(ApplicationInterview).where(
+                    ApplicationInterview.application_id == application_id
+                )
+            ).rowcount
+            or 0
+        )
+        contact_count = (
+            session.execute(
+                delete(ApplicationContact).where(
+                    ApplicationContact.application_id == application_id
+                )
+            ).rowcount
+            or 0
+        )
+        document_count = (
+            session.execute(
+                delete(ApplicationDocument).where(
+                    ApplicationDocument.application_id == application_id
+                )
+            ).rowcount
+            or 0
+        )
         session.delete(application)
         session.commit()
     except Exception:
