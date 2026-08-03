@@ -76,6 +76,9 @@ def test_offer_outcome_api_returns_conflict_before_offer_stage(tmp_path) -> None
             content_hash="a" * 64,
             captured_at=now,
         )
+        session.add(source)
+        session.flush()
+
         posting = Posting(
             id="posting-1",
             source_document_id=source.id,
@@ -88,6 +91,9 @@ def test_offer_outcome_api_returns_conflict_before_offer_stage(tmp_path) -> None
             identity_status="new",
             created_at=now,
         )
+        session.add(posting)
+        session.flush()
+
         application = Application(
             id="application-1",
             posting_id=posting.id,
@@ -98,7 +104,7 @@ def test_offer_outcome_api_returns_conflict_before_offer_stage(tmp_path) -> None
             created_at=now,
             updated_at=now,
         )
-        session.add_all([source, posting, application])
+        session.add(application)
         session.commit()
 
     client = TestClient(create_app(database_url))
