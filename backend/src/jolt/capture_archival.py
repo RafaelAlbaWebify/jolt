@@ -54,7 +54,12 @@ def _has_legacy_unknown_count(run: CaptureRun, items: list[CaptureItem]) -> bool
     )
 
 
-def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchArchiveResult:
+def archive_capture_run(
+    session: Session,
+    capture_run_id: str,
+    *,
+    commit: bool = True,
+) -> CaptureBatchArchiveResult:
     """Archive a capture run without physically deleting shared opportunity records.
 
     Archived capture runs remain in the database for traceability, but the default
@@ -91,7 +96,10 @@ def archive_capture_run(session: Session, capture_run_id: str) -> CaptureBatchAr
     run.status = ARCHIVED_CAPTURE_STATUS
     if not legacy_unknown_count:
         run.stop_reason = "archived_by_user"
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
 
     return CaptureBatchArchiveResult(
         capture_run_id=run.id,
