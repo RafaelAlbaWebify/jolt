@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from jolt.application_response import build_application_response
 from jolt.database import (
     Application,
     ApplicationEvent,
@@ -23,7 +24,6 @@ from jolt.database import (
 )
 from jolt.schemas import (
     ApplicationCreateRequest,
-    ApplicationEventResponse,
     ApplicationResponse,
     ApplicationTransitionRequest,
     IntakeResponse,
@@ -80,6 +80,9 @@ ALLOWED_TRANSITIONS = {
     "no_response": {"closed"},
     "closed": set(),
 }
+
+# Compatibility alias for existing callers while response construction lives in its own module.
+_application_response = build_application_response
 
 
 @dataclass(frozen=True)
@@ -289,35 +292,6 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
     )
 
 
-def _application_response(session: Session, application: Application) -> ApplicationResponse:
-    events = session.scalars(
-        select(ApplicationEvent)
-        .where(ApplicationEvent.application_id == application.id)
-        .order_by(ApplicationEvent.occurred_at)
-    ).all()
-    outcome = session.scalar(select(Outcome).where(Outcome.application_id == application.id))
-    return ApplicationResponse(
-        application_id=application.id,
-        posting_id=application.posting_id,
-        status=application.status,
-        application_url=application.application_url,
-        resume_used=application.resume_used,
-        notes=application.notes,
-        outcome_type=outcome.outcome_type if outcome else None,
-        events=[
-            ApplicationEventResponse(
-                event_id=event.id,
-                event_type=event.event_type,
-                from_status=event.from_status,
-                to_status=event.to_status,
-                notes=event.notes,
-                occurred_at=event.occurred_at.isoformat(),
-            )
-            for event in events
-        ],
-    )
-
-
 def create_application(
     session: Session, posting_id: str, request: ApplicationCreateRequest
 ) -> ApplicationResponse:
@@ -333,7 +307,7 @@ def create_application(
         raise ValueError("An application can only be created after a pursue decision.")
     existing = session.scalar(select(Application).where(Application.posting_id == posting_id))
     if existing is not None:
-        return _application_response(session, existing)
+        return build_application_response(session, existing)
     now = utc_now()
     application = Application(
         id=str(uuid4()),
@@ -345,21 +319,28 @@ def create_application(
         created_at=now,
         updated_at=now,
     )
-    session.add(application)
-    session.flush()
-    session.add(
-        ApplicationEvent(
-            id=str(uuid4()),
-            application_id=application.id,
-            event_type="application_created",
-            from_status="",
-            to_status="preparing",
-            notes=request.notes,
-            occurred_at=now,
+    try:
+        session.add(application)
+        session.flush()
+        session.add(
+            ApplicationEvent(
+                id=str(uuid4()),
+                application_id=application.id,
+                event_type="application_created",
+                from_status="",
+                to_status="preparing",
+                notes=request.notes,
+                occurred_at=now,
+            )
         )
-    )
-    session.commit()
-    return _application_response(session, application)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        winner = session.scalar(select(Application).where(Application.posting_id == posting_id))
+        if winner is None:
+            raise
+        return build_application_response(session, winner)
+    return build_application_response(session, application)
 
 
 def transition_application(
@@ -402,27 +383,34 @@ def record_outcome(
         notes=request.notes,
         recorded_at=now,
     )
-    session.add(outcome)
-    session.add(
-        ApplicationEvent(
-            id=str(uuid4()),
-            application_id=application.id,
-            event_type="outcome_recorded",
-            from_status=previous,
-            to_status=terminal_status,
-            notes=request.notes,
-            occurred_at=now,
+    try:
+        session.add(outcome)
+        session.add(
+            ApplicationEvent(
+                id=str(uuid4()),
+                application_id=application.id,
+                event_type="outcome_recorded",
+                from_status=previous,
+                to_status=terminal_status,
+                notes=request.notes,
+                occurred_at=now,
+            )
         )
-    )
-    session.commit()
-    return _application_response(session, application)
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        winner = session.scalar(select(Outcome).where(Outcome.application_id == application_id))
+        if winner is None:
+            raise
+        raise ValueError("This application already has an outcome.") from exc
+    return build_application_response(session, application)
 
 
 def get_application(session: Session, application_id: str) -> ApplicationResponse:
     application = session.get(Application, application_id)
     if application is None:
         raise LookupError("Application was not found.")
-    return _application_response(session, application)
+    return build_application_response(session, application)
 
 
 def list_opportunities(session: Session) -> list[OpportunitySummary]:
