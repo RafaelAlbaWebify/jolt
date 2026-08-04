@@ -416,6 +416,61 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     }
   }
 
+  async function deleteCardPermanently(item: Opportunity) {
+    if (
+      !item.application_id ||
+      item.application_status !== "archived" ||
+      busy
+    ) return;
+
+    const confirmed = window.confirm(
+      `Permanently delete ${item.title || "this archived application"}? ` +
+        "Its application history, outcome, tasks, interviews, contacts, and documents will be removed. " +
+        "The opportunity and capture evidence will remain.",
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError("");
+    setMoveNotice("");
+
+    try {
+      const response = await fetch(
+        `${apiBase}/api/applications/${item.application_id}/delete`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { detail?: string }
+          | null;
+
+        throw new Error(
+          payload?.detail || "The archived application could not be deleted.",
+        );
+      }
+
+      if (selectedPostingId === item.posting_id) {
+        setSelectedPostingId(null);
+      }
+
+      await refresh();
+
+      setMoveNotice(
+        `${item.title || "Application"} permanently deleted. ` +
+          "The opportunity and capture evidence were preserved.",
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The archived application could not be deleted.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const draggedItem = candidates.find((item) => item.posting_id === draggedPostingId) ?? null;
 
   return (
@@ -596,14 +651,24 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         </button>
                       )}
                       {opportunity.application_id && opportunity.application_status === "archived" && (
-                        <button
-                          type="button"
-                          className="secondary application-card-archive"
-                          disabled={busy}
-                          onClick={() => void restoreCard(opportunity)}
-                        >
-                          Restore card
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="secondary application-card-archive"
+                            disabled={busy}
+                            onClick={() => void restoreCard(opportunity)}
+                          >
+                            Restore card
+                          </button>
+                          <button
+                            type="button"
+                            className="danger application-card-delete"
+                            disabled={busy}
+                            onClick={() => void deleteCardPermanently(opportunity)}
+                          >
+                            Delete permanently
+                          </button>
+                        </>
                       )}
                     </div>
                   </article>

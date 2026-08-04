@@ -288,6 +288,67 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     }
   }
 
+  async function clearPendingInbox() {
+    if (busy || opportunities.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Clear ${opportunities.length} pending Review Inbox card${
+        opportunities.length === 1 ? "" : "s"
+      }? Capture batches containing only pending items will be archived. ` +
+        "Reviewed or applied opportunities and all evidence will be preserved.",
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setError("");
+    setWorkflowNotice("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/review-inbox/clear-pending`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        throw await errorFromResponse(
+          response,
+          "The pending Review Inbox could not be cleared.",
+        );
+      }
+
+      const result = (await response.json()) as {
+        cleared_pending_count: number;
+        archived_capture_run_count: number;
+        protected_pending_count: number;
+      };
+
+      setSelectedOpportunityId(null);
+      await refreshOpportunities();
+
+      const protectedNotice = result.protected_pending_count
+        ? ` ${result.protected_pending_count} protected card${
+            result.protected_pending_count === 1 ? " was" : "s were"
+          } left unchanged.`
+        : "";
+
+      setWorkflowNotice(
+        `${result.cleared_pending_count} pending card${
+          result.cleared_pending_count === 1 ? "" : "s"
+        } cleared from ${result.archived_capture_run_count} capture batch${
+          result.archived_capture_run_count === 1 ? "" : "es"
+        }.${protectedNotice}`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The pending Review Inbox could not be cleared.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitIntake(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -399,6 +460,14 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
           <div className="professional-source-editor-actions">
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually
+            </button>
+            <button
+              type="button"
+              className="danger"
+              disabled={busy || opportunities.length === 0}
+              onClick={() => void clearPendingInbox()}
+            >
+              Clear pending inbox ({opportunities.length})
             </button>
             <button
               type="button"

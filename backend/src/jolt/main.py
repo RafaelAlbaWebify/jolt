@@ -13,11 +13,19 @@ from jolt.application_archival import (
     archive_application_card,
     restore_application_card,
 )
+from jolt.application_cleanup import (
+    ApplicationDeleteResponse,
+    delete_archived_application,
+)
 from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.application_work_items_api import build_application_work_items_router
 from jolt.automated_review import ensure_automated_reviews
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
+from jolt.pending_inbox_cleanup import (
+    PendingInboxClearResponse,
+    clear_pending_review_inbox,
+)
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
@@ -289,6 +297,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
+        "/api/applications/{application_id}/delete",
+        response_model=ApplicationDeleteResponse,
+        tags=["applications"],
+    )
+    def delete_application(
+        application_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> ApplicationDeleteResponse:
+        try:
+            return delete_archived_application(session, application_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post(
         "/api/applications/{application_id}/transitions",
         response_model=ApplicationResponse,
         tags=["applications"],
@@ -321,6 +345,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/review-inbox/clear-pending",
+        response_model=PendingInboxClearResponse,
+        tags=["opportunities"],
+    )
+    def clear_pending_inbox(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> PendingInboxClearResponse:
+        return clear_pending_review_inbox(session)
 
     @app.post("/api/evaluations/refresh", tags=["opportunities"])
     def refresh_evaluations(

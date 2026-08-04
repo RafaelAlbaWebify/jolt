@@ -153,4 +153,65 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByRole("alert")).toHaveTextContent("offline");
   });
+
+  it("clears pending Review Inbox cards after confirmation", async () => {
+    let index = [baseOpportunity];
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/opportunity-index")) {
+          return jsonResponse(index);
+        }
+
+        if (
+          url.endsWith("/api/review-inbox/clear-pending") &&
+          init?.method === "POST"
+        ) {
+          index = [];
+          return jsonResponse({
+            pending_before: 1,
+            pending_after: 0,
+            cleared_pending_count: 1,
+            archived_capture_run_count: 1,
+            protected_pending_count: 0,
+            archived_runs: [],
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      });
+
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Clear pending inbox (1)",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/review-inbox/clear-pending",
+        { method: "POST" },
+      ),
+    );
+
+    expect(
+      await screen.findByText(
+        /1 pending card cleared from 1 capture batch/,
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Clear pending inbox (0)",
+      }),
+    ).toBeDisabled();
+  });
+
 });

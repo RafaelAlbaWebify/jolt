@@ -315,4 +315,71 @@ describe("ApplicationDashboard", () => {
 
     expect(await screen.findByText("Manage application · technical interview")).toBeInTheDocument();
   });
+
+  it("permanently deletes an archived card after confirmation", async () => {
+    const archivedOpportunity = {
+      ...submittedOpportunity,
+      application_status: "archived" as ApplicationStatus,
+    };
+    let currentPipeline: TestOpportunity[] = [archivedOpportunity];
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+
+        if (url.includes("/api/application-index")) {
+          return jsonResponse(currentPipeline);
+        }
+
+        if (
+          url.endsWith("/api/applications/application-1/delete") &&
+          init?.method === "POST"
+        ) {
+          currentPipeline = [];
+          return jsonResponse({
+            application_id: "application-1",
+            posting_id: "posting-applied",
+            deleted: true,
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      });
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: "Show archived cards",
+      }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Delete permanently",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/delete",
+        { method: "POST" },
+      ),
+    );
+
+    expect(
+      await screen.findByText(
+        /Application Support Engineer permanently deleted/,
+      ),
+    ).toBeInTheDocument();
+  });
+
 });
