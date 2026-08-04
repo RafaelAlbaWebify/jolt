@@ -10,49 +10,75 @@ EvaluationResult = tuple[str, str, int, list[str]]
 _ORIGINAL_EVALUATE_TEXT: Callable[[str], EvaluationResult] = workflow.evaluate_text
 _INSTALLED = False
 
-_LANGUAGE_TERMS: dict[str, tuple[str, ...]] = {
-    "french": (
-        "french speaking",
-        "french-speaking",
-        "must speak french",
-        "french required",
-        "mandatory french",
+_LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
+    "french": ("french", "français", "francais", "französisch", "franzoesisch"),
+    "german": ("german", "deutsch", "deutschkenntnisse"),
+    "italian": ("italian", "italiano", "italienisch"),
+    "dutch": ("dutch", "nederlands", "niederländisch", "niederlaendisch"),
+    "portuguese": ("portuguese", "português", "portugues"),
+}
+
+_LANGUAGE_REQUIREMENT_MARKERS = (
+    "required",
+    "mandatory",
+    "must speak",
+    "must have",
+    "fluency",
+    "fluent",
+    "excellent",
+    "very good",
+    "good command",
+    "minimum b1",
+    "minimum b2",
+    "b1 level",
+    "b2 level",
+    "c1 level",
+    "c2 level",
+    "b1-niveau",
+    "b2-niveau",
+    "c1-niveau",
+    "c2-niveau",
+    "sehr gute",
+    "gute deutsch",
+    "gute kenntnisse",
+    "kenntnisse auf",
+    "verhandlungssicher",
+    "fließend",
+    "fliessend",
+    "courant",
+    "obligatoire",
+)
+
+_SHIFT_PATTERNS: dict[str, tuple[str, ...]] = {
+    "night": (
+        r"\bnight shifts?\b",
+        r"\bovernight shifts?\b",
+        r"\bnachtschicht\b",
+        r"\bturno nocturno\b",
     ),
-    "german": (
-        "german speaking",
-        "german-speaking",
-        "must speak german",
-        "german required",
-        "mandatory german",
+    "rotating": (
+        r"\brotating shifts?\b",
+        r"\brotational shifts?\b",
+        r"\bschichtsystem\b",
+        r"\bwechselschicht\b",
+        r"\bturnos rotativos\b",
     ),
-    "italian": (
-        "italian speaking",
-        "italian-speaking",
-        "must speak italian",
-        "italian required",
-        "mandatory italian",
+    "weekend": (
+        r"\bweekend coverage\b",
+        r"\bweekend shifts?\b",
+        r"\bone weekend day\b",
+        r"\btuesday\s*[–-]\s*saturday\b",
+        r"\bsunday\s*[–-]\s*thursday\b",
+        r"\bwochenendarbeit\b",
+        r"\bfin de semana\b",
     ),
-    "dutch": (
-        "dutch speaking",
-        "dutch-speaking",
-        "must speak dutch",
-        "dutch required",
-        "mandatory dutch",
-    ),
-    "portuguese": (
-        "portuguese speaking",
-        "portuguese-speaking",
-        "must speak portuguese",
-        "portuguese required",
-        "mandatory portuguese",
+    "evening": (
+        r"\bevening shifts?\b",
+        r"\bspätschicht\b",
+        r"\bspaetschicht\b",
     ),
 }
-_SHIFT_TERMS: dict[str, tuple[str, ...]] = {
-    "night": ("night shift", "night shifts", "overnight shift"),
-    "rotating": ("rotating shift", "rotating shifts", "rotational shift"),
-    "weekend": ("weekend coverage", "weekend shift", "weekend shifts"),
-    "evening": ("evening shift", "evening shifts"),
-}
+
 _DISPATCH_REQUIREMENT_PATTERNS = (
     r"\bdispatch(?:er|ing)?\s+(?:activities|operations|coordination|support|role|team|work)\b",
     r"\b(?:field|service|logistics|transport|delivery)\s+dispatch\b",
@@ -61,15 +87,70 @@ _DISPATCH_REQUIREMENT_PATTERNS = (
     r"\bsupport\s+(?:for\s+)?dispatch\s+activities\b",
 )
 
+_COUNTRY_RESTRICTION_PATTERNS = (
+    r"\bonly\s+for\s+candidates\s+(?:already\s+)?based\s+in\s+(?!spain\b)",
+    r"\bmust\s+(?:already\s+)?be\s+based\s+in\s+(?!spain\b)",
+    r"\bremote\s+(?:only\s+)?within\s+(?!spain\b)",
+    r"\bremote\s+from\s+(?!spain\b)",
+    r"\b(?:germany|portugal|italy|france|romania|lithuania|austria|cyprus)[-\s]+based\b",
+    r"\bdeutschlandweite\s+home[-\s]?working\b",
+    r"\bremote\s*\((?:within\s+)?(?:germany|portugal|italy|france|romania|lithuania|austria|cyprus)\)\b",
+)
+
+_RELOCATION_PATTERNS = (
+    r"\brelocation\s+(?:to|required|package)\b",
+    r"\brelocate\s+to\b",
+    r"\bumzug\s+nach\b",
+    r"\breubicaci[oó]n\s+(?:a|en)\b",
+)
+
+_EXCLUDED_EMPLOYMENT_PATTERNS = (
+    (r"\binternship\b|\bintern\b|\bpraktikum\b|\btrainee internship\b", "internship"),
+    (
+        r"\btemporary\b|\bfixed[-\s]term\b|\bbefristet\b|"
+        r"\barbeitnehmerüberlassung\b|\barbeitnehmerueberlassung\b",
+        "temporary or fixed-term employment",
+    ),
+    (r"\bcategorie protette\b|\bprotected categor(?:y|ies)\b", "protected-category restriction"),
+)
+
+_FOREIGN_LOCATION_TERMS = (
+    "germany",
+    "austria",
+    "portugal",
+    "italy",
+    "france",
+    "romania",
+    "lithuania",
+    "cyprus",
+    "munich",
+    "berlin",
+    "limassol",
+    "vilnius",
+    "cascais",
+    "timisoara",
+)
+
+_EXPLICIT_ONSITE_DUTIES = (
+    r"\bon[-\s]?site requirement\b",
+    r"\bon[-\s]?site role\b",
+    r"\bvor ort installationen\b",
+    r"\bhardwaretausch\b",
+    r"\bon[-\s]?site installations?\b",
+    r"\bon[-\s]?site hardware support\b",
+)
+
 
 def sanitize_capture_text(text: str) -> str:
-    """Remove known platform chrome that must not influence vacancy assessment."""
-    start = text.casefold().find("job search faster with premium")
-    if start >= 0:
-        end = text.casefold().find("about the company", start)
-        if end >= 0:
-            text = text[:start] + text[end:]
-    return text
+    """Remove known platform promotional chrome without deleting vacancy evidence."""
+    lowered = text.casefold()
+    premium = lowered.find("job search faster with premium")
+
+    if premium >= 0:
+        company = lowered.find("about the company", premium)
+        text = text[:premium] + text[company:] if company >= 0 else text[:premium]
+
+    return text.strip()
 
 
 def _contains_phrase(text: str, phrase: str) -> bool:
@@ -87,10 +168,57 @@ def _excluded_keyword_matches(text: str, phrase: str) -> bool:
     return _contains_phrase(text, normalized)
 
 
+def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
+    required: list[str] = []
+
+    for language, aliases in _LANGUAGE_ALIASES.items():
+        if language in allowed_languages:
+            continue
+
+        language_found = False
+        for alias in aliases:
+            for match in re.finditer(re.escape(alias), text):
+                start = max(0, match.start() - 100)
+                end = min(len(text), match.end() + 100)
+                window = text[start:end]
+
+                if any(marker in window for marker in _LANGUAGE_REQUIREMENT_MARKERS):
+                    language_found = True
+                    break
+
+                if re.search(
+                    rf"\b{re.escape(alias)}[-\s]+speaking\b|"
+                    rf"\b(?:b1|b2|c1|c2)\b.{{0,35}}\b{re.escape(alias)}\b|"
+                    rf"\b{re.escape(alias)}\b.{{0,35}}\b(?:b1|b2|c1|c2)\b",
+                    window,
+                ):
+                    language_found = True
+                    break
+
+            if language_found:
+                break
+
+        if language_found:
+            required.append(language)
+
+    return required
+
+
+def _country_restriction(text: str) -> bool:
+    return any(re.search(pattern, text) for pattern in _COUNTRY_RESTRICTION_PATTERNS)
+
+
+def _foreign_onsite_requirement(text: str) -> bool:
+    foreign_location = any(term in text for term in _FOREIGN_LOCATION_TERMS)
+    explicit_onsite = any(re.search(pattern, text) for pattern in _EXPLICIT_ONSITE_DUTIES)
+    return foreign_location and explicit_onsite
+
+
 def preference_blockers(text: str) -> list[str]:
-    """Return only blockers explicitly configured in the current saved preferences."""
+    """Return deterministic blockers from the saved job-search preferences."""
     preferences = load_job_search_preferences()
     lowered = " ".join(sanitize_capture_text(text).casefold().split())
+
     blockers = [
         f"excluded keyword: {phrase}"
         for phrase in preferences.excluded_keywords
@@ -98,21 +226,35 @@ def preference_blockers(text: str) -> list[str]:
     ]
 
     allowed_languages = {language.casefold() for language in preferences.languages}
-    for language, phrases in _LANGUAGE_TERMS.items():
-        if language not in allowed_languages and any(phrase in lowered for phrase in phrases):
-            blockers.append(f"required language outside current preferences: {language}")
+    for language in _required_languages(lowered, allowed_languages):
+        blockers.append(f"required language outside current preferences: {language}")
 
     for shift in preferences.excluded_shifts:
-        phrases = _SHIFT_TERMS.get(shift, ())
-        if phrases and any(phrase in lowered for phrase in phrases):
+        patterns = _SHIFT_PATTERNS.get(shift, ())
+        if any(re.search(pattern, lowered) for pattern in patterns):
             blockers.append(f"shift excluded by current preferences: {shift}")
-    return blockers
+
+    if _country_restriction(lowered):
+        blockers.append("remote work is restricted to residence in another country")
+
+    if any(re.search(pattern, lowered) for pattern in _RELOCATION_PATTERNS):
+        blockers.append("relocation is required")
+
+    if _foreign_onsite_requirement(lowered):
+        blockers.append("onsite duties are required outside the configured locality")
+
+    for pattern, label in _EXCLUDED_EMPLOYMENT_PATTERNS:
+        if re.search(pattern, lowered):
+            blockers.append(label)
+
+    return list(dict.fromkeys(blockers))
 
 
 def evaluate_text_with_preferences(text: str) -> EvaluationResult:
     sanitized = sanitize_capture_text(text)
     recommendation, confidence, score, reasons = _ORIGINAL_EVALUATE_TEXT(sanitized)
     blockers = preference_blockers(sanitized)
+
     if blockers:
         return (
             "reject",
@@ -123,6 +265,7 @@ def evaluate_text_with_preferences(text: str) -> EvaluationResult:
                 f"Verified preference blocker(s): {', '.join(blockers)}.",
             ],
         )
+
     return (
         recommendation,
         confidence,
@@ -132,7 +275,7 @@ def evaluate_text_with_preferences(text: str) -> EvaluationResult:
 
 
 def install_preference_aware_evaluation() -> None:
-    """Install saved-preference checks at the canonical intake evaluator boundary."""
+    """Install saved-preference checks at the canonical evaluator boundary."""
     global _INSTALLED
     if _INSTALLED:
         return

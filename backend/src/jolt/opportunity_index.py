@@ -102,6 +102,25 @@ def _is_orphaned_capture_import(
     return source_document.source_type in _CAPTURE_SOURCE_TYPES
 
 
+_RECOMMENDATION_PRIORITY = {
+    "strong_pursue": 0,
+    "pursue": 1,
+    "pursue_if_condition_met": 2,
+    "review_manually": 3,
+    "defer": 4,
+    "do_not_pursue": 5,
+}
+
+
+def _opportunity_sort_key(item: OpportunityIndexItem) -> tuple[int, int, int, str]:
+    return (
+        _RECOMMENDATION_PRIORITY.get(item.recommendation, 4),
+        -item.ranking_score,
+        0 if item.confidence == "high" else 1,
+        item.title.casefold(),
+    )
+
+
 def list_opportunity_index(
     session: Session,
     *,
@@ -243,4 +262,5 @@ def list_opportunity_index(
             )
         )
 
+    results.sort(key=_opportunity_sort_key)
     return results
