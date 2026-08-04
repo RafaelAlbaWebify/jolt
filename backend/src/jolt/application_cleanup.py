@@ -70,9 +70,7 @@ def delete_archived_application(
             delete(ApplicationContact).where(ApplicationContact.application_id == application_id)
         )
         session.execute(
-            delete(ApplicationDocument).where(
-                ApplicationDocument.application_id == application_id
-            )
+            delete(ApplicationDocument).where(ApplicationDocument.application_id == application_id)
         )
         session.delete(application)
         session.commit()
