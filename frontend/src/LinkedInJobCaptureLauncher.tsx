@@ -17,6 +17,42 @@ type Props = {
 };
 
 const DEFAULT_URL = "https://www.linkedin.com/jobs/search/";
+const MAX_JOBS = 50;
+const MAX_PAGES = 10;
+
+function clampInteger(value: number, minimum: number, maximum: number) {
+  if (!Number.isFinite(value)) return minimum;
+  return Math.min(maximum, Math.max(minimum, Math.trunc(value)));
+}
+
+function readableApiError(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== "object") return fallback;
+
+  const detail = (payload as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((issue) => {
+        if (!issue || typeof issue !== "object") return "";
+        const record = issue as { loc?: unknown; msg?: unknown };
+        const location = Array.isArray(record.loc)
+          ? record.loc
+              .filter((part) => part !== "body")
+              .map(String)
+              .join(" → ")
+          : "";
+        const message = typeof record.msg === "string" ? record.msg : "";
+        if (!message) return "";
+        return location ? `${location}: ${message}` : message;
+      })
+      .filter(Boolean);
+
+    if (messages.length) return messages.join(" ");
+  }
+
+  return fallback;
+}
 
 function isBusy(status: CaptureStatus["status"]) {
   return status === "queued" || status === "running";
@@ -63,19 +99,27 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
 
   async function startCapture() {
     setError("");
+
+    const safeMaxJobs = clampInteger(maxJobs, 1, MAX_JOBS);
+    const safeMaxPages = clampInteger(maxPages, 1, MAX_PAGES);
+    setMaxJobs(safeMaxJobs);
+    setMaxPages(safeMaxPages);
+
     try {
       const response = await fetch(`${apiBase}/api/captures/linkedin/local`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           search_url: searchUrl,
-          max_jobs: maxJobs,
-          max_pages: maxPages,
+          max_jobs: safeMaxJobs,
+          max_pages: safeMaxPages,
         }),
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(payload?.detail || "The LinkedIn capture could not start.");
+        const payload = (await response.json().catch(() => null)) as unknown;
+        throw new Error(
+          readableApiError(payload, "The LinkedIn capture could not start."),
+        );
       }
       setStatus((await response.json()) as CaptureStatus);
     } catch (caught) {
@@ -113,9 +157,11 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
             <input
               type="number"
               min="1"
-              max="50"
+              max={MAX_JOBS}
               value={maxJobs}
-              onChange={(event) => setMaxJobs(Number(event.target.value))}
+              onChange={(event) =>
+                setMaxJobs(clampInteger(Number(event.target.value), 1, MAX_JOBS))
+              }
             />
           </label>
           <label>
@@ -123,9 +169,11 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
             <input
               type="number"
               min="1"
-              max="10"
+              max={MAX_PAGES}
               value={maxPages}
-              onChange={(event) => setMaxPages(Number(event.target.value))}
+              onChange={(event) =>
+                setMaxPages(clampInteger(Number(event.target.value), 1, MAX_PAGES))
+              }
             />
           </label>
         </div>
