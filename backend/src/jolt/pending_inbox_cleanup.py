@@ -52,13 +52,15 @@ def clear_pending_review_inbox(session: Session) -> PendingInboxClearResponse:
         run = session.get(CaptureRun, run_id)
         if run is None:
             continue
-        run_posting_ids = set(
-            session.scalars(
+        run_posting_ids = {
+            posting_id
+            for posting_id in session.scalars(
                 select(CaptureItem.posting_id)
                 .where(CaptureItem.capture_run_id == run_id)
                 .where(CaptureItem.posting_id.is_not(None))
             ).all()
-        )
+            if posting_id is not None
+        }
         pending_in_run = run_posting_ids & pending_ids
         if run.status == "running" or not run_posting_ids.issubset(pending_ids):
             protected_pending_ids.update(pending_in_run)
