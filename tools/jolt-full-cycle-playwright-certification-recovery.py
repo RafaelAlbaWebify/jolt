@@ -8,9 +8,9 @@ from typing import Any, Callable
 
 from playwright.sync_api import ConsoleMessage, Page, Route
 
-CLASSIFIED_PATH = Path(__file__).with_name(
-    "jolt-full-cycle-playwright-certification-classified.py"
-)
+from jolt.certification_isolation import assert_certification_backend
+
+CLASSIFIED_PATH = Path(__file__).with_name("jolt-full-cycle-playwright-certification-classified.py")
 
 EXPECTED_CONSOLE_ERRORS = {
     "Failed to load resource: the server responded with a status of 429 (Too Many Requests)": 1,
@@ -55,9 +55,9 @@ def exercise_task_recovery(
     module.open_application(page, fixture)
     dialog = page.get_by_role("dialog", name=fixture["title"])
     dialog.get_by_role("tab", name="Tasks", exact=True).click()
-    dialog.get_by_role("alert").filter(
-        has_text="Unable to load application tasks."
-    ).wait_for(timeout=30_000)
+    dialog.get_by_role("alert").filter(has_text="Unable to load application tasks.").wait_for(
+        timeout=30_000
+    )
     dialog.get_by_role("button", name="Retry tasks", exact=True).wait_for()
     module.record_action(actions, "Show recoverable task-load error", "passed")
 
@@ -83,9 +83,7 @@ def exercise_task_recovery(
             route.fulfill(
                 status=422,
                 content_type="application/json",
-                body=json.dumps(
-                    {"detail": "Injected task validation failure for certification."}
-                ),
+                body=json.dumps({"detail": "Injected task validation failure for certification."}),
             )
             return
         route.continue_()
@@ -122,6 +120,17 @@ def exercise_task_recovery(
 
 
 def main() -> int:
+    certification_database = assert_certification_backend()
+    print(
+        json.dumps(
+            {
+                "certification_database_isolation": "verified",
+                "database_path": str(certification_database),
+            },
+            indent=2,
+        )
+    )
+
     classified = load_classified()
     restart = classified.load_restart()
     original_restart_and_verify = restart.restart_and_verify
