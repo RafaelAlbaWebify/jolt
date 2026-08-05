@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,7 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.evaluation_authority import authoritative_evaluations
+from jolt.semantic_duplicates import group_semantic_duplicates
 
 
 class OpportunityIndexItem(BaseModel):
@@ -42,6 +43,8 @@ class OpportunityIndexItem(BaseModel):
     next_due_kind: str | None = None
     document_state: str | None = None
     overdue: bool = False
+    duplicate_count: int = 1
+    duplicate_posting_ids: list[str] = Field(default_factory=list)
 
 
 _CAPTURE_SOURCE_TYPES = {"linkedin_fixture", "linkedin_live"}
@@ -263,4 +266,24 @@ def list_opportunity_index(
         )
 
     results.sort(key=_opportunity_sort_key)
-    return results
+
+    descriptions = {posting.id: posting.description for posting in postings}
+    grouped_results = group_semantic_duplicates(
+        results,
+        descriptions=descriptions,
+    )
+
+    canonical_results: list[OpportunityIndexItem] = []
+    for group in grouped_results:
+        canonical = group[0]
+        canonical_results.append(
+            canonical.model_copy(
+                update={
+                    "duplicate_count": len(group),
+                    "duplicate_posting_ids": [member.posting_id for member in group[1:]],
+                }
+            )
+        )
+
+    canonical_results.sort(key=_opportunity_sort_key)
+    return canonical_results
