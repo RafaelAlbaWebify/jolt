@@ -200,6 +200,37 @@ def _apply_saved_preferences(
     )
 
 
+def _actionable_ranking_score(assessment: StrategyAssessment) -> int:
+    """Convert technical fit into a score suitable for an actionable queue."""
+    if assessment.eligibility == "ineligible" or assessment.recommendation == "do_not_pursue":
+        return 0
+    if assessment.eligibility == "uncertain":
+        return min(assessment.fit_now, 49)
+    if assessment.eligibility == "eligible_with_conditions":
+        return min(assessment.fit_by_interview, 79)
+    return assessment.fit_by_interview
+
+
+def _calibrate_interview_uplift(assessment: StrategyAssessment) -> StrategyAssessment:
+    """Prevent short preparation plans from producing unrealistic score jumps."""
+    capped_interview = min(assessment.fit_by_interview, assessment.fit_now + 10)
+    recommendation = assessment.recommendation
+    confidence = assessment.confidence
+
+    if assessment.eligibility == "uncertain":
+        recommendation = "pursue_if_condition_met"
+        confidence = "low"
+    elif recommendation == "strong_pursue" and capped_interview < 80:
+        recommendation = "pursue"
+
+    return replace(
+        assessment,
+        fit_by_interview=capped_interview,
+        recommendation=recommendation,
+        confidence=confidence,
+    )
+
+
 def calibrated_strategy_assessment(
     profile: StrategyProfile,
     *,
@@ -215,12 +246,13 @@ def calibrated_strategy_assessment(
         location=location,
         description=sanitized_description,
     )
-    return _apply_saved_preferences(
+    assessment = _apply_saved_preferences(
         assessment,
         title=title,
         location=location,
         description=sanitized_description,
     )
+    return _calibrate_interview_uplift(assessment)
 
 
 def ensure_strategy_review(
@@ -253,7 +285,7 @@ def ensure_strategy_review(
         existing
         and existing.recommendation == assessment.recommendation
         and existing.confidence == assessment.confidence
-        and existing.ranking_score == assessment.fit_by_interview
+        and existing.ranking_score == _actionable_ranking_score(assessment)
         and existing.reasons_json == reasons_json
     )
     if not unchanged:
@@ -265,7 +297,7 @@ def ensure_strategy_review(
                 engine_version=ENGINE_VERSION,
                 recommendation=assessment.recommendation,
                 confidence=assessment.confidence,
-                ranking_score=assessment.fit_by_interview,
+                ranking_score=_actionable_ranking_score(assessment),
                 reasons_json=reasons_json,
                 created_at=utc_now(),
             )
