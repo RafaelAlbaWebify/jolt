@@ -8,12 +8,23 @@ from typing import Protocol
 
 
 class DuplicateCandidate(Protocol):
-    posting_id: str
-    company: str
-    title: str
-    recommendation: str
-    confidence: str
-    ranking_score: int
+    @property
+    def posting_id(self) -> str: ...
+
+    @property
+    def company(self) -> str: ...
+
+    @property
+    def title(self) -> str: ...
+
+    @property
+    def recommendation(self) -> str: ...
+
+    @property
+    def confidence(self) -> str: ...
+
+    @property
+    def ranking_score(self) -> int: ...
 
 
 _RECOMMENDATION_PRIORITY = {
