@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
 from jolt.database import CaptureItem, CaptureRun, Evaluation, Posting
+from jolt.semantic_duplicates import group_semantic_duplicates
 from jolt.strategy_runtime import ENGINE_VERSION
 
 SKILL_TERMS = (
@@ -334,6 +336,64 @@ def _effective_evaluations(
     return effective, coverage
 
 
+@dataclass(frozen=True)
+class _MarketDuplicateCandidate:
+    posting_id: str
+    company: str
+    title: str
+    recommendation: str
+    confidence: str
+    ranking_score: int
+
+
+def _deduplicate_market_postings(
+    postings: list[Posting],
+    evaluations: dict[str, Evaluation],
+) -> tuple[list[Posting], list[dict[str, object]]]:
+    posting_by_id = {posting.id: posting for posting in postings}
+    descriptions = {posting.id: posting.description or "" for posting in postings}
+
+    candidates: list[_MarketDuplicateCandidate] = []
+    for posting in postings:
+        evaluation = evaluations.get(posting.id)
+        candidates.append(
+            _MarketDuplicateCandidate(
+                posting_id=posting.id,
+                company=posting.company,
+                title=posting.title,
+                recommendation=(
+                    evaluation.recommendation if evaluation is not None else "review_manually"
+                ),
+                confidence=(evaluation.confidence if evaluation is not None else "low"),
+                ranking_score=(evaluation.ranking_score if evaluation is not None else 0),
+            )
+        )
+
+    groups = group_semantic_duplicates(
+        candidates,
+        descriptions=descriptions,
+    )
+
+    canonical_postings: list[Posting] = []
+    duplicate_groups: list[dict[str, object]] = []
+
+    for group in groups:
+        canonical_id = group[0].posting_id
+        canonical_postings.append(posting_by_id[canonical_id])
+
+        if len(group) > 1:
+            member_ids = [member.posting_id for member in group]
+            duplicate_groups.append(
+                {
+                    "canonical_posting_id": canonical_id,
+                    "member_posting_ids": member_ids,
+                    "duplicate_posting_ids": member_ids[1:],
+                }
+            )
+
+    return canonical_postings, duplicate_groups
+
+
 def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> dict[str, object]:
     role_families: Counter[str] = Counter()
     work_modes: Counter[str] = Counter()
@@ -432,9 +492,31 @@ def build_market_intelligence(
     production_postings = [
         posting for posting in active_postings if not _is_synthetic_audit_posting(posting)
     ]
-    source_filtered = _filter_by_source_scope(production_postings, capture_statuses, source_scope)
-    postings = _filter_by_timeframe(source_filtered, timeframe)
-    evaluations, evaluation_coverage = _effective_evaluations(session, postings)
+    source_filtered = _filter_by_source_scope(
+        production_postings,
+        capture_statuses,
+        source_scope,
+    )
+    source_postings = _filter_by_timeframe(source_filtered, timeframe)
+    source_evaluations, evaluation_coverage = _effective_evaluations(
+        session,
+        source_postings,
+    )
+    postings, duplicate_groups = _deduplicate_market_postings(
+        source_postings,
+        source_evaluations,
+    )
+    evaluations = {
+        posting.id: source_evaluations[posting.id]
+        for posting in postings
+        if posting.id in source_evaluations
+    }
+    evaluation_coverage = {
+        **evaluation_coverage,
+        "source_posting_count": len(source_postings),
+        "canonical_role_count": len(postings),
+        "duplicate_member_count": len(source_postings) - len(postings),
+    }
 
     target_postings: list[Posting] = []
     outside_postings: list[Posting] = []
@@ -455,6 +537,7 @@ def build_market_intelligence(
         "target": _scope_data(target_postings, evaluations),
         "all": _scope_data(postings, evaluations),
         "evaluation_coverage": evaluation_coverage,
+        "duplicate_groups": duplicate_groups,
         "excluded_synthetic_count": len(active_postings) - len(production_postings),
         "outside_title_examples": _ranked(outside_titles, 15),
         "fit_explanation": (

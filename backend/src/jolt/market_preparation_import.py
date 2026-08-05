@@ -58,21 +58,39 @@ def _data_path() -> Path:
     return data_dir / "market_preparation_imports.json"
 
 
-def _read_records() -> list[MarketPreparationImportRecord]:
+def _read_payload() -> dict[str, Any]:
     path = _data_path()
     if not path.exists():
-        return []
+        return {"total_import_count": 0, "imports": []}
+
     payload = json.loads(path.read_text(encoding="utf-8"))
-    return [
-        MarketPreparationImportRecord.model_validate(item) for item in payload.get("imports", [])
-    ]
+    imports = payload.get("imports", [])
+    total_import_count = payload.get("total_import_count", len(imports))
+
+    return {
+        "total_import_count": max(int(total_import_count), len(imports)),
+        "imports": imports,
+    }
 
 
-def _write_records(records: list[MarketPreparationImportRecord]) -> None:
+def _read_records() -> list[MarketPreparationImportRecord]:
+    payload = _read_payload()
+    return [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
+
+
+def _write_records(
+    records: list[MarketPreparationImportRecord],
+    *,
+    total_import_count: int,
+) -> None:
     path = _data_path()
-    payload = {"imports": [record.model_dump(mode="json") for record in records[-25:]]}
+    payload = {
+        "total_import_count": total_import_count,
+        "imports": [record.model_dump(mode="json") for record in records[-25:]],
+    }
     path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
     )
 
 
@@ -92,7 +110,8 @@ def _actions_from_request(request: MarketPreparationImportRequest) -> list[Marke
 def import_market_preparation(
     request: MarketPreparationImportRequest,
 ) -> MarketPreparationImportResponse:
-    records = _read_records()
+    payload = _read_payload()
+    records = [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
     actions = _actions_from_request(request)
     record = MarketPreparationImportRecord(
         id=str(uuid.uuid4()),
@@ -104,13 +123,22 @@ def import_market_preparation(
         raw_payload=request.raw_payload,
     )
     records.append(record)
-    _write_records(records)
-    return MarketPreparationImportResponse(imported_count=len(actions), latest_import=record)
+    _write_records(
+        records,
+        total_import_count=payload["total_import_count"] + 1,
+    )
+    return MarketPreparationImportResponse(
+        imported_count=len(actions),
+        latest_import=record,
+    )
 
 
 def list_market_preparation_imports() -> MarketPreparationImportIndex:
-    records = _read_records()
+    payload = _read_payload()
+    records = [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
     latest = records[-1] if records else None
     return MarketPreparationImportIndex(
-        import_count=len(records), latest_import=latest, imports=list(reversed(records))
+        import_count=payload["total_import_count"],
+        latest_import=latest,
+        imports=list(reversed(records)),
     )

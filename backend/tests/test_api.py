@@ -77,6 +77,8 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
         "next_due_kind": None,
         "document_state": "not started",
         "overdue": False,
+        "duplicate_count": 1,
+        "duplicate_posting_ids": [],
     }
     assert "readiness" not in compact_opportunity
     assert "strengths" not in compact_opportunity

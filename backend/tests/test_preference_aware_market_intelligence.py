@@ -101,3 +101,60 @@ def test_required_language_uses_current_saved_language_preferences(monkeypatch) 
     assert recommendation == "pursue"
     assert score > 0
     assert not any("required language" in reason for reason in reasons)
+
+
+def test_market_groups_semantic_duplicate_postings(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    first = client.post(
+        "/api/intake/manual",
+        json={
+            "source_type": "manual",
+            "source_url": "https://example.test/ashby-madrid",
+            "raw_text": (
+                "Product Support Specialist - EMEA\n"
+                "Ashby\n"
+                "Location: Madrid, Spain Remote\n"
+                "Support Ashby customers across EMEA, troubleshoot product "
+                "behavior, investigate logs and collaborate with engineering."
+            ),
+        },
+    )
+    second = client.post(
+        "/api/intake/manual",
+        json={
+            "source_type": "manual",
+            "source_url": "https://example.test/ashby-barcelona",
+            "raw_text": (
+                "Product Support Specialist - EMEA\n"
+                "Ashby\n"
+                "Location: Barcelona, Spain Remote\n"
+                "Support Ashby customers across EMEA, troubleshoot product "
+                "behavior, investigate logs and collaborate with engineering."
+            ),
+        },
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["posting_id"] != second.json()["posting_id"]
+
+    payload = client.get("/api/market-intelligence?timeframe=all&source_scope=manual_intake").json()
+
+    assert payload["total_unique_roles"] == 1
+    assert payload["target_role_count"] == 1
+    assert payload["evaluation_coverage"]["source_posting_count"] == 2
+    assert payload["evaluation_coverage"]["canonical_role_count"] == 1
+    assert payload["evaluation_coverage"]["duplicate_member_count"] == 1
+
+    assert len(payload["duplicate_groups"]) == 1
+    group = payload["duplicate_groups"][0]
+
+    assert len(group["member_posting_ids"]) == 2
+    assert len(group["duplicate_posting_ids"]) == 1
+    assert group["canonical_posting_id"] in group["member_posting_ids"]
+
+    assert set(group["member_posting_ids"]) == {
+        first.json()["posting_id"],
+        second.json()["posting_id"],
+    }

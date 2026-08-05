@@ -218,3 +218,55 @@ def test_linkedin_playwright_capture_endpoint_uses_service(tmp_path: Path, monke
     assert payload["title"] == "Profile"
     assert payload["source_url"] == "https://www.linkedin.com/in/example/"
     assert "multi-section" in payload["notes"]
+
+
+def test_market_preparation_import_count_survives_retention_cap(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import json
+
+    from jolt import market_preparation_import
+
+    data_path = tmp_path / "market_preparation_imports.json"
+    records = [
+        {
+            "id": f"existing-{index}",
+            "source": "test",
+            "summary": f"Existing import {index}",
+            "imported_at": "2026-08-05T00:00:00+00:00",
+            "action_count": 0,
+            "actions": [],
+            "raw_payload": {},
+        }
+        for index in range(25)
+    ]
+    data_path.write_text(
+        json.dumps({"imports": records}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        market_preparation_import,
+        "_data_path",
+        lambda: data_path,
+    )
+
+    request = market_preparation_import.MarketPreparationImportRequest(
+        summary="Import after retention cap",
+        preparation_plan=[
+            market_preparation_import.MarketPreparationAction(
+                title="Verify cumulative count",
+            )
+        ],
+    )
+
+    market_preparation_import.import_market_preparation(request)
+    index = market_preparation_import.list_market_preparation_imports()
+
+    assert index.import_count == 26
+    assert len(index.imports) == 25
+
+    stored = json.loads(data_path.read_text(encoding="utf-8"))
+    assert stored["total_import_count"] == 26
+    assert len(stored["imports"]) == 25
