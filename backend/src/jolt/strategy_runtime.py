@@ -23,6 +23,79 @@ from jolt.preference_aware_evaluation import preference_blockers, sanitize_captu
 
 ENGINE_VERSION = "profile-rules-v4"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
+_SPAIN_LOCATION_TERMS = (
+    "spain",
+    "españa",
+    "espana",
+    "galicia",
+    "madrid",
+    "barcelona",
+    "valencia",
+    "andalusia",
+    "andalucía",
+    "andalucia",
+    "a coruña",
+    "coruña",
+    "vigo",
+    "pontevedra",
+    "málaga",
+    "malaga",
+)
+
+_BROAD_REMOTE_LOCATION_TERMS = (
+    "worldwide",
+    "global",
+    "anywhere",
+    "european union",
+    "europe",
+    "emea",
+    "eu remote",
+)
+
+_FOREIGN_COUNTRY_LOCATION_TERMS = (
+    "austria",
+    "belgium",
+    "bulgaria",
+    "croatia",
+    "cyprus",
+    "czechia",
+    "czech republic",
+    "denmark",
+    "estonia",
+    "finland",
+    "france",
+    "germany",
+    "greece",
+    "hungary",
+    "ireland",
+    "italy",
+    "latvia",
+    "lithuania",
+    "luxembourg",
+    "netherlands",
+    "norway",
+    "poland",
+    "portugal",
+    "romania",
+    "slovakia",
+    "slovenia",
+    "sweden",
+    "switzerland",
+    "united kingdom",
+    "uk",
+)
+
+_EXPLICIT_FOREIGN_RESIDENCE_PATTERNS = (
+    r"\bmust\s+(?:already\s+)?(?:live|reside|be based)\s+in\s+(?!spain\b)",
+    r"\bonly\s+(?:open|available)\s+to\s+(?:candidates|applicants)\s+"
+    r"(?:living|resident|based)\s+in\s+(?!spain\b)",
+    r"\brequires?\s+(?:current\s+)?(?:residence|residency)\s+in\s+(?!spain\b)",
+    r"\bwork\s+authori[sz]ation\s+(?:is\s+)?required\s+in\s+(?!spain\b)",
+    r"\bright\s+to\s+work\s+in\s+(?!spain\b)",
+    r"\bremote\s+(?:only\s+)?within\s+(?!spain\b)",
+    r"\bremote\s+from\s+(?!spain\b)",
+)
+
 _EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS = (
     r"\bmanage(?:s|d|ment|ing)?\s+(?:a|the|our)?\s*team\b",
     r"\blead(?:s|ing)?\s+(?:a|the|our)?\s*team\b",
@@ -172,6 +245,84 @@ def _remove_unsubstantiated_people_management_gap(
     )
 
 
+def _normalized_location_scope(location: str) -> str:
+    normalized = " ".join(location.casefold().split())
+
+    if any(term in normalized for term in _SPAIN_LOCATION_TERMS):
+        return "spain"
+
+    if any(term in normalized for term in _BROAD_REMOTE_LOCATION_TERMS):
+        return "broad"
+
+    if any(term in normalized for term in _FOREIGN_COUNTRY_LOCATION_TERMS):
+        return "foreign_country"
+
+    return "unknown"
+
+
+def _has_explicit_foreign_residence_requirement(text: str) -> bool:
+    normalized = " ".join(text.casefold().split())
+    return any(re.search(pattern, normalized) for pattern in _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS)
+
+
+def _apply_location_eligibility(
+    assessment: StrategyAssessment,
+    *,
+    title: str,
+    location: str,
+    description: str,
+) -> StrategyAssessment:
+    if assessment.eligibility == "ineligible":
+        return assessment
+
+    combined_text = "\n".join((title, location, description))
+    scope = _normalized_location_scope(location)
+
+    if _has_explicit_foreign_residence_requirement(combined_text):
+        blockers = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.blockers,
+                    (
+                        "Location eligibility: the vacancy explicitly requires "
+                        "residence or work authorization outside Spain."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            blockers=blockers,
+        )
+
+    if scope != "foreign_country":
+        return assessment
+
+    uncertainties = tuple(
+        dict.fromkeys(
+            [
+                *assessment.uncertainties,
+                (
+                    "Location eligibility: the vacancy is advertised as remote "
+                    "from another specific country; cross-border employment from "
+                    "Spain has not been confirmed."
+                ),
+            ]
+        )
+    )
+
+    return replace(
+        assessment,
+        eligibility="eligible_with_conditions",
+        recommendation="pursue_if_condition_met",
+        confidence="low",
+        uncertainties=uncertainties,
+    )
+
+
 def _apply_saved_preferences(
     assessment: StrategyAssessment,
     *,
@@ -247,6 +398,12 @@ def calibrated_strategy_assessment(
         description=sanitized_description,
     )
     assessment = _apply_saved_preferences(
+        assessment,
+        title=title,
+        location=location,
+        description=sanitized_description,
+    )
+    assessment = _apply_location_eligibility(
         assessment,
         title=title,
         location=location,
