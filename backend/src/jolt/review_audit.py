@@ -12,7 +12,7 @@ API_BASE = "http://127.0.0.1:8000"
 APP_URL = "http://127.0.0.1:5173"
 LEGACY_PROFILE = "rafael-job-search:v2"
 LEGACY_ENGINE = "profile-rules-v2"
-PRIVATE_ENGINES = {"profile-rules-v3", "profile-rules-v4"}
+PRIVATE_ENGINES = {"profile-rules-v3", "profile-rules-v4", "profile-rules-v5"}
 EXPECTED_READINESS_ENGINE = "application-readiness-v1"
 REQUIRED_REVIEW_FIELDS = {
     "proposed_decision",

@@ -56,6 +56,52 @@ class EligibilityRule(BaseModel):
     outcome: Literal["eligible_with_conditions", "uncertain", "ineligible"]
 
 
+class SpecialistPlatformRequirement(BaseModel):
+    id: str
+    label: str
+    aliases: list[str]
+    mandatory_markers: list[str]
+    accepted_transfer_markers: list[str] = Field(default_factory=list)
+
+
+def _default_specialist_platform_requirements() -> list[SpecialistPlatformRequirement]:
+    return [
+        SpecialistPlatformRequirement(
+            id="aveva_pi_system",
+            label="AVEVA PI System",
+            aliases=[
+                "aveva pi system",
+                "pi data archive",
+                "asset framework",
+                "pi interfaces",
+                "pi connectors",
+                "pi vision",
+                "pi points",
+            ],
+            mandatory_markers=[
+                "experiencia demostrable trabajando con",
+                "experiencia demostrable con",
+                "demonstrable experience working with",
+                "proven experience working with",
+                "proven experience with",
+                "hands-on experience with",
+                "must have experience with",
+                "required experience with",
+            ],
+            accepted_transfer_markers=[
+                "or equivalent",
+                "or similar",
+                "training provided",
+                "formación incluida",
+                "willing to learn",
+                "transferable experience accepted",
+                "experience preferred",
+                "experiencia valorable",
+            ],
+        )
+    ]
+
+
 class PreparationCapacity(BaseModel):
     hours_per_week: int = Field(default=10, ge=0, le=80)
     default_days_until_technical: int = Field(default=10, ge=0, le=90)
@@ -89,6 +135,9 @@ class StrategyProfile(BaseModel):
     role_families: list[RoleFamily]
     capabilities: list[CapabilityEvidence]
     eligibility_rules: list[EligibilityRule] = Field(default_factory=list)
+    specialist_platform_requirements: list[SpecialistPlatformRequirement] = Field(
+        default_factory=_default_specialist_platform_requirements
+    )
     preparation: PreparationCapacity = Field(default_factory=PreparationCapacity)
     weights: EvaluationWeights = Field(default_factory=EvaluationWeights)
 
@@ -231,6 +280,83 @@ def _average(values: list[int], default: int = 0) -> int:
     return round(sum(values) / len(values)) if values else default
 
 
+def _terms_are_near(
+    text: str,
+    left_terms: list[str],
+    right_terms: list[str],
+    *,
+    maximum_characters: int = 180,
+) -> bool:
+    normalized = _normalize_match_text(text)
+    left_patterns = [pattern for term in left_terms if (pattern := _term_pattern(term)) is not None]
+    right_patterns = [
+        pattern for term in right_terms if (pattern := _term_pattern(term)) is not None
+    ]
+
+    for left_pattern in left_patterns:
+        for left_match in left_pattern.finditer(normalized):
+            window_start = max(0, left_match.start() - maximum_characters)
+            window_end = min(len(normalized), left_match.end() + maximum_characters)
+            window = normalized[window_start:window_end]
+            if any(right_pattern.search(window) for right_pattern in right_patterns):
+                return True
+
+    return False
+
+
+def _profile_has_direct_platform_evidence(
+    profile: StrategyProfile,
+    requirement: SpecialistPlatformRequirement,
+) -> bool:
+    for capability in profile.capabilities:
+        if capability.evidence_level <= 0:
+            continue
+        capability_text = "\n".join(
+            [
+                capability.id,
+                capability.label,
+                *capability.terms,
+            ]
+        )
+        if _matched_terms(capability_text, requirement.aliases):
+            return True
+    return False
+
+
+def _missing_required_specialist_platforms(
+    profile: StrategyProfile,
+    text: str,
+) -> tuple[SpecialistPlatformRequirement, ...]:
+    missing: list[SpecialistPlatformRequirement] = []
+
+    for requirement in profile.specialist_platform_requirements:
+        if not _matched_terms(text, requirement.aliases):
+            continue
+
+        mandatory = _terms_are_near(
+            text,
+            requirement.mandatory_markers,
+            requirement.aliases,
+        )
+        if not mandatory:
+            continue
+
+        accepted_transfer = _terms_are_near(
+            text,
+            requirement.accepted_transfer_markers,
+            requirement.aliases,
+        )
+        if accepted_transfer:
+            continue
+
+        if _profile_has_direct_platform_evidence(profile, requirement):
+            continue
+
+        missing.append(requirement)
+
+    return tuple(missing)
+
+
 def assess_posting(
     profile: StrategyProfile,
     title: str,
@@ -263,6 +389,13 @@ def assess_posting(
         elif eligibility == "eligible":
             uncertainties.append(message)
             eligibility = "eligible_with_conditions"
+
+    missing_specialist_platforms = _missing_required_specialist_platforms(profile, text)
+    for requirement in missing_specialist_platforms:
+        blockers.append(
+            f"Missing required direct specialist-platform experience: {requirement.label}."
+        )
+        eligibility = "ineligible"
 
     role_family = _select_role_family(profile, title, location, description)
     role_alignment = {
@@ -342,6 +475,11 @@ def assess_posting(
         100, max(fit_by_interview, round((fit_by_interview + strategic_value) / 2))
     )
 
+    if missing_specialist_platforms:
+        fit_now = 0
+        fit_by_interview = 0
+        fit_on_the_job = 0
+
     if eligibility == "ineligible" or (role_family and role_family.priority == "excluded"):
         recommendation: Recommendation = "do_not_pursue"
     elif fit_by_interview >= 80 and fit_now >= 70:
@@ -360,6 +498,8 @@ def assess_posting(
     confidence = "high" if role_family and capability_results else "medium"
     if not role_family or not capability_results:
         confidence = "low"
+    if eligibility == "ineligible":
+        confidence = "high"
 
     strengths = tuple(
         f"{item.label}: evidence level {item.evidence_level}; matched {', '.join(item.matched_terms)}."

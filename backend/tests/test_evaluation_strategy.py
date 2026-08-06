@@ -208,3 +208,103 @@ def test_unknown_posting_reduces_confidence() -> None:
 
     assert result.confidence == "low"
     assert result.role_family_id is None
+
+
+def test_required_aveva_pi_system_experience_is_a_deterministic_blocker() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "industrial_operations",
+                "label": "Manufacturing and production-critical IT",
+                "terms": ["industrial", "opc"],
+                "evidence_level": 4,
+                "transferable_to": [],
+                "preparation_topics": [],
+            }
+        ],
+        eligibility_rules=[
+            {
+                "id": "remote_contracting",
+                "label": "Remote contracting requires confirmation",
+                "terms": ["remote"],
+                "outcome": "eligible_with_conditions",
+            }
+        ],
+    )
+
+    result = assess_posting(
+        profile,
+        "Técnico/a PI System – Soporte y Mantenimiento de Sistemas Industriales",
+        "Spain (Remote)",
+        (
+            "Buscamos Técnico/a AVEVA PI System. Administración y soporte técnico de "
+            "plataformas AVEVA PI System, gestión de incidencias, Asset Framework, "
+            "PI Interfaces, PI Connectors, PI Vision, PI Points y protocolos OPC. "
+            "Experiencia demostrable trabajando con AVEVA PI System."
+        ),
+    )
+
+    assert result.role_family_id is None
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+    assert result.fit_now == 0
+    assert result.fit_by_interview == 0
+    assert result.fit_on_the_job == 0
+    assert any(
+        blocker == "Missing required direct specialist-platform experience: AVEVA PI System."
+        for blocker in result.blockers
+    )
+    assert any(
+        strength.startswith("Manufacturing and production-critical IT:")
+        for strength in result.strengths
+    )
+
+
+def test_required_platform_is_allowed_when_direct_experience_is_verified() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "aveva_pi_system",
+                "label": "AVEVA PI System administration",
+                "terms": ["aveva pi system", "pi data archive", "asset framework"],
+                "evidence_level": 3,
+                "transferable_to": [],
+                "preparation_topics": ["Refresh current AVEVA PI System administration workflows."],
+            }
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "PI System Support Engineer",
+        "Remote Spain",
+        (
+            "Proven experience with AVEVA PI System is required. Support PI Data Archive "
+            "and Asset Framework incidents."
+        ),
+    )
+
+    assert result.eligibility != "ineligible"
+    assert not any(
+        "Missing required direct specialist-platform experience" in blocker
+        for blocker in result.blockers
+    )
+
+
+def test_optional_trainable_platform_wording_is_not_a_blocker() -> None:
+    result = assess_posting(
+        _profile(),
+        "Application Support Engineer",
+        "Remote Spain",
+        (
+            "Support incidents and SQL troubleshooting. Experience with AVEVA PI System "
+            "is preferred and training provided."
+        ),
+    )
+
+    assert result.eligibility != "ineligible"
+    assert not any(
+        "Missing required direct specialist-platform experience" in blocker
+        for blocker in result.blockers
+    )
