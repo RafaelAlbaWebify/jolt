@@ -87,7 +87,11 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
-from jolt.strategy_runtime import ensure_strategy_reviews, load_active_strategy_profile
+from jolt.strategy_runtime import (
+    ENGINE_VERSION,
+    ensure_strategy_reviews,
+    load_active_strategy_profile,
+)
 from jolt.workflow import (
     create_application,
     get_application,
@@ -365,9 +369,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         assessments = ensure_strategy_reviews(session, profile) if profile is not None else {}
         return {
             "status": "refreshed",
-            "authoritative_engine": "profile-rules-v4"
-            if profile is not None
-            else "profile-rules-v2",
+            "authoritative_engine": ENGINE_VERSION if profile is not None else "profile-rules-v2",
             "strategy_evaluation_count": len(assessments),
         }
 
