@@ -282,6 +282,37 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
         reviewed_at=utc_now(),
     )
     session.add(review)
+
+    if request.decision == "pursue":
+        existing_application = session.scalar(
+            select(Application).where(Application.posting_id == posting_id)
+        )
+        if existing_application is None:
+            now = utc_now()
+            application = Application(
+                id=str(uuid4()),
+                posting_id=posting_id,
+                status="preparing",
+                application_url="",
+                resume_used="",
+                notes="Created automatically from pursue review decision.",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(application)
+            session.flush()
+            session.add(
+                ApplicationEvent(
+                    id=str(uuid4()),
+                    application_id=application.id,
+                    event_type="application_created",
+                    from_status="",
+                    to_status="preparing",
+                    notes="Created automatically from pursue review decision.",
+                    occurred_at=now,
+                )
+            )
+
     session.commit()
     return ReviewResponse(
         review_id=review.id,
