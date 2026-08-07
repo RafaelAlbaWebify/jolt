@@ -80,19 +80,25 @@ def descriptions_are_materially_similar(first: str, second: str) -> bool:
     if not first_normalized or not second_normalized:
         return False
 
-    sequence_ratio = SequenceMatcher(
-        None,
-        first_normalized[:6000],
-        second_normalized[:6000],
-        autojunk=False,
-    ).ratio()
-
     first_tokens = _description_tokens(first)
     second_tokens = _description_tokens(second)
     union = first_tokens | second_tokens
     token_ratio = len(first_tokens & second_tokens) / len(union) if union else 0.0
 
-    return sequence_ratio >= 0.86 or token_ratio >= 0.82
+    if token_ratio >= 0.82:
+        return True
+
+    matcher = SequenceMatcher(
+        None,
+        first_normalized[:6000],
+        second_normalized[:6000],
+        autojunk=False,
+    )
+
+    if matcher.quick_ratio() < 0.86:
+        return False
+
+    return matcher.ratio() >= 0.86
 
 
 def are_semantic_duplicates(

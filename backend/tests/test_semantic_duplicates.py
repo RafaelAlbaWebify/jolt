@@ -47,6 +47,42 @@ def test_materially_different_descriptions_do_not_match() -> None:
     assert not descriptions_are_materially_similar(first, second)
 
 
+def test_high_token_overlap_skips_exact_sequence_ratio(monkeypatch) -> None:
+    def fail_ratio(*args, **kwargs):
+        raise AssertionError("Exact SequenceMatcher.ratio() should not be needed.")
+
+    monkeypatch.setattr(
+        "jolt.semantic_duplicates.SequenceMatcher.ratio",
+        fail_ratio,
+    )
+
+    first = (
+        "Provide technical product support across EMEA investigate customer "
+        "issues analyse logs troubleshoot integrations work with engineering"
+    )
+    second = (
+        "Provide technical product support across EMEA investigate customer "
+        "issues analyze logs troubleshoot integrations work with engineering"
+    )
+
+    assert descriptions_are_materially_similar(first, second)
+
+
+def test_low_quick_ratio_skips_exact_sequence_ratio(monkeypatch) -> None:
+    def fail_ratio(*args, **kwargs):
+        raise AssertionError("Exact SequenceMatcher.ratio() should not be needed.")
+
+    monkeypatch.setattr(
+        "jolt.semantic_duplicates.SequenceMatcher.ratio",
+        fail_ratio,
+    )
+
+    first = " ".join(["payroll", "benefits", "employees", "hr"] * 300)
+    second = " ".join(["plc", "factory", "network", "robot"] * 300)
+
+    assert not descriptions_are_materially_similar(first, second)
+
+
 def test_ashby_location_variants_form_one_group() -> None:
     madrid = Candidate(
         posting_id="ashby-madrid",
