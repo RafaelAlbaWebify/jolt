@@ -55,34 +55,16 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     restarted_client = _client(database_path)
     compact = restarted_client.get("/api/opportunity-index?include_reviewed=true")
     assert compact.status_code == 200
-    compact_items = compact.json()
-    assert len(compact_items) == 1
-    compact_opportunity = compact_items[0]
-    assert compact_opportunity == {
-        "posting_id": result["posting_id"],
-        "evaluation_id": compact_opportunity["evaluation_id"],
-        "source_url": payload["source_url"],
-        "title": "Application Support Engineer",
-        "company": "Example Systems",
-        "location": "Remote Spain",
-        "recommendation": "pursue",
-        "confidence": compact_opportunity["confidence"],
-        "ranking_score": compact_opportunity["ranking_score"],
-        "review_decision": "pursue",
-        "application_id": None,
-        "application_status": None,
-        "outcome_type": None,
-        "last_activity_at": None,
-        "next_due_at": None,
-        "next_due_kind": None,
-        "document_state": "not started",
-        "overdue": False,
-        "duplicate_count": 1,
-        "duplicate_posting_ids": [],
-    }
-    assert "readiness" not in compact_opportunity
-    assert "strengths" not in compact_opportunity
-    assert "preparation_plan" not in compact_opportunity
+    assert compact.json() == []
+
+    applications = restarted_client.get("/api/application-index")
+    assert applications.status_code == 200
+    application_items = applications.json()
+    assert len(application_items) == 1
+    assert application_items[0]["posting_id"] == result["posting_id"]
+    assert application_items[0]["review_decision"] == "pursue"
+    assert application_items[0]["application_id"]
+    assert application_items[0]["application_status"] == "preparing"
 
     refresh = restarted_client.post("/api/evaluations/refresh")
     assert refresh.status_code == 200

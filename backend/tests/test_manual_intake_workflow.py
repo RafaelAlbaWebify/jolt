@@ -72,7 +72,8 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert opportunity["engine_version"] == "profile-rules-v2"
     assert opportunity["review_decision"] == "pursue"
     assert opportunity["strengths"]
-    assert opportunity["application_id"] is None
+    assert opportunity["application_id"]
+    assert opportunity["application_status"] == "preparing"
 
 
 def test_missing_information_does_not_become_hard_reject(tmp_path: Path) -> None:
