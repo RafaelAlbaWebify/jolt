@@ -227,7 +227,225 @@ describe("ApplicationDashboard", () => {
       "applied",
       "interviewing",
       "offer",
+      "closed",
     ]);
+  });
+
+  it("closes an applied card through an explicit final outcome", async () => {
+    let currentPipeline: TestOpportunity[] = pipeline;
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input, init) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/application-index")) {
+          return jsonResponse(currentPipeline);
+        }
+
+        if (
+          url.endsWith("/api/applications/application-1/outcomes") &&
+          init?.method === "POST"
+        ) {
+          currentPipeline = currentPipeline.map(
+            (item): TestOpportunity =>
+              item.posting_id === "posting-applied"
+                ? {
+                    ...item,
+                    application_status: "rejected",
+                    outcome_type: "rejected_by_employer",
+                  }
+                : item,
+          );
+
+          return jsonResponse({
+            ...application,
+            status: "rejected",
+            outcome_type: "rejected_by_employer",
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        "Move Application Support Engineer to stage",
+      ),
+      { target: { value: "closed" } },
+    );
+
+    const outcome = screen.getByLabelText(
+      "Close Application Support Engineer with outcome",
+    );
+
+    expect(outcome).toHaveValue("rejected_by_employer");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm close" }),
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/outcomes",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            outcome_type: "rejected_by_employer",
+            notes: "Closed from the Applications board.",
+          }),
+        }),
+      ),
+    );
+
+    expect(
+      await screen.findByText(
+        "Application Support Engineer closed as Rejected by employer.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(screen.getByLabelText("Closed count")).toHaveTextContent("2");
+  });
+
+  it("uses offer-specific outcomes when closing an offer card", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(pipeline),
+    );
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        "Move Technical Support Engineer to stage",
+      ),
+      { target: { value: "closed" } },
+    );
+
+    const outcome = screen.getByLabelText(
+      "Close Technical Support Engineer with outcome",
+    );
+
+    expect(
+      Array.from(outcome.querySelectorAll("option")).map(
+        (option) => option.value,
+      ),
+    ).toEqual(["offer_accepted", "offer_declined"]);
+  });
+
+  it("does not downgrade a precise interview status inside Interviewing", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(pipeline),
+    );
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        "Move Production Support Analyst to stage",
+      ),
+      { target: { value: "interviewing" } },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes(
+          "/api/applications/application-2/transitions",
+        ),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("moves Offer back to final interview instead of recruiter screen", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input, init) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/application-index")) {
+          return jsonResponse(pipeline);
+        }
+
+        if (
+          url.endsWith("/api/applications/application-3/transitions") &&
+          init?.method === "POST"
+        ) {
+          return jsonResponse({
+            ...application,
+            application_id: "application-3",
+            posting_id: "posting-offer",
+            status: "final_interview",
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    fireEvent.change(
+      await screen.findByLabelText(
+        "Move Technical Support Engineer to stage",
+      ),
+      { target: { value: "interviewing" } },
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-3/transitions",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            status: "final_interview",
+            notes: "Moved on application board from offer to interviewing.",
+          }),
+        }),
+      ),
+    );
+  });
+
+  it("offers permanent deletion directly on a closed card", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(pipeline),
+    );
+
+    render(
+      <ApplicationDashboard
+        apiBase="http://127.0.0.1:8000"
+        active
+      />,
+    );
+
+    await screen.findByRole("button", {
+      name: "Open Support Operations Engineer",
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Delete permanently" }),
+    ).toBeInTheDocument();
   });
 
   it("opens one application in a dedicated workspace instead of expanding it inline", async () => {
