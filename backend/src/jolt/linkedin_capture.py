@@ -15,8 +15,10 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import BrowserContext, Locator, Page, TimeoutError, sync_playwright
+from pydantic import ValidationError
 
 from jolt import multipage_capture
+from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.supervised_capture import (
     CapturedCard,
     package_run,
@@ -52,6 +54,18 @@ class CaptureResult:
     stop_reason: str
     search_state: dict[str, Any]
     retry_metrics: RetryMetrics
+
+
+def _merge_page_evidence_ids(
+    initial_ids: tuple[str, ...],
+    captured_cards: list[CapturedCard],
+) -> tuple[str, ...]:
+    observed = list(initial_ids)
+    for card in captured_cards:
+        source_job_id = card.source_job_id.strip()
+        if source_job_id and source_job_id not in observed:
+            observed.append(source_job_id)
+    return tuple(observed)
 
 
 def _first_input_value(page: Page, selectors: tuple[str, ...]) -> str:
@@ -300,33 +314,33 @@ def capture_pages(
             page,
             page_number + 1,
         )
-        pages.append(
-            multipage_capture.PageEvidence(
-                page_number=page_number,
-                visible_job_ids=visible_ids,
-                matched_card_selector=selector,
-                next_control_present=next_present,
-                next_control_enabled=next_enabled,
-            )
-        )
         with contextlib.suppress(Exception):
             page.screenshot(
                 path=evidence_dir / f"page_{page_number}_listing.png",
                 full_page=False,
             )
 
-        captured.extend(
-            capture_page_cards(
-                page,
-                cards,
+        page_cards = capture_page_cards(
+            page,
+            cards,
+            page_number=page_number,
+            remaining=max_jobs - len(captured),
+            evidence_dir=evidence_dir,
+            seen=seen,
+            skipped=skipped,
+            metrics=metrics,
+        )
+        captured.extend(page_cards)
+        pages.append(
+            multipage_capture.PageEvidence(
                 page_number=page_number,
-                remaining=max_jobs - len(captured),
-                evidence_dir=evidence_dir,
-                seen=seen,
-                skipped=skipped,
-                metrics=metrics,
+                visible_job_ids=_merge_page_evidence_ids(visible_ids, page_cards),
+                matched_card_selector=selector,
+                next_control_present=next_present,
+                next_control_enabled=next_enabled,
             )
         )
+
         if len(captured) >= max_jobs:
             stop_reason = "requested_limit_reached"
             break
@@ -345,6 +359,7 @@ def capture_pages(
             stop_reason = "next_page_failed"
             break
         cards, selector = advanced
+
     return captured, pages, skipped, stop_reason
 
 
@@ -384,6 +399,61 @@ def build_submit_payload(
     }
 
 
+def _validation_errors(error: ValidationError) -> list[dict[str, Any]]:
+    return json.loads(error.json(include_url=False))
+
+
+def _prepare_submit_payload(
+    cards: list[CapturedCard],
+    pages: list[multipage_capture.PageEvidence],
+    search_url: str,
+    requested_item_limit: int,
+    stop_reason: str,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[dict[str, Any]]]:
+    payload = build_submit_payload(
+        cards,
+        pages,
+        search_url,
+        requested_item_limit,
+        stop_reason,
+    )
+
+    valid_items: list[dict[str, Any]] = []
+    rejected_items: list[dict[str, Any]] = []
+
+    raw_items = payload["items"]
+    if not isinstance(raw_items, list):
+        raise TypeError("capture payload items must be a list")
+
+    for item_index, raw_item in enumerate(raw_items):
+        try:
+            item = LinkedInLiveCaptureItemRequest.model_validate(raw_item)
+        except ValidationError as error:
+            source_job_id = ""
+            if isinstance(raw_item, dict):
+                source_job_id = str(raw_item.get("source_job_id", ""))
+
+            rejected_items.append(
+                {
+                    "item_index": item_index,
+                    "source_job_id": source_job_id,
+                    "validation_errors": _validation_errors(error),
+                }
+            )
+            continue
+
+        valid_items.append(item.model_dump(mode="json"))
+
+    payload["items"] = valid_items
+
+    try:
+        validated = LinkedInLiveCaptureRequest.model_validate(payload)
+    except ValidationError as error:
+        return None, rejected_items, _validation_errors(error)
+
+    return validated.model_dump(mode="json"), rejected_items, []
+
+
 def submit_capture(
     api_url: str,
     cards: list[CapturedCard],
@@ -392,26 +462,59 @@ def submit_capture(
     requested_item_limit: int,
     stop_reason: str,
 ) -> dict[str, Any]:
-    payload = json.dumps(
-        build_submit_payload(
-            cards,
-            pages,
-            search_url,
-            requested_item_limit,
-            stop_reason,
-        )
-    ).encode("utf-8")
+    prepared, rejected_items, validation_errors = _prepare_submit_payload(
+        cards,
+        pages,
+        search_url,
+        requested_item_limit,
+        stop_reason,
+    )
+
+    if prepared is None:
+        return {
+            "submitted": False,
+            "stage": "local_validation",
+            "validation_errors": validation_errors,
+            "client_rejected_items": rejected_items,
+        }
+
+    payload = json.dumps(prepared).encode("utf-8")
     request = urllib.request.Request(
         f"{api_url.rstrip('/')}/api/captures/linkedin/live",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
+            result = json.loads(response.read().decode("utf-8"))
+            if rejected_items:
+                result["client_rejected_items"] = rejected_items
+            return result
+
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace").strip()
+        response_detail: Any = body
+
+        if body:
+            with contextlib.suppress(json.JSONDecodeError):
+                response_detail = json.loads(body)
+
+        return {
+            "submitted": False,
+            "status_code": exc.code,
+            "error": str(exc),
+            "response": response_detail,
+            "client_rejected_items": rejected_items,
+        }
+
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return {"submitted": False, "error": str(exc)}
+        return {
+            "submitted": False,
+            "error": str(exc),
+            "client_rejected_items": rejected_items,
+        }
 
 
 def _write_failure_diagnostics(
