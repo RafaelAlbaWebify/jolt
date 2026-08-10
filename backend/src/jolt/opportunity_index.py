@@ -135,9 +135,10 @@ def list_opportunity_index(
 
     The default Opportunities page is the pending-review inbox. Reviewed items,
     applications, archived capture imports, and orphaned LinkedIn imports are excluded.
-    Tracking views pass include_applied=True so reviewed/applied postings remain visible.
-    Reviewed archive tools pass include_reviewed=True to include reviewed non-application rows.
-    Archived application cards remain hidden unless include_archived=True is requested.
+    Application tracking views pass include_applied=True and therefore return only
+    postings that still own a durable Application record. Reviewed archive tools pass
+    include_reviewed=True to include reviewed non-application rows. Archived application
+    cards remain hidden unless include_archived=True is requested.
     """
     postings = session.scalars(select(Posting).order_by(Posting.created_at.desc())).all()
     source_documents = {item.id: item for item in session.scalars(select(SourceDocument)).all()}
@@ -194,6 +195,8 @@ def list_opportunity_index(
         if evaluation is None:
             continue
         application = applications.get(posting.id)
+        if include_applied and application is None:
+            continue
         if (
             application is not None
             and application.status == ARCHIVED_APPLICATION_STATUS

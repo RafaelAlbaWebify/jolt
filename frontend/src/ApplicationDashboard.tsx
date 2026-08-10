@@ -7,6 +7,8 @@ import { ApplicationTasks } from "./ApplicationTasks";
 import { ApplicationWorkflow } from "./ApplicationWorkflow";
 import type { ApplicationStatus } from "./ApplicationWorkflow";
 
+type ApplicationRecordStatus = ApplicationStatus | "archived";
+
 type Opportunity = {
   posting_id: string;
   source_url: string;
@@ -15,7 +17,7 @@ type Opportunity = {
   location: string;
   review_decision: string | null;
   application_id?: string | null;
-  application_status?: ApplicationStatus | string | null;
+  application_status?: ApplicationRecordStatus | null;
   outcome_type?: string | null;
   last_activity_at?: string | null;
   next_due_at?: string | null;
@@ -36,7 +38,7 @@ type ApplicationEvent = {
 type ApplicationDetail = {
   application_id: string;
   posting_id: string;
-  status: ApplicationStatus | string;
+  status: ApplicationRecordStatus;
   application_url: string;
   resume_used: string;
   notes: string;
@@ -48,6 +50,7 @@ type Props = { apiBase: string; active: boolean };
 type PipelineLane = "preparing" | "applied" | "interviewing" | "offer" | "closed";
 type WorkspaceTab = "overview" | "tasks" | "interviews" | "contacts" | "documents" | "timeline";
 type LaneDefinition = { id: PipelineLane; label: string; description: string };
+type OutcomeChoice = { value: string; label: string };
 
 const LANES: LaneDefinition[] = [
   { id: "preparing", label: "Preparing", description: "Tailor materials and get ready to apply." },
@@ -66,13 +69,13 @@ const TABS: Array<{ id: WorkspaceTab; label: string }> = [
   { id: "timeline", label: "Timeline" },
 ];
 
-const INTERVIEW_STATUSES = new Set<string>([
+const INTERVIEW_STATUSES = new Set<ApplicationStatus>([
   "recruiter_screen",
   "technical_interview",
   "hiring_manager_interview",
   "final_interview",
 ]);
-const CLOSED_STATUSES = new Set<string>(["rejected", "withdrawn", "no_response", "closed"]);
+const CLOSED_STATUSES = new Set<ApplicationStatus>(["rejected", "withdrawn", "no_response", "closed"]);
 const OUTCOME_CODES = [
   "rejected_by_employer",
   "withdrawn_by_user",
@@ -81,11 +84,6 @@ const OUTCOME_CODES = [
   "offer_accepted",
   "role_closed",
 ];
-
-type OutcomeChoice = {
-  value: string;
-  label: string;
-};
 
 const GENERAL_CLOSE_OUTCOMES: OutcomeChoice[] = [
   { value: "rejected_by_employer", label: "Rejected by employer" },
@@ -98,20 +96,21 @@ const OFFER_CLOSE_OUTCOMES: OutcomeChoice[] = [
   { value: "offer_accepted", label: "Offer accepted" },
   { value: "offer_declined", label: "Offer declined" },
 ];
+
 function label(value: string | null | undefined) {
-  return value ? value.replaceAll("_", " ") : "ready to prepare";
+  return value ? value.replaceAll("_", " ") : "unknown";
 }
 
 function formatEventNotes(notes: string) {
   return OUTCOME_CODES.reduce((formatted, code) => formatted.replaceAll(code, label(code)), notes);
 }
 
-function laneFor(item: Opportunity): PipelineLane {
-  if (item.application_status === "archived") return "closed";
-  if (item.outcome_type || (item.application_status && CLOSED_STATUSES.has(item.application_status))) return "closed";
-  if (!item.application_id || !item.application_status || item.application_status === "preparing") return "preparing";
+function activeLaneFor(item: Opportunity): PipelineLane | null {
+  if (!item.application_id || !item.application_status || item.application_status === "archived") return null;
+  if (item.outcome_type || CLOSED_STATUSES.has(item.application_status)) return "closed";
+  if (item.application_status === "preparing") return "preparing";
   if (item.application_status === "offer") return "offer";
-  if (item.application_status && INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
+  if (INTERVIEW_STATUSES.has(item.application_status)) return "interviewing";
   return "applied";
 }
 
@@ -129,21 +128,11 @@ function deduplicateOpportunities(items: Opportunity[]) {
 }
 
 function availableTargetLanes(item: Opportunity): PipelineLane[] {
-  const currentLane = laneFor(item);
-  if (item.application_status === "archived") return ["closed"];
-  if (!item.application_id || !item.application_status) return [currentLane];
+  const currentLane = activeLaneFor(item);
+  if (!currentLane) return [];
 
-  const activeLanes: PipelineLane[] = [
-    "preparing",
-    "applied",
-    "interviewing",
-    "offer",
-  ];
-
-  if (currentLane === "closed" || item.outcome_type) {
-    return ["closed", ...activeLanes];
-  }
-
+  const activeLanes: PipelineLane[] = ["preparing", "applied", "interviewing", "offer"];
+  if (currentLane === "closed" || item.outcome_type) return ["closed", ...activeLanes];
   return [...activeLanes, "closed"];
 }
 
@@ -155,35 +144,24 @@ function targetStatusForLane(
   if (targetLane === "applied") return "submitted";
   if (targetLane === "offer") return "offer";
 
-  if (
-    item.application_status &&
-    INTERVIEW_STATUSES.has(item.application_status)
-  ) {
-    return item.application_status as ApplicationStatus;
+  if (item.application_status && item.application_status !== "archived" && INTERVIEW_STATUSES.has(item.application_status)) {
+    return item.application_status;
   }
 
-  if (laneFor(item) === "offer" || laneFor(item) === "closed") {
-    return "final_interview";
-  }
-
+  const currentLane = activeLaneFor(item);
+  if (currentLane === "offer" || currentLane === "closed") return "final_interview";
   return "recruiter_screen";
 }
 
 function closeOutcomesFor(item: Opportunity): OutcomeChoice[] {
-  return item.application_status === "offer"
-    ? OFFER_CLOSE_OUTCOMES
-    : GENERAL_CLOSE_OUTCOMES;
+  return item.application_status === "offer" ? OFFER_CLOSE_OUTCOMES : GENERAL_CLOSE_OUTCOMES;
 }
 
 function canDeletePermanently(item: Opportunity) {
-  return (
-    item.application_status === "archived" ||
-    laneFor(item) === "closed"
-  );
+  return item.application_status === "archived" || activeLaneFor(item) === "closed";
 }
 
 function nextAction(item: Opportunity) {
-  if (!item.application_id) return "Create preparation record";
   switch (item.application_status) {
     case "preparing":
       return "Finish documents and record external submission";
@@ -212,6 +190,10 @@ function displayDate(value: string | null | undefined) {
   return value ? new Date(value).toLocaleString() : "None scheduled";
 }
 
+function activeApplicationStatus(status: ApplicationRecordStatus | null | undefined): ApplicationStatus | null {
+  return status && status !== "archived" ? status : null;
+}
+
 function Placeholder({ title, copy }: { title: string; copy: string }) {
   return (
     <section className="application-tab-placeholder">
@@ -227,7 +209,7 @@ function Timeline({ detail, loading }: { detail: ApplicationDetail | null; loadi
     return (
       <Placeholder
         title="No application timeline yet"
-        copy="Create the preparation record first. JOLT will then preserve every stage change and outcome here."
+        copy="The application record is unavailable, so its timeline cannot be shown."
       />
     );
   }
@@ -261,6 +243,59 @@ function Timeline({ detail, loading }: { detail: ApplicationDetail | null; loadi
           ))}
         </ol>
       )}
+    </section>
+  );
+}
+
+function ApplicationSummaryButton({ item, onOpen }: { item: Opportunity; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      className="application-card-open"
+      onClick={onOpen}
+      aria-label={`Open ${item.title || "untitled opportunity"}`}
+    >
+      <span className="application-card-stage">{label(item.outcome_type ?? item.application_status)}</span>
+      {item.overdue && <span className="application-card-alert">Overdue</span>}
+      <strong>{item.title || "Untitled opportunity"}</strong>
+      <span className="application-card-company">{item.company || "Unknown company"}</span>
+      {item.location && <span className="application-card-location">{item.location}</span>}
+      <dl className="application-card-signals">
+        <div>
+          <dt>Last activity</dt>
+          <dd>{displayDate(item.last_activity_at)}</dd>
+        </div>
+        <div>
+          <dt>Next {item.next_due_kind ?? "due"}</dt>
+          <dd>{displayDate(item.next_due_at)}</dd>
+        </div>
+        <div>
+          <dt>Resume</dt>
+          <dd>{item.document_state ?? "Unknown"}</dd>
+        </div>
+      </dl>
+      <span className="application-card-next">
+        <b>Next:</b> {nextAction(item)}
+      </span>
+    </button>
+  );
+}
+
+function ArchivedOverview({ detail, loading }: { detail: ApplicationDetail | null; loading: boolean }) {
+  if (loading) return <p role="status">Loading archived application…</p>;
+  if (!detail) return <Placeholder title="Archived application unavailable" copy="The archived record could not be loaded." />;
+  return (
+    <section className="application-archived-overview">
+      <p className="application-read-only-notice" role="status">
+        Archived application — this workspace is read-only until the application is restored.
+      </p>
+      <dl>
+        <div><dt>Status</dt><dd>Archived</dd></div>
+        <div><dt>Final outcome</dt><dd>{detail.outcome_type ? label(detail.outcome_type) : "None recorded"}</dd></div>
+        <div><dt>Application URL</dt><dd>{detail.application_url || "Not recorded"}</dd></div>
+        <div><dt>CV / resume</dt><dd>{detail.resume_used || "Not recorded"}</dd></div>
+        <div><dt>Preparation notes</dt><dd>{detail.notes || "None recorded"}</dd></div>
+      </dl>
     </section>
   );
 }
@@ -308,29 +343,59 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     };
   }, [selectedPostingId]);
 
+  useEffect(() => {
+    if (!closingPostingId) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setClosingPostingId(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [closingPostingId]);
+
   const candidates = useMemo(
-    () => opportunities.filter((item) => item.review_decision === "pursue" || Boolean(item.application_id)),
+    () => opportunities.filter((item) => Boolean(item.application_id)),
     [opportunities],
   );
-  const visibleCandidates = useMemo(() => {
+  const activeCandidates = useMemo(
+    () => candidates.filter((item) => item.application_status !== "archived"),
+    [candidates],
+  );
+  const archivedCandidates = useMemo(
+    () => candidates.filter((item) => item.application_status === "archived"),
+    [candidates],
+  );
+  const visibleActiveCandidates = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    if (!normalizedQuery) return candidates;
-    return candidates.filter((item) =>
+    if (!normalizedQuery) return activeCandidates;
+    return activeCandidates.filter((item) =>
       [item.title, item.company, item.location, item.application_status, item.outcome_type]
         .join(" ")
         .toLocaleLowerCase()
         .includes(normalizedQuery),
     );
-  }, [candidates, query]);
+  }, [activeCandidates, query]);
+  const visibleArchivedCandidates = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    if (!normalizedQuery) return archivedCandidates;
+    return archivedCandidates.filter((item) =>
+      [item.title, item.company, item.location, item.outcome_type]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [archivedCandidates, query]);
   const grouped = useMemo(
-    () =>
-      Object.fromEntries(LANES.map((lane) => [lane.id, visibleCandidates.filter((item) => laneFor(item) === lane.id)])) as Record<
-        PipelineLane,
-        Opportunity[]
-      >,
-    [visibleCandidates],
+    () => Object.fromEntries(
+      LANES.map((lane) => [
+        lane.id,
+        visibleActiveCandidates.filter((item) => activeLaneFor(item) === lane.id),
+      ]),
+    ) as Record<PipelineLane, Opportunity[]>,
+    [visibleActiveCandidates],
   );
   const selected = candidates.find((item) => item.posting_id === selectedPostingId) ?? null;
+  const closingItem = activeCandidates.find((item) => item.posting_id === closingPostingId) ?? null;
+  const draggedItem = activeCandidates.find((item) => item.posting_id === draggedPostingId) ?? null;
 
   const loadApplicationDetail = useCallback(
     async (applicationId: string | null | undefined) => {
@@ -379,55 +444,50 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   }
 
   function openWorkspace(postingId: string) {
+    setError("");
     setActiveTab("overview");
     setSelectedPostingId(postingId);
   }
 
+  function openCloseDialog(item: Opportunity) {
+    const outcomes = closeOutcomesFor(item);
+    setCloseOutcome(outcomes[0].value);
+    setClosingPostingId(item.posting_id);
+    setDraggedPostingId(null);
+    setDragOverLane(null);
+    setMoveNotice("");
+    setError("");
+  }
+
   async function moveApplication(item: Opportunity, targetLane: PipelineLane) {
-    if (
-      !item.application_id ||
-      item.application_status === "archived" ||
-      laneFor(item) === targetLane ||
-      busy
-    ) return;
+    const currentLane = activeLaneFor(item);
+    if (!item.application_id || !currentLane || currentLane === targetLane || busy) return;
 
     if (!availableTargetLanes(item).includes(targetLane)) {
-      setError(
-        `The application cannot move directly from ${laneFor(item)} to ${targetLane}.`,
-      );
+      setError(`The application cannot move directly from ${currentLane} to ${targetLane}.`);
       return;
     }
 
     if (targetLane === "closed") {
-      const outcomes = closeOutcomesFor(item);
-      setCloseOutcome(outcomes[0].value);
-      setClosingPostingId(item.posting_id);
-      setDraggedPostingId(null);
-      setDragOverLane(null);
-      setMoveNotice("");
-      setError("");
+      openCloseDialog(item);
       return;
     }
 
     if (movingApplicationIds.current.has(item.application_id)) return;
-
     movingApplicationIds.current.add(item.application_id);
     setBusy(true);
     setError("");
     setMoveNotice("");
 
     try {
-      const response = await fetch(
-        `${apiBase}/api/applications/${item.application_id}/transitions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: targetStatusForLane(item, targetLane),
-            notes: `Moved on application board from ${laneFor(item)} to ${targetLane}.`,
-          }),
-        },
-      );
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/transitions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: targetStatusForLane(item, targetLane),
+          notes: `Moved on application board from ${currentLane} to ${targetLane}.`,
+        }),
+      });
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(payload?.detail || "The application could not be moved.");
@@ -437,7 +497,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The application could not be moved.");
     } finally {
-      if (item.application_id) movingApplicationIds.current.delete(item.application_id);
+      movingApplicationIds.current.delete(item.application_id);
       setBusy(false);
       setDraggedPostingId(null);
       setDragOverLane(null);
@@ -446,57 +506,33 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
 
   async function closeApplication(item: Opportunity) {
     if (!item.application_id || busy) return;
-
     const outcomes = closeOutcomesFor(item);
-    const selectedOutcome = outcomes.some(
-      (outcome) => outcome.value === closeOutcome,
-    )
+    const selectedOutcome = outcomes.some((outcome) => outcome.value === closeOutcome)
       ? closeOutcome
       : outcomes[0].value;
 
     setBusy(true);
     setError("");
     setMoveNotice("");
-
     try {
-      const response = await fetch(
-        `${apiBase}/api/applications/${item.application_id}/outcomes`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            outcome_type: selectedOutcome,
-            notes: "Closed from the Applications board.",
-          }),
-        },
-      );
-
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/outcomes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outcome_type: selectedOutcome,
+          notes: "Closed from the Applications board.",
+        }),
+      });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { detail?: string }
-          | null;
-
-        throw new Error(
-          payload?.detail || "The application could not be closed.",
-        );
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The application could not be closed.");
       }
-
       setClosingPostingId(null);
       await refresh();
-
-      const outcomeLabel =
-        outcomes.find((outcome) => outcome.value === selectedOutcome)?.label ??
-        selectedOutcome;
-
-      setMoveNotice(
-        `${item.title || "Application"} closed as ${outcomeLabel}.`,
-      );
+      const outcomeLabel = outcomes.find((outcome) => outcome.value === selectedOutcome)?.label ?? selectedOutcome;
+      setMoveNotice(`${item.title || "Application"} closed as ${outcomeLabel}.`);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "The application could not be closed.",
-      );
+      setError(caught instanceof Error ? caught.message : "The application could not be closed.");
     } finally {
       setBusy(false);
     }
@@ -556,12 +592,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   }
 
   async function deleteCardPermanently(item: Opportunity) {
-    if (
-      !item.application_id ||
-      !canDeletePermanently(item) ||
-      busy
-    ) return;
-
+    if (!item.application_id || !canDeletePermanently(item) || busy) return;
     const confirmed = window.confirm(
       `Permanently delete ${item.title || "this application"}? ` +
         "Its application history, outcome, tasks, interviews, contacts, and documents will be removed. " +
@@ -572,45 +603,23 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     setBusy(true);
     setError("");
     setMoveNotice("");
-
     try {
-      const response = await fetch(
-        `${apiBase}/api/applications/${item.application_id}/delete`,
-        { method: "POST" },
-      );
-
+      const response = await fetch(`${apiBase}/api/applications/${item.application_id}/delete`, { method: "POST" });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { detail?: string }
-          | null;
-
-        throw new Error(
-          payload?.detail || "The application could not be deleted.",
-        );
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "The application could not be deleted.");
       }
-
-      if (selectedPostingId === item.posting_id) {
-        setSelectedPostingId(null);
-      }
-
+      if (selectedPostingId === item.posting_id) setSelectedPostingId(null);
       await refresh();
-
       setMoveNotice(
-        `${item.title || "Application"} permanently deleted. ` +
-          "The opportunity and capture evidence were preserved.",
+        `${item.title || "Application"} permanently deleted. The opportunity and capture evidence were preserved.`,
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "The application could not be deleted.",
-      );
+      setError(caught instanceof Error ? caught.message : "The application could not be deleted.");
     } finally {
       setBusy(false);
     }
   }
-
-  const draggedItem = candidates.find((item) => item.posting_id === draggedPostingId) ?? null;
 
   return (
     <section className="panel application-workspace" aria-labelledby="application-dashboard-heading">
@@ -629,6 +638,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
           Refresh applications
         </button>
       </div>
+
       <div className="application-board-toolbar">
         <label className="application-search">
           <span>Search pipeline</span>
@@ -647,18 +657,14 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
           />
           Show archived cards
         </label>
-        <p className="application-boundary">Closed means the process ended. Archived means hidden from the active board but restorable from this view.</p>
+        <p className="application-boundary">
+          Closed means the process ended. Archived applications are shown separately and remain read-only until restored.
+        </p>
       </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {moveNotice && (
-        <p className="application-move-notice" role="status">
-          {moveNotice}
-        </p>
-      )}
+
+      {error && <p className="error" role="alert">{error}</p>}
+      {moveNotice && <p className="application-move-notice" role="status">{moveNotice}</p>}
+
       <div className="application-board" aria-label="Application pipeline board">
         {LANES.map((lane) => (
           <section
@@ -666,13 +672,13 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             key={lane.id}
             aria-labelledby={`lane-${lane.id}`}
             onDragEnter={(event) => {
-              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && laneFor(draggedItem) !== lane.id) {
+              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && activeLaneFor(draggedItem) !== lane.id) {
                 event.preventDefault();
                 setDragOverLane(lane.id);
               }
             }}
             onDragOver={(event) => {
-              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && laneFor(draggedItem) !== lane.id) {
+              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && activeLaneFor(draggedItem) !== lane.id) {
                 event.preventDefault();
               }
             }}
@@ -697,170 +703,71 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
               {grouped[lane.id].length === 0 ? (
                 <p className="application-lane-empty">No applications</p>
               ) : (
-                grouped[lane.id].map((opportunity) => (
-                  <article
-                    className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}${
-                      opportunity.application_status === "archived" ? " application-card-archived" : ""
-                    }${draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""}`}
-                    key={opportunityIdentity(opportunity)}
-                    data-application-id={opportunity.application_id ?? undefined}
-                    data-posting-id={opportunity.posting_id}
-                    draggable={availableTargetLanes(opportunity).length > 1 && !busy}
-                    onDragStart={(event) => {
-                      if (!opportunity.application_id || availableTargetLanes(opportunity).length <= 1) {
-                        event.preventDefault();
-                        return;
-                      }
-                      event.dataTransfer.effectAllowed = "move";
-                      event.dataTransfer.setData("text/plain", opportunity.posting_id);
-                      setDraggedPostingId(opportunity.posting_id);
-                      setMoveNotice("");
-                    }}
-                    onDragEnd={() => {
-                      setDraggedPostingId(null);
-                      setDragOverLane(null);
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className="application-card-open"
-                      onClick={() => openWorkspace(opportunity.posting_id)}
-                      aria-label={`Open ${opportunity.title || "untitled opportunity"}`}
+                grouped[lane.id].map((opportunity) => {
+                  const currentLane = activeLaneFor(opportunity);
+                  const targets = availableTargetLanes(opportunity);
+                  const canDrag = Boolean(opportunity.application_id && targets.length > 1 && !busy);
+                  return (
+                    <article
+                      className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}${draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""}`}
+                      key={opportunityIdentity(opportunity)}
+                      data-application-id={opportunity.application_id ?? undefined}
+                      data-posting-id={opportunity.posting_id}
+                      draggable={false}
                     >
-                      <span className="application-card-stage">{label(opportunity.outcome_type ?? opportunity.application_status)}</span>
-                      {opportunity.overdue && <span className="application-card-alert">Overdue</span>}
-                      <strong>{opportunity.title || "Untitled opportunity"}</strong>
-                      <span className="application-card-company">{opportunity.company || "Unknown company"}</span>
-                      {opportunity.location && <span className="application-card-location">{opportunity.location}</span>}
-                      <dl className="application-card-signals">
-                        <div>
-                          <dt>Last activity</dt>
-                          <dd>{displayDate(opportunity.last_activity_at)}</dd>
-                        </div>
-                        <div>
-                          <dt>Next {opportunity.next_due_kind ?? "due"}</dt>
-                          <dd>{displayDate(opportunity.next_due_at)}</dd>
-                        </div>
-                        <div>
-                          <dt>Resume</dt>
-                          <dd>{opportunity.document_state ?? "Unknown"}</dd>
-                        </div>
-                      </dl>
-                      <span className="application-card-next">
-                        <b>Next:</b> {nextAction(opportunity)}
-                      </span>
-                    </button>
-                    <div className="application-card-move">
-                      <label>
-                        <span>Move stage</span>
-                        <select
-                          aria-label={`Move ${opportunity.title || "untitled opportunity"} to stage`}
-                          value={laneFor(opportunity)}
-                          disabled={availableTargetLanes(opportunity).length <= 1 || busy}
-                          onChange={(event) => void moveApplication(opportunity, event.target.value as PipelineLane)}
-                        >
-                          {availableTargetLanes(opportunity).map((targetLane) => {
-                            const target = LANES.find((lane) => lane.id === targetLane)!;
-                            return (
-                              <option key={target.id} value={target.id}>
-                                {target.label}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </label>
-                    </div>
-                    {closingPostingId === opportunity.posting_id &&
-                      opportunity.application_id &&
-                      opportunity.application_status !== "archived" &&
-                      laneFor(opportunity) !== "closed" && (
-                        <div className="application-card-close">
-                          <label>
-                            <span>Final outcome</span>
-                            <select
-                              aria-label={`Close ${opportunity.title || "untitled opportunity"} with outcome`}
-                              value={closeOutcome}
-                              disabled={busy}
-                              onChange={(event) =>
-                                setCloseOutcome(event.target.value)
-                              }
-                            >
-                              {closeOutcomesFor(opportunity).map((outcome) => (
-                                <option
-                                  key={outcome.value}
-                                  value={outcome.value}
-                                >
-                                  {outcome.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <button
-                            type="button"
-                            className="danger"
-                            disabled={busy}
-                            onClick={() => void closeApplication(opportunity)}
-                          >
-                            Confirm close
-                          </button>
-
-                          <button
-                            type="button"
-                            className="secondary"
-                            disabled={busy}
-                            onClick={() => setClosingPostingId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-
-                    <div className="application-card-links">
-                      {opportunity.source_url && (
-                        <a href={opportunity.source_url} target="_blank" rel="noreferrer">
-                          Source job
-                        </a>
-                      )}
-                      <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>
-                        Download prep pack
-                      </a>
-                      {opportunity.application_id &&
-                        opportunity.application_status !== "archived" && (
-                          <button
-                            type="button"
-                            className="danger application-card-archive"
-                            disabled={busy}
-                            onClick={() => void archiveCard(opportunity)}
-                          >
-                            Archive card
-                          </button>
-                        )}
-
-                      {opportunity.application_id &&
-                        opportunity.application_status !== "archived" &&
-                        laneFor(opportunity) === "closed" && (
-                          <button
-                            type="button"
-                            className="danger application-card-delete"
-                            disabled={busy}
-                            onClick={() =>
-                              void deleteCardPermanently(opportunity)
+                      <ApplicationSummaryButton item={opportunity} onOpen={() => openWorkspace(opportunity.posting_id)} />
+                      <div className="application-card-move">
+                        <button
+                          type="button"
+                          className="application-card-drag-handle"
+                          draggable={canDrag}
+                          disabled={!canDrag}
+                          aria-label={`Drag ${opportunity.title || "untitled opportunity"} to another stage`}
+                          title="Drag this handle to move the application"
+                          onDragStart={(event) => {
+                            if (!canDrag) {
+                              event.preventDefault();
+                              return;
                             }
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", opportunity.posting_id);
+                            setDraggedPostingId(opportunity.posting_id);
+                            setMoveNotice("");
+                          }}
+                          onDragEnd={() => {
+                            setDraggedPostingId(null);
+                            setDragOverLane(null);
+                          }}
+                        >
+                          Drag to move
+                        </button>
+                        <label>
+                          <span>Move stage</span>
+                          <select
+                            aria-label={`Move ${opportunity.title || "untitled opportunity"} to stage`}
+                            value={currentLane ?? "preparing"}
+                            disabled={targets.length <= 1 || busy}
+                            onChange={(event) => void moveApplication(opportunity, event.target.value as PipelineLane)}
                           >
-                            Delete permanently
-                          </button>
-                        )}
-                      {opportunity.application_id && opportunity.application_status === "archived" && (
-                        <>
-                          <button
-                            type="button"
-                            className="secondary application-card-archive"
-                            disabled={busy}
-                            onClick={() => void restoreCard(opportunity)}
-                          >
-                            Restore card
-                          </button>
+                            {targets.map((targetLane) => {
+                              const target = LANES.find((laneItem) => laneItem.id === targetLane)!;
+                              return <option key={target.id} value={target.id}>{target.label}</option>;
+                            })}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="application-card-links">
+                        {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Source job</a>}
+                        <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
+                        <button
+                          type="button"
+                          className="danger application-card-archive"
+                          disabled={busy}
+                          onClick={() => void archiveCard(opportunity)}
+                        >
+                          Archive card
+                        </button>
+                        {currentLane === "closed" && (
                           <button
                             type="button"
                             className="danger application-card-delete"
@@ -869,16 +776,112 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                           >
                             Delete permanently
                           </button>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                ))
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           </section>
         ))}
       </div>
+
+      {showArchived && (
+        <section className="application-archived-section" aria-labelledby="application-archived-heading">
+          <div className="application-archived-heading">
+            <div>
+              <p className="eyebrow">Separate lifecycle state</p>
+              <h3 id="application-archived-heading">Archived applications</h3>
+              <p>Archived records do not count as Closed and cannot be edited until restored.</p>
+            </div>
+            <strong aria-label="Archived count">{visibleArchivedCandidates.length}</strong>
+          </div>
+          {visibleArchivedCandidates.length === 0 ? (
+            <p className="application-lane-empty">No archived applications</p>
+          ) : (
+            <div className="application-archived-list">
+              {visibleArchivedCandidates.map((opportunity) => (
+                <article
+                  className="application-card application-card-archived"
+                  key={opportunityIdentity(opportunity)}
+                  data-application-id={opportunity.application_id ?? undefined}
+                  data-posting-id={opportunity.posting_id}
+                >
+                  <ApplicationSummaryButton item={opportunity} onOpen={() => openWorkspace(opportunity.posting_id)} />
+                  <div className="application-card-links">
+                    {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Source job</a>}
+                    <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
+                    <button
+                      type="button"
+                      className="secondary application-card-archive"
+                      disabled={busy}
+                      onClick={() => void restoreCard(opportunity)}
+                    >
+                      Restore card
+                    </button>
+                    <button
+                      type="button"
+                      className="danger application-card-delete"
+                      disabled={busy}
+                      onClick={() => void deleteCardPermanently(opportunity)}
+                    >
+                      Delete permanently
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {closingItem && (
+        <div
+          className="application-close-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target && !busy) setClosingPostingId(null);
+          }}
+        >
+          <section
+            className="application-close-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="application-close-title"
+          >
+            <div>
+              <p className="eyebrow">Final outcome</p>
+              <h3 id="application-close-title">Close {closingItem.title || "application"}</h3>
+              <p>{[closingItem.company, closingItem.location].filter(Boolean).join(" · ")}</p>
+              <p className="application-close-current-stage">Current stage: {label(closingItem.application_status)}</p>
+            </div>
+            {error && <p className="error application-close-error" role="alert">{error}</p>}
+            <label>
+              <span>Final outcome</span>
+              <select
+                aria-label={`Close ${closingItem.title || "untitled opportunity"} with outcome`}
+                value={closeOutcome}
+                disabled={busy}
+                onChange={(event) => setCloseOutcome(event.target.value)}
+              >
+                {closeOutcomesFor(closingItem).map((outcome) => (
+                  <option key={outcome.value} value={outcome.value}>{outcome.label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="application-close-actions">
+              <button type="button" className="danger" disabled={busy} onClick={() => void closeApplication(closingItem)}>
+                {busy ? "Closing…" : "Confirm close"}
+              </button>
+              <button type="button" className="secondary" disabled={busy} onClick={() => setClosingPostingId(null)}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {selected && (
         <div
           className="application-workspace-overlay"
@@ -894,9 +897,21 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 <h3 id="application-detail-title">{selected.title || "Untitled opportunity"}</h3>
                 <p>{[selected.company, selected.location].filter(Boolean).join(" · ")}</p>
               </div>
-              <button type="button" className="secondary" onClick={() => setSelectedPostingId(null)}>
-                Close
-              </button>
+              <div className="application-detail-header-actions">
+                {selected.application_status === "archived" && (
+                  <>
+                    <button type="button" className="secondary" disabled={busy} onClick={() => void restoreCard(selected)}>
+                      Restore application
+                    </button>
+                    <button type="button" className="danger" disabled={busy} onClick={() => void deleteCardPermanently(selected)}>
+                      Delete permanently
+                    </button>
+                  </>
+                )}
+                <button type="button" className="secondary" onClick={() => setSelectedPostingId(null)}>
+                  Close
+                </button>
+              </div>
             </header>
             <nav className="application-detail-tabs" aria-label="Application workspace sections" role="tablist">
               {TABS.map((tab) => (
@@ -914,26 +929,37 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
               ))}
             </nav>
             <div className="application-detail-body" id={`application-panel-${activeTab}`} role="tabpanel">
-              {activeTab === "overview" && (
+              {error && <p className="error application-workspace-error" role="alert">{error}</p>}
+              {selected.application_status === "archived" && activeTab === "overview" && (
+                <ArchivedOverview detail={applicationDetail} loading={detailLoading} />
+              )}
+              {selected.application_status !== "archived" && activeTab === "overview" && (
                 <ApplicationWorkflow
                   apiBase={apiBase}
                   postingId={selected.posting_id}
                   title={selected.title || "Untitled opportunity"}
                   reviewDecision={selected.review_decision}
                   applicationId={selected.application_id}
-                  applicationStatus={selected.application_status as ApplicationStatus | null | undefined}
-                  disabled={busy || selected.application_status === "archived"}
+                  applicationStatus={activeApplicationStatus(selected.application_status)}
+                  disabled={busy}
                   onChanged={refreshAfterChange}
                   onError={setError}
                 />
               )}
               {activeTab === "tasks" && (
-                <ApplicationTasks apiBase={apiBase} applicationId={selected.application_id} onChanged={refreshAfterChange} onError={setError} />
+                <ApplicationTasks
+                  apiBase={apiBase}
+                  applicationId={selected.application_id}
+                  readOnly={selected.application_status === "archived"}
+                  onChanged={refreshAfterChange}
+                  onError={setError}
+                />
               )}
               {activeTab === "interviews" && (
                 <ApplicationInterviews
                   apiBase={apiBase}
                   applicationId={selected.application_id}
+                  readOnly={selected.application_status === "archived"}
                   onChanged={refreshAfterChange}
                   onError={setError}
                 />
@@ -942,6 +968,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 <ApplicationContacts
                   apiBase={apiBase}
                   applicationId={selected.application_id}
+                  readOnly={selected.application_status === "archived"}
                   onChanged={refreshAfterChange}
                   onError={setError}
                 />
@@ -950,6 +977,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 <ApplicationDocuments
                   apiBase={apiBase}
                   applicationId={selected.application_id}
+                  readOnly={selected.application_status === "archived"}
                   onChanged={refreshAfterChange}
                   onError={setError}
                 />

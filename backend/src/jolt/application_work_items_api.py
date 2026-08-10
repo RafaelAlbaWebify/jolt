@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from jolt.application_archival import (
-    ApplicationArchiveRequest,
-    ApplicationArchiveResponse,
-    archive_application_card,
-)
+from jolt.application_archival import ArchivedApplicationReadOnlyError
 from jolt.application_resources import (
     ContactRequest,
     ContactResponse,
@@ -48,6 +45,10 @@ from jolt.professional_intelligence_registry import (
 from jolt.professional_intelligence_sources import ProfessionalIntelligenceSource
 
 SessionProvider = Callable[[], Iterator[Session]]
+
+
+def _raise_read_only_conflict(exc: ArchivedApplicationReadOnlyError) -> NoReturn:
+    raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 def build_application_work_items_router(get_session: SessionProvider) -> APIRouter:
@@ -95,21 +96,6 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    @router.post(
-        "/api/applications/{application_id}/archive",
-        response_model=ApplicationArchiveResponse,
-        tags=["applications"],
-    )
-    def archive_application(
-        application_id: str,
-        request: ApplicationArchiveRequest | None = None,
-        session: Session = session_dependency,
-    ) -> ApplicationArchiveResponse:
-        try:
-            return archive_application_card(session, application_id, request)
-        except LookupError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
     @router.get("/api/applications/{application_id}/tasks", response_model=list[TaskResponse])
     def application_tasks(
         application_id: str, session: Session = session_dependency
@@ -127,6 +113,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return create_task(session, application_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post("/api/application-tasks/{task_id}/update", response_model=TaskResponse)
     def edit_application_task(
@@ -136,6 +124,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return update_task(session, task_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post("/api/application-tasks/{task_id}/complete", response_model=TaskResponse)
     def complete_application_task(
@@ -145,6 +135,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return set_task_status(session, task_id, "completed")
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post("/api/application-tasks/{task_id}/reopen", response_model=TaskResponse)
     def reopen_application_task(
@@ -154,6 +146,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return set_task_status(session, task_id, "open")
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.get(
         "/api/applications/{application_id}/interviews",
@@ -177,6 +171,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return create_interview(session, application_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post(
         "/api/application-interviews/{interview_id}/update",
@@ -191,6 +187,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return update_interview(session, interview_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post(
         "/api/application-interviews/{interview_id}/complete",
@@ -205,6 +203,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return set_interview_status(session, interview_id, "completed", request.outcome_notes)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post(
         "/api/application-interviews/{interview_id}/cancel",
@@ -219,6 +219,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return set_interview_status(session, interview_id, "cancelled", request.outcome_notes)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.get("/api/applications/{application_id}/contacts", response_model=list[ContactResponse])
     def application_contacts(
@@ -237,6 +239,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return create_contact(session, application_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post("/api/application-contacts/{contact_id}/update", response_model=ContactResponse)
     def edit_application_contact(
@@ -246,6 +250,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return update_contact(session, contact_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.get(
         "/api/applications/{application_id}/documents", response_model=list[DocumentResponse]
@@ -266,6 +272,8 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return create_document(session, application_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     @router.post("/api/application-documents/{document_id}/update", response_model=DocumentResponse)
     def edit_application_document(
@@ -275,5 +283,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
             return update_document(session, document_id, request)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ArchivedApplicationReadOnlyError as exc:
+            _raise_read_only_conflict(exc)
 
     return router

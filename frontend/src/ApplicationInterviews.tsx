@@ -16,6 +16,7 @@ type Interview = {
 type Props = {
   apiBase: string;
   applicationId?: string | null;
+  readOnly?: boolean;
   onChanged: () => Promise<void>;
   onError: (message: string) => void;
 };
@@ -35,7 +36,7 @@ async function responseError(response: Response, fallback: string) {
   }
 }
 
-export function ApplicationInterviews({ apiBase, applicationId, onChanged, onError }: Props) {
+export function ApplicationInterviews({ apiBase, applicationId, readOnly = false, onChanged, onError }: Props) {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
   const [interviewType, setInterviewType] = useState("recruiter_screen");
@@ -80,9 +81,10 @@ export function ApplicationInterviews({ apiBase, applicationId, onChanged, onErr
   }, [apiBase, applicationId, onError]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { resetForm(); }, [applicationId, resetForm]);
+  useEffect(() => { resetForm(); }, [applicationId, readOnly, resetForm]);
 
   function beginEdit(interview: Interview) {
+    if (readOnly) return;
     setEditingInterviewId(interview.interview_id);
     setInterviewType(interview.interview_type);
     setScheduledAt(toLocalDateTime(interview.scheduled_at));
@@ -96,7 +98,7 @@ export function ApplicationInterviews({ apiBase, applicationId, onChanged, onErr
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!applicationId || !scheduledAt) return;
+    if (readOnly || !applicationId || !scheduledAt) return;
     setBusy(true);
     setFormError("");
     try {
@@ -131,6 +133,7 @@ export function ApplicationInterviews({ apiBase, applicationId, onChanged, onErr
   }
 
   async function finish(interview: Interview, action: "complete" | "cancel") {
+    if (readOnly) return;
     setBusy(true);
     try {
       const response = await fetch(`${apiBase}/api/application-interviews/${interview.interview_id}/${action}`, {
@@ -152,7 +155,7 @@ export function ApplicationInterviews({ apiBase, applicationId, onChanged, onErr
 
   return <section className="work-items-panel" aria-labelledby="application-interviews-heading">
     <div className="application-tab-heading"><div><p className="eyebrow">Scheduled conversations</p><h4 id="application-interviews-heading">Interviews</h4></div><span>{interviews.filter((item) => item.status === "scheduled").length} scheduled</span></div>
-    <form className="work-item-form" onSubmit={submit}>
+    {readOnly ? <p className="application-read-only-notice" role="status">Archived application — interviews are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
       <label>Interview type<select value={interviewType} onChange={(event) => setInterviewType(event.target.value)}><option value="recruiter_screen">Recruiter screen</option><option value="technical_interview">Technical interview</option><option value="hiring_manager_interview">Hiring-manager interview</option><option value="final_interview">Final interview</option><option value="other">Other</option></select></label>
       <label>Date and time<input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} /></label>
       <label>Timezone<input required maxLength={80} value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label>
@@ -165,8 +168,8 @@ export function ApplicationInterviews({ apiBase, applicationId, onChanged, onErr
         <button type="submit" disabled={busy || !scheduledAt || !timezone.trim()}>{busy ? "Saving…" : editingInterviewId ? "Save interview changes" : "Schedule interview"}</button>
         {editingInterviewId && <button type="button" className="secondary" disabled={busy} onClick={resetForm}>Cancel edit</button>}
       </div>
-    </form>
+    </form>}
     {loadError && <div className="load-error" role="alert"><p>{loadError}</p><button type="button" className="secondary" onClick={() => void load()}>Retry interviews</button></div>}
-    {loading ? <p role="status">Loading interviews…</p> : interviews.length === 0 ? <p className="work-items-empty">No interviews recorded yet.</p> : <ul className="work-item-list interview-list">{interviews.map((interview) => <li key={interview.interview_id} className={interview.status !== "scheduled" ? "work-item-completed" : ""}><div><strong>{interview.interview_type.replaceAll("_", " ")}</strong><span>{new Date(interview.scheduled_at).toLocaleString()} · {interview.timezone}</span>{interview.format_location && <p>{interview.format_location}</p>}{interview.participants && <p>{interview.participants}</p>}</div><div className="work-item-actions"><button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(interview)}>Edit interview</button>{interview.status === "scheduled" ? <><button type="button" disabled={busy} onClick={() => void finish(interview, "complete")}>Complete</button><button type="button" className="secondary" disabled={busy} onClick={() => void finish(interview, "cancel")}>Cancel</button></> : <span className="work-item-status">{interview.status}</span>}</div></li>)}</ul>}
+    {loading ? <p role="status">Loading interviews…</p> : interviews.length === 0 ? <p className="work-items-empty">No interviews recorded yet.</p> : <ul className="work-item-list interview-list">{interviews.map((interview) => <li key={interview.interview_id} className={interview.status !== "scheduled" ? "work-item-completed" : ""}><div><strong>{interview.interview_type.replaceAll("_", " ")}</strong><span>{new Date(interview.scheduled_at).toLocaleString()} · {interview.timezone}</span>{interview.format_location && <p>{interview.format_location}</p>}{interview.participants && <p>{interview.participants}</p>}</div><div className="work-item-actions">{readOnly ? <span className="work-item-status">{interview.status}</span> : <><button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(interview)}>Edit interview</button>{interview.status === "scheduled" ? <><button type="button" disabled={busy} onClick={() => void finish(interview, "complete")}>Complete</button><button type="button" className="secondary" disabled={busy} onClick={() => void finish(interview, "cancel")}>Cancel</button></> : <span className="work-item-status">{interview.status}</span>}</>}</div></li>)}</ul>}
   </section>;
 }

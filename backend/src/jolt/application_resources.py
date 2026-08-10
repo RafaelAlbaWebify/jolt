@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import require_writable_application
 from jolt.application_records import ApplicationContact, ApplicationDocument
 from jolt.database import Application, ApplicationEvent, utc_now
 
@@ -206,7 +207,7 @@ def list_contacts(session: Session, application_id: str) -> list[ContactResponse
 def create_contact(
     session: Session, application_id: str, request: ContactRequest
 ) -> ContactResponse:
-    _application(session, application_id)
+    require_writable_application(session, application_id)
     now = utc_now()
     contact = ApplicationContact(
         id=str(uuid4()),
@@ -225,6 +226,7 @@ def update_contact(session: Session, contact_id: str, request: ContactRequest) -
     contact = session.get(ApplicationContact, contact_id)
     if contact is None:
         raise LookupError("Application contact was not found.")
+    require_writable_application(session, contact.application_id)
     before = _contact_values(contact)
     for field, value in request.model_dump().items():
         setattr(contact, field, value)
@@ -253,7 +255,7 @@ def list_documents(session: Session, application_id: str) -> list[DocumentRespon
 def create_document(
     session: Session, application_id: str, request: DocumentRequest
 ) -> DocumentResponse:
-    _application(session, application_id)
+    require_writable_application(session, application_id)
     now = utc_now()
     document = ApplicationDocument(
         id=str(uuid4()),
@@ -274,6 +276,7 @@ def update_document(
     document = session.get(ApplicationDocument, document_id)
     if document is None:
         raise LookupError("Application document was not found.")
+    require_writable_application(session, document.application_id)
     before = _document_values(document)
     for field, value in request.model_dump().items():
         setattr(document, field, value)

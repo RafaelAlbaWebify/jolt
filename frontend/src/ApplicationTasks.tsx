@@ -12,6 +12,7 @@ type Task = {
 type Props = {
   apiBase: string;
   applicationId?: string | null;
+  readOnly?: boolean;
   onChanged: () => Promise<void>;
   onError: (message: string) => void;
 };
@@ -23,7 +24,7 @@ function localDateTime(value: string | null) {
   return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }
 
-export function ApplicationTasks({ apiBase, applicationId, onChanged, onError }: Props) {
+export function ApplicationTasks({ apiBase, applicationId, readOnly = false, onChanged, onError }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -60,8 +61,10 @@ export function ApplicationTasks({ apiBase, applicationId, onChanged, onError }:
   }, [apiBase, applicationId, onError]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (readOnly) resetForm(); }, [readOnly, resetForm]);
 
   function beginEdit(task: Task) {
+    if (readOnly) return;
     setEditingId(task.task_id);
     setTitle(task.title);
     setNotes(task.notes);
@@ -71,7 +74,7 @@ export function ApplicationTasks({ apiBase, applicationId, onChanged, onError }:
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!applicationId || !title.trim()) return;
+    if (readOnly || !applicationId || !title.trim()) return;
     setBusy(true);
     setSaveError("");
     try {
@@ -109,6 +112,7 @@ export function ApplicationTasks({ apiBase, applicationId, onChanged, onError }:
   }
 
   async function changeStatus(task: Task) {
+    if (readOnly) return;
     setBusy(true);
     setSaveError("");
     try {
@@ -130,14 +134,14 @@ export function ApplicationTasks({ apiBase, applicationId, onChanged, onError }:
 
   return <section className="work-items-panel" aria-labelledby="application-tasks-heading">
     <div className="application-tab-heading"><div><p className="eyebrow">Next actions</p><h4 id="application-tasks-heading">Tasks</h4></div><span>{tasks.filter((task) => task.status === "open").length} open</span></div>
-    <form className="work-item-form" onSubmit={submit}>
+    {readOnly ? <p className="application-read-only-notice" role="status">Archived application — tasks are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
       <label>Task title<input required maxLength={240} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
       <label>Due date and time<input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></label>
       <label className="work-item-form-wide">Notes<textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
       <button type="submit" disabled={busy || !title.trim()}>{busy ? "Saving…" : editingId ? "Save task changes" : "Add task"}</button>
       {editingId && <button type="button" className="secondary" disabled={busy} onClick={resetForm}>Cancel edit</button>}
-    </form>
+    </form>}
     {saveError && <p role="alert">{saveError}</p>}
-    {loading ? <p role="status">Loading tasks…</p> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="secondary" onClick={() => void load()}>Retry tasks</button></div> : tasks.length === 0 ? <p className="work-items-empty">No tasks recorded yet.</p> : <ul className="work-item-list">{tasks.map((task) => <li key={task.task_id} className={task.status === "completed" ? "work-item-completed" : ""}><div><strong>{task.title}</strong><span>{task.due_at ? new Date(task.due_at).toLocaleString() : "No due date"}</span>{task.notes && <p>{task.notes}</p>}</div><div><button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(task)}>Edit task</button><button type="button" className="secondary" disabled={busy} onClick={() => void changeStatus(task)}>{task.status === "completed" ? "Reopen" : "Complete"}</button></div></li>)}</ul>}
+    {loading ? <p role="status">Loading tasks…</p> : loadError ? <div><p role="alert">{loadError}</p><button type="button" className="secondary" onClick={() => void load()}>Retry tasks</button></div> : tasks.length === 0 ? <p className="work-items-empty">No tasks recorded yet.</p> : <ul className="work-item-list">{tasks.map((task) => <li key={task.task_id} className={task.status === "completed" ? "work-item-completed" : ""}><div><strong>{task.title}</strong><span>{task.due_at ? new Date(task.due_at).toLocaleString() : "No due date"}</span>{task.notes && <p>{task.notes}</p>}</div><div>{readOnly ? <span className="work-item-status">{task.status}</span> : <><button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(task)}>Edit task</button><button type="button" className="secondary" disabled={busy} onClick={() => void changeStatus(task)}>{task.status === "completed" ? "Reopen" : "Complete"}</button></>}</div></li>)}</ul>}
   </section>;
 }

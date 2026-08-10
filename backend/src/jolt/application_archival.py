@@ -12,6 +12,10 @@ ARCHIVED_APPLICATION_STATUS = "archived"
 DEFAULT_RESTORE_STATUS = "preparing"
 
 
+class ArchivedApplicationReadOnlyError(ValueError):
+    """Raised when an operational write targets an archived application."""
+
+
 class ApplicationArchiveRequest(BaseModel):
     notes: str = Field(default="", max_length=4000)
 
@@ -27,6 +31,19 @@ class ApplicationArchiveResponse(BaseModel):
     previous_status: str
     status: str
     archived: bool
+
+
+def require_writable_application(session: Session, application_id: str) -> Application:
+    """Return an application only when operational records may still be changed."""
+
+    application = session.get(Application, application_id)
+    if application is None:
+        raise LookupError("Application was not found.")
+    if application.status == ARCHIVED_APPLICATION_STATUS:
+        raise ArchivedApplicationReadOnlyError(
+            "Archived applications are read-only. Restore the application before making changes."
+        )
+    return application
 
 
 def _latest_archive_event(session: Session, application_id: str) -> ApplicationEvent | None:
