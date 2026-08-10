@@ -194,7 +194,7 @@ def test_active_application_cannot_be_permanently_deleted(tmp_path) -> None:
 
         with pytest.raises(
             ValueError,
-            match="Only an archived application",
+            match="Only a closed, terminal, or archived application",
         ):
             delete_archived_application(session, application.id)
 

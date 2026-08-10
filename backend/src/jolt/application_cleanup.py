@@ -13,6 +13,13 @@ from jolt.application_records import (
 )
 from jolt.database import Application, ApplicationEvent, Outcome
 
+TERMINAL_APPLICATION_STATUSES = {
+    "rejected",
+    "withdrawn",
+    "no_response",
+    "closed",
+}
+
 
 class ApplicationDeleteResponse(BaseModel):
     application_id: str
@@ -37,13 +44,21 @@ def delete_archived_application(
     session: Session,
     application_id: str,
 ) -> ApplicationDeleteResponse:
-    """Permanently delete an archived application and application-owned records only."""
+    """Permanently delete a finished application and its owned records only."""
 
     application = session.get(Application, application_id)
     if application is None:
         raise LookupError("Application was not found.")
-    if application.status != ARCHIVED_APPLICATION_STATUS:
-        raise ValueError("Only an archived application can be permanently deleted.")
+
+    deletable_statuses = {
+        ARCHIVED_APPLICATION_STATUS,
+        *TERMINAL_APPLICATION_STATUSES,
+    }
+
+    if application.status not in deletable_statuses:
+        raise ValueError(
+            "Only a closed, terminal, or archived application can be permanently deleted."
+        )
 
     posting_id = application.posting_id
     try:
