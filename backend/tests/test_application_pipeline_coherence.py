@@ -35,9 +35,7 @@ def _create_application(client: TestClient) -> tuple[str, str]:
     application_index = client.get("/api/application-index")
     assert application_index.status_code == 200
     row = next(
-        item
-        for item in application_index.json()
-        if item["posting_id"] == opportunity["posting_id"]
+        item for item in application_index.json() if item["posting_id"] == opportunity["posting_id"]
     )
     assert row["application_id"]
     assert row["application_status"] == "preparing"

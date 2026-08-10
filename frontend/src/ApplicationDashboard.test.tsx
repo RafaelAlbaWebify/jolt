@@ -222,7 +222,7 @@ describe("ApplicationDashboard", () => {
     ["Cloud Support Engineer", "application-0", "preparing"],
     ["Application Support Engineer", "application-1", "submitted"],
     ["Production Support Analyst", "application-2", "technical_interview"],
-  ])("opens a viewport-level general-outcome dialog when closing %s", async (title, applicationId, status) => {
+  ])("opens a viewport-level general-outcome dialog when closing %s", async (title, _applicationId, status) => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
@@ -388,7 +388,7 @@ describe("ApplicationDashboard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open Archived Support Engineer" }));
     const workspace = screen.getByRole("dialog", { name: "Archived Support Engineer" });
-    expect(within(workspace).getByText(/Archived application — this workspace is read-only/)).toBeInTheDocument();
+    expect(await within(workspace).findByText(/Archived application — this workspace is read-only/)).toBeInTheDocument();
     expect(within(workspace).getByRole("button", { name: "Restore application" })).toBeInTheDocument();
 
     fireEvent.click(within(workspace).getByRole("tab", { name: "Tasks" }));
