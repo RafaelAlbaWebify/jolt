@@ -56,7 +56,7 @@ def exercise_task_recovery(
     dialog = page.get_by_role("dialog", name=fixture["title"])
     dialog.get_by_role("tab", name="Tasks", exact=True).click()
     tasks_panel = dialog.locator("#application-panel-tasks")
-    tasks_panel.get_by_role("alert").filter(has_text="Unable to load application tasks.").wait_for(
+    tasks_panel.get_by_role("alert").filter(has_text="Unable to load application tasks.").first.wait_for(
         timeout=30_000
     )
     tasks_panel.get_by_role("button", name="Retry tasks", exact=True).wait_for()
@@ -93,7 +93,7 @@ def exercise_task_recovery(
     tasks_panel.get_by_role("button", name="Save task changes", exact=True).click()
     tasks_panel.get_by_role("alert").filter(
         has_text="Injected task validation failure for certification."
-    ).wait_for(timeout=30_000)
+    ).first.wait_for(timeout=30_000)
     if title_input.input_value() != recovered_title:
         raise AssertionError(
             "Task edit form did not preserve the entered title after validation failure."
