@@ -104,4 +104,49 @@ describe("LinkedInCommandCenter", () => {
     expect(await screen.findByDisplayValue("implemented")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manual evidence" })).toBeInTheDocument();
   });
+
+  it("sends the configured Connections capture limit", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(EMPTY), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(POPULATED.captures[0]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(EMPTY), { status: 200 }));
+
+    render(<LinkedInCommandCenter apiBase="http://api" active />);
+    await screen.findByText("No LinkedIn profile evidence yet.");
+    fireEvent.click(screen.getByRole("button", { name: "Capture targets" }));
+
+    const connectionsCard = screen.getByText("Connections").closest("article");
+    expect(connectionsCard).not.toBeNull();
+
+    fireEvent.click(
+      within(connectionsCard as HTMLElement).getByRole("checkbox"),
+    );
+    fireEvent.click(
+      within(connectionsCard as HTMLElement).getByRole("button", { name: "Edit URL" }),
+    );
+
+    fireEvent.change(
+      within(connectionsCard as HTMLElement).getByRole("spinbutton", { name: "Connection limit" }),
+      { target: { value: "75" } },
+    );
+    fireEvent.click(
+      within(connectionsCard as HTMLElement).getByRole("button", { name: "Done" }),
+    );
+    fireEvent.click(
+      within(connectionsCard as HTMLElement).getByRole("button", { name: "Capture" }),
+    );
+
+    await waitFor(() => {
+      const captureCall = fetchMock.mock.calls.find(
+        ([url]) => String(url) === "http://api/api/linkedin-command-center/captures/playwright",
+      );
+      expect(captureCall).toBeDefined();
+      const request = captureCall?.[1] as RequestInit;
+      expect(JSON.parse(String(request.body))).toMatchObject({
+        category: "network_contact",
+        connection_limit: 75,
+      });
+    });
+  });
+
 });

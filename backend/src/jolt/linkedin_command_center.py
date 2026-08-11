@@ -6,6 +6,7 @@ import io
 import json
 import uuid
 from collections import Counter
+from pathlib import Path
 from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -38,6 +39,8 @@ LinkedInRecommendationType = Literal[
 ]
 LinkedInPriority = Literal["high", "medium", "low"]
 LinkedInRecommendationStatus = Literal["pending", "accepted", "rejected", "implemented", "snoozed"]
+
+_CONNECTION_SCHEMA = "jolt_linkedin_connections_v1"
 
 
 class LinkedInCaptureRequest(BaseModel):
@@ -292,23 +295,98 @@ def _csv_bytes(rows: list[dict[str, object]], fieldnames: list[str]) -> bytes:
     return output.getvalue().encode("utf-8-sig")
 
 
+def _structured_connections(
+    captures: list[LinkedInCaptureResponse],
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    connections_by_identity: dict[str, dict[str, object]] = {}
+    capture_runs: list[dict[str, object]] = []
+
+    for capture in captures:
+        if capture.category != "network_contact":
+            continue
+
+        try:
+            payload = json.loads(capture.visible_text)
+        except json.JSONDecodeError:
+            continue
+
+        if not isinstance(payload, dict) or payload.get("schema") != _CONNECTION_SCHEMA:
+            continue
+
+        run = payload.get("capture_run")
+        if isinstance(run, dict):
+            capture_runs.append(
+                {
+                    "capture_id": capture.id,
+                    "captured_at": capture.captured_at,
+                    "source_url": capture.source_url,
+                    **run,
+                }
+            )
+
+        raw_connections = payload.get("connections")
+        if not isinstance(raw_connections, list):
+            continue
+
+        for raw in raw_connections:
+            if not isinstance(raw, dict):
+                continue
+
+            profile_url = str(raw.get("profile_url", "")).strip()
+            name = str(raw.get("name", "")).strip()
+            headline = str(raw.get("headline", "")).strip()
+            identity = profile_url.casefold() if profile_url else f"{name}|{headline}".casefold()
+
+            if not name or not identity or identity in connections_by_identity:
+                continue
+
+            connections_by_identity[identity] = {
+                "name": name,
+                "profile_url": profile_url,
+                "headline": headline,
+                "connection_context": str(raw.get("connection_context", "")).strip(),
+                "capture_order": raw.get("capture_order"),
+                "capture_id": capture.id,
+                "captured_at": str(raw.get("captured_at", "")).strip() or capture.captured_at,
+                "source_url": str(raw.get("source_url", "")).strip() or capture.source_url,
+            }
+
+    return list(connections_by_identity.values()), capture_runs
+
+
+def _screenshot_path(notes: str) -> Path | None:
+    for line in notes.splitlines():
+        if line.startswith("Screenshot: "):
+            candidate = Path(line.removeprefix("Screenshot: ").strip())
+            return candidate if candidate.is_file() else None
+    return None
+
+
 def build_linkedin_analysis_pack(session: Session) -> bytes:
     command_center = list_linkedin_command_center(session)
+    capture_rows = session.scalars(
+        select(LinkedInPresenceCapture).order_by(LinkedInPresenceCapture.captured_at.desc())
+    ).all()
+    captures = [_capture_response(item) for item in capture_rows]
+    recommendations = [item.model_dump() for item in command_center.recommendations]
+    capture_dicts = [item.model_dump() for item in captures]
+    connections, connection_capture_runs = _structured_connections(captures)
+
     market = build_market_intelligence(session, timeframe="all", source_scope="all")
     market_target = market.get("target", {})
     if not isinstance(market_target, dict):
         market_target = {}
-    captures = [item.model_dump() for item in command_center.captures]
-    recommendations = [item.model_dump() for item in command_center.recommendations]
+
     dataset = {
         "pack_type": "jolt_linkedin_command_center",
-        "pack_version": 2,
+        "pack_version": 3,
         "generated_at": utc_now().isoformat(),
-        "purpose": "User-supervised LinkedIn profile, activity, network, and outreach analysis.",
+        "purpose": "User-supervised LinkedIn profile, activity, and network evidence capture.",
         "guardrails": [
+            "JOLT captures and packages evidence only.",
+            "All AI analysis and network decisions happen in ChatGPT.",
             "Do not automate LinkedIn actions.",
             "Do not infer private facts beyond captured evidence.",
-            "Return recommendations as user-reviewable actions only.",
         ],
         "import_contract": {
             "endpoint": "/api/linkedin-command-center/recommendations/import",
@@ -316,8 +394,13 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
                 "source": "chatgpt_package",
                 "recommendations": [
                     {
-                        "recommendation_type": "profile_update | network_decision | content_action | outreach | lead_research | cleanup",
-                        "target_area": "LinkedIn section, person, company, topic, or workflow area",
+                        "recommendation_type": (
+                            "profile_update | network_decision | content_action | "
+                            "outreach | lead_research | cleanup"
+                        ),
+                        "target_area": (
+                            "LinkedIn section, person, company, topic, or workflow area"
+                        ),
                         "title": "Short recommendation title",
                         "rationale": "Evidence-based reason",
                         "proposed_action": "User action to take manually",
@@ -328,7 +411,9 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
                 ],
             },
         },
-        "captures": captures,
+        "captures": capture_dicts,
+        "connections": connections,
+        "connection_capture_runs": connection_capture_runs,
         "recommendations": recommendations,
         "market_summary": {
             "total_unique_roles": market.get("total_unique_roles", 0),
@@ -339,61 +424,57 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
             "study_priorities": market_target.get("study_priorities", []),
         },
     }
-    prompt = """# JOLT LinkedIn Command Center Analysis Prompt
 
-You are helping Rafael improve employability, networking, recruiter visibility, and lead quality.
+    prompt = """# JOLT LinkedIn evidence analysis
 
-Use the evidence in `data/linkedin_command_center.json`. Produce practical, reviewable recommendations only. Do not suggest LinkedIn automation, scraping, mass messaging, or deceptive activity.
+JOLT collected the evidence in this package. Perform all analysis here in ChatGPT.
 
-Return:
+Analyse only what the package supports. Identify useful recruiters, hiring managers, former colleagues, target-company contacts, possible reconnection opportunities, low-relevance contacts, uncertain records, and evidence gaps.
 
-1. `linkedin_recommendations.json` with this shape:
-
-```json
-{
-  "source": "chatgpt_package",
-  "recommendations": [
-    {
-      "recommendation_type": "profile_update",
-      "target_area": "headline",
-      "title": "Clarify Application Support positioning",
-      "rationale": "Why this matters based on the evidence",
-      "proposed_action": "Manual action Rafael should take",
-      "proposed_text": "Optional exact text/message/post/comment",
-      "priority": "high",
-      "status": "pending"
-    }
-  ]
-}
-```
-
-2. `profile_rewrite.md` with concrete headline/About/Experience/Featured/Skills proposals.
-3. `network_decisions.csv` for contacts or people explicitly present in the evidence.
-4. `content_plan.md` with realistic posts/comments/actions for the next 30 days.
-5. `analysis_summary.md` with the top risks, quick wins, and what changed since previous captures.
+Do not assume that missing profile information means a person is irrelevant. Do not perform or recommend automated LinkedIn actions.
 """
+
     readme = f"""# JOLT LinkedIn Command Center package
 
 Generated: {dataset["generated_at"]}
 
-This package is for manual analysis of Rafael's LinkedIn presence and networking strategy.
+JOLT captures and packages evidence. ChatGPT performs every AI-driven analysis and decision.
 
 Included:
 
-- Captures: {len(captures)}
-- Recommendations already tracked in JOLT: {len(recommendations)}
-- Market target roles from JOLT: {dataset["market_summary"]["target_role_count"]}
-
-Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis. Import the returned `linkedin_recommendations.json` through the LinkedIn Command Center import panel.
+- Captures: {len(capture_dicts)}
+- Structured unique connections: {len(connections)}
+- Connection capture runs: {len(connection_capture_runs)}
+- Existing JOLT recommendations: {len(recommendations)}
 """
-    files = {
+
+    files: dict[str, bytes] = {
         "README.md": readme.encode("utf-8"),
         "prompt.md": prompt.encode("utf-8"),
         "data/linkedin_command_center.json": json.dumps(
             dataset, indent=2, ensure_ascii=False, sort_keys=True
         ).encode("utf-8"),
+        "data/connections.json": json.dumps(
+            connections, indent=2, ensure_ascii=False, sort_keys=True
+        ).encode("utf-8"),
+        "data/connection_capture_runs.json": json.dumps(
+            connection_capture_runs, indent=2, ensure_ascii=False, sort_keys=True
+        ).encode("utf-8"),
+        "data/connections.csv": _csv_bytes(
+            connections,
+            [
+                "name",
+                "profile_url",
+                "headline",
+                "connection_context",
+                "capture_order",
+                "capture_id",
+                "captured_at",
+                "source_url",
+            ],
+        ),
         "data/linkedin_captures.csv": _csv_bytes(
-            captures,
+            capture_dicts,
             [
                 "id",
                 "category",
@@ -420,6 +501,13 @@ Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis. Import t
             ],
         ),
     }
+
+    for capture in captures:
+        files[f"evidence/raw_visible_text/{capture.id}.txt"] = capture.visible_text.encode("utf-8")
+        screenshot = _screenshot_path(capture.notes)
+        if screenshot is not None:
+            files[f"evidence/screenshots/{capture.id}-{screenshot.name}"] = screenshot.read_bytes()
+
     manifest = {
         "pack_type": dataset["pack_type"],
         "pack_version": dataset["pack_version"],
@@ -432,6 +520,7 @@ Use `prompt.md` when uploading this ZIP to ChatGPT for deeper analysis. Import t
     files["manifest.json"] = json.dumps(
         manifest, indent=2, ensure_ascii=False, sort_keys=True
     ).encode("utf-8")
+
     output = io.BytesIO()
     with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
         for name, content in sorted(files.items()):
