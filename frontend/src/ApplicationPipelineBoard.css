@@ -1,12 +1,18 @@
 .workspace-view-applications {
   width: 100%;
   min-width: 0;
+  height: calc(100vh - 40px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .application-workspace {
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .application-board-toolbar {
@@ -187,6 +193,18 @@
 
 @media (max-width: 1500px) {
   .application-board { grid-template-columns: repeat(5, 250px); }
+}
+
+@media (max-width: 900px) {
+  .workspace-view-applications {
+    height: auto;
+    overflow: visible;
+  }
+
+  .application-workspace {
+    height: auto;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 760px) {
