@@ -17,6 +17,59 @@ type Props = {
 };
 
 const DEFAULT_URL = "https://www.linkedin.com/jobs/search/";
+const MIN_JOBS = 1;
+const MAX_JOBS = 50;
+
+function clampJobs(value: number) {
+  if (!Number.isFinite(value)) return MIN_JOBS;
+  return Math.min(MAX_JOBS, Math.max(MIN_JOBS, Math.trunc(value)));
+}
+
+function validationDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (!item || typeof item !== "object") return String(item);
+
+        const entry = item as {
+          loc?: unknown;
+          msg?: unknown;
+        };
+
+        const location = Array.isArray(entry.loc)
+          ? entry.loc
+              .map((part) => String(part))
+              .filter((part) => part !== "body")
+              .join(".")
+          : "";
+
+        const message = typeof entry.msg === "string"
+          ? entry.msg
+          : "Invalid value.";
+
+        return location ? `${location}: ${message}` : message;
+      })
+      .join("; ");
+  }
+
+  if (detail && typeof detail === "object") {
+    const entry = detail as { msg?: unknown };
+    if (typeof entry.msg === "string") return entry.msg;
+  }
+
+  return "";
+}
+
+async function responseError(response: Response, fallback: string) {
+  const payload = (await response.json().catch(() => null)) as
+    | { detail?: unknown }
+    | null;
+
+  const detail = validationDetail(payload?.detail);
+  return new Error(detail || fallback);
+}
 
 function isBusy(status: CaptureStatus["status"]) {
   return status === "queued" || status === "running";
@@ -64,18 +117,23 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
   async function startCapture() {
     setError("");
     try {
+      const boundedMaxJobs = clampJobs(maxJobs);
+      if (boundedMaxJobs !== maxJobs) setMaxJobs(boundedMaxJobs);
+
       const response = await fetch(`${apiBase}/api/captures/linkedin/local`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           search_url: searchUrl,
-          max_jobs: maxJobs,
+          max_jobs: boundedMaxJobs,
           max_pages: maxPages,
         }),
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(payload?.detail || "The LinkedIn capture could not start.");
+        throw await responseError(
+          response,
+          "The LinkedIn capture could not start.",
+        );
       }
       setStatus((await response.json()) as CaptureStatus);
     } catch (caught) {
@@ -112,10 +170,10 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
             Maximum jobs
             <input
               type="number"
-              min="1"
-              max="50"
+              min={MIN_JOBS}
+              max={MAX_JOBS}
               value={maxJobs}
-              onChange={(event) => setMaxJobs(Number(event.target.value))}
+              onChange={(event) => setMaxJobs(clampJobs(Number(event.target.value)))}
             />
           </label>
           <label>
