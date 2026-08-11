@@ -55,20 +55,21 @@ def exercise_task_recovery(
     module.open_application(page, fixture)
     dialog = page.get_by_role("dialog", name=fixture["title"])
     dialog.get_by_role("tab", name="Tasks", exact=True).click()
-    dialog.get_by_role("alert").filter(has_text="Unable to load application tasks.").wait_for(
-        timeout=30_000
-    )
-    dialog.get_by_role("button", name="Retry tasks", exact=True).wait_for()
+    tasks_panel = dialog.locator("#application-panel-tasks")
+    tasks_panel.locator("p[role='alert']:not(.application-workspace-error)").filter(
+        has_text="Unable to load application tasks."
+    ).wait_for(timeout=30_000)
+    tasks_panel.get_by_role("button", name="Retry tasks", exact=True).wait_for()
     module.record_action(actions, "Show recoverable task-load error", "passed")
 
     page.unroute(task_pattern, fail_first_task_load)
-    dialog.get_by_role("button", name="Retry tasks", exact=True).click()
-    corrected_task = dialog.locator("li").filter(has_text="corrected").first
+    tasks_panel.get_by_role("button", name="Retry tasks", exact=True).click()
+    corrected_task = tasks_panel.locator("li").filter(has_text="corrected").first
     corrected_task.wait_for(timeout=30_000)
     module.record_action(actions, "Recover task list with local retry", "passed")
 
     corrected_task.get_by_role("button", name="Edit task", exact=True).click()
-    title_input = dialog.get_by_label("Task title")
+    title_input = tasks_panel.get_by_label("Task title")
     original_title = title_input.input_value()
     recovered_title = f"{original_title} validated"
     title_input.fill(recovered_title)
@@ -89,27 +90,29 @@ def exercise_task_recovery(
         route.continue_()
 
     page.route(update_pattern, fail_first_task_update)
-    dialog.get_by_role("button", name="Save task changes", exact=True).click()
-    dialog.get_by_role("alert").filter(
+    tasks_panel.get_by_role("button", name="Save task changes", exact=True).click()
+    tasks_panel.locator("p[role='alert']:not(.application-workspace-error)").filter(
         has_text="Injected task validation failure for certification."
     ).wait_for(timeout=30_000)
     if title_input.input_value() != recovered_title:
         raise AssertionError(
             "Task edit form did not preserve the entered title after validation failure."
         )
-    dialog.get_by_role("button", name="Save task changes", exact=True).wait_for()
+    tasks_panel.get_by_role("button", name="Save task changes", exact=True).wait_for()
     module.record_action(actions, "Preserve task edit after validation error", "passed")
 
     page.unroute(update_pattern, fail_first_task_update)
-    dialog.get_by_role("button", name="Save task changes", exact=True).click()
-    dialog.get_by_text(recovered_title, exact=True).wait_for(timeout=30_000)
+    tasks_panel.get_by_role("button", name="Save task changes", exact=True).click()
+    tasks_panel.get_by_text(recovered_title, exact=True).wait_for(timeout=30_000)
     module.record_action(actions, "Recover task save after validation error", "passed")
 
     page.reload(wait_until="networkidle")
     module.open_application(page, fixture)
     dialog = page.get_by_role("dialog", name=fixture["title"])
     dialog.get_by_role("tab", name="Tasks", exact=True).click()
-    dialog.get_by_text(recovered_title, exact=True).wait_for(timeout=30_000)
+    dialog.locator("#application-panel-tasks").get_by_text(recovered_title, exact=True).wait_for(
+        timeout=30_000
+    )
     module.record_action(actions, "Recovered task change persists after reload", "passed")
     page.screenshot(
         path=Path(

@@ -14,6 +14,7 @@ type DocumentRecord = {
 type Props = {
   apiBase: string;
   applicationId?: string | null;
+  readOnly?: boolean;
   onChanged: () => Promise<void>;
   onError: (message: string) => void;
 };
@@ -27,7 +28,7 @@ const EMPTY: Omit<DocumentRecord, "document_id"> = {
   notes: "",
 };
 
-export function ApplicationDocuments({ apiBase, applicationId, onChanged, onError }: Props) {
+export function ApplicationDocuments({ apiBase, applicationId, readOnly = false, onChanged, onError }: Props) {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,9 +60,10 @@ export function ApplicationDocuments({ apiBase, applicationId, onChanged, onErro
     setEditingId(null);
     setForm(EMPTY);
     void load();
-  }, [load]);
+  }, [load, readOnly]);
 
   function edit(document: DocumentRecord) {
+    if (readOnly) return;
     setEditingId(document.document_id);
     setForm({
       document_type: document.document_type,
@@ -82,7 +84,7 @@ export function ApplicationDocuments({ apiBase, applicationId, onChanged, onErro
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!applicationId || !form.title.trim()) return;
+    if (readOnly || !applicationId || !form.title.trim()) return;
     setBusy(true);
     setError("");
     try {
@@ -117,7 +119,7 @@ export function ApplicationDocuments({ apiBase, applicationId, onChanged, onErro
 
   return <section className="work-items-panel" aria-labelledby="application-documents-heading">
     <div className="application-tab-heading"><div><p className="eyebrow">Application materials</p><h4 id="application-documents-heading">Documents</h4></div><span>{documents.length} recorded</span></div>
-    <form className="work-item-form" onSubmit={submit}>
+    {readOnly ? <p className="application-read-only-notice" role="status">Archived application — documents are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
       <label>Document type<select value={form.document_type} onChange={(event) => setForm((value) => ({ ...value, document_type: event.target.value as DocumentRecord["document_type"] }))}><option value="resume">Resume</option><option value="cover_letter">Cover letter</option><option value="preparation_pack">Preparation pack</option><option value="portfolio">Portfolio</option><option value="certificate">Certificate</option><option value="other">Other</option></select></label>
       <label>Status<select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value as DocumentRecord["status"] }))}><option value="draft">Draft</option><option value="ready">Ready</option><option value="submitted">Submitted</option><option value="superseded">Superseded</option></select></label>
       <label className="work-item-form-wide">Title<input required maxLength={240} value={form.title} onChange={(event) => setForm((value) => ({ ...value, title: event.target.value }))} /></label>
@@ -126,9 +128,9 @@ export function ApplicationDocuments({ apiBase, applicationId, onChanged, onErro
       <label className="work-item-form-wide">Notes<textarea rows={2} value={form.notes} onChange={(event) => setForm((value) => ({ ...value, notes: event.target.value }))} /></label>
       <button type="submit" disabled={busy || !form.title.trim()}>{busy ? "Saving…" : editingId ? "Save document changes" : "Add document"}</button>
       {editingId && <button type="button" className="secondary" disabled={busy} onClick={cancelEdit}>Cancel edit</button>}
-    </form>
+    </form>}
     {error && <p className="error" role="alert">{error}</p>}
     {error && !loading && documents.length === 0 && <button type="button" className="secondary" onClick={() => void load()}>Retry documents</button>}
-    {loading ? <p role="status">Loading documents…</p> : documents.length === 0 ? <p className="work-items-empty">No document records yet.</p> : <ul className="work-item-list">{documents.map((document) => <li key={document.document_id}><div><strong>{document.title}</strong><span>{document.document_type.replaceAll("_", " ")} · {document.status}</span>{document.file_path && <p>{document.file_path}</p>}{document.source_url && <p><a href={document.source_url} target="_blank" rel="noreferrer">Open source</a></p>}{document.notes && <p>{document.notes}</p>}</div><div><span className="work-item-status">{document.status}</span><button type="button" className="secondary" disabled={busy} onClick={() => edit(document)}>Edit document</button></div></li>)}</ul>}
+    {loading ? <p role="status">Loading documents…</p> : documents.length === 0 ? <p className="work-items-empty">No document records yet.</p> : <ul className="work-item-list">{documents.map((document) => <li key={document.document_id}><div><strong>{document.title}</strong><span>{document.document_type.replaceAll("_", " ")} · {document.status}</span>{document.file_path && <p>{document.file_path}</p>}{document.source_url && <p><a href={document.source_url} target="_blank" rel="noreferrer">Open source</a></p>}{document.notes && <p>{document.notes}</p>}</div><div><span className="work-item-status">{document.status}</span>{!readOnly && <button type="button" className="secondary" disabled={busy} onClick={() => edit(document)}>Edit document</button>}</div></li>)}</ul>}
   </section>;
 }

@@ -15,6 +15,7 @@ type Contact = {
 type Props = {
   apiBase: string;
   applicationId?: string | null;
+  readOnly?: boolean;
   onChanged: () => Promise<void>;
   onError: (message: string) => void;
 };
@@ -31,7 +32,7 @@ const EMPTY_DRAFT: ContactDraft = {
   notes: "",
 };
 
-export function ApplicationContacts({ apiBase, applicationId, onChanged, onError }: Props) {
+export function ApplicationContacts({ apiBase, applicationId, readOnly = false, onChanged, onError }: Props) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [draft, setDraft] = useState<ContactDraft>(EMPTY_DRAFT);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
@@ -64,13 +65,15 @@ export function ApplicationContacts({ apiBase, applicationId, onChanged, onError
     setDraft(EMPTY_DRAFT);
     setEditingContactId(null);
     void load();
-  }, [load]);
+  }, [load, readOnly]);
 
   function setField(field: keyof ContactDraft, value: string) {
+    if (readOnly) return;
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
   function beginEdit(contact: Contact) {
+    if (readOnly) return;
     setEditingContactId(contact.contact_id);
     setDraft({
       name: contact.name,
@@ -92,7 +95,7 @@ export function ApplicationContacts({ apiBase, applicationId, onChanged, onError
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!applicationId || !draft.name.trim()) return;
+    if (readOnly || !applicationId || !draft.name.trim()) return;
     setBusy(true);
     setError("");
     try {
@@ -142,46 +145,50 @@ export function ApplicationContacts({ apiBase, applicationId, onChanged, onError
         </div>
         <span>{contacts.length} recorded</span>
       </div>
-      <form className="work-item-form" onSubmit={submit}>
-        <label>
-          Name
-          <input required maxLength={240} value={draft.name} onChange={(event) => setField("name", event.target.value)} />
-        </label>
-        <label>
-          Role
-          <input maxLength={240} value={draft.role} onChange={(event) => setField("role", event.target.value)} />
-        </label>
-        <label>
-          Company
-          <input maxLength={240} value={draft.company} onChange={(event) => setField("company", event.target.value)} />
-        </label>
-        <label>
-          Email
-          <input type="email" maxLength={320} value={draft.email} onChange={(event) => setField("email", event.target.value)} />
-        </label>
-        <label>
-          Phone
-          <input maxLength={80} value={draft.phone} onChange={(event) => setField("phone", event.target.value)} />
-        </label>
-        <label>
-          LinkedIn URL
-          <input type="url" maxLength={2048} value={draft.linkedin_url} onChange={(event) => setField("linkedin_url", event.target.value)} />
-        </label>
-        <label className="work-item-form-wide">
-          Notes
-          <textarea rows={2} maxLength={4000} value={draft.notes} onChange={(event) => setField("notes", event.target.value)} />
-        </label>
-        <div className="work-item-form-actions">
-          <button type="submit" disabled={busy || !draft.name.trim()}>
-            {busy ? "Saving…" : editingContactId ? "Save contact changes" : "Add contact"}
-          </button>
-          {editingContactId && (
-            <button type="button" className="secondary" disabled={busy} onClick={cancelEdit}>
-              Cancel edit
+      {readOnly ? (
+        <p className="application-read-only-notice" role="status">Archived application — contacts are read-only until the application is restored.</p>
+      ) : (
+        <form className="work-item-form" onSubmit={submit}>
+          <label>
+            Name
+            <input required maxLength={240} value={draft.name} onChange={(event) => setField("name", event.target.value)} />
+          </label>
+          <label>
+            Role
+            <input maxLength={240} value={draft.role} onChange={(event) => setField("role", event.target.value)} />
+          </label>
+          <label>
+            Company
+            <input maxLength={240} value={draft.company} onChange={(event) => setField("company", event.target.value)} />
+          </label>
+          <label>
+            Email
+            <input type="email" maxLength={320} value={draft.email} onChange={(event) => setField("email", event.target.value)} />
+          </label>
+          <label>
+            Phone
+            <input maxLength={80} value={draft.phone} onChange={(event) => setField("phone", event.target.value)} />
+          </label>
+          <label>
+            LinkedIn URL
+            <input type="url" maxLength={2048} value={draft.linkedin_url} onChange={(event) => setField("linkedin_url", event.target.value)} />
+          </label>
+          <label className="work-item-form-wide">
+            Notes
+            <textarea rows={2} maxLength={4000} value={draft.notes} onChange={(event) => setField("notes", event.target.value)} />
+          </label>
+          <div className="work-item-form-actions">
+            <button type="submit" disabled={busy || !draft.name.trim()}>
+              {busy ? "Saving…" : editingContactId ? "Save contact changes" : "Add contact"}
             </button>
-          )}
-        </div>
-      </form>
+            {editingContactId && (
+              <button type="button" className="secondary" disabled={busy} onClick={cancelEdit}>
+                Cancel edit
+              </button>
+            )}
+          </div>
+        </form>
+      )}
       {error && (
         <div className="work-item-error">
           <p className="error" role="alert">{error}</p>
@@ -206,9 +213,9 @@ export function ApplicationContacts({ apiBase, applicationId, onChanged, onError
                 {contact.linkedin_url && <p><a href={contact.linkedin_url} target="_blank" rel="noreferrer">LinkedIn profile</a></p>}
                 {contact.notes && <p>{contact.notes}</p>}
               </div>
-              <button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(contact)}>
+              {readOnly ? <span className="work-item-status">read only</span> : <button type="button" className="secondary" disabled={busy} onClick={() => beginEdit(contact)}>
                 Edit contact
-              </button>
+              </button>}
             </li>
           ))}
         </ul>

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.application_archival import require_writable_application
 from jolt.application_records import ApplicationInterview, ApplicationTask
 from jolt.database import Application, ApplicationEvent, utc_now
 
@@ -215,7 +216,7 @@ def list_tasks(session: Session, application_id: str) -> list[TaskResponse]:
 
 
 def create_task(session: Session, application_id: str, request: TaskCreateRequest) -> TaskResponse:
-    _application(session, application_id)
+    require_writable_application(session, application_id)
     now = utc_now()
     task = ApplicationTask(
         id=str(uuid4()),
@@ -238,6 +239,7 @@ def update_task(session: Session, task_id: str, request: TaskUpdateRequest) -> T
     task = session.get(ApplicationTask, task_id)
     if task is None:
         raise LookupError("Application task was not found.")
+    require_writable_application(session, task.application_id)
     before = _task_values(task)
     now = utc_now()
     task.title = request.title
@@ -262,6 +264,7 @@ def set_task_status(session: Session, task_id: str, status: TaskStatus) -> TaskR
     task = session.get(ApplicationTask, task_id)
     if task is None:
         raise LookupError("Application task was not found.")
+    require_writable_application(session, task.application_id)
     if task.status == status:
         return _task_response(task)
     now = utc_now()
@@ -296,7 +299,7 @@ def list_interviews(session: Session, application_id: str) -> list[InterviewResp
 def create_interview(
     session: Session, application_id: str, request: InterviewCreateRequest
 ) -> InterviewResponse:
-    _application(session, application_id)
+    require_writable_application(session, application_id)
     now = utc_now()
     interview = ApplicationInterview(
         id=str(uuid4()),
@@ -334,6 +337,7 @@ def update_interview(
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
         raise LookupError("Application interview was not found.")
+    require_writable_application(session, interview.application_id)
     before = _interview_values(interview)
     now = utc_now()
     interview.interview_type = request.interview_type
@@ -368,6 +372,7 @@ def set_interview_status(
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
         raise LookupError("Application interview was not found.")
+    require_writable_application(session, interview.application_id)
     normalized_outcome = outcome_notes.strip()
     if interview.status == status and not normalized_outcome:
         return _interview_response(interview)

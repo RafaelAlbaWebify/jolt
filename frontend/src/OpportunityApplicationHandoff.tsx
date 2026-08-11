@@ -22,8 +22,8 @@ export function OpportunityApplicationHandoff({ applicationId, applicationStatus
           {applicationId
             ? `Current recorded state: ${label(state)}. Stage changes, outcomes, and timeline history belong in the Applications workspace.`
             : reviewDecision === "pursue"
-              ? "This role is ready in the Preparing lane. Create and manage the application record from Applications."
-              : "Choose Pursue to place this role in the Applications preparation lane."}
+              ? "A Pursue decision should already have a Preparing application record. Refresh Applications before taking any further action."
+              : "Choose Pursue to create the durable Preparing application record and hand the process to Applications."}
         </p>
       </div>
       <span className="opportunity-application-status">{label(state)}</span>
