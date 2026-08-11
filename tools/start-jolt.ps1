@@ -90,6 +90,8 @@ function Wait-HttpEndpoint {
 }
 
 function Assert-FreshBackend {
+    param([Parameter(Mandatory)][string]$ExpectedCommit)
+
     $health = Invoke-RestMethod -Uri "$BackendUrl/api/health" -TimeoutSec 5
     if ([string]$health.version -ne $ExpectedBackendVersion) {
         throw "Unexpected JOLT backend version '$($health.version)'. Expected '$ExpectedBackendVersion'. A stale backend may still own port 8000."
@@ -107,6 +109,19 @@ function Assert-FreshBackend {
     if ($missingRoutes.Count -gt 0) {
         throw "The running backend is missing required API routes: $($missingRoutes -join ', '). Refusing to start JOLT with a stale backend/frontend contract."
     }
+
+    $runtimeIdentity = Invoke-RestMethod -Uri "$BackendUrl/api/runtime-identity" -TimeoutSec 5
+    $loadedCommit = [string]$runtimeIdentity.loaded_git.commit_sha
+
+    if ([string]::IsNullOrWhiteSpace($loadedCommit)) {
+        throw "The running backend did not report an immutable loaded Git commit. Refusing to trust backend freshness."
+    }
+
+    if ($loadedCommit -ne $ExpectedCommit) {
+        throw "The running backend loaded commit '$loadedCommit' but JOLT is starting repository commit '$ExpectedCommit'. Refusing to use stale loaded backend code."
+    }
+
+    return $loadedCommit
 }
 
 function Stop-ProcessSafely {
@@ -120,6 +135,21 @@ $stage = "resolving required applications"
 $uvCommand = Resolve-ApplicationCommand -Names @("uv.exe", "uv")
 $nodeCommand = Resolve-ApplicationCommand -Names @("node.exe", "node")
 $npmCommand = Resolve-ApplicationCommand -Names @("npm.cmd")
+$gitCommand = Resolve-ApplicationCommand -Names @("git.exe", "git")
+
+$gitCommitOutput = @(& $gitCommand -C $RepoRoot rev-parse HEAD)
+$gitExitCode = $LASTEXITCODE
+
+if ($gitExitCode -ne 0 -or $gitCommitOutput.Count -eq 0) {
+    throw "Could not determine the repository commit that JOLT is about to launch."
+}
+
+$expectedBackendCommit = [string]$gitCommitOutput[0]
+$expectedBackendCommit = $expectedBackendCommit.Trim()
+
+if ([string]::IsNullOrWhiteSpace($expectedBackendCommit)) {
+    throw "Could not determine the repository commit that JOLT is about to launch."
+}
 
 New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot | Out-Null
 Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
@@ -178,7 +208,7 @@ try {
 
     $stage = "waiting for backend readiness"
     Wait-HttpEndpoint -Url "$BackendUrl/api/health" -Name "JOLT backend" -Process $backendProcess
-    Assert-FreshBackend
+    $loadedBackendCommit = Assert-FreshBackend -ExpectedCommit $expectedBackendCommit
 
     $stage = "waiting for frontend readiness"
     Wait-HttpEndpoint -Url $FrontendUrl -Name "JOLT frontend" -Process $frontendProcess
@@ -189,6 +219,7 @@ try {
         backend_url = $BackendUrl
         frontend_url = $FrontendUrl
         backend_version = $ExpectedBackendVersion
+        backend_loaded_commit = $loadedBackendCommit
         started_at = (Get-Date).ToString("o")
     } | ConvertTo-Json | Set-Content -Path $StatePath -Encoding UTF8
 
@@ -197,6 +228,7 @@ try {
     Write-Host "Application: $FrontendUrl"
     Write-Host "Backend health: $BackendUrl/api/health"
     Write-Host "Backend version: $ExpectedBackendVersion"
+    Write-Host "Backend loaded commit: $loadedBackendCommit"
     Write-Host "Logs: $LogRoot"
 
     if (-not $NoBrowser) {

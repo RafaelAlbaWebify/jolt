@@ -69,6 +69,7 @@ class RuntimeIdentityResponse(BaseModel):
     service: str
     version: str
     git: RuntimeGitIdentity
+    loaded_git: RuntimeGitIdentity
     database: RuntimeDatabaseIdentity
     evidence_root: RuntimeEvidenceRootIdentity
     process: RuntimeProcessIdentity
@@ -111,6 +112,12 @@ def _git_identity() -> RuntimeGitIdentity:
         dirty=dirty,
         source=source,
     )
+
+
+# This identity is intentionally captured once when the backend module is
+# imported. It represents the repository revision whose Python code was loaded
+# into this process and must not drift when the working tree later moves.
+_LOADED_GIT_IDENTITY = _git_identity()
 
 
 def _database_url(session: Session) -> tuple[str, str | None]:
@@ -171,6 +178,7 @@ def build_runtime_identity(session: Session) -> RuntimeIdentityResponse:
         service="jolt-backend",
         version="0.8.0",
         git=_git_identity(),
+        loaded_git=_LOADED_GIT_IDENTITY.model_copy(deep=True),
         database=RuntimeDatabaseIdentity(
             database_url=database_url,
             database_path=database_path,
