@@ -14,6 +14,7 @@ from jolt.professional_intelligence_records import ProfessionalEvidenceSettings
 
 _SETTINGS_ID = "professional-evidence"
 _DEFAULT_DIRECTORY_NAME = "professional-evidence"
+_PROVISION_ATTEMPTS = 5
 
 
 class ProfessionalEvidenceRootRequest(BaseModel):
@@ -57,6 +58,21 @@ def _default_evidence_root(session: Session) -> Path:
     return Path(__file__).resolve().parents[2] / "data" / _DEFAULT_DIRECTORY_NAME
 
 
+def _wait_for_committed_professional_evidence_root(
+    session: Session,
+) -> ProfessionalEvidenceSettings | None:
+    """Wait briefly for a concurrent singleton insert to become visible."""
+
+    for attempt in range(_PROVISION_ATTEMPTS):
+        session.expire_all()
+        existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
+        if existing is not None:
+            return existing
+        if attempt < _PROVISION_ATTEMPTS - 1:
+            time.sleep(0.05 * (attempt + 1))
+    return None
+
+
 def ensure_default_professional_evidence_root(session: Session) -> ProfessionalEvidenceSettings:
     settings = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
     if settings is not None:
@@ -67,8 +83,8 @@ def ensure_default_professional_evidence_root(session: Session) -> ProfessionalE
     if not path.is_dir() or not os.access(path, os.W_OK):
         raise ValueError("JOLT could not provision a writable local evidence directory.")
 
-    last_operational_error: OperationalError | None = None
-    for attempt in range(5):
+    last_conflict: IntegrityError | OperationalError | None = None
+    for _attempt in range(_PROVISION_ATTEMPTS):
         settings = ProfessionalEvidenceSettings(
             id=_SETTINGS_ID,
             root_path=str(path),
@@ -78,27 +94,18 @@ def ensure_default_professional_evidence_root(session: Session) -> ProfessionalE
         try:
             session.commit()
             return settings
-        except IntegrityError:
+        except (IntegrityError, OperationalError) as exc:
             # Evidence root and execution-readiness are loaded concurrently by the UI.
-            # Another request may have inserted the singleton row after this session's
-            # initial read. Recover by rolling back and reading the committed winner.
+            # A competing request can win the singleton insert while its commit is not
+            # yet visible to this session. Roll back and wait for that committed winner
+            # before attempting another insert.
             session.rollback()
-            existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
-            if existing is None:
-                raise
-            return existing
-        except OperationalError as exc:
-            # On Windows/SQLite two concurrent TestClient requests can briefly collide
-            # on the singleton insert before SQLite reports the committed winner. Wait
-            # a moment, then re-read before retrying the insert.
-            session.rollback()
-            last_operational_error = exc
-            time.sleep(0.05 * (attempt + 1))
-            existing = session.get(ProfessionalEvidenceSettings, _SETTINGS_ID)
+            last_conflict = exc
+            existing = _wait_for_committed_professional_evidence_root(session)
             if existing is not None:
                 return existing
-    if last_operational_error is not None:
-        raise last_operational_error
+    if last_conflict is not None:
+        raise last_conflict
     raise ValueError("JOLT could not provision the local evidence directory.")
 
 
