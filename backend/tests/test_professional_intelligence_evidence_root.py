@@ -116,7 +116,9 @@ def test_default_provisioning_waits_until_concurrent_winner_is_visible(
             self.expire_count += 1
 
     session = DelayedWinnerSession()
-    monkeypatch.setattr("jolt.professional_intelligence_evidence_root.time.sleep", lambda _delay: None)
+    monkeypatch.setattr(
+        "jolt.professional_intelligence_evidence_root.time.sleep", lambda _delay: None
+    )
 
     resolved = ensure_default_professional_evidence_root(session)  # type: ignore[arg-type]
 
