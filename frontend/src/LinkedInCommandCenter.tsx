@@ -44,6 +44,7 @@ type CaptureTarget = {
   url: string;
   enabled: boolean;
   isDefault: boolean;
+  connectionLimit?: number;
 };
 
 type Props = { apiBase: string; active: boolean };
@@ -61,7 +62,7 @@ const DEFAULT_TARGETS: CaptureTarget[] = [
   { id: "certifications", name: "Licenses & certifications", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/certifications/", enabled: true, isDefault: true },
   { id: "recommendations", name: "Recommendations", category: "profile", url: "https://www.linkedin.com/in/rafael-alba-tech/details/recommendations/?detailScreenTabIndex=0", enabled: true, isDefault: true },
   { id: "activity", name: "All activity", category: "activity", url: "https://www.linkedin.com/in/rafael-alba-tech/recent-activity/all/", enabled: true, isDefault: true },
-  { id: "connections", name: "Connections", category: "network_contact", url: "https://www.linkedin.com/mynetwork/invite-connect/connections/", enabled: false, isDefault: true },
+  { id: "connections", name: "Connections", category: "network_contact", url: "https://www.linkedin.com/mynetwork/invite-connect/connections/", enabled: false, isDefault: true, connectionLimit: 100 },
 ];
 
 function readable(value: string) { return value.replaceAll("_", " "); }
@@ -72,7 +73,19 @@ function normalizeTarget(value: Partial<CaptureTarget>): CaptureTarget | null {
   const name = String(value.name || "LinkedIn target");
   const category = CATEGORIES.includes(value.category as CaptureCategory) ? value.category as CaptureCategory : "other";
   if (category === "other" && /linkedin\.com\/jobs|jobs-tracker/i.test(url)) return null;
-  return { id, name, category, url, enabled: Boolean(value.enabled), isDefault: Boolean(value.isDefault) };
+  const parsedLimit = Number(value.connectionLimit ?? 100);
+  const connectionLimit = Number.isFinite(parsedLimit)
+    ? Math.min(250, Math.max(1, Math.trunc(parsedLimit)))
+    : 100;
+  return {
+    id,
+    name,
+    category,
+    url,
+    enabled: Boolean(value.enabled),
+    isDefault: Boolean(value.isDefault),
+    ...(category === "network_contact" ? { connectionLimit } : {}),
+  };
 }
 
 function loadTargets(): CaptureTarget[] {
@@ -95,7 +108,16 @@ async function responseError(response: Response, fallback: string) {
 }
 
 function targetPayload(target: CaptureTarget) {
-  return { category: target.category, title: target.name, url: target.url, wait_seconds: 4, full_page_screenshot: false };
+  return {
+    category: target.category,
+    title: target.name,
+    url: target.url,
+    wait_seconds: 4,
+    full_page_screenshot: false,
+    ...(target.category === "network_contact"
+      ? { connection_limit: target.connectionLimit ?? 100 }
+      : {}),
+  };
 }
 
 export function LinkedInCommandCenter({ apiBase, active }: Props) {
@@ -281,7 +303,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
             {targets.map((target) => (
               <article key={target.id} className="linkedin-target-row">
                 {editingId === target.id ? (
-                  <div className="form-grid"><label>Name<input value={target.name} onChange={(event) => patchTarget(target.id, { name: event.target.value })} /></label><label>Category<select value={target.category} onChange={(event) => patchTarget(target.id, { category: event.target.value as CaptureCategory })}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label className="full-width">URL<input value={target.url} onChange={(event) => patchTarget(target.id, { url: event.target.value })} /></label><button type="button" className="secondary" onClick={() => setEditingId(null)}>Done</button>{!target.isDefault && <button type="button" className="danger" onClick={() => setTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>}</div>
+                  <div className="form-grid"><label>Name<input value={target.name} onChange={(event) => patchTarget(target.id, { name: event.target.value })} /></label><label>Category<select value={target.category} onChange={(event) => patchTarget(target.id, { category: event.target.value as CaptureCategory })}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label className="full-width">URL<input value={target.url} onChange={(event) => patchTarget(target.id, { url: event.target.value })} /></label>{target.category === "network_contact" && <label>Connection limit<input type="number" min={1} max={250} value={target.connectionLimit ?? 100} onChange={(event) => patchTarget(target.id, { connectionLimit: Math.min(250, Math.max(1, Number.parseInt(event.target.value, 10) || 1)) })} /></label>}<button type="button" className="secondary" onClick={() => setEditingId(null)}>Done</button>{!target.isDefault && <button type="button" className="danger" onClick={() => setTargets((items) => items.filter((item) => item.id !== target.id))}>Remove</button>}</div>
                 ) : (
                   <><div className="linkedin-target-name"><strong>{target.name}</strong><span>{readable(target.category)}</span></div><label><input type="checkbox" checked={target.enabled} onChange={(event) => patchTarget(target.id, { enabled: event.target.checked })} /> Enabled</label><div className="button-row"><button type="button" className="secondary" onClick={() => setEditingId(target.id)}>Edit URL</button><button type="button" disabled={busy || !target.url.trim()} onClick={() => void captureTarget(target)}>{capturingId === target.id ? "Capturing…" : "Capture"}</button></div></>
                 )}

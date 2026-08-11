@@ -94,6 +94,9 @@ def test_linkedin_command_center_recommendations_and_export(tmp_path: Path) -> N
         assert "prompt.md" in names
         assert "data/linkedin_command_center.json" in names
         assert "data/linkedin_recommendations.csv" in names
+        assert "data/connections.json" in names
+        assert "data/connections.csv" in names
+        assert "data/connection_capture_runs.json" in names
         dataset = archive.read("data/linkedin_command_center.json").decode("utf-8")
         assert "Publish support troubleshooting post" in dataset
         assert "Do not automate LinkedIn actions" in dataset
