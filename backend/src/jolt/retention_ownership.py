@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -32,6 +34,20 @@ class RetentionOwnershipPreview(BaseModel):
     superseded_capture_run_count: int
     market_observation_count: int
     captures: list[CaptureRetentionPreviewItem]
+
+
+class _GuardedRetentionCleanupState(TypedDict):
+    current_capture_run_id: str | None
+    superseded_run_ids: set[str]
+    retained_posting_ids: set[str]
+    candidate_posting_ids: set[str]
+    candidate_source_document_ids: set[str]
+    expected_observation_pairs: set[tuple[str, str]]
+    observed_pairs: set[tuple[str, str]]
+    missing_observation_pairs: set[tuple[str, str]]
+    dependency_counts: dict[str, int]
+    blocked_reasons: list[str]
+    confirmation: str
 
 
 def build_retention_ownership_preview(
@@ -133,7 +149,7 @@ def build_retention_ownership_preview(
 
 def _guarded_retention_cleanup_state(
     session,
-) -> dict[str, object]:
+) -> _GuardedRetentionCleanupState:
     from sqlalchemy import bindparam, text
 
     def values(
