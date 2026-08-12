@@ -143,10 +143,10 @@ _DECISION_BANDS = (
     "Blocked / do not pursue",
 )
 _TECHNICAL_FIT_BANDS = (
-    "Strong technical fit ┬╖ 80ΓÇô100",
-    "Viable technical fit ┬╖ 60ΓÇô79",
-    "Stretch technical fit ┬╖ 40ΓÇô59",
-    "Low technical fit ┬╖ 0ΓÇô39",
+    "Strong technical fit · 80–100",
+    "Viable technical fit · 60–79",
+    "Stretch technical fit · 40–59",
+    "Low technical fit · 0–39",
 )
 _BLOCKED_RECOMMENDATIONS = {"do_not_pursue", "reject"}
 
@@ -189,7 +189,7 @@ def _role_family(title: str) -> tuple[str, bool]:
 
 def _work_mode(location: str, description: str) -> str:
     value = f"{location} {description}".lower()
-    if "hybrid" in value or "h├¡brido" in value:
+    if "hybrid" in value or "híbrido" in value:
         return "Hybrid"
     if "remote" in value or "remoto" in value:
         return "Remote"
@@ -209,9 +209,9 @@ def _seniority(title: str) -> str:
 
 def _salary_mentions(text: str) -> list[str]:
     patterns = (
-        r"(?:Γé¼|eur\s*)\s?\d{2,3}(?:[.,]\d{3})(?:\s?[-ΓÇô]\s?(?:Γé¼|eur\s*)?\s?\d{2,3}(?:[.,]\d{3}))?",
-        r"\d{2,3}(?:[.,]\d{3})\s?(?:Γé¼|eur)(?:\s?[-ΓÇô]\s?\d{2,3}(?:[.,]\d{3})\s?(?:Γé¼|eur))?",
-        r"(?:Γé¼|eur\s*)\s?\d{2,3}(?:\.\d{3})?\s?(?:per year|annually|annual|yearly|\/year)",
+        r"(?:€|eur\s*)\s?\d{2,3}(?:[.,]\d{3})(?:\s?[-–]\s?(?:€|eur\s*)?\s?\d{2,3}(?:[.,]\d{3}))?",
+        r"\d{2,3}(?:[.,]\d{3})\s?(?:€|eur)(?:\s?[-–]\s?\d{2,3}(?:[.,]\d{3})\s?(?:€|eur))?",
+        r"(?:€|eur\s*)\s?\d{2,3}(?:\.\d{3})?\s?(?:per year|annually|annual|yearly|\/year)",
     )
     matches: list[str] = []
     for pattern in patterns:
