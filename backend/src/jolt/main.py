@@ -71,6 +71,10 @@ from jolt.pending_inbox_cleanup import (
 )
 from jolt.professional_intelligence_plan_api import build_professional_intelligence_plan_router
 from jolt.readiness_workflow import list_readiness_history, refresh_readiness_report
+from jolt.retention_ownership import (
+    RetentionOwnershipPreview,
+    build_retention_ownership_preview,
+)
 from jolt.runtime_identity import RuntimeIdentityResponse, build_runtime_identity
 from jolt.schemas import (
     ApplicationCreateRequest,
@@ -406,6 +410,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
             return get_opportunity_workbench(session, posting_id)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get(
+        "/api/data-management/retention-preview",
+        response_model=RetentionOwnershipPreview,
+        tags=["data-management"],
+    )
+    def retention_preview(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> RetentionOwnershipPreview:
+        return build_retention_ownership_preview(session)
 
     @app.get("/api/market-intelligence", tags=["analysis"])
     def market_intelligence(

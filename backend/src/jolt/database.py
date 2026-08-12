@@ -7,7 +7,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import DateTime, ForeignKey, String, Text, create_engine, event
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, create_engine, event
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -172,6 +172,50 @@ class Outcome(Base):
     reason_code: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MarketIntelligenceObservation(Base):
+    __tablename__ = "market_intelligence_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_capture_run_id",
+            "source_job_id",
+            name="uq_market_observation_capture_job",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_capture_run_id: Mapped[str] = mapped_column(
+        String(36), nullable=False, index=True
+    )
+    source_job_id: Mapped[str] = mapped_column(
+        String(100), default="", nullable=False, index=True
+    )
+    posting_identity_key: Mapped[str] = mapped_column(
+        String(2110), nullable=False, index=True
+    )
+    source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    title: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    company: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    location: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    engine_version: Mapped[str] = mapped_column(
+        String(40), default="", nullable=False
+    )
+    recommendation: Mapped[str] = mapped_column(
+        String(40), default="", nullable=False
+    )
+    confidence: Mapped[str] = mapped_column(
+        String(20), default="", nullable=False
+    )
+    ranking_score: Mapped[int | None] = mapped_column(nullable=True)
+    reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    captured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
 
 
 class LinkedInPresenceCapture(Base):

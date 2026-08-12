@@ -10,8 +10,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
-from jolt.database import CaptureItem, CaptureRun, Evaluation, Posting
+from jolt.database import (
+    Evaluation,
+    MarketIntelligenceObservation,
+    Posting,
+    SourceDocument,
+)
 from jolt.semantic_duplicates import group_semantic_duplicates
 from jolt.strategy_runtime import ENGINE_VERSION
 
@@ -139,12 +143,36 @@ _DECISION_BANDS = (
     "Blocked / do not pursue",
 )
 _TECHNICAL_FIT_BANDS = (
-    "Strong technical fit · 80–100",
-    "Viable technical fit · 60–79",
-    "Stretch technical fit · 40–59",
-    "Low technical fit · 0–39",
+    "Strong technical fit ┬╖ 80ΓÇô100",
+    "Viable technical fit ┬╖ 60ΓÇô79",
+    "Stretch technical fit ┬╖ 40ΓÇô59",
+    "Low technical fit ┬╖ 0ΓÇô39",
 )
 _BLOCKED_RECOMMENDATIONS = {"do_not_pursue", "reject"}
+
+
+@dataclass(frozen=True)
+class _DurableMarketPosting:
+    id: str
+    title: str
+    company: str
+    location: str
+    description: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class _DurableMarketEvaluation:
+    posting_id: str
+    engine_version: str
+    recommendation: str
+    confidence: str
+    ranking_score: int
+    reasons_json: str
+
+
+MarketPosting = Posting | _DurableMarketPosting
+MarketEvaluation = Evaluation | _DurableMarketEvaluation
 
 
 def _normalized_title(title: str) -> str:
@@ -161,7 +189,7 @@ def _role_family(title: str) -> tuple[str, bool]:
 
 def _work_mode(location: str, description: str) -> str:
     value = f"{location} {description}".lower()
-    if "hybrid" in value or "híbrido" in value:
+    if "hybrid" in value or "h├¡brido" in value:
         return "Hybrid"
     if "remote" in value or "remoto" in value:
         return "Remote"
@@ -181,9 +209,9 @@ def _seniority(title: str) -> str:
 
 def _salary_mentions(text: str) -> list[str]:
     patterns = (
-        r"(?:€|eur\s*)\s?\d{2,3}(?:[.,]\d{3})(?:\s?[-–]\s?(?:€|eur\s*)?\s?\d{2,3}(?:[.,]\d{3}))?",
-        r"\d{2,3}(?:[.,]\d{3})\s?(?:€|eur)(?:\s?[-–]\s?\d{2,3}(?:[.,]\d{3})\s?(?:€|eur))?",
-        r"(?:€|eur\s*)\s?\d{2,3}(?:\.\d{3})?\s?(?:per year|annually|annual|yearly|\/year)",
+        r"(?:Γé¼|eur\s*)\s?\d{2,3}(?:[.,]\d{3})(?:\s?[-ΓÇô]\s?(?:Γé¼|eur\s*)?\s?\d{2,3}(?:[.,]\d{3}))?",
+        r"\d{2,3}(?:[.,]\d{3})\s?(?:Γé¼|eur)(?:\s?[-ΓÇô]\s?\d{2,3}(?:[.,]\d{3})\s?(?:Γé¼|eur))?",
+        r"(?:Γé¼|eur\s*)\s?\d{2,3}(?:\.\d{3})?\s?(?:per year|annually|annual|yearly|\/year)",
     )
     matches: list[str] = []
     for pattern in patterns:
@@ -191,7 +219,9 @@ def _salary_mentions(text: str) -> list[str]:
     return list(dict.fromkeys(match.strip() for match in matches if match.strip()))
 
 
-def _assessment_payload(evaluation: Evaluation | None) -> dict[str, Any]:
+def _assessment_payload(
+    evaluation: MarketEvaluation | None,
+) -> dict[str, Any]:
     if evaluation is None:
         return {}
     try:
@@ -231,7 +261,7 @@ def _decision_band(recommendation: str) -> str:
     return _DECISION_BANDS[3]
 
 
-def _is_blocked(evaluation: Evaluation) -> bool:
+def _is_blocked(evaluation: MarketEvaluation) -> bool:
     assessment = _assessment_payload(evaluation)
     eligibility = assessment.get("eligibility")
     return evaluation.recommendation in _BLOCKED_RECOMMENDATIONS or eligibility == "ineligible"
@@ -241,28 +271,23 @@ def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
     return [{"label": label, "count": count} for label, count in counter.most_common(limit)]
 
 
-def _capture_statuses_by_posting(session: Session) -> dict[str, set[str]]:
-    runs = {run.id: run for run in session.scalars(select(CaptureRun)).all()}
-    statuses: dict[str, set[str]] = {}
-    for item in session.scalars(
-        select(CaptureItem).where(CaptureItem.posting_id.is_not(None))
-    ).all():
-        if not item.posting_id:
-            continue
-        run = runs.get(item.capture_run_id)
-        if run is None:
-            continue
-        statuses.setdefault(item.posting_id, set()).add(run.status)
-    return statuses
-
-
-def _is_archived_capture_import(capture_statuses: set[str]) -> bool:
-    return bool(capture_statuses) and all(
-        status == ARCHIVED_CAPTURE_STATUS for status in capture_statuses
+def _manual_market_postings(
+    session: Session,
+) -> list[Posting]:
+    return list(
+        session.scalars(
+            select(Posting)
+            .join(
+                SourceDocument,
+                SourceDocument.id == Posting.source_document_id,
+            )
+            .where(SourceDocument.source_type == "manual")
+            .order_by(Posting.created_at.desc())
+        ).all()
     )
 
 
-def _is_synthetic_audit_posting(posting: Posting) -> bool:
+def _is_synthetic_audit_posting(posting: MarketPosting) -> bool:
     title = posting.title.casefold()
     company = posting.company.casefold()
     return (
@@ -280,7 +305,10 @@ def _as_aware(value: datetime | None) -> datetime | None:
     return value.astimezone(UTC)
 
 
-def _filter_by_timeframe(postings: list[Posting], timeframe: str) -> list[Posting]:
+def _filter_by_timeframe(
+    postings: list[MarketPosting],
+    timeframe: str,
+) -> list[MarketPosting]:
     if timeframe == "last_7_days":
         threshold = datetime.now(UTC) - timedelta(days=7)
     elif timeframe == "last_30_days":
@@ -292,16 +320,6 @@ def _filter_by_timeframe(postings: list[Posting], timeframe: str) -> list[Postin
         for posting in postings
         if (_as_aware(posting.created_at) or datetime.min.replace(tzinfo=UTC)) >= threshold
     ]
-
-
-def _filter_by_source_scope(
-    postings: list[Posting], capture_statuses: dict[str, set[str]], source_scope: str
-) -> list[Posting]:
-    if source_scope == "capture_batches":
-        return [posting for posting in postings if posting.id in capture_statuses]
-    if source_scope == "manual_intake":
-        return [posting for posting in postings if posting.id not in capture_statuses]
-    return postings
 
 
 def _effective_evaluations(
@@ -347,9 +365,9 @@ class _MarketDuplicateCandidate:
 
 
 def _deduplicate_market_postings(
-    postings: list[Posting],
-    evaluations: dict[str, Evaluation],
-) -> tuple[list[Posting], list[dict[str, object]]]:
+    postings: list[MarketPosting],
+    evaluations: dict[str, MarketEvaluation],
+) -> tuple[list[MarketPosting], list[dict[str, object]]]:
     posting_by_id = {posting.id: posting for posting in postings}
     descriptions = {posting.id: posting.description or "" for posting in postings}
 
@@ -374,7 +392,7 @@ def _deduplicate_market_postings(
         descriptions=descriptions,
     )
 
-    canonical_postings: list[Posting] = []
+    canonical_postings: list[MarketPosting] = []
     duplicate_groups: list[dict[str, object]] = []
 
     for group in groups:
@@ -394,7 +412,10 @@ def _deduplicate_market_postings(
     return canonical_postings, duplicate_groups
 
 
-def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> dict[str, object]:
+def _scope_data(
+    postings: list[MarketPosting],
+    evaluations: dict[str, MarketEvaluation],
+) -> dict[str, object]:
     role_families: Counter[str] = Counter()
     work_modes: Counter[str] = Counter()
     seniority: Counter[str] = Counter()
@@ -479,48 +500,148 @@ def _scope_data(postings: list[Posting], evaluations: dict[str, Evaluation]) -> 
     }
 
 
+def _durable_capture_market_records(
+    session: Session,
+) -> tuple[
+    list[_DurableMarketPosting],
+    dict[str, _DurableMarketEvaluation],
+]:
+    observations = list(
+        session.scalars(
+            select(MarketIntelligenceObservation).order_by(
+                MarketIntelligenceObservation.captured_at.desc(),
+                MarketIntelligenceObservation.observed_at.desc(),
+                MarketIntelligenceObservation.id.desc(),
+            )
+        ).all()
+    )
+
+    postings: list[_DurableMarketPosting] = []
+    evaluations: dict[str, _DurableMarketEvaluation] = {}
+
+    for observation in observations:
+        posting = _DurableMarketPosting(
+            id=observation.id,
+            title=observation.title,
+            company=observation.company,
+            location=observation.location,
+            description=observation.description,
+            created_at=observation.captured_at,
+        )
+        postings.append(posting)
+
+        if (
+            observation.recommendation
+            and observation.ranking_score is not None
+        ):
+            evaluations[posting.id] = _DurableMarketEvaluation(
+                posting_id=posting.id,
+                engine_version=observation.engine_version,
+                recommendation=observation.recommendation,
+                confidence=observation.confidence,
+                ranking_score=observation.ranking_score,
+                reasons_json=observation.reasons_json,
+            )
+
+    return postings, evaluations
+
+
 def build_market_intelligence(
-    session: Session, *, timeframe: str = "all", source_scope: str = "all"
+    session: Session,
+    *,
+    timeframe: str = "all",
+    source_scope: str = "all",
 ) -> dict[str, object]:
-    all_postings = list(session.scalars(select(Posting).order_by(Posting.created_at.desc())).all())
-    capture_statuses = _capture_statuses_by_posting(session)
-    active_postings = [
-        posting
-        for posting in all_postings
-        if not _is_archived_capture_import(capture_statuses.get(posting.id, set()))
-    ]
-    production_postings = [
-        posting for posting in active_postings if not _is_synthetic_audit_posting(posting)
-    ]
-    source_filtered = _filter_by_source_scope(
-        production_postings,
-        capture_statuses,
-        source_scope,
+    captured_postings, captured_evaluations = (
+        _durable_capture_market_records(session)
     )
-    source_postings = _filter_by_timeframe(source_filtered, timeframe)
-    source_evaluations, evaluation_coverage = _effective_evaluations(
+
+    manual_postings = _manual_market_postings(session)
+    manual_evaluations, _ = _effective_evaluations(
         session,
-        source_postings,
+        manual_postings,
     )
-    postings, duplicate_groups = _deduplicate_market_postings(
-        source_postings,
-        source_evaluations,
+
+    if source_scope == "capture_batches":
+        source_records: list[MarketPosting] = list(captured_postings)
+        source_evaluations: dict[str, MarketEvaluation] = dict(
+            captured_evaluations
+        )
+    elif source_scope == "manual_intake":
+        source_records = list(manual_postings)
+        source_evaluations = dict(manual_evaluations)
+    else:
+        source_records = [
+            *captured_postings,
+            *manual_postings,
+        ]
+        source_evaluations = {
+            **captured_evaluations,
+            **manual_evaluations,
+        }
+
+    active_records = list(source_records)
+    production_records = [
+        posting
+        for posting in active_records
+        if not _is_synthetic_audit_posting(posting)
+    ]
+
+    timeframe_records = _filter_by_timeframe(
+        production_records,
+        timeframe,
     )
-    evaluations = {
-        posting.id: source_evaluations[posting.id]
-        for posting in postings
-        if posting.id in source_evaluations
+    timeframe_ids = {
+        posting.id
+        for posting in timeframe_records
     }
-    evaluation_coverage = {
-        **evaluation_coverage,
-        "source_posting_count": len(source_postings),
-        "canonical_role_count": len(postings),
-        "duplicate_member_count": len(source_postings) - len(postings),
+    timeframe_evaluations = {
+        posting_id: evaluation
+        for posting_id, evaluation in source_evaluations.items()
+        if posting_id in timeframe_ids
     }
 
-    target_postings: list[Posting] = []
-    outside_postings: list[Posting] = []
+    postings, duplicate_groups = _deduplicate_market_postings(
+        timeframe_records,
+        timeframe_evaluations,
+    )
+    canonical_ids = {
+        posting.id
+        for posting in postings
+    }
+    evaluations = {
+        posting_id: evaluation
+        for posting_id, evaluation in timeframe_evaluations.items()
+        if posting_id in canonical_ids
+    }
+
+    current_engine_count = sum(
+        1
+        for evaluation in timeframe_evaluations.values()
+        if evaluation.engine_version == ENGINE_VERSION
+    )
+    evaluated_count = len(timeframe_evaluations)
+
+    evaluation_coverage = {
+        "posting_count": len(timeframe_records),
+        "evaluated_count": evaluated_count,
+        "missing_count": len(timeframe_records) - evaluated_count,
+        "current_engine_count": current_engine_count,
+        "fallback_engine_count": (
+            evaluated_count - current_engine_count
+        ),
+        "current_engine": ENGINE_VERSION,
+        "source_posting_count": len(timeframe_records),
+        "canonical_role_count": len(postings),
+        "duplicate_member_count": (
+            len(timeframe_records) - len(postings)
+        ),
+    }
+
+    target_postings: list[MarketPosting] = []
+    outside_postings: list[MarketPosting] = []
     outside_titles: Counter[str] = Counter()
+
     for posting in postings:
         _, is_target = _role_family(posting.title)
         if is_target:
@@ -530,21 +651,39 @@ def build_market_intelligence(
             outside_titles[posting.title] += 1
 
     return {
-        "filters": {"timeframe": timeframe, "source_scope": source_scope},
+        "filters": {
+            "timeframe": timeframe,
+            "source_scope": source_scope,
+        },
         "total_unique_roles": len(postings),
         "target_role_count": len(target_postings),
         "outside_target_count": len(outside_postings),
-        "target": _scope_data(target_postings, evaluations),
-        "all": _scope_data(postings, evaluations),
+        "target": _scope_data(
+            target_postings,
+            evaluations,
+        ),
+        "all": _scope_data(
+            postings,
+            evaluations,
+        ),
         "evaluation_coverage": evaluation_coverage,
         "duplicate_groups": duplicate_groups,
-        "excluded_synthetic_count": len(active_postings) - len(production_postings),
-        "outside_title_examples": _ranked(outside_titles, 15),
+        "excluded_synthetic_count": (
+            len(active_records) - len(production_records)
+        ),
+        "outside_title_examples": _ranked(
+            outside_titles,
+            15,
+        ),
         "fit_explanation": (
-            "Actionable fit combines the final recommendation with eligibility and saved preferences. "
-            "Technical fit is reported separately and may remain high for a role blocked by language, relocation, shift, or another explicit requirement. "
-            "Gaps and study priorities exclude blocked roles so unsuitable vacancies do not distort the development plan. "
-            "The current strategy engine is preferred and the latest compatible evaluation is used as a fallback. "
-            "Archived capture batches and confirmed JOLT audit fixtures are excluded from this active market view."
+            "Captured-job Market Intelligence is read from durable "
+            "per-capture observations rather than historical raw capture "
+            "batches. Exact repeated vacancy identities and semantic "
+            "duplicates are collapsed for the aggregate unique-role view. "
+            "Manual intake remains sourced from durable postings. "
+            "Actionable fit combines the saved evaluation snapshot with "
+            "eligibility and preferences; technical fit remains separate. "
+            "Historical Market Intelligence therefore survives after "
+            "superseded raw capture data is purged."
         ),
     }

@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 from jolt.capture_artifacts import CaptureArtifact, stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, utc_now
+from jolt.market_intelligence_observations import (
+    extract_market_intelligence_observations,
+)
 from jolt.schemas import (
     CaptureItemResponse,
     CapturePageResponse,
@@ -157,6 +160,7 @@ def run_linkedin_fixture_capture(
         run.status = "completed_with_warnings" if warnings else "completed"
         run.warnings_json = json.dumps(warnings)
         run.completed_at = utc_now()
+        extract_market_intelligence_observations(session, run.id)
         session.commit()
         return _capture_run_response(run, stored_pages, responses)
     except Exception:
