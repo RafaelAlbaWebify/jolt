@@ -22,9 +22,7 @@ def _capture_payload(
         "items": [
             {
                 "source_job_id": source_job_id,
-                "source_url": (
-                    f"https://www.linkedin.com/jobs/view/{source_job_id}/"
-                ),
+                "source_url": (f"https://www.linkedin.com/jobs/view/{source_job_id}/"),
                 "title": title,
                 "company": "Example Co",
                 "location": "Spain (Remote)",
@@ -68,8 +66,7 @@ def test_completed_capture_extracts_durable_market_observation(
     with factory() as session:
         observation = session.scalar(
             select(MarketIntelligenceObservation).where(
-                MarketIntelligenceObservation.source_capture_run_id
-                == capture_run_id
+                MarketIntelligenceObservation.source_capture_run_id == capture_run_id
             )
         )
 
@@ -104,9 +101,7 @@ def test_retention_preview_keeps_latest_and_marks_previous_complete_capture(
         ),
     ).json()
 
-    preview_response = client.get(
-        "/api/data-management/retention-preview"
-    )
+    preview_response = client.get("/api/data-management/retention-preview")
     assert preview_response.status_code == 200
 
     preview = preview_response.json()
@@ -115,22 +110,13 @@ def test_retention_preview_keeps_latest_and_marks_previous_complete_capture(
     assert preview["market_observation_count"] == 2
     assert preview["current_capture_run_id"] == second["capture_run_id"]
 
-    by_id = {
-        item["capture_run_id"]: item
-        for item in preview["captures"]
-    }
+    by_id = {item["capture_run_id"]: item for item in preview["captures"]}
 
     assert by_id[second["capture_run_id"]]["is_current_capture"] is True
-    assert (
-        by_id[second["capture_run_id"]]["retention_action"]
-        == "keep_current_capture"
-    )
+    assert by_id[second["capture_run_id"]]["retention_action"] == "keep_current_capture"
 
     assert by_id[first["capture_run_id"]]["is_current_capture"] is False
-    assert (
-        by_id[first["capture_run_id"]]["market_extraction_complete"]
-        is True
-    )
+    assert by_id[first["capture_run_id"]]["market_extraction_complete"] is True
     assert (
         by_id[first["capture_run_id"]]["retention_action"]
         == "purge_when_guarded_cleanup_is_enabled"
@@ -162,22 +148,18 @@ def test_market_observation_has_no_foreign_key_to_raw_capture_run(
 
         observation = session.scalar(
             select(MarketIntelligenceObservation).where(
-                MarketIntelligenceObservation.source_capture_run_id
-                == run.id
+                MarketIntelligenceObservation.source_capture_run_id == run.id
             )
         )
         assert observation is not None
 
-        fk_rows = session.connection().exec_driver_sql(
-            "PRAGMA foreign_key_list("
-            "'market_intelligence_observations'"
-            ")"
-        ).fetchall()
-
-        assert all(
-            row[2] != "capture_runs"
-            for row in fk_rows
+        fk_rows = (
+            session.connection()
+            .exec_driver_sql("PRAGMA foreign_key_list('market_intelligence_observations')")
+            .fetchall()
         )
+
+        assert all(row[2] != "capture_runs" for row in fk_rows)
 
 
 def test_market_observation_extraction_is_idempotent(
@@ -218,7 +200,6 @@ def test_market_observation_extraction_is_idempotent(
 
         assert created_again == 0
         assert len(observations) == 1
-
 
 
 def test_market_intelligence_uses_durable_archived_capture_observations(
@@ -270,11 +251,7 @@ def test_market_intelligence_uses_durable_archived_capture_observations(
 
     assert payload["total_unique_roles"] == 2
     assert payload["evaluation_coverage"]["source_posting_count"] == 2
-    assert (
-        "durable per-capture observations"
-        in payload["fit_explanation"]
-    )
-
+    assert "durable per-capture observations" in payload["fit_explanation"]
 
 
 def test_captured_retained_posting_does_not_become_manual_after_capture_links_are_removed(
@@ -304,26 +281,16 @@ def test_captured_retained_posting_does_not_become_manual_after_capture_links_ar
     with factory() as session:
         capture_item_ids = list(
             session.scalars(
-                select(CaptureItem.id).where(
-                    CaptureItem.capture_run_id == capture_run_id
-                )
+                select(CaptureItem.id).where(CaptureItem.capture_run_id == capture_run_id)
             ).all()
         )
 
         if capture_item_ids:
             session.execute(
-                delete(CaptureArtifact).where(
-                    CaptureArtifact.capture_item_id.in_(
-                        capture_item_ids
-                    )
-                )
+                delete(CaptureArtifact).where(CaptureArtifact.capture_item_id.in_(capture_item_ids))
             )
 
-        session.execute(
-            delete(CaptureItem).where(
-                CaptureItem.capture_run_id == capture_run_id
-            )
-        )
+        session.execute(delete(CaptureItem).where(CaptureItem.capture_run_id == capture_run_id))
         session.commit()
 
     capture_scope = client.get(
@@ -357,7 +324,6 @@ def test_captured_retained_posting_does_not_become_manual_after_capture_links_ar
     assert all_scope.json()["total_unique_roles"] == 1
 
 
-
 def test_repeated_capture_occurrences_are_filtered_before_deduplication(
     tmp_path,
 ) -> None:
@@ -386,8 +352,7 @@ def test_repeated_capture_occurrences_are_filtered_before_deduplication(
     with factory() as session:
         original = session.scalar(
             select(MarketIntelligenceObservation).where(
-                MarketIntelligenceObservation.source_job_id
-                == "repeat-job"
+                MarketIntelligenceObservation.source_job_id == "repeat-job"
             )
         )
         assert original is not None
@@ -417,9 +382,7 @@ def test_repeated_capture_occurrences_are_filtered_before_deduplication(
         session.add(repeated)
         session.commit()
 
-        postings, evaluations = (
-            _durable_capture_market_records(session)
-        )
+        postings, evaluations = _durable_capture_market_records(session)
 
         assert len(postings) == 2
         assert len(evaluations) == 2
@@ -431,7 +394,6 @@ def test_repeated_capture_occurrences_are_filtered_before_deduplication(
 
         assert len(recent) == 1
         assert recent[0].id == repeated.id
-
 
 
 def test_historical_market_observation_backfill_is_idempotent(
@@ -467,38 +429,19 @@ def test_historical_market_observation_backfill_is_idempotent(
     factory = create_session_factory(database_url)
 
     with factory() as session:
-        session.execute(
-            delete(MarketIntelligenceObservation)
-        )
+        session.execute(delete(MarketIntelligenceObservation))
         session.commit()
 
-        assert (
-            session.scalar(
-                select(
-                    func.count(
-                        MarketIntelligenceObservation.id
-                    )
-                )
-            )
-            == 0
-        )
+        assert session.scalar(select(func.count(MarketIntelligenceObservation.id))) == 0
 
-        first_result = (
-            backfill_market_intelligence_observations(
-                session
-            )
-        )
+        first_result = backfill_market_intelligence_observations(session)
         session.commit()
 
         assert first_result["capture_run_count"] == 2
         assert first_result["created_observation_count"] == 2
         assert first_result["total_observation_count"] == 2
 
-        second_result = (
-            backfill_market_intelligence_observations(
-                session
-            )
-        )
+        second_result = backfill_market_intelligence_observations(session)
         session.commit()
 
         assert second_result["capture_run_count"] == 2
@@ -539,10 +482,7 @@ def test_observation_extraction_prefers_current_engine_evaluation(
 
     with factory() as session:
         item = session.scalar(
-            select(CaptureItem).where(
-                CaptureItem.source_job_id
-                == "engine-preference"
-            )
+            select(CaptureItem).where(CaptureItem.source_job_id == "engine-preference")
         )
         assert item is not None
         assert item.posting_id is not None
@@ -588,23 +528,19 @@ def test_observation_extraction_prefers_current_engine_evaluation(
 
         session.execute(
             delete(MarketIntelligenceObservation).where(
-                MarketIntelligenceObservation.source_job_id
-                == "engine-preference"
+                MarketIntelligenceObservation.source_job_id == "engine-preference"
             )
         )
         session.commit()
 
-        result = backfill_market_intelligence_observations(
-            session
-        )
+        result = backfill_market_intelligence_observations(session)
         session.commit()
 
         assert result["created_observation_count"] == 1
 
         rebuilt = session.scalar(
             select(MarketIntelligenceObservation).where(
-                MarketIntelligenceObservation.source_job_id
-                == "engine-preference"
+                MarketIntelligenceObservation.source_job_id == "engine-preference"
             )
         )
 
@@ -614,7 +550,6 @@ def test_observation_extraction_prefers_current_engine_evaluation(
         assert rebuilt.confidence == "medium"
         assert rebuilt.ranking_score == 73
         assert rebuilt.reasons_json == '["current-engine-test"]'
-
 
 
 def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
@@ -667,22 +602,13 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
 
     with factory() as session:
         disposable_item = session.scalar(
-            select(CaptureItem).where(
-                CaptureItem.source_job_id
-                == "cleanup-disposable"
-            )
+            select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-disposable")
         )
         retained_item = session.scalar(
-            select(CaptureItem).where(
-                CaptureItem.source_job_id
-                == "cleanup-retained"
-            )
+            select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-retained")
         )
         current_item = session.scalar(
-            select(CaptureItem).where(
-                CaptureItem.source_job_id
-                == "cleanup-current"
-            )
+            select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-current")
         )
 
         assert disposable_item is not None
@@ -698,12 +624,8 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         retained_posting_id = retained_item.posting_id
         current_posting_id = current_item.posting_id
 
-        disposable_source_id = (
-            disposable_item.source_document_id
-        )
-        retained_source_id = (
-            retained_item.source_document_id
-        )
+        disposable_source_id = disposable_item.source_document_id
+        retained_source_id = retained_item.source_document_id
 
         disposable_run = session.get(
             CaptureRun,
@@ -737,9 +659,7 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
 
         session.commit()
 
-        plan = build_guarded_retention_cleanup_plan(
-            session
-        )
+        plan = build_guarded_retention_cleanup_plan(session)
 
         assert plan["blocked"] is False
         assert plan["superseded_capture_run_count"] == 2
@@ -761,59 +681,73 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         except ValueError:
             pass
         else:
-            raise AssertionError(
-                "Wrong confirmation must block cleanup."
-            )
+            raise AssertionError("Wrong confirmation must block cleanup.")
 
-        assert session.get(
-            Posting,
-            disposable_posting_id,
-        ) is not None
+        assert (
+            session.get(
+                Posting,
+                disposable_posting_id,
+            )
+            is not None
+        )
 
         result = execute_guarded_retention_cleanup(
             session,
-            confirmation=str(
-                plan["required_confirmation"]
-            ),
+            confirmation=str(plan["required_confirmation"]),
         )
         session.commit()
 
         assert result["deleted"]["capture_runs"] == 2
         assert result["deleted"]["postings"] == 1
+        assert result["preserved_retained_posting_count"] == 1
+
         assert (
-            result["preserved_retained_posting_count"]
-            == 1
+            session.get(
+                Posting,
+                disposable_posting_id,
+            )
+            is None
         )
 
-        assert session.get(
-            Posting,
-            disposable_posting_id,
-        ) is None
+        assert (
+            session.get(
+                SourceDocument,
+                disposable_source_id,
+            )
+            is None
+        )
 
-        assert session.get(
-            SourceDocument,
-            disposable_source_id,
-        ) is None
+        assert (
+            session.get(
+                Posting,
+                retained_posting_id,
+            )
+            is not None
+        )
 
-        assert session.get(
-            Posting,
-            retained_posting_id,
-        ) is not None
+        assert (
+            session.get(
+                SourceDocument,
+                retained_source_id,
+            )
+            is not None
+        )
 
-        assert session.get(
-            SourceDocument,
-            retained_source_id,
-        ) is not None
+        assert (
+            session.get(
+                Posting,
+                current_posting_id,
+            )
+            is not None
+        )
 
-        assert session.get(
-            Posting,
-            current_posting_id,
-        ) is not None
-
-        assert session.get(
-            CaptureRun,
-            current_item.capture_run_id,
-        ) is not None
+        assert (
+            session.get(
+                CaptureRun,
+                current_item.capture_run_id,
+            )
+            is not None
+        )
 
         retained_application = session.get(
             Application,
@@ -822,11 +756,8 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         assert retained_application is not None
 
         historical_observation = session.scalar(
-            select(
-                MarketIntelligenceObservation
-            ).where(
-                MarketIntelligenceObservation.source_job_id
-                == "cleanup-disposable"
+            select(MarketIntelligenceObservation).where(
+                MarketIntelligenceObservation.source_job_id == "cleanup-disposable"
             )
         )
         assert historical_observation is not None

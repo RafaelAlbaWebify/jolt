@@ -185,29 +185,17 @@ class MarketIntelligenceObservation(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    source_capture_run_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, index=True
-    )
-    source_job_id: Mapped[str] = mapped_column(
-        String(100), default="", nullable=False, index=True
-    )
-    posting_identity_key: Mapped[str] = mapped_column(
-        String(2110), nullable=False, index=True
-    )
+    source_capture_run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    source_job_id: Mapped[str] = mapped_column(String(100), default="", nullable=False, index=True)
+    posting_identity_key: Mapped[str] = mapped_column(String(2110), nullable=False, index=True)
     source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
     title: Mapped[str] = mapped_column(Text, default="", nullable=False)
     company: Mapped[str] = mapped_column(Text, default="", nullable=False)
     location: Mapped[str] = mapped_column(Text, default="", nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    engine_version: Mapped[str] = mapped_column(
-        String(40), default="", nullable=False
-    )
-    recommendation: Mapped[str] = mapped_column(
-        String(40), default="", nullable=False
-    )
-    confidence: Mapped[str] = mapped_column(
-        String(20), default="", nullable=False
-    )
+    engine_version: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    recommendation: Mapped[str] = mapped_column(String(40), default="", nullable=False)
+    confidence: Mapped[str] = mapped_column(String(20), default="", nullable=False)
     ranking_score: Mapped[int | None] = mapped_column(nullable=True)
     reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     captured_at: Mapped[datetime] = mapped_column(

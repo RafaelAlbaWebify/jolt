@@ -47,11 +47,7 @@ def build_retention_ownership_preview(
     )
 
     current_run = next(
-        (
-            run
-            for run in runs
-            if run.status != ARCHIVED_CAPTURE_STATUS
-        ),
+        (run for run in runs if run.status != ARCHIVED_CAPTURE_STATUS),
         None,
     )
     current_id = current_run.id if current_run else None
@@ -61,17 +57,13 @@ def build_retention_ownership_preview(
     for run in runs:
         page_count = int(
             session.scalar(
-                select(func.count(CapturePage.id)).where(
-                    CapturePage.capture_run_id == run.id
-                )
+                select(func.count(CapturePage.id)).where(CapturePage.capture_run_id == run.id)
             )
             or 0
         )
         item_count = int(
             session.scalar(
-                select(func.count(CaptureItem.id)).where(
-                    CaptureItem.capture_run_id == run.id
-                )
+                select(func.count(CaptureItem.id)).where(CaptureItem.capture_run_id == run.id)
             )
             or 0
         )
@@ -95,8 +87,7 @@ def build_retention_ownership_preview(
         observed_job_ids = set(
             session.scalars(
                 select(MarketIntelligenceObservation.source_job_id).where(
-                    MarketIntelligenceObservation.source_capture_run_id
-                    == run.id
+                    MarketIntelligenceObservation.source_capture_run_id == run.id
                 )
             ).all()
         )
@@ -128,24 +119,16 @@ def build_retention_ownership_preview(
         )
 
     total_observations = int(
-        session.scalar(
-            select(func.count(MarketIntelligenceObservation.id))
-        )
-        or 0
+        session.scalar(select(func.count(MarketIntelligenceObservation.id))) or 0
     )
 
     return RetentionOwnershipPreview(
         current_capture_run_id=current_id,
         capture_run_count=len(runs),
-        superseded_capture_run_count=sum(
-            1
-            for item in items
-            if not item.is_current_capture
-        ),
+        superseded_capture_run_count=sum(1 for item in items if not item.is_current_capture),
         market_observation_count=total_observations,
         captures=items,
     )
-
 
 
 def _guarded_retention_cleanup_state(
@@ -161,11 +144,7 @@ def _guarded_retention_cleanup_state(
             text(sql),
             params or {},
         ).all()
-        return {
-            str(row[0])
-            for row in rows
-            if row[0] is not None
-        }
+        return {str(row[0]) for row in rows if row[0] is not None}
 
     def rows_for_ids(
         sql: str,
@@ -174,9 +153,7 @@ def _guarded_retention_cleanup_state(
         if not ids:
             return []
 
-        statement = text(sql).bindparams(
-            bindparam("ids", expanding=True)
-        )
+        statement = text(sql).bindparams(bindparam("ids", expanding=True))
         return session.execute(
             statement,
             {"ids": sorted(ids)},
@@ -194,11 +171,7 @@ def _guarded_retention_cleanup_state(
         )
     ).first()
 
-    current_run_id = (
-        str(current_row[0])
-        if current_row is not None
-        else None
-    )
+    current_run_id = str(current_row[0]) if current_row is not None else None
 
     all_run_rows = session.execute(
         text(
@@ -209,19 +182,12 @@ def _guarded_retention_cleanup_state(
         )
     ).all()
 
-    superseded_run_ids = {
-        str(row[0])
-        for row in all_run_rows
-        if str(row[0]) != current_run_id
-    }
+    superseded_run_ids = {str(row[0]) for row in all_run_rows if str(row[0]) != current_run_id}
 
     superseded_running_run_ids = {
         str(row[0])
         for row in all_run_rows
-        if (
-            str(row[0]) != current_run_id
-            and str(row[1]) == "running"
-        )
+        if (str(row[0]) != current_run_id and str(row[1]) == "running")
     }
 
     expected_observation_pairs = {
@@ -249,9 +215,7 @@ def _guarded_retention_cleanup_state(
         )
     }
 
-    missing_observation_pairs = (
-        expected_observation_pairs - observed_pairs
-    )
+    missing_observation_pairs = expected_observation_pairs - observed_pairs
 
     superseded_posting_ids = {
         str(row[0])
@@ -318,15 +282,9 @@ def _guarded_retention_cleanup_state(
         | outcome_posting_ids
     )
 
-    retained_posting_ids = (
-        superseded_posting_ids
-        & durable_posting_ids
-    )
+    retained_posting_ids = superseded_posting_ids & durable_posting_ids
 
-    candidate_posting_ids = (
-        superseded_posting_ids
-        - durable_posting_ids
-    )
+    candidate_posting_ids = superseded_posting_ids - durable_posting_ids
 
     dependency_tables = (
         "application_readiness_reports",
@@ -350,9 +308,7 @@ def _guarded_retention_cleanup_state(
             FROM {table_name}
             WHERE posting_id IN :ids
             """
-        ).bindparams(
-            bindparam("ids", expanding=True)
-        )
+        ).bindparams(bindparam("ids", expanding=True))
 
         dependency_counts[table_name] = int(
             session.execute(
@@ -386,10 +342,7 @@ def _guarded_retention_cleanup_state(
         )
     }
 
-    possible_source_ids = (
-        superseded_source_ids
-        | candidate_posting_source_ids
-    )
+    possible_source_ids = superseded_source_ids | candidate_posting_source_ids
 
     remaining_posting_source_ids: set[str] = set()
     remaining_capture_source_ids: set[str] = set()
@@ -408,9 +361,7 @@ def _guarded_retention_cleanup_state(
         )
 
         candidate_parameter = (
-            sorted(candidate_posting_ids)
-            if candidate_posting_ids
-            else ["__none__"]
+            sorted(candidate_posting_ids) if candidate_posting_ids else ["__none__"]
         )
 
         remaining_posting_source_ids = {
@@ -437,11 +388,7 @@ def _guarded_retention_cleanup_state(
             bindparam("run_ids", expanding=True),
         )
 
-        run_parameter = (
-            sorted(superseded_run_ids)
-            if superseded_run_ids
-            else ["__none__"]
-        )
+        run_parameter = sorted(superseded_run_ids) if superseded_run_ids else ["__none__"]
 
         remaining_capture_source_ids = {
             str(row[0])
@@ -456,17 +403,13 @@ def _guarded_retention_cleanup_state(
         }
 
     candidate_source_document_ids = (
-        possible_source_ids
-        - remaining_posting_source_ids
-        - remaining_capture_source_ids
+        possible_source_ids - remaining_posting_source_ids - remaining_capture_source_ids
     )
 
     blocked_reasons: list[str] = []
 
     if current_run_id is None:
-        blocked_reasons.append(
-            "No current non-archived capture exists."
-        )
+        blocked_reasons.append("No current non-archived capture exists.")
 
     if superseded_running_run_ids:
         blocked_reasons.append(
@@ -481,19 +424,13 @@ def _guarded_retention_cleanup_state(
         )
 
     if dependency_counts["applications"]:
-        blocked_reasons.append(
-            "A capture-only candidate unexpectedly owns an application."
-        )
+        blocked_reasons.append("A capture-only candidate unexpectedly owns an application.")
 
     if dependency_counts["review_decisions"]:
-        blocked_reasons.append(
-            "A capture-only candidate unexpectedly owns a review decision."
-        )
+        blocked_reasons.append("A capture-only candidate unexpectedly owns a review decision.")
 
     if dependency_counts["outcomes"]:
-        blocked_reasons.append(
-            "A capture-only candidate unexpectedly owns an outcome."
-        )
+        blocked_reasons.append("A capture-only candidate unexpectedly owns an outcome.")
 
     confirmation = (
         "PURGE "
@@ -507,16 +444,10 @@ def _guarded_retention_cleanup_state(
         "superseded_run_ids": superseded_run_ids,
         "retained_posting_ids": retained_posting_ids,
         "candidate_posting_ids": candidate_posting_ids,
-        "candidate_source_document_ids": (
-            candidate_source_document_ids
-        ),
-        "expected_observation_pairs": (
-            expected_observation_pairs
-        ),
+        "candidate_source_document_ids": (candidate_source_document_ids),
+        "expected_observation_pairs": (expected_observation_pairs),
         "observed_pairs": observed_pairs,
-        "missing_observation_pairs": (
-            missing_observation_pairs
-        ),
+        "missing_observation_pairs": (missing_observation_pairs),
         "dependency_counts": dependency_counts,
         "blocked_reasons": blocked_reasons,
         "confirmation": confirmation,
@@ -529,34 +460,16 @@ def build_guarded_retention_cleanup_plan(
     state = _guarded_retention_cleanup_state(session)
 
     return {
-        "current_capture_run_id": (
-            state["current_capture_run_id"]
-        ),
-        "superseded_capture_run_count": len(
-            state["superseded_run_ids"]
-        ),
-        "retained_posting_count": len(
-            state["retained_posting_ids"]
-        ),
-        "capture_only_posting_count": len(
-            state["candidate_posting_ids"]
-        ),
-        "candidate_source_document_count": len(
-            state["candidate_source_document_ids"]
-        ),
-        "verified_capture_observation_count": len(
-            state["expected_observation_pairs"]
-        ),
-        "missing_market_observation_count": len(
-            state["missing_observation_pairs"]
-        ),
-        "candidate_dependency_counts": dict(
-            state["dependency_counts"]
-        ),
+        "current_capture_run_id": (state["current_capture_run_id"]),
+        "superseded_capture_run_count": len(state["superseded_run_ids"]),
+        "retained_posting_count": len(state["retained_posting_ids"]),
+        "capture_only_posting_count": len(state["candidate_posting_ids"]),
+        "candidate_source_document_count": len(state["candidate_source_document_ids"]),
+        "verified_capture_observation_count": len(state["expected_observation_pairs"]),
+        "missing_market_observation_count": len(state["missing_observation_pairs"]),
+        "candidate_dependency_counts": dict(state["dependency_counts"]),
         "blocked": bool(state["blocked_reasons"]),
-        "blocked_reasons": list(
-            state["blocked_reasons"]
-        ),
+        "blocked_reasons": list(state["blocked_reasons"]),
         "required_confirmation": state["confirmation"],
     }
 
@@ -572,27 +485,17 @@ def execute_guarded_retention_cleanup(
 
     if state["blocked_reasons"]:
         raise ValueError(
-            "Guarded retention cleanup is blocked: "
-            + "; ".join(state["blocked_reasons"])
+            "Guarded retention cleanup is blocked: " + "; ".join(state["blocked_reasons"])
         )
 
-    expected_confirmation = str(
-        state["confirmation"]
-    )
+    expected_confirmation = str(state["confirmation"])
 
     if confirmation != expected_confirmation:
-        raise ValueError(
-            "Exact cleanup confirmation does not match the "
-            "current retention plan."
-        )
+        raise ValueError("Exact cleanup confirmation does not match the current retention plan.")
 
     run_ids = set(state["superseded_run_ids"])
-    posting_ids = set(
-        state["candidate_posting_ids"]
-    )
-    source_ids = set(
-        state["candidate_source_document_ids"]
-    )
+    posting_ids = set(state["candidate_posting_ids"])
+    source_ids = set(state["candidate_source_document_ids"])
 
     deleted: dict[str, int] = {}
 
@@ -609,9 +512,7 @@ def execute_guarded_retention_cleanup(
             DELETE FROM {table_name}
             WHERE {column_name} IN :ids
             """
-        ).bindparams(
-            bindparam("ids", expanding=True)
-        )
+        ).bindparams(bindparam("ids", expanding=True))
 
         result = session.execute(
             statement,
@@ -620,106 +521,83 @@ def execute_guarded_retention_cleanup(
 
         return int(result.rowcount or 0)
 
-    item_ids = {
-        str(row[0])
-        for row in session.execute(
-            text(
-                """
+    item_ids = (
+        {
+            str(row[0])
+            for row in session.execute(
+                text(
+                    """
                 SELECT id
                 FROM capture_items
                 WHERE capture_run_id IN :ids
                 """
-            ).bindparams(
-                bindparam("ids", expanding=True)
-            ),
-            {"ids": sorted(run_ids)},
-        ).all()
-    } if run_ids else set()
+                ).bindparams(bindparam("ids", expanding=True)),
+                {"ids": sorted(run_ids)},
+            ).all()
+        }
+        if run_ids
+        else set()
+    )
 
     with session.begin_nested():
-        deleted["capture_artifacts"] = (
-            delete_where_ids(
-                "capture_artifacts",
-                "capture_item_id",
-                item_ids,
-            )
+        deleted["capture_artifacts"] = delete_where_ids(
+            "capture_artifacts",
+            "capture_item_id",
+            item_ids,
         )
 
-        deleted["capture_items"] = (
-            delete_where_ids(
-                "capture_items",
-                "capture_run_id",
-                run_ids,
-            )
+        deleted["capture_items"] = delete_where_ids(
+            "capture_items",
+            "capture_run_id",
+            run_ids,
         )
 
-        deleted["capture_pages"] = (
-            delete_where_ids(
-                "capture_pages",
-                "capture_run_id",
-                run_ids,
-            )
+        deleted["capture_pages"] = delete_where_ids(
+            "capture_pages",
+            "capture_run_id",
+            run_ids,
         )
 
-        deleted["capture_runs"] = (
-            delete_where_ids(
-                "capture_runs",
-                "id",
-                run_ids,
-            )
+        deleted["capture_runs"] = delete_where_ids(
+            "capture_runs",
+            "id",
+            run_ids,
         )
 
-        deleted["application_readiness_reports"] = (
-            delete_where_ids(
-                "application_readiness_reports",
-                "posting_id",
-                posting_ids,
-            )
+        deleted["application_readiness_reports"] = delete_where_ids(
+            "application_readiness_reports",
+            "posting_id",
+            posting_ids,
         )
 
-        deleted["evaluations"] = (
-            delete_where_ids(
-                "evaluations",
-                "posting_id",
-                posting_ids,
-            )
+        deleted["evaluations"] = delete_where_ids(
+            "evaluations",
+            "posting_id",
+            posting_ids,
         )
 
-        deleted["postings"] = (
-            delete_where_ids(
-                "postings",
-                "id",
-                posting_ids,
-            )
+        deleted["postings"] = delete_where_ids(
+            "postings",
+            "id",
+            posting_ids,
         )
 
-        deleted["source_documents"] = (
-            delete_where_ids(
-                "source_documents",
-                "id",
-                source_ids,
-            )
+        deleted["source_documents"] = delete_where_ids(
+            "source_documents",
+            "id",
+            source_ids,
         )
 
-        violations = session.execute(
-            text("PRAGMA foreign_key_check")
-        ).all()
+        violations = session.execute(text("PRAGMA foreign_key_check")).all()
 
         if violations:
-            raise RuntimeError(
-                "Foreign-key violations detected during "
-                "guarded retention cleanup."
-            )
+            raise RuntimeError("Foreign-key violations detected during guarded retention cleanup.")
 
     session.expire_all()
 
     return {
         "deleted": deleted,
-        "preserved_market_observation_count": len(
-            state["observed_pairs"]
-        ),
-        "preserved_retained_posting_count": len(
-            state["retained_posting_ids"]
-        ),
+        "preserved_market_observation_count": len(state["observed_pairs"]),
+        "preserved_retained_posting_count": len(state["retained_posting_ids"]),
         "confirmation_used": expected_confirmation,
     }

@@ -74,14 +74,8 @@ def extract_market_intelligence_observations(
 
         existing = session.scalar(
             select(MarketIntelligenceObservation.id)
-            .where(
-                MarketIntelligenceObservation.source_capture_run_id
-                == capture_run_id
-            )
-            .where(
-                MarketIntelligenceObservation.source_job_id
-                == item.source_job_id
-            )
+            .where(MarketIntelligenceObservation.source_capture_run_id == capture_run_id)
+            .where(MarketIntelligenceObservation.source_job_id == item.source_job_id)
             .limit(1)
         )
         if existing is not None:
@@ -118,7 +112,6 @@ def extract_market_intelligence_observations(
     return created
 
 
-
 def backfill_market_intelligence_observations(
     session: Session,
 ) -> dict[str, int]:
@@ -143,12 +136,7 @@ def backfill_market_intelligence_observations(
             run.id,
         )
 
-    existing = int(
-        session.scalar(
-            select(func.count(MarketIntelligenceObservation.id))
-        )
-        or 0
-    )
+    existing = int(session.scalar(select(func.count(MarketIntelligenceObservation.id))) or 0)
 
     return {
         "capture_run_count": len(runs),

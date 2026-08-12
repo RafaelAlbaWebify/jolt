@@ -530,10 +530,7 @@ def _durable_capture_market_records(
         )
         postings.append(posting)
 
-        if (
-            observation.recommendation
-            and observation.ranking_score is not None
-        ):
+        if observation.recommendation and observation.ranking_score is not None:
             evaluations[posting.id] = _DurableMarketEvaluation(
                 posting_id=posting.id,
                 engine_version=observation.engine_version,
@@ -552,9 +549,7 @@ def build_market_intelligence(
     timeframe: str = "all",
     source_scope: str = "all",
 ) -> dict[str, object]:
-    captured_postings, captured_evaluations = (
-        _durable_capture_market_records(session)
-    )
+    captured_postings, captured_evaluations = _durable_capture_market_records(session)
 
     manual_postings = _manual_market_postings(session)
     manual_evaluations, _ = _effective_evaluations(
@@ -564,9 +559,7 @@ def build_market_intelligence(
 
     if source_scope == "capture_batches":
         source_records: list[MarketPosting] = list(captured_postings)
-        source_evaluations: dict[str, MarketEvaluation] = dict(
-            captured_evaluations
-        )
+        source_evaluations: dict[str, MarketEvaluation] = dict(captured_evaluations)
     elif source_scope == "manual_intake":
         source_records = list(manual_postings)
         source_evaluations = dict(manual_evaluations)
@@ -582,19 +575,14 @@ def build_market_intelligence(
 
     active_records = list(source_records)
     production_records = [
-        posting
-        for posting in active_records
-        if not _is_synthetic_audit_posting(posting)
+        posting for posting in active_records if not _is_synthetic_audit_posting(posting)
     ]
 
     timeframe_records = _filter_by_timeframe(
         production_records,
         timeframe,
     )
-    timeframe_ids = {
-        posting.id
-        for posting in timeframe_records
-    }
+    timeframe_ids = {posting.id for posting in timeframe_records}
     timeframe_evaluations = {
         posting_id: evaluation
         for posting_id, evaluation in source_evaluations.items()
@@ -605,10 +593,7 @@ def build_market_intelligence(
         timeframe_records,
         timeframe_evaluations,
     )
-    canonical_ids = {
-        posting.id
-        for posting in postings
-    }
+    canonical_ids = {posting.id for posting in postings}
     evaluations = {
         posting_id: evaluation
         for posting_id, evaluation in timeframe_evaluations.items()
@@ -627,15 +612,11 @@ def build_market_intelligence(
         "evaluated_count": evaluated_count,
         "missing_count": len(timeframe_records) - evaluated_count,
         "current_engine_count": current_engine_count,
-        "fallback_engine_count": (
-            evaluated_count - current_engine_count
-        ),
+        "fallback_engine_count": (evaluated_count - current_engine_count),
         "current_engine": ENGINE_VERSION,
         "source_posting_count": len(timeframe_records),
         "canonical_role_count": len(postings),
-        "duplicate_member_count": (
-            len(timeframe_records) - len(postings)
-        ),
+        "duplicate_member_count": (len(timeframe_records) - len(postings)),
     }
 
     target_postings: list[MarketPosting] = []
@@ -668,9 +649,7 @@ def build_market_intelligence(
         ),
         "evaluation_coverage": evaluation_coverage,
         "duplicate_groups": duplicate_groups,
-        "excluded_synthetic_count": (
-            len(active_records) - len(production_records)
-        ),
+        "excluded_synthetic_count": (len(active_records) - len(production_records)),
         "outside_title_examples": _ranked(
             outside_titles,
             15,
