@@ -298,3 +298,157 @@ def test_pending_cleanup_archives_capture_only_batches_atomically(
         assert session.get(Posting, posting_1.id) is not None
     finally:
         session.close()
+
+
+def test_pending_cleanup_archives_completed_mixed_batch_and_preserves_retained_posting(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session = _session(tmp_path)
+    now = datetime.now(UTC)
+
+    try:
+        pending_posting = _add_posting(
+            session,
+            "mixed-pending",
+        )
+        retained_posting = _add_posting(
+            session,
+            "mixed-retained",
+        )
+
+        run = CaptureRun(
+            id="capture-mixed",
+            source="linkedin",
+            mode="supervised_live",
+            status="completed",
+            search_url="https://example.test/mixed-jobs",
+            warnings_json="[]",
+            requested_item_limit=2,
+            observed_item_count=2,
+            stop_reason="submitted_batch_completed",
+            started_at=now,
+            completed_at=now,
+        )
+
+        session.add(run)
+        session.flush()
+
+        session.add(
+            CapturePage(
+                id="page-mixed",
+                capture_run_id=run.id,
+                page_number=1,
+                visible_job_ids_json='["mixed-job-1", "mixed-job-2"]',
+                next_control_present=False,
+                next_control_enabled=False,
+            )
+        )
+
+        session.add_all(
+            [
+                CaptureItem(
+                    id="item-mixed-pending",
+                    capture_run_id=run.id,
+                    source_job_id="mixed-job-1",
+                    source_url="https://example.test/mixed-job-1",
+                    title=pending_posting.title,
+                    company=pending_posting.company,
+                    location=pending_posting.location,
+                    detail_status="verified",
+                    verification_reasons_json="[]",
+                    source_document_id=pending_posting.source_document_id,
+                    posting_id=pending_posting.id,
+                ),
+                CaptureItem(
+                    id="item-mixed-retained",
+                    capture_run_id=run.id,
+                    source_job_id="mixed-job-2",
+                    source_url="https://example.test/mixed-job-2",
+                    title=retained_posting.title,
+                    company=retained_posting.company,
+                    location=retained_posting.location,
+                    detail_status="verified",
+                    verification_reasons_json="[]",
+                    source_document_id=retained_posting.source_document_id,
+                    posting_id=retained_posting.id,
+                ),
+            ]
+        )
+
+        retained_application = Application(
+            id="application-mixed-retained",
+            posting_id=retained_posting.id,
+            status="submitted",
+            application_url="https://example.test/apply",
+            resume_used="resume.pdf",
+            notes="Retained durable opportunity",
+            created_at=now,
+            updated_at=now,
+        )
+
+        session.add(retained_application)
+        session.commit()
+
+        calls = 0
+
+        def fake_index(_session):
+            nonlocal calls
+            calls += 1
+
+            if calls == 1:
+                return [SimpleNamespace(posting_id=pending_posting.id)]
+
+            return []
+
+        monkeypatch.setattr(
+            "jolt.pending_inbox_cleanup.list_opportunity_index",
+            fake_index,
+        )
+
+        result = clear_pending_review_inbox(session)
+
+        session.refresh(run)
+
+        assert result.pending_before == 1
+        assert result.pending_after == 0
+        assert result.cleared_pending_count == 1
+        assert result.archived_capture_run_count == 1
+        assert result.protected_pending_count == 0
+
+        assert run.status == "archived"
+
+        assert (
+            session.get(
+                Posting,
+                pending_posting.id,
+            )
+            is not None
+        )
+
+        assert (
+            session.get(
+                Posting,
+                retained_posting.id,
+            )
+            is not None
+        )
+
+        assert (
+            session.get(
+                Application,
+                retained_application.id,
+            )
+            is not None
+        )
+
+        assert (
+            session.get(
+                CaptureItem,
+                "item-mixed-retained",
+            )
+            is not None
+        )
+
+    finally:
+        session.close()
