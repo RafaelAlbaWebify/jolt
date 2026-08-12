@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from jolt.capture_artifacts import stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, utc_now
+from jolt.market_intelligence_observations import (
+    extract_market_intelligence_observations,
+)
 from jolt.schemas import (
     CaptureItemResponse,
     CapturePageResponse,
@@ -173,6 +176,7 @@ def run_linkedin_live_capture(
         run.status = "completed_with_warnings" if warnings else "completed"
         run.warnings_json = json.dumps(warnings)
         run.completed_at = completed_at
+        extract_market_intelligence_observations(session, run.id)
         session.commit()
 
         verified_count = sum(item.detail_status == "verified" for item in responses)
