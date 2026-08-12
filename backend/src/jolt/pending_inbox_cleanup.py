@@ -23,7 +23,7 @@ class PendingInboxClearResponse(BaseModel):
 
 
 def clear_pending_review_inbox(session: Session) -> PendingInboxClearResponse:
-    """Archive only capture batches composed entirely of current pending postings."""
+    """Archive completed capture batches that currently contribute pending inbox rows."""
 
     pending_before_items = list_opportunity_index(session)
     pending_ids = {item.posting_id for item in pending_before_items}
@@ -62,7 +62,7 @@ def clear_pending_review_inbox(session: Session) -> PendingInboxClearResponse:
             if posting_id is not None
         }
         pending_in_run = run_posting_ids & pending_ids
-        if run.status == "running" or not run_posting_ids.issubset(pending_ids):
+        if run.status == "running":
             protected_pending_ids.update(pending_in_run)
             continue
         eligible_run_ids.append(run_id)
