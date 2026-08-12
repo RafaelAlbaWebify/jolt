@@ -21,6 +21,7 @@ from jolt import multipage_capture
 from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.supervised_capture import (
     CapturedCard,
+    extract_job_id,
     package_run,
     redact_text,
     safe_text,
@@ -175,6 +176,146 @@ def _click_with_one_retry(
     return False
 
 
+def _virtualized_card_title(card: Locator) -> str:
+    dismiss = card.locator('button[aria-label^="Dismiss "][aria-label$=" job"]')
+
+    try:
+        if dismiss.count() == 0:
+            return ""
+    except TimeoutError:
+        return ""
+
+    label = multipage_capture._safe_attribute(
+        dismiss.first,
+        "aria-label",
+    ).strip()
+
+    prefix = "Dismiss "
+    suffix = " job"
+
+    if not label.startswith(prefix) or not label.endswith(suffix):
+        return ""
+
+    return label[len(prefix) : -len(suffix)].strip()
+
+
+def _click_virtualized_card(
+    card: Locator,
+    metrics: RetryMetrics,
+) -> bool:
+    for attempt in range(2):
+        try:
+            card.click(timeout=8_000)
+
+            if attempt == 1:
+                metrics.recovered_after_retry_count += 1
+
+            return True
+        except TimeoutError:
+            if attempt == 0:
+                metrics.retry_attempted_count += 1
+
+                with contextlib.suppress(TimeoutError):
+                    card.scroll_into_view_if_needed(timeout=2_000)
+
+    metrics.failed_after_retry_count += 1
+    return False
+
+
+def _wait_for_virtualized_identity(
+    page: Page,
+    title: str,
+    timeout_ms: int = 8_000,
+) -> tuple[str, str]:
+    expected_title = " ".join(title.split()).casefold()
+    deadline = datetime.now(UTC).timestamp() + timeout_ms / 1000
+
+    while datetime.now(UTC).timestamp() < deadline:
+        links = page.locator("a[href*='/jobs/view/']")
+
+        try:
+            count = min(links.count(), 20)
+        except TimeoutError:
+            count = 0
+
+        for index in range(count):
+            link = links.nth(index)
+            href = multipage_capture._safe_attribute(link, "href")
+            source_job_id = extract_job_id(href)
+
+            if not source_job_id:
+                continue
+
+            link_title = " ".join(safe_text(link).split()).casefold()
+
+            if link_title == expected_title:
+                return source_job_id, href
+
+        page.wait_for_timeout(250)
+
+    return "", ""
+
+
+def _virtualized_description(
+    page: Page,
+    title: str,
+) -> str:
+    expected_title = " ".join(title.split()).casefold()
+
+    columns = page.locator('[data-testid="lazy-column"][data-component-type="LazyColumn"]')
+
+    try:
+        count = min(columns.count(), 10)
+    except TimeoutError:
+        count = 0
+
+    for index in range(count):
+        text = safe_text(columns.nth(index))
+
+        if "About the job" not in text:
+            continue
+
+        if expected_title not in text.casefold():
+            continue
+
+        if len(text) >= 40:
+            return text
+
+    return multipage_capture._detail_description(page)
+
+
+def _virtualized_company_location(
+    detail_text: str,
+    title: str,
+) -> tuple[str, str]:
+    text = " ".join(detail_text.split())
+    normalized_title = " ".join(title.split())
+
+    if not text or not normalized_title:
+        return "", ""
+
+    title_index = text.casefold().find(normalized_title.casefold())
+
+    if title_index <= 0 or title_index > 180:
+        return "", ""
+
+    company = text[:title_index].strip(" ,·")
+    remainder = text[title_index + len(normalized_title) :].strip()
+
+    location = remainder.split(" · ", 1)[0].strip()
+
+    if len(company) > 160:
+        company = ""
+
+    if len(location) > 160:
+        location = ""
+
+    if "About the job" in location:
+        location = ""
+
+    return company, location
+
+
 def capture_page_cards(
     page: Page,
     cards: Locator,
@@ -198,6 +339,104 @@ def capture_page_cards(
         card = cards.nth(index)
         with contextlib.suppress(TimeoutError):
             card.scroll_into_view_if_needed(timeout=2_000)
+
+        virtualized_title = _virtualized_card_title(card)
+
+        if virtualized_title:
+            if not _click_virtualized_card(card, metrics):
+                skipped.append(
+                    multipage_capture.SkippedCard(
+                        page_number,
+                        index,
+                        "",
+                        (
+                            "Virtualized listing click timed out "
+                            f"after one retry: {virtualized_title}"
+                        ),
+                    )
+                )
+                continue
+
+            source_job_id, source_url = _wait_for_virtualized_identity(
+                page,
+                virtualized_title,
+            )
+
+            if not source_job_id:
+                skipped.append(
+                    multipage_capture.SkippedCard(
+                        page_number,
+                        index,
+                        "",
+                        (
+                            "Virtualized listing opened without "
+                            "a verified LinkedIn job identity: "
+                            f"{virtualized_title}"
+                        ),
+                    )
+                )
+                continue
+
+            if source_job_id in seen:
+                skipped.append(
+                    multipage_capture.SkippedCard(
+                        page_number,
+                        index,
+                        source_job_id,
+                        "Duplicate job identity across pages.",
+                    )
+                )
+                continue
+
+            seen.add(source_job_id)
+
+            verified = wait_for_expected_detail(
+                page,
+                source_job_id,
+            )
+
+            detail_html = page.content() if verified else ""
+
+            description = (
+                _virtualized_description(
+                    page,
+                    virtualized_title,
+                )
+                if verified
+                else ""
+            )
+
+            company, location = _virtualized_company_location(
+                description,
+                virtualized_title,
+            )
+
+            reason = (
+                ""
+                if verified
+                else ("Detail panel did not reach the expected LinkedIn job identity.")
+            )
+
+            with contextlib.suppress(Exception):
+                page.screenshot(
+                    path=(evidence_dir / (f"page_{page_number}_job_{source_job_id}.png")),
+                    full_page=False,
+                )
+
+            captured.append(
+                CapturedCard(
+                    source_job_id,
+                    source_url,
+                    virtualized_title,
+                    company,
+                    location,
+                    detail_html,
+                    description,
+                    verified,
+                    reason,
+                )
+            )
+            continue
 
         title_link = multipage_capture._title_link(card)
         source_job_id, source_url = multipage_capture._card_identity(card, title_link)

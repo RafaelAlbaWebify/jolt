@@ -30,11 +30,18 @@ from jolt.supervised_capture import (
 
 DEFAULT_SEARCH_URL = "https://www.linkedin.com/jobs/search/"
 DEFAULT_API_URL = "http://127.0.0.1:8000"
+VIRTUALIZED_CARD_SELECTOR = (
+    '[data-testid="lazy-column"][data-component-type="LazyColumn"] '
+    '[role="button"][tabindex="0"]'
+    ':has(button[aria-label^="Dismiss "][aria-label$=" job"])'
+)
+
 CARD_SELECTORS = (
     ".jobs-search-results__list-item",
     "li[data-occludable-job-id]",
     "[data-job-id].job-card-container",
     "[data-job-id][class*='job-card']",
+    VIRTUALIZED_CARD_SELECTOR,
 )
 NEXT_CONTROL_SELECTORS = (
     ".jobs-search-pagination__button--next",
