@@ -75,6 +75,7 @@ from jolt.retention_ownership import (
     RetentionOwnershipPreview,
     build_retention_ownership_preview,
 )
+from jolt.review_pack import build_review_pack
 from jolt.runtime_identity import RuntimeIdentityResponse, build_runtime_identity
 from jolt.schemas import (
     ApplicationCreateRequest,
@@ -597,6 +598,20 @@ def create_app(database_url: str | None = None) -> FastAPI:
             BytesIO(content),
             media_type="application/zip",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    @app.get("/api/exports/review-pack", tags=["exports"])
+    def review_pack(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        try:
+            content = build_review_pack(session)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=JOLT_REVIEW_PACK.zip"},
         )
 
     @app.get("/api/exports/analysis-pack", tags=["exports"])
