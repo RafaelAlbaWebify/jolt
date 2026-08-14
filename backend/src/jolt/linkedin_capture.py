@@ -256,7 +256,7 @@ def _wait_for_virtualized_identity(
     return "", ""
 
 
-def _virtualized_description(
+def _virtualized_detail_context(
     page: Page,
     title: str,
 ) -> str:
@@ -282,6 +282,49 @@ def _virtualized_description(
             return text
 
     return multipage_capture._detail_description(page)
+
+
+def _virtualized_description(page: Page) -> str:
+    about_containers = page.locator('[id^="JobDetails_AboutTheJob_"]')
+
+    try:
+        container_count = min(
+            about_containers.count(),
+            5,
+        )
+    except TimeoutError:
+        container_count = 0
+
+    for container_index in range(container_count):
+        container = about_containers.nth(container_index)
+
+        expandable = container.locator('[data-testid="expandable-text-box"]')
+
+        try:
+            expandable_count = min(
+                expandable.count(),
+                5,
+            )
+        except TimeoutError:
+            expandable_count = 0
+
+        for expandable_index in range(expandable_count):
+            text = safe_text(expandable.nth(expandable_index))
+
+            if len(text) >= 40:
+                return text
+
+        text = safe_text(container)
+
+        prefix = "About the job "
+
+        if text.casefold().startswith(prefix.casefold()):
+            text = text[len(prefix) :].strip()
+
+        if len(text) >= 40:
+            return text
+
+    return ""
 
 
 def _virtualized_company_location(
@@ -397,8 +440,8 @@ def capture_page_cards(
 
             detail_html = page.content() if verified else ""
 
-            description = (
-                _virtualized_description(
+            detail_context = (
+                _virtualized_detail_context(
                     page,
                     virtualized_title,
                 )
@@ -406,8 +449,10 @@ def capture_page_cards(
                 else ""
             )
 
+            description = _virtualized_description(page) if verified else ""
+
             company, location = _virtualized_company_location(
-                description,
+                detail_context,
                 virtualized_title,
             )
 
