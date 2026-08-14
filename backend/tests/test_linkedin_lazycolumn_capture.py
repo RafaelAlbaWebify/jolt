@@ -17,12 +17,23 @@ def _html() -> str:
             document.querySelector("main").innerHTML =
               "<div>" +
               company + " " + title + " " + location +
-              " · About the job " +
+              " · " +
               "<a href='https://www.linkedin.com/jobs/view/" +
               id + "/'>" + title + "</a>" +
-              "<p>Detailed support responsibilities, incident " +
-              "ownership, troubleshooting, APIs and documentation." +
-              "</p></div>";
+              "<section id='JobDetails_AboutTheJob_" + id + "'>" +
+              "<div data-sdui-component='" +
+              "com.linkedin.sdui.generated.jobseeker.dsl.impl.aboutTheJob'>" +
+              "<h2>About the job</h2>" +
+              "<span data-testid='expandable-text-box'>" +
+              "Detailed support responsibilities, incident ownership, " +
+              "troubleshooting, APIs and documentation." +
+              "</span></div></section>" +
+              "<section id='recommended-jobs'>" +
+              "<h2>Other jobs you may like</h2>" +
+              "<p>Senior Software Developer C# Angular Portuguese " +
+              "required relocation mandatory management role.</p>" +
+              "</section>" +
+              "</div>";
           }
         </script>
 
@@ -111,6 +122,15 @@ def test_lazycolumn_cards_capture_verified_identities(
         "Technical Support Specialist",
     ]
     assert all(card.identity_verified for card in captured)
+
+    for card in captured:
+        assert "Detailed support responsibilities" in card.description
+        assert "Software Developer" not in card.description
+        assert "Portuguese" not in card.description
+        assert "relocation mandatory" not in card.description
+        assert "management role" not in card.description
+        assert "Other jobs you may like" not in card.description
+
     assert skipped == []
     assert stop_reason == "requested_limit_reached"
 
@@ -118,6 +138,91 @@ def test_lazycolumn_cards_capture_verified_identities(
         "7001",
         "7002",
     )
+
+
+def test_lazycolumn_description_falls_back_only_to_about_job_container(
+    tmp_path: Path,
+) -> None:
+    evidence = tmp_path / "evidence-fallback"
+    evidence.mkdir()
+
+    html = """
+    <html>
+      <body>
+        <script>
+          function openJob() {
+            document.querySelector("main").innerHTML =
+              "<div>" +
+              "<a href='https://www.linkedin.com/jobs/view/8001/'>" +
+              "IT Support Engineer</a>" +
+              "<section id='JobDetails_AboutTheJob_8001'>" +
+              "<div data-sdui-component='" +
+              "com.linkedin.sdui.generated.jobseeker.dsl.impl.aboutTheJob'>" +
+              "<h2>About the job</h2>" +
+              "<p>Provide Windows and Active Directory support.</p>" +
+              "<ul>" +
+              "<li>Troubleshoot incidents and service requests.</li>" +
+              "<li>Maintain endpoint and user documentation.</li>" +
+              "</ul>" +
+              "</div>" +
+              "</section>" +
+              "<section id='recommended-jobs'>" +
+              "<p>Senior Software Developer C# Angular Portuguese " +
+              "required relocation mandatory management role.</p>" +
+              "</section>" +
+              "</div>";
+          }
+        </script>
+
+        <div
+          data-testid="lazy-column"
+          data-component-type="LazyColumn"
+        >
+          <div
+            role="button"
+            tabindex="0"
+            onclick="openJob()"
+          >
+            IT Support Engineer Example Spain
+            <button
+              aria-label="Dismiss IT Support Engineer job"
+            ></button>
+          </div>
+        </div>
+
+        <main></main>
+      </body>
+    </html>
+    """
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(html)
+
+        captured, _, skipped, _ = capture_pages(
+            page,
+            max_jobs=1,
+            max_pages=1,
+            evidence_dir=evidence,
+            metrics=RetryMetrics(),
+        )
+
+        browser.close()
+
+    assert skipped == []
+    assert len(captured) == 1
+
+    description = captured[0].description
+
+    assert "Windows and Active Directory support" in description
+    assert "Troubleshoot incidents" in description
+    assert "Maintain endpoint" in description
+
+    assert "Software Developer" not in description
+    assert "Portuguese" not in description
+    assert "relocation mandatory" not in description
+    assert "management role" not in description
 
 
 def test_legacy_card_selectors_remain_before_lazycolumn() -> None:
