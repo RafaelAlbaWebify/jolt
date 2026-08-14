@@ -16,10 +16,14 @@ export function DataTools({ apiBase }: Props) {
       {error && <p className="error" role="alert">{error}</p>}
       <div className="operations-grid">
         <section aria-labelledby="export-heading">
-          <h2 id="export-heading">Analysis and feedback</h2>
-          <p>Export the complete evidence chain as JSON, CSV, and Markdown.</p>
-          <a href={`${apiBase}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
-            Download analysis pack
+          <h2 id="export-heading">ChatGPT review</h2>
+          <p>
+            Export the latest capture, full job evidence, JOLT classifications,
+            profile context, Market Intelligence observations, current Market
+            Insights, and audit lineage in one ZIP.
+          </p>
+          <a href={`${apiBase}/api/exports/review-pack`} download="JOLT_REVIEW_PACK.zip">
+            Download review pack
           </a>
         </section>
       </div>
