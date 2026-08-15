@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Literal, cast
 from urllib.parse import urlsplit
@@ -17,6 +18,8 @@ DocumentType = Literal[
     "resume", "cover_letter", "preparation_pack", "portfolio", "certificate", "other"
 ]
 DocumentStatus = Literal["draft", "ready", "submitted", "superseded"]
+MAX_DOCUMENT_FILE_BYTES = 10 * 1024 * 1024
+_ALLOWED_DOCUMENT_FILE_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
 _EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -114,6 +117,11 @@ class DocumentRequest(BaseModel):
 class DocumentResponse(DocumentRequest):
     document_id: str
     application_id: str
+    stored_filename: str = ""
+    mime_type: str = ""
+    file_size: int = 0
+    file_sha256: str = ""
+    has_file: bool = False
     created_at: str
     updated_at: str
 
@@ -187,6 +195,11 @@ def _document_response(document: ApplicationDocument) -> DocumentResponse:
         title=document.title,
         file_path=document.file_path,
         source_url=document.source_url,
+        stored_filename=document.stored_filename,
+        mime_type=document.mime_type,
+        file_size=document.file_size,
+        file_sha256=document.file_sha256,
+        has_file=document.file_content is not None,
         status=cast(DocumentStatus, document.status),
         notes=document.notes,
         created_at=document.created_at.isoformat(),
@@ -290,3 +303,88 @@ def update_document(
     )
     session.commit()
     return _document_response(document)
+
+
+def _safe_document_filename(value: str) -> str:
+    normalized = value.strip().replace("\\", "/")
+    filename = normalized.rsplit("/", 1)[-1]
+
+    if (
+        not filename
+        or filename in {".", ".."}
+        or "\r" in filename
+        or "\n" in filename
+        or '"' in filename
+    ):
+        raise ValueError("Document filename is invalid.")
+
+    suffix = "." + filename.rsplit(".", 1)[-1].casefold() if "." in filename else ""
+
+    if suffix not in _ALLOWED_DOCUMENT_FILE_EXTENSIONS:
+        raise ValueError("Document file must be PDF, DOC, DOCX, or TXT.")
+
+    return filename
+
+
+def store_document_file(
+    session: Session,
+    document_id: str,
+    *,
+    filename: str,
+    mime_type: str,
+    content: bytes,
+) -> DocumentResponse:
+    document = session.get(ApplicationDocument, document_id)
+    if document is None:
+        raise LookupError("Application document was not found.")
+
+    require_writable_application(session, document.application_id)
+
+    safe_filename = _safe_document_filename(filename)
+
+    if not content:
+        raise ValueError("Document file is empty.")
+
+    if len(content) > MAX_DOCUMENT_FILE_BYTES:
+        raise ValueError("Document file exceeds the 10 MB limit.")
+
+    normalized_mime = mime_type.strip() or "application/octet-stream"
+    if len(normalized_mime) > 240:
+        raise ValueError("Document MIME type is too long.")
+
+    digest = hashlib.sha256(content).hexdigest()
+
+    document.stored_filename = safe_filename
+    document.mime_type = normalized_mime
+    document.file_size = len(content)
+    document.file_sha256 = digest
+    document.file_content = content
+    document.updated_at = utc_now()
+
+    session.add(
+        _event(
+            document.application_id,
+            "document_file_stored",
+            (f"{document.title}: {safe_filename}; {len(content)} bytes; sha256 {digest}."),
+        )
+    )
+    session.commit()
+    return _document_response(document)
+
+
+def get_document_file(
+    session: Session,
+    document_id: str,
+) -> tuple[str, str, bytes]:
+    document = session.get(ApplicationDocument, document_id)
+    if document is None:
+        raise LookupError("Application document was not found.")
+
+    if document.file_content is None or not document.stored_filename:
+        raise LookupError("Application document file was not found.")
+
+    return (
+        document.stored_filename,
+        document.mime_type or "application/octet-stream",
+        document.file_content,
+    )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from jolt.database import Base
@@ -77,6 +77,11 @@ class ApplicationDocument(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     file_path: Mapped[str] = mapped_column(Text, default="", nullable=False)
     source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    stored_filename: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    mime_type: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    file_sha256: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    file_content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="draft", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
