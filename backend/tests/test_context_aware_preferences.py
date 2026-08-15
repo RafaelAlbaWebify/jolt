@@ -138,3 +138,84 @@ def test_real_24_7_requirement_remains_visible(monkeypatch) -> None:
 
     assert assessment.eligibility == "eligible_with_conditions"
     assert assessment.uncertainties == ("Shift, weekend or on-call requirement: 24/7.",)
+
+
+def test_relocation_package_is_not_a_relocation_requirement(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    text = (
+        "Home office friendly anywhere in Spain. "
+        "Relocation package for international candidates."
+    )
+
+    assert preference_blockers(text) == []
+
+
+def test_explicit_relocation_requirement_still_blocks(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    assert preference_blockers("This role requires relocation to Berlin.") == [
+        "relocation is required"
+    ]
+
+
+def test_optional_languages_do_not_inherit_neighboring_mandatory_marker(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    text = "Fluent English is mandatory / Spanish or French or German are an advantage."
+
+    assert preference_blockers(text) == []
+
+
+def test_preferred_language_is_not_required(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    assert preference_blockers("Portuguese is preferred and training is provided.") == []
+
+
+def test_explicit_foreign_language_requirement_still_blocks(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    assert preference_blockers("Fluent German is required for customer support.") == [
+        "required language outside current preferences: german"
+    ]
+
+
+def test_weekend_benefit_wording_is_not_a_shift_requirement(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    text = "On Fridays we finish early so the fin de semana starts sooner."
+
+    assert preference_blockers(text) == []
+
+
+def test_temporary_employee_benefits_are_not_temporary_employment(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    text = "Benefits may vary for seasonal or temporary employees."
+
+    assert preference_blockers(text) == []
+
+
+def test_explicit_temporary_contract_still_blocks(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
+    )
+
+    assert preference_blockers("This is a temporary contract for six months.") == [
+        "temporary or fixed-term employment"
+    ]
