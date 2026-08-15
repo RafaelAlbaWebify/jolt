@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, replace
+from datetime import UTC, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -436,7 +437,12 @@ def ensure_strategy_review(
             Evaluation.profile_version_id == profile_record.id,
             Evaluation.engine_version == ENGINE_VERSION,
         )
-        .order_by(Evaluation.created_at.desc())
+        .order_by(Evaluation.created_at.desc(), Evaluation.id.desc())
+    )
+    latest_any = session.scalar(
+        select(Evaluation)
+        .where(Evaluation.posting_id == posting.id)
+        .order_by(Evaluation.created_at.desc(), Evaluation.id.desc())
     )
     unchanged = bool(
         existing
@@ -445,7 +451,19 @@ def ensure_strategy_review(
         and existing.ranking_score == _actionable_ranking_score(assessment)
         and existing.reasons_json == reasons_json
     )
-    if not unchanged:
+    current_is_latest = bool(existing and latest_any and existing.id == latest_any.id)
+    if not unchanged or not current_is_latest:
+        created_at = utc_now()
+        if latest_any is not None:
+            latest_created_at = latest_any.created_at
+            if latest_created_at.tzinfo is None:
+                latest_created_at = latest_created_at.replace(tzinfo=UTC)
+            else:
+                latest_created_at = latest_created_at.astimezone(UTC)
+
+            if latest_created_at >= created_at:
+                created_at = latest_created_at + timedelta(microseconds=1)
+
         session.add(
             Evaluation(
                 id=str(uuid4()),
@@ -456,7 +474,7 @@ def ensure_strategy_review(
                 confidence=assessment.confidence,
                 ranking_score=_actionable_ranking_score(assessment),
                 reasons_json=reasons_json,
-                created_at=utc_now(),
+                created_at=created_at,
             )
         )
     if commit:
