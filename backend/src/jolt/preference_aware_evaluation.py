@@ -101,14 +101,31 @@ _DISPATCH_REQUIREMENT_PATTERNS = (
     r"\bsupport\s+(?:for\s+)?dispatch\s+activities\b",
 )
 
+_FOREIGN_RESIDENCE_LOCATIONS = (
+    "germany",
+    "portugal",
+    "italy",
+    "france",
+    "romania",
+    "lithuania",
+    "austria",
+    "cyprus",
+)
+
+_FOREIGN_RESIDENCE_PATTERN = (
+    "(?:" + "|".join(re.escape(location) for location in _FOREIGN_RESIDENCE_LOCATIONS) + ")"
+)
+
 _COUNTRY_RESTRICTION_PATTERNS = (
-    r"\bonly\s+for\s+candidates\s+(?:already\s+)?based\s+in\s+(?!spain\b)",
-    r"\bmust\s+(?:already\s+)?be\s+based\s+in\s+(?!spain\b)",
-    r"\bremote\s+(?:only\s+)?within\s+(?!spain\b)",
-    r"\bremote\s+from\s+(?!spain\b)",
-    r"\b(?:germany|portugal|italy|france|romania|lithuania|austria|cyprus)[-\s]+based\b",
+    rf"\bonly\s+for\s+candidates\s+(?:already\s+)?based\s+in\s+"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bmust\s+(?:already\s+)?be\s+based\s+in\s+"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+(?:only\s+)?within\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+from\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\b{_FOREIGN_RESIDENCE_PATTERN}[-\s]+based\b",
     r"\bdeutschlandweite\s+home[-\s]?working\b",
-    r"\bremote\s*\((?:within\s+)?(?:germany|portugal|italy|france|romania|lithuania|austria|cyprus)\)\b",
+    rf"\bremote\s*\((?:within\s+)?{_FOREIGN_RESIDENCE_PATTERN}\)\b",
 )
 
 _RELOCATION_PATTERNS = (

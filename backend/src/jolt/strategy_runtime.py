@@ -53,6 +53,74 @@ _BROAD_REMOTE_LOCATION_TERMS = (
     "eu remote",
 )
 
+_EXPLICIT_REMOTE_WORK_PATTERNS = (
+    r"(?im)^\s*remote\s*$",
+    r"\b(?:fully|100%)\s+remote\b",
+    r"\bremote\s+(?:role|position|work|working|arrangement)\b",
+    r"\bthis\s+role\s+is\s+remote\b",
+    r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*remote\b",
+)
+
+_EXPLICIT_HYBRID_WORK_PATTERNS = (
+    r"(?im)^\s*hybrid\s*$",
+    r"\bhybrid\s+(?:role|position|work|working|schedule|arrangement)\b",
+    r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*hybrid\b",
+)
+
+_EXPLICIT_ONSITE_WORK_PATTERNS = (
+    r"(?im)^\s*(?:on[- ]?site|onsite)\s*$",
+    r"\b(?:on[- ]?site|onsite)\s+(?:role|position|work|working|requirement)\b",
+    r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*(?:on[- ]?site|onsite)\b",
+)
+
+_VIGO_LOCAL_LOCATION_TERMS = (
+    "vigo",
+    "redondela",
+    "mos",
+    "o porriño",
+    "o porrino",
+    "porriño",
+    "porrino",
+    "nigrán",
+    "nigran",
+    "gondomar",
+    "baiona",
+    "cangas",
+    "moaña",
+    "moana",
+    "salceda de caselas",
+    "soutomaior",
+    "ponteareas",
+)
+
+_CLEARLY_DISTANT_SPANISH_LOCATION_TERMS = (
+    "madrid",
+    "parla",
+    "illescas",
+    "barcelona",
+    "valencia",
+    "sevilla",
+    "seville",
+    "zaragoza",
+    "málaga",
+    "malaga",
+    "bilbao",
+    "a coruña",
+    "coruña",
+    "santiago de compostela",
+    "ourense",
+    "lugo",
+    "valladolid",
+    "salamanca",
+    "alicante",
+    "murcia",
+    "gijón",
+    "gijon",
+    "oviedo",
+    "santander",
+    "pamplona",
+)
+
 _FOREIGN_COUNTRY_LOCATION_TERMS = (
     "austria",
     "belgium",
@@ -86,15 +154,22 @@ _FOREIGN_COUNTRY_LOCATION_TERMS = (
     "uk",
 )
 
+_FOREIGN_RESIDENCE_PATTERN = (
+    "(?:" + "|".join(re.escape(location) for location in _FOREIGN_COUNTRY_LOCATION_TERMS) + ")"
+)
+
 _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS = (
-    r"\bmust\s+(?:already\s+)?(?:live|reside|be based)\s+in\s+(?!spain\b)",
-    r"\bonly\s+(?:open|available)\s+to\s+(?:candidates|applicants)\s+"
-    r"(?:living|resident|based)\s+in\s+(?!spain\b)",
-    r"\brequires?\s+(?:current\s+)?(?:residence|residency)\s+in\s+(?!spain\b)",
-    r"\bwork\s+authori[sz]ation\s+(?:is\s+)?required\s+in\s+(?!spain\b)",
-    r"\bright\s+to\s+work\s+in\s+(?!spain\b)",
-    r"\bremote\s+(?:only\s+)?within\s+(?!spain\b)",
-    r"\bremote\s+from\s+(?!spain\b)",
+    rf"\bmust\s+(?:already\s+)?(?:live|reside|be based)\s+in\s+"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bonly\s+(?:open|available)\s+to\s+(?:candidates|applicants)\s+"
+    rf"(?:living|resident|based)\s+in\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\brequires?\s+(?:current\s+)?(?:residence|residency)\s+in\s+"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bwork\s+authori[sz]ation\s+(?:is\s+)?required\s+in\s+"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bright\s+to\s+work\s+in\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+(?:only\s+)?within\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+from\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
 )
 
 _EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS = (
@@ -266,6 +341,124 @@ def _has_explicit_foreign_residence_requirement(text: str) -> bool:
     return any(re.search(pattern, normalized) for pattern in _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS)
 
 
+def _explicit_work_mode(text: str) -> str | None:
+    lowered = text.casefold()
+
+    matches = {
+        mode
+        for mode, patterns in (
+            ("remote", _EXPLICIT_REMOTE_WORK_PATTERNS),
+            ("hybrid", _EXPLICIT_HYBRID_WORK_PATTERNS),
+            ("onsite", _EXPLICIT_ONSITE_WORK_PATTERNS),
+        )
+        if any(re.search(pattern, lowered) for pattern in patterns)
+    }
+
+    if not matches:
+        return None
+    if len(matches) > 1:
+        return "conflict"
+    return next(iter(matches))
+
+
+def _location_contains_term(location: str, terms: tuple[str, ...]) -> bool:
+    normalized = " ".join(location.casefold().split())
+    return any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized) for term in terms)
+
+
+def _apply_local_work_mode_eligibility(
+    assessment: StrategyAssessment,
+    *,
+    title: str,
+    location: str,
+    description: str,
+) -> StrategyAssessment:
+    if assessment.eligibility == "ineligible":
+        return assessment
+
+    preferences = load_job_search_preferences()
+    evidence_text = "\n".join((title, description))
+    work_mode = _explicit_work_mode(evidence_text)
+
+    if work_mode is None or work_mode == "remote":
+        return assessment
+
+    if work_mode == "conflict":
+        uncertainties = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.uncertainties,
+                    (
+                        "Work-mode eligibility: conflicting explicit remote and "
+                        "hybrid/onsite evidence requires manual verification."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            uncertainties=uncertainties,
+        )
+
+    if _location_contains_term(location, _VIGO_LOCAL_LOCATION_TERMS):
+        return assessment
+
+    scope = _normalized_location_scope(location)
+    clearly_distant = _location_contains_term(
+        location,
+        _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS,
+    )
+
+    if clearly_distant or scope == "foreign_country":
+        blockers = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.blockers,
+                    (
+                        f"Location eligibility: explicit {work_mode} work is advertised "
+                        f"from {location or 'a non-local location'}, outside the configured "
+                        f"{preferences.max_hybrid_distance_km} km local radius from "
+                        f"{preferences.base_locality}."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            blockers=blockers,
+        )
+
+    if scope == "spain" or not location.strip():
+        uncertainties = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.uncertainties,
+                    (
+                        f"Location eligibility: explicit {work_mode} work requires "
+                        f"verification that the workplace is within the configured "
+                        f"{preferences.max_hybrid_distance_km} km radius from "
+                        f"{preferences.base_locality}."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            uncertainties=uncertainties,
+        )
+
+    return assessment
+
+
 def _apply_location_eligibility(
     assessment: StrategyAssessment,
     *,
@@ -399,6 +592,12 @@ def calibrated_strategy_assessment(
         description=sanitized_description,
     )
     assessment = _apply_saved_preferences(
+        assessment,
+        title=title,
+        location=location,
+        description=sanitized_description,
+    )
+    assessment = _apply_local_work_mode_eligibility(
         assessment,
         title=title,
         location=location,

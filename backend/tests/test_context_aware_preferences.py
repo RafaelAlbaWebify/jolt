@@ -16,6 +16,19 @@ def _preferences() -> JobSearchPreferences:
         languages=["Spanish", "English"],
         excluded_shifts=["night", "rotating", "weekend"],
         excluded_keywords=["dispatch", "field sales", "door to door", "commission only"],
+        base_locality="Vigo, Galicia, Spain",
+        max_hybrid_distance_km=30,
+    )
+
+
+def _install_preferences(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "jolt.preference_aware_evaluation.load_job_search_preferences",
+        _preferences,
+    )
+    monkeypatch.setattr(
+        "jolt.strategy_runtime.load_job_search_preferences",
+        _preferences,
     )
 
 
@@ -217,4 +230,142 @@ def test_explicit_temporary_contract_still_blocks(monkeypatch) -> None:
 
     assert preference_blockers("This is a temporary contract for six months.") == [
         "temporary or fixed-term employment"
+    ]
+
+
+def test_default_hybrid_radius_is_30_km() -> None:
+    assert JobSearchPreferences().max_hybrid_distance_km == 30
+
+
+def test_infotree_hybrid_madrid_is_ineligible(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=(
+            "Hybrid\n"
+            "Contract\n"
+            "Looking for a Customer/Technical Support Engineer for a long term "
+            "contract position based in Madrid. Handle support cases, "
+            "troubleshooting, root cause analysis and technical documentation."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "outside the configured 30 km local radius" in blocker for blocker in assessment.blockers
+    )
+
+
+def test_remote_madrid_is_not_rejected_by_vigo_radius(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=(
+            "Remote\n"
+            "This role is fully remote from anywhere in Spain. "
+            "Advanced troubleshooting for enterprise customers."
+        ),
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_hybrid_vigo_is_inside_local_area(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Vigo, Galicia, Spain",
+        description="Hybrid\nAdvanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_hybrid_infrastructure_wording_is_not_work_mode(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=(
+            "Support enterprise hybrid infrastructure, cloud services and "
+            "network connectivity. The position does not state a workplace mode."
+        ),
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_unspecified_spanish_hybrid_location_requires_verification(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain",
+        description="Hybrid\nAdvanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any(
+        "within the configured 30 km radius" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_remote_anywhere_in_spain_is_not_foreign_residence_restriction(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("This role is fully remote from anywhere in Spain.") == []
+
+
+def test_remote_from_spain_is_not_foreign_residence_restriction(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Candidates may work remotely from Spain.") == []
+
+
+def test_madrid_based_remote_role_is_not_foreign_country_restriction(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Remote role for candidates based in Madrid, Spain.") == []
+
+
+def test_explicit_remote_germany_residence_requirement_still_blocks(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("This position is remote only within Germany.") == [
+        "remote work is restricted to residence in another country"
+    ]
+
+
+def test_explicit_germany_based_candidate_requirement_still_blocks(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Only for candidates already based in Germany.") == [
+        "remote work is restricted to residence in another country"
     ]
