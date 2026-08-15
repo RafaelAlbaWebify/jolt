@@ -87,17 +87,31 @@ describe("archived application workspace resources", () => {
   it("keeps documents visible but removes document mutations", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([{
       document_id: "document-1",
+      application_id: "application-1",
       document_type: "resume",
       title: "Submitted resume",
-      file_path: "C:/resume.pdf",
+      file_path: "",
       source_url: "",
       status: "submitted",
       notes: "Recorded before archive.",
+      stored_filename: "submitted-resume.pdf",
+      mime_type: "application/pdf",
+      file_size: 2048,
+      file_sha256: "archive-test-sha",
+      has_file: true,
+      created_at: "2026-08-15T10:00:00Z",
+      updated_at: "2026-08-15T10:00:00Z",
     }]));
 
     render(<ApplicationDocuments {...sharedProps} />);
     expect(await screen.findByText("Submitted resume")).toBeInTheDocument();
-    expect(screen.getByText(/documents are read-only until the application is restored/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/document metadata is read-only, but stored files remain downloadable/)
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute(
+      "href",
+      "http://api/api/application-documents/document-1/file",
+    );
     expect(screen.queryByRole("button", { name: "Add document" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit document" })).not.toBeInTheDocument();
   });
