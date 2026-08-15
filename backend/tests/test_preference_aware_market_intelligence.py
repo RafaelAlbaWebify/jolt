@@ -147,6 +147,14 @@ def test_market_groups_semantic_duplicate_postings(tmp_path: Path) -> None:
     assert payload["evaluation_coverage"]["canonical_role_count"] == 1
     assert payload["evaluation_coverage"]["duplicate_member_count"] == 1
 
+    provenance = payload["evidence_provenance"]
+    assert provenance["source_posting_count"] == 2
+    assert provenance["canonical_role_count"] == 1
+    assert provenance["duplicate_member_count"] == 1
+    assert provenance["oldest_evidence_at"] is not None
+    assert provenance["newest_evidence_at"] is not None
+    assert provenance["oldest_evidence_at"] <= provenance["newest_evidence_at"]
+
     assert len(payload["duplicate_groups"]) == 1
     group = payload["duplicate_groups"][0]
 

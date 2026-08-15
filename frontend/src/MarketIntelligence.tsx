@@ -17,8 +17,16 @@ type ScopeData = {
 };
 type Timeframe = "all" | "last_7_days" | "last_30_days";
 type SourceScope = "all" | "capture_batches" | "manual_intake";
+type EvidenceProvenance = {
+  source_posting_count: number;
+  canonical_role_count: number;
+  duplicate_member_count: number;
+  oldest_evidence_at: string | null;
+  newest_evidence_at: string | null;
+};
 type MarketData = {
   filters?: { timeframe: Timeframe; source_scope: SourceScope };
+  evidence_provenance: EvidenceProvenance;
   total_unique_roles: number;
   target_role_count: number;
   outside_target_count: number;
@@ -127,6 +135,15 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                 <article className="market-card"><span>Salary evidence</span><strong>{current.salary_role_count} / {current.total_roles} · {current.salary_coverage_percent}%</strong></article>
               </section>
               <div className="market-overview-grid">
+                <section className="market-card market-ranking-card">
+                  <h3>Evidence provenance</h3>
+                  <p>{data?.evidence_provenance.source_posting_count ?? 0} retained observations · {data?.evidence_provenance.canonical_role_count ?? 0} canonical roles · {data?.evidence_provenance.duplicate_member_count ?? 0} duplicate observations</p>
+                  <p>
+                    Oldest evidence: {data?.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "None"}
+                    {" · "}
+                    Newest evidence: {data?.evidence_provenance.newest_evidence_at ? new Date(data.evidence_provenance.newest_evidence_at).toLocaleDateString() : "None"}
+                  </p>
+                </section>
                 <Ranking title="Role families" items={current.role_families} />
               </div>
             </div>

@@ -19,6 +19,13 @@ const SCOPE = {
 
 const DATA = {
   filters: { timeframe: "all", source_scope: "all" },
+  evidence_provenance: {
+    source_posting_count: 10,
+    canonical_role_count: 8,
+    duplicate_member_count: 2,
+    oldest_evidence_at: "2026-07-01T10:00:00+00:00",
+    newest_evidence_at: "2026-08-15T10:00:00+00:00",
+  },
   total_unique_roles: 10,
   target_role_count: 8,
   outside_target_count: 2,
@@ -40,6 +47,8 @@ describe("MarketIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Role families" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evidence provenance" })).toBeInTheDocument();
+    expect(screen.getByText("10 retained observations · 8 canonical roles · 2 duplicate observations")).toBeInTheDocument();
     expect(screen.getByText("4 / 8 · 50%")).toBeInTheDocument();
     expect(screen.queryByText("Strong fit")).not.toBeInTheDocument();
     expect(screen.queryByText("Viable fit")).not.toBeInTheDocument();
