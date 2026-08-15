@@ -11,6 +11,9 @@ const SCOPE = {
   top_companies: [{ label: "Example", count: 3 }],
   top_locations: [{ label: "Spain", count: 7 }],
   top_skills: [{ label: "SQL", count: 6 }, { label: "API troubleshooting", count: 5 }],
+  required_skills: [{ label: "SQL", count: 4 }],
+  preferred_skills: [{ label: "Azure", count: 3 }],
+  mentioned_skills: [{ label: "Windows", count: 5 }],
   salary_mentions: [{ title: "Application Support Engineer", company: "Example", mention: "€45,000" }],
   salary_role_count: 4,
   salary_coverage: 0.5,
@@ -69,7 +72,10 @@ describe("MarketIntelligence", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Demand signals" }));
     expect(screen.getByRole("tabpanel", { name: "Demand signals" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Most requested skills" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "All skill mentions" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Explicitly required skills" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Explicitly preferred skills" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Other skill mentions" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Companies" })).toBeInTheDocument();
     expect(screen.queryByText("Repeated blockers and gaps")).not.toBeInTheDocument();
 

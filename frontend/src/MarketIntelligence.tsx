@@ -10,6 +10,9 @@ type ScopeData = {
   top_companies: Metric[];
   top_locations: Metric[];
   top_skills: Metric[];
+  required_skills: Metric[];
+  preferred_skills: Metric[];
+  mentioned_skills: Metric[];
   salary_mentions: SalaryMention[];
   salary_role_count: number;
   salary_coverage: number;
@@ -152,7 +155,10 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           {view === "demand" && (
             <div className="market-demand-grid" role="tabpanel" aria-label="Demand signals">
               <Ranking title="Work modes" items={current.work_modes} />
-              <Ranking title="Most requested skills" items={current.top_skills} />
+              <Ranking title="All skill mentions" items={current.top_skills} />
+              <Ranking title="Explicitly required skills" items={current.required_skills} />
+              <Ranking title="Explicitly preferred skills" items={current.preferred_skills} />
+              <Ranking title="Other skill mentions" items={current.mentioned_skills} />
               <Ranking title="Locations" items={current.top_locations} />
               <Ranking title="Seniority" items={current.seniority} />
               <Ranking title="Companies" items={current.top_companies} />

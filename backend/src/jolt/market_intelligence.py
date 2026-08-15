@@ -19,6 +19,28 @@ from jolt.database import (
 from jolt.semantic_duplicates import group_semantic_duplicates
 from jolt.strategy_runtime import ENGINE_VERSION
 
+_REQUIRED_SKILL_MARKERS = (
+    "requirements:",
+    "required",
+    "must have",
+    "must-have",
+    "mandatory",
+    "essential",
+    "demonstrable experience",
+    "proven experience",
+    "hands-on experience",
+)
+
+_PREFERRED_SKILL_MARKERS = (
+    "preferred",
+    "nice to have",
+    "nice-to-have",
+    "desirable",
+    "advantage",
+    "bonus",
+    "ideally",
+)
+
 SKILL_TERMS = (
     "active directory",
     "azure",
@@ -46,6 +68,37 @@ SKILL_TERMS = (
     "grafana",
     "datadog",
 )
+
+
+def _skill_label(skill: str) -> str:
+    if skill in {"sql", "aws", "dns", "dhcp", "api"}:
+        return skill.upper()
+    return skill.title()
+
+
+def _skill_evidence(text: str) -> dict[str, int]:
+    evidence: dict[str, int] = {}
+
+    for fragment in re.split(r"[\n.;•]+", text.lower()):
+        fragment = fragment.strip()
+        if not fragment:
+            continue
+
+        strength = 0
+        if any(marker in fragment for marker in _PREFERRED_SKILL_MARKERS):
+            strength = 1
+        if any(marker in fragment for marker in _REQUIRED_SKILL_MARKERS):
+            strength = 2
+
+        for skill in SKILL_TERMS:
+            if skill not in fragment:
+                continue
+
+            label = _skill_label(skill)
+            evidence[label] = max(evidence.get(label, 0), strength)
+
+    return evidence
+
 
 TARGET_ROLE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -422,6 +475,9 @@ def _scope_data(
     companies: Counter[str] = Counter()
     locations: Counter[str] = Counter()
     skills: Counter[str] = Counter()
+    required_skills: Counter[str] = Counter()
+    preferred_skills: Counter[str] = Counter()
+    mentioned_skills: Counter[str] = Counter()
     decision_bands: Counter[str] = Counter()
     technical_fit_bands: Counter[str] = Counter()
     salary_mentions: list[dict[str, str]] = []
@@ -436,15 +492,15 @@ def _scope_data(
         if posting.location:
             locations[posting.location] += 1
 
-        searchable = f"{posting.title}\n{posting.description}".lower()
-        for skill in SKILL_TERMS:
-            if skill in searchable:
-                label = (
-                    skill.upper()
-                    if skill in {"sql", "aws", "dns", "dhcp", "api"}
-                    else skill.title()
-                )
-                skills[label] += 1
+        searchable = f"{posting.title}\n{posting.description}"
+        for label, strength in _skill_evidence(searchable).items():
+            skills[label] += 1
+            if strength == 2:
+                required_skills[label] += 1
+            if strength == 1:
+                preferred_skills[label] += 1
+            if strength == 0:
+                mentioned_skills[label] += 1
 
         evaluation = evaluations.get(posting.id)
         if evaluation:
@@ -475,6 +531,9 @@ def _scope_data(
         "top_companies": _ranked(companies),
         "top_locations": _ranked(locations),
         "top_skills": _ranked(skills, 20),
+        "required_skills": _ranked(required_skills, 20),
+        "preferred_skills": _ranked(preferred_skills, 20),
+        "mentioned_skills": _ranked(mentioned_skills, 20),
         "decision_distribution": [
             {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
         ],
