@@ -31,7 +31,7 @@ class JobSearchPreferences(BaseModel):
     )
     preferred_work_modes: list[WorkMode] = Field(default_factory=lambda: ["remote", "hybrid"])
     base_locality: str = "Vigo, Galicia, Spain"
-    max_hybrid_distance_km: int = Field(default=60, ge=0, le=500)
+    max_hybrid_distance_km: int = Field(default=30, ge=0, le=500)
     countries: list[str] = Field(
         default_factory=lambda: ["Spain", "Ireland", "United Kingdom", "European Union"]
     )
