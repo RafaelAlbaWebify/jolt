@@ -111,11 +111,11 @@ def document_cycle(
         dialog.get_by_label("File", exact=True).set_input_files(str(upload_path))
         dialog.get_by_role("button", name="Add document", exact=True).click()
 
-    dialog.get_by_text(title, exact=True).wait_for(timeout=30_000)
-    dialog.get_by_text(
-        f"Stored in JOLT: {stored_filename}",
-        exact=False,
-    ).wait_for(timeout=30_000)
+        dialog.get_by_text(title, exact=True).wait_for(timeout=30_000)
+        dialog.get_by_text(
+            f"Stored in JOLT: {stored_filename}",
+            exact=False,
+        ).wait_for(timeout=30_000)
     item = dialog.locator("li").filter(has_text=title)
     item.get_by_role("link", name="Download file", exact=True).wait_for(timeout=30_000)
     module.record_action(actions, "Create application document with stored file", "passed")
