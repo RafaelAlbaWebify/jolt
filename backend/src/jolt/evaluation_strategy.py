@@ -504,7 +504,7 @@ def assess_posting(
     strengths = tuple(
         f"{item.label}: evidence level {item.evidence_level}; matched {', '.join(item.matched_terms)}."
         for item in capability_results
-        if item.evidence_level >= 3
+        if item.evidence_level >= 4
     )
     gaps = tuple(item for item in capability_results if item.evidence_level < 4)
     preparation_plan = tuple(
