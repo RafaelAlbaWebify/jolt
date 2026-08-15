@@ -308,3 +308,62 @@ def test_optional_trainable_platform_wording_is_not_a_blocker() -> None:
         "Missing required direct specialist-platform experience" in blocker
         for blocker in result.blockers
     )
+
+
+def test_evidence_level_three_is_gap_only_not_strength() -> None:
+    result = assess_posting(
+        _profile(),
+        "Application Support Engineer",
+        "Remote",
+        "Own API and REST integration troubleshooting.",
+    )
+
+    assert any(
+        gap.capability_id == "api_support"
+        and gap.evidence_level == 3
+        and gap.gap_type == "preparable_in_days"
+        for gap in result.gaps
+    )
+    assert not any(strength.startswith("API troubleshooting:") for strength in result.strengths)
+
+
+def test_evidence_level_four_is_strength_only_not_gap() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "powershell",
+                "label": "PowerShell automation",
+                "terms": ["powershell"],
+                "evidence_level": 4,
+                "transferable_to": [],
+                "preparation_topics": [],
+            }
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Technical Support Engineer",
+        "Remote",
+        "Automate support operations with PowerShell.",
+    )
+
+    assert any(strength.startswith("PowerShell automation:") for strength in result.strengths)
+    assert not any(gap.capability_id == "powershell" for gap in result.gaps)
+
+
+def test_strength_and_gap_capability_sets_never_overlap() -> None:
+    result = assess_posting(
+        _profile(),
+        "Application Support Engineer",
+        "Remote",
+        (
+            "Own incident escalation, SQL troubleshooting, API troubleshooting "
+            "and REST integration support."
+        ),
+    )
+
+    strength_labels = {strength.split(":", 1)[0] for strength in result.strengths}
+    gap_labels = {gap.label for gap in result.gaps}
+
+    assert strength_labels.isdisjoint(gap_labels)
