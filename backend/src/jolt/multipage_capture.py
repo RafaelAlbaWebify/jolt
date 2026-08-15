@@ -283,12 +283,39 @@ def _next_control(page: Page, next_page_number: int) -> tuple[Locator | None, bo
     return control, visible, visible and enabled
 
 
+def _card_page_signature(cards: Locator) -> tuple[str, ...]:
+    visible_ids = _visible_job_ids(cards)
+    if visible_ids:
+        return tuple(f"id:{value}" for value in visible_ids)
+
+    dismiss = cards.locator('button[aria-label^="Dismiss "][aria-label$=" job"]')
+    try:
+        count = dismiss.count()
+    except TimeoutError:
+        return ()
+
+    labels: list[str] = []
+    for index in range(count):
+        label = _safe_attribute(dismiss.nth(index), "aria-label").strip()
+        if label and label not in labels:
+            labels.append(label)
+
+    return tuple(f"lazy:{value}" for value in labels)
+
+
 def _advance_page(
     page: Page,
     control: Locator,
     previous_ids: tuple[str, ...],
     timeout_ms: int = 20_000,
 ) -> tuple[Locator, str] | None:
+    previous_cards, _ = _select_cards(page)
+    previous_signature = (
+        _card_page_signature(previous_cards)
+        if previous_cards is not None
+        else tuple(f"id:{value}" for value in previous_ids)
+    )
+
     try:
         control.click(timeout=8_000)
     except TimeoutError:
@@ -300,9 +327,11 @@ def _advance_page(
         cards, selector = _select_cards(page)
         if cards is None:
             continue
-        current_ids = _visible_job_ids(cards)
-        if current_ids and current_ids != previous_ids:
+
+        current_signature = _card_page_signature(cards)
+        if current_signature and current_signature != previous_signature:
             return cards, selector
+
     return None
 
 
