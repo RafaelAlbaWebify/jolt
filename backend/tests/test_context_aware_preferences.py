@@ -146,8 +146,7 @@ def test_relocation_package_is_not_a_relocation_requirement(monkeypatch) -> None
     )
 
     text = (
-        "Home office friendly anywhere in Spain. "
-        "Relocation package for international candidates."
+        "Home office friendly anywhere in Spain. Relocation package for international candidates."
     )
 
     assert preference_blockers(text) == []
