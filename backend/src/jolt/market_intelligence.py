@@ -608,6 +608,19 @@ def build_market_intelligence(
         "duplicate_member_count": (len(timeframe_records) - len(postings)),
     }
 
+    evidence_dates = [
+        aware
+        for posting in timeframe_records
+        if (aware := _as_aware(posting.created_at)) is not None
+    ]
+    evidence_provenance = {
+        "source_posting_count": len(timeframe_records),
+        "canonical_role_count": len(postings),
+        "duplicate_member_count": (len(timeframe_records) - len(postings)),
+        "oldest_evidence_at": min(evidence_dates).isoformat() if evidence_dates else None,
+        "newest_evidence_at": max(evidence_dates).isoformat() if evidence_dates else None,
+    }
+
     target_postings: list[MarketPosting] = []
     outside_postings: list[MarketPosting] = []
     outside_titles: Counter[str] = Counter()
@@ -637,6 +650,7 @@ def build_market_intelligence(
             evaluations,
         ),
         "evaluation_coverage": evaluation_coverage,
+        "evidence_provenance": evidence_provenance,
         "duplicate_groups": duplicate_groups,
         "excluded_synthetic_count": (len(active_records) - len(production_records)),
         "outside_title_examples": _ranked(
