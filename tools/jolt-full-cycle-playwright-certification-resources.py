@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import ModuleType
 
 from playwright.sync_api import Locator, Page
-
 
 RUNNER_PATH = Path(__file__).with_name("jolt-full-cycle-playwright-certification-runner.py")
 
@@ -96,18 +96,30 @@ def document_cycle(
     title = f"Certification Resume {stamp}"
     corrected = f"{title} Corrected"
     dialog.get_by_role("textbox", name="Title", exact=True).fill(title)
-    dialog.get_by_role("textbox", name="Local file path", exact=True).fill(
-        f"C:/certification/{stamp}/resume.pdf"
-    )
     dialog.get_by_role("textbox", name="Source URL", exact=True).fill(
         f"https://example.test/documents/{stamp}"
     )
     dialog.get_by_role("textbox", name="Notes", exact=True).fill("Initial document notes.")
-    dialog.get_by_role("button", name="Add document", exact=True).click()
-    dialog.get_by_text(title, exact=True).wait_for(timeout=30_000)
-    module.record_action(actions, "Create application document", "passed")
 
+    stored_filename = f"certification-resume-{stamp}.txt"
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        upload_path = Path(temporary_directory) / stored_filename
+        upload_path.write_text(
+            f"JOLT full-cycle certification resume {stamp}.",
+            encoding="utf-8",
+        )
+        dialog.get_by_label("File", exact=True).set_input_files(str(upload_path))
+        dialog.get_by_role("button", name="Add document", exact=True).click()
+
+        dialog.get_by_text(title, exact=True).wait_for(timeout=30_000)
+        dialog.get_by_text(
+            f"Stored in JOLT: {stored_filename}",
+            exact=False,
+        ).wait_for(timeout=30_000)
     item = dialog.locator("li").filter(has_text=title)
+    item.get_by_role("link", name="Download file", exact=True).wait_for(timeout=30_000)
+    module.record_action(actions, "Create application document with stored file", "passed")
+
     item.get_by_role("button", name="Edit document", exact=True).click()
     dialog.get_by_role("textbox", name="Title", exact=True).fill(f"{title} Cancelled")
     dialog.get_by_role("button", name="Cancel edit", exact=True).click()
@@ -127,7 +139,21 @@ def document_cycle(
     dialog = dialog_for(page, fixture)
     dialog.get_by_role("tab", name="Documents", exact=True).click()
     dialog.get_by_text(corrected, exact=True).wait_for(timeout=30_000)
-    module.record_action(actions, "Document persists after reload", "passed")
+    dialog.get_by_text(
+        f"Stored in JOLT: {stored_filename}",
+        exact=False,
+    ).wait_for(timeout=30_000)
+    persisted_item = dialog.locator("li").filter(has_text=corrected)
+    persisted_item.get_by_role(
+        "link",
+        name="Download file",
+        exact=True,
+    ).wait_for(timeout=30_000)
+    module.record_action(
+        actions,
+        "Document and stored file persist after reload",
+        "passed",
+    )
 
     dialog.get_by_role("tab", name="Timeline", exact=True).click()
     runner.require_rendered(
@@ -181,9 +207,7 @@ def interview_cycle(
     dialog.get_by_role("combobox", name="Interview type", exact=True).select_option(
         "technical_interview"
     )
-    dialog.get_by_role("textbox", name="Format or location", exact=True).fill(
-        "Teams corrected"
-    )
+    dialog.get_by_role("textbox", name="Format or location", exact=True).fill("Teams corrected")
     dialog.get_by_role("textbox", name="Participants", exact=True).fill("Technical Panel")
     dialog.get_by_role("textbox", name="Outcome notes", exact=True).fill(
         "Corrected interview outcome notes."
