@@ -21,8 +21,8 @@ Exit criteria:
 - Immutable source evidence.
 - Posting normalization.
 - Identity resolution.
-- Versioned profile.
-- Explainable evaluation.
+- Versioned evaluation metadata.
+- Explainable provenance.
 - Human review decision.
 - SQLite persistence.
 - Analysis-pack export.
@@ -31,7 +31,7 @@ Exit criteria:
 
 - Complete intake-to-export workflow passes automatically.
 - Data survives restart.
-- Duplicate state, recommendation, review, and application stage remain separate.
+- Duplicate state, evaluation provenance, review, and application stage remain separate.
 
 ## Phase 2 — Application workflow
 
@@ -70,20 +70,22 @@ Exit criteria:
 
 Exit criteria:
 
-- One configured search can populate the review queue without one-off scripts or manual copying.
+- One configured search can populate the evidence review queue without one-off scripts or manual copying.
 
-## Phase 5 — Market and career intelligence
+## Phase 5 — Market evidence and provenance
 
 - Structured posting requirements.
-- Mandatory/preferred distinction.
+- Required/preferred/other-mention distinction.
 - Duplicate-adjusted market populations.
 - Source and role-family analysis.
-- Outcome-aware rule analysis.
-- Career-expansion evidence.
+- Outcome evidence retained separately from source evidence.
+- Salary evidence truthfulness.
+- Evidence provenance and observed-date range.
 
 Exit criteria:
 
-- Every insight states its population, sample size, and supporting evidence.
+- Every market insight states or exposes its population, sample size, deduplication context, freshness/provenance, and supporting evidence.
+- Market evidence does not authoritatively decide Apply/Reject, career priorities, skill priorities, or outreach actions.
 
 ## Phase 6 — Additional source adapters
 
