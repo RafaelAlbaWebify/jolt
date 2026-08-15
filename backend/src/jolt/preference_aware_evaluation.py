@@ -49,6 +49,18 @@ _LANGUAGE_REQUIREMENT_MARKERS = (
     "obligatoire",
 )
 
+_LANGUAGE_PREFERENCE_MARKERS = (
+    "preferred",
+    "advantage",
+    "a plus",
+    "plus",
+    "nice to have",
+    "desirable",
+    "optional",
+    "valorable",
+    "valorable",
+)
+
 _SHIFT_PATTERNS: dict[str, tuple[str, ...]] = {
     "night": (
         r"\bnight shifts?\b",
@@ -70,7 +82,9 @@ _SHIFT_PATTERNS: dict[str, tuple[str, ...]] = {
         r"\btuesday\s*[–-]\s*saturday\b",
         r"\bsunday\s*[–-]\s*thursday\b",
         r"\bwochenendarbeit\b",
-        r"\bfin de semana\b",
+        r"\bturnos?(?:\s+de)?\s+fin\s+de\s+semana\b",
+        r"\btrabaj(?:ar|o)\b.{0,35}\bfin\s+de\s+semana\b",
+        r"\bdisponibilidad\b.{0,35}\bfin\s+de\s+semana\b",
     ),
     "evening": (
         r"\bevening shifts?\b",
@@ -98,7 +112,8 @@ _COUNTRY_RESTRICTION_PATTERNS = (
 )
 
 _RELOCATION_PATTERNS = (
-    r"\brelocation\s+(?:to|required|package)\b",
+    r"\brelocation\s+(?:to|required)\b",
+    r"\bmust\s+relocate\b",
     r"\brelocate\s+to\b",
     r"\bumzug\s+nach\b",
     r"\breubicaci[oó]n\s+(?:a|en)\b",
@@ -107,7 +122,8 @@ _RELOCATION_PATTERNS = (
 _EXCLUDED_EMPLOYMENT_PATTERNS = (
     (r"\binternship\b|\bintern\b|\bpraktikum\b|\btrainee internship\b", "internship"),
     (
-        r"\btemporary\b|\bfixed[-\s]term\b|\bbefristet\b|"
+        r"\btemporary\s+(?:role|position|contract|employment|assignment|job)\b|"
+        r"\bfixed[-\s]term\b|\bbefristet\b|"
         r"\barbeitnehmerüberlassung\b|\barbeitnehmerueberlassung\b",
         "temporary or fixed-term employment",
     ),
@@ -168,6 +184,18 @@ def _excluded_keyword_matches(text: str, phrase: str) -> bool:
     return _contains_phrase(text, normalized)
 
 
+def _language_is_explicitly_preferred(window: str, alias: str) -> bool:
+    marker_pattern = "|".join(re.escape(marker) for marker in _LANGUAGE_PREFERENCE_MARKERS)
+    alias_pattern = re.escape(alias)
+    return bool(
+        re.search(
+            rf"\b{alias_pattern}\b.{{0,55}}\b(?:{marker_pattern})\b|"
+            rf"\b(?:{marker_pattern})\b.{{0,35}}\b{alias_pattern}\b",
+            window,
+        )
+    )
+
+
 def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
     required: list[str] = []
 
@@ -181,6 +209,9 @@ def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
                 start = max(0, match.start() - 100)
                 end = min(len(text), match.end() + 100)
                 window = text[start:end]
+
+                if _language_is_explicitly_preferred(window, alias):
+                    continue
 
                 if any(marker in window for marker in _LANGUAGE_REQUIREMENT_MARKERS):
                     language_found = True
