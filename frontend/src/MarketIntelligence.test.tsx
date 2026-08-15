@@ -17,7 +17,9 @@ const SCOPE = {
   top_gaps: [{ label: "Linux", count: 4 }],
   study_priorities: [{ label: "Linux", count: 4 }, { label: "KQL", count: 2 }],
   salary_mentions: [{ title: "Application Support Engineer", company: "Example", mention: "€45,000" }],
+  salary_role_count: 4,
   salary_coverage: 0.5,
+  salary_coverage_percent: 50,
 };
 
 const DATA = {
@@ -55,6 +57,7 @@ describe("MarketIntelligence", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
     await screen.findByText("Double down on");
+    expect(screen.getByText("4 / 8 · 50%")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Demand signals" }));
     expect(screen.getByRole("tabpanel", { name: "Demand signals" })).toBeInTheDocument();
@@ -66,6 +69,7 @@ describe("MarketIntelligence", () => {
     expect(screen.getByRole("tabpanel", { name: "Salary evidence" })).toBeInTheDocument();
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
     expect(screen.getByText("€45,000")).toBeInTheDocument();
+    expect(screen.getByText("4 of 8 roles (50%) contain salary evidence.")).toBeInTheDocument();
   });
 
   it("applies timeframe and source filters directly to the market endpoint", async () => {

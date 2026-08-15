@@ -16,7 +16,9 @@ type ScopeData = {
   top_gaps: Metric[];
   study_priorities: Metric[];
   salary_mentions: SalaryMention[];
+  salary_role_count: number;
   salary_coverage: number;
+  salary_coverage_percent: number;
 };
 type Timeframe = "all" | "last_7_days" | "last_30_days";
 type SourceScope = "all" | "capture_batches" | "manual_intake";
@@ -131,7 +133,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                 <article className="market-card"><span>Roles in scope</span><strong>{current.total_roles}</strong></article>
                 <article className="market-card"><span>Strong fit</span><strong>{current.strong_roles}</strong></article>
                 <article className="market-card"><span>Viable fit</span><strong>{current.viable_roles}</strong></article>
-                <article className="market-card"><span>Salary evidence</span><strong>{Math.round(current.salary_coverage * 100)}%</strong></article>
+                <article className="market-card"><span>Salary evidence</span><strong>{current.salary_role_count} / {current.total_roles} · {current.salary_coverage_percent}%</strong></article>
               </section>
               <div className="market-overview-grid">
                 <article className="market-card market-next-action-card">
@@ -161,7 +163,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
 
           {view === "salary" && (
             <div role="tabpanel" aria-label="Salary evidence" className="market-salary-panel">
-              <div className="market-salary-heading"><div><h3>Salary mentions</h3><p>{Math.round(current.salary_coverage * 100)}% of roles in this scope contain salary evidence.</p></div></div>
+              <div className="market-salary-heading"><div><h3>Salary mentions</h3><p>{current.salary_role_count} of {current.total_roles} roles ({current.salary_coverage_percent}%) contain salary evidence.</p></div></div>
               {current.salary_mentions.length === 0 ? <p>No salary evidence in this scope.</p> : (
                 <div className="market-salary-grid">
                   {current.salary_mentions.slice(0, 9).map((item, index) => <article className="market-card" key={`${item.title}-${index}`}><strong>{item.title}</strong><span>{item.company}</span><p>{item.mention}</p></article>)}
