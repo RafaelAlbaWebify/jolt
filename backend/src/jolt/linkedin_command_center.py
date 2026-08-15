@@ -420,8 +420,6 @@ def build_linkedin_analysis_pack(session: Session) -> bytes:
             "target_role_count": market.get("target_role_count", 0),
             "fit_explanation": market.get("fit_explanation", ""),
             "target_top_skills": market_target.get("top_skills", []),
-            "target_top_gaps": market_target.get("top_gaps", []),
-            "study_priorities": market_target.get("study_priorities", []),
         },
     }
 

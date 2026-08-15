@@ -81,9 +81,13 @@ def test_market_separates_technical_fit_from_actionable_decision() -> None:
         },
     )
 
-    assert data["strong_roles"] == 1
+    assert "strong_roles" not in data
+    assert "viable_roles" not in data
+    assert "fit_distribution" not in data
+    assert "top_gaps" not in data
+    assert "study_priorities" not in data
     assert data["blocked_roles"] == 1
-    assert data["fit_distribution"] == [
+    assert data["decision_distribution"] == [
         {"label": "Actionable strong match", "count": 1},
         {"label": "Actionable viable match", "count": 0},
         {"label": "Conditional / preparation needed", "count": 0},
@@ -94,8 +98,6 @@ def test_market_separates_technical_fit_from_actionable_decision() -> None:
         "label": "Strong technical fit · 80–100",
         "count": 2,
     }
-    assert data["top_gaps"] == [{"label": "Linux application support", "count": 1}]
-    assert data["study_priorities"] == [{"label": "Practise Linux logs.", "count": 1}]
 
 
 def _assessment_with_management_gap() -> StrategyAssessment:
