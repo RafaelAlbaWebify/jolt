@@ -4,17 +4,12 @@ type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
 type ScopeData = {
   total_roles: number;
-  strong_roles: number;
-  viable_roles: number;
   role_families: Metric[];
   work_modes: Metric[];
   seniority: Metric[];
   top_companies: Metric[];
   top_locations: Metric[];
   top_skills: Metric[];
-  fit_distribution: Metric[];
-  top_gaps: Metric[];
-  study_priorities: Metric[];
   salary_mentions: SalaryMention[];
   salary_role_count: number;
   salary_coverage: number;
@@ -94,8 +89,6 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   }, [active, load]);
 
   const current = useMemo(() => scope === "target" ? data?.target : data?.all, [data, scope]);
-  const strongest = current?.top_skills.slice(0, 3) ?? [];
-  const priorities = current?.study_priorities.length ? current.study_priorities : current?.top_gaps ?? [];
 
   return (
     <main className="market-intelligence" aria-labelledby="market-insights-heading">
@@ -104,7 +97,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <div>
             <p className="eyebrow">Search strategy evidence</p>
             <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Use retained job evidence to change search scope, preparation priorities, or application decisions.</p>
+            <p>Use retained job evidence to inspect role mix, demand signals, and salary evidence.</p>
           </div>
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh insights"}</button>
         </div>
@@ -131,20 +124,9 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <div role="tabpanel" aria-label="Overview">
               <section className="market-summary-grid" aria-label="Market summary">
                 <article className="market-card"><span>Roles in scope</span><strong>{current.total_roles}</strong></article>
-                <article className="market-card"><span>Strong fit</span><strong>{current.strong_roles}</strong></article>
-                <article className="market-card"><span>Viable fit</span><strong>{current.viable_roles}</strong></article>
                 <article className="market-card"><span>Salary evidence</span><strong>{current.salary_role_count} / {current.total_roles} · {current.salary_coverage_percent}%</strong></article>
               </section>
               <div className="market-overview-grid">
-                <article className="market-card market-next-action-card">
-                  <h3>What to do next</h3>
-                  <p>{data?.fit_explanation}</p>
-                  <div className="market-action-columns">
-                    <div><h4>Double down on</h4>{strongest.length ? <ul>{strongest.map((item) => <li key={item.label}>{readable(item.label)} ({item.count})</li>)}</ul> : <p>No repeated strength signal yet.</p>}</div>
-                    <div><h4>Prepare next</h4>{priorities.length ? <ol>{priorities.slice(0, 5).map((item) => <li key={item.label}>{readable(item.label)} ({item.count})</li>)}</ol> : <p>No repeated preparation gap yet.</p>}</div>
-                  </div>
-                </article>
-                <Ranking title="Fit distribution" items={current.fit_distribution} />
                 <Ranking title="Role families" items={current.role_families} />
               </div>
             </div>
@@ -154,7 +136,6 @@ export function MarketIntelligence({ apiBase, active }: Props) {
             <div className="market-demand-grid" role="tabpanel" aria-label="Demand signals">
               <Ranking title="Work modes" items={current.work_modes} />
               <Ranking title="Most requested skills" items={current.top_skills} />
-              <Ranking title="Repeated blockers and gaps" items={current.top_gaps} />
               <Ranking title="Locations" items={current.top_locations} />
               <Ranking title="Seniority" items={current.seniority} />
               <Ranking title="Companies" items={current.top_companies} />

@@ -42,7 +42,7 @@ def test_market_uses_latest_fallback_evaluation_and_excludes_audit_fixture(
     assert payload["excluded_synthetic_count"] == 1
     assert payload["evaluation_coverage"]["evaluated_count"] == 1
     assert payload["evaluation_coverage"]["fallback_engine_count"] == 1
-    assert sum(item["count"] for item in payload["all"]["fit_distribution"]) == 1
+    assert "fit_distribution" not in payload["all"]
 
 
 def test_shift_is_blocked_only_when_saved_preferences_exclude_it(monkeypatch) -> None:

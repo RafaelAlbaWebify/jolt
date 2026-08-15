@@ -5,17 +5,12 @@ import { MarketIntelligence } from "./MarketIntelligence";
 
 const SCOPE = {
   total_roles: 8,
-  strong_roles: 3,
-  viable_roles: 4,
   role_families: [{ label: "application_support", count: 5 }],
   work_modes: [{ label: "remote", count: 6 }],
   seniority: [{ label: "mid_level", count: 4 }],
   top_companies: [{ label: "Example", count: 3 }],
   top_locations: [{ label: "Spain", count: 7 }],
   top_skills: [{ label: "SQL", count: 6 }, { label: "API troubleshooting", count: 5 }],
-  fit_distribution: [{ label: "strong", count: 3 }, { label: "viable", count: 4 }],
-  top_gaps: [{ label: "Linux", count: 4 }],
-  study_priorities: [{ label: "Linux", count: 4 }, { label: "KQL", count: 2 }],
   salary_mentions: [{ title: "Application Support Engineer", company: "Example", mention: "€45,000" }],
   salary_role_count: 4,
   salary_coverage: 0.5,
@@ -39,15 +34,19 @@ describe("MarketIntelligence", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders actionable market evidence without preparation import or preference editors", async () => {
+  it("renders evidence without legacy career-authority guidance", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
-    expect(await screen.findByText("Double down on")).toBeInTheDocument();
-    expect(screen.getByText("Prepare next")).toBeInTheDocument();
-    expect(screen.getByText("SQL (6)")).toBeInTheDocument();
-    expect(screen.getByText("Linux (4)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Role families" })).toBeInTheDocument();
+    expect(screen.getByText("4 / 8 · 50%")).toBeInTheDocument();
+    expect(screen.queryByText("Strong fit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Viable fit")).not.toBeInTheDocument();
+    expect(screen.queryByText("Fit distribution")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prepare next")).not.toBeInTheDocument();
+    expect(screen.queryByText("Double down on")).not.toBeInTheDocument();
+    expect(screen.queryByText("What to do next")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Import/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Job-search preferences/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/preparation pack/i)).not.toBeInTheDocument();
@@ -56,14 +55,14 @@ describe("MarketIntelligence", () => {
   it("keeps demand and salary evidence available in focused non-stacked views", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByText("Double down on");
+    await screen.findByRole("heading", { name: "Role families" });
     expect(screen.getByText("4 / 8 · 50%")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Demand signals" }));
     expect(screen.getByRole("tabpanel", { name: "Demand signals" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Most requested skills" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Companies" })).toBeInTheDocument();
-    expect(screen.queryByText("Double down on")).not.toBeInTheDocument();
+    expect(screen.queryByText("Repeated blockers and gaps")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Salary evidence" }));
     expect(screen.getByRole("tabpanel", { name: "Salary evidence" })).toBeInTheDocument();
@@ -75,7 +74,7 @@ describe("MarketIntelligence", () => {
   it("applies timeframe and source filters directly to the market endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByText("Double down on");
+    await screen.findByRole("heading", { name: "Role families" });
 
     fireEvent.change(screen.getByLabelText("Timeframe"), { target: { value: "last_30_days" } });
     fireEvent.change(screen.getByLabelText("Source"), { target: { value: "capture_batches" } });

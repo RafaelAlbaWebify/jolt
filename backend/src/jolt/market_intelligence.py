@@ -424,8 +424,6 @@ def _scope_data(
     skills: Counter[str] = Counter()
     decision_bands: Counter[str] = Counter()
     technical_fit_bands: Counter[str] = Counter()
-    gaps: Counter[str] = Counter()
-    study_topics: Counter[str] = Counter()
     salary_mentions: list[dict[str, str]] = []
 
     for posting in postings:
@@ -452,17 +450,6 @@ def _scope_data(
         if evaluation:
             technical_fit_bands[_technical_fit_band(evaluation.ranking_score)] += 1
             decision_bands[_decision_band(evaluation.recommendation)] += 1
-            if not _is_blocked(evaluation):
-                assessment = _assessment_payload(evaluation)
-                for gap in assessment.get("gaps", []):
-                    if not isinstance(gap, dict):
-                        continue
-                    label = gap.get("label")
-                    if isinstance(label, str) and label:
-                        gaps[label] += 1
-                    for topic in gap.get("preparation_topics", []):
-                        if isinstance(topic, str) and topic:
-                            study_topics[topic] += 1
 
         mentions = _salary_mentions(posting.description)
         if mentions:
@@ -479,9 +466,6 @@ def _scope_data(
 
     return {
         "total_roles": len(postings),
-        "strong_roles": decision_bands.get(_DECISION_BANDS[0], 0),
-        "viable_roles": decision_bands.get(_DECISION_BANDS[0], 0)
-        + decision_bands.get(_DECISION_BANDS[1], 0),
         "blocked_roles": decision_bands.get(_DECISION_BANDS[4], 0),
         "review_roles": decision_bands.get(_DECISION_BANDS[2], 0)
         + decision_bands.get(_DECISION_BANDS[3], 0),
@@ -491,9 +475,6 @@ def _scope_data(
         "top_companies": _ranked(companies),
         "top_locations": _ranked(locations),
         "top_skills": _ranked(skills, 20),
-        "fit_distribution": [
-            {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
-        ],
         "decision_distribution": [
             {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
         ],
@@ -501,8 +482,6 @@ def _scope_data(
             {"label": label, "count": technical_fit_bands.get(label, 0)}
             for label in _TECHNICAL_FIT_BANDS
         ],
-        "top_gaps": _ranked(gaps, 12),
-        "study_priorities": _ranked(study_topics, 12),
         "salary_mentions": salary_mentions[:20],
         "salary_role_count": salary_role_count,
         "salary_coverage": salary_coverage,
