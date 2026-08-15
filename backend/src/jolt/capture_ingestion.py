@@ -38,13 +38,31 @@ def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> Intak
     duplicate = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
 
     if duplicate is not None:
-        evaluation = session.scalar(
-            select(Evaluation)
-            .where(Evaluation.posting_id == duplicate.id)
-            .order_by(Evaluation.created_at.desc())
+        parsed = parse_manual_text(request.raw_text)
+
+        duplicate.source_document_id = source.id
+        duplicate.canonical_url = canonical_url
+        duplicate.title = parsed.title
+        duplicate.company = parsed.company
+        duplicate.location = parsed.location
+        duplicate.description = parsed.description
+
+        profile = ensure_default_profile(session)
+        recommendation, confidence, score, reasons = evaluate_text(parsed.description)
+        evaluation = Evaluation(
+            id=str(uuid4()),
+            posting_id=duplicate.id,
+            profile_version_id=profile.id,
+            engine_version=ENGINE_VERSION,
+            recommendation=recommendation,
+            confidence=confidence,
+            ranking_score=score,
+            reasons_json=json.dumps(reasons),
+            created_at=utc_now(),
         )
-        if evaluation is None:
-            raise RuntimeError("Duplicate posting exists without an evaluation.")
+        session.add(evaluation)
+        session.flush()
+
         return IntakeResponse(
             source_document_id=source.id,
             posting_id=duplicate.id,
@@ -54,12 +72,12 @@ def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> Intak
             title=duplicate.title,
             company=duplicate.company,
             location=duplicate.location,
-            recommendation=evaluation.recommendation,
-            confidence=evaluation.confidence,
-            ranking_score=evaluation.ranking_score,
-            reasons=json.loads(evaluation.reasons_json),
-            profile_version_id=evaluation.profile_version_id,
-            engine_version=evaluation.engine_version,
+            recommendation=recommendation,
+            confidence=confidence,
+            ranking_score=score,
+            reasons=reasons,
+            profile_version_id=profile.id,
+            engine_version=ENGINE_VERSION,
         )
 
     parsed = parse_manual_text(request.raw_text)
