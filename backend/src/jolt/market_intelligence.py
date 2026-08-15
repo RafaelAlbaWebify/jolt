@@ -464,10 +464,18 @@ def _scope_data(
                         if isinstance(topic, str) and topic:
                             study_topics[topic] += 1
 
-        for mention in _salary_mentions(posting.description):
+        mentions = _salary_mentions(posting.description)
+        if mentions:
             salary_mentions.append(
-                {"title": posting.title, "company": posting.company, "mention": mention}
+                {
+                    "title": posting.title,
+                    "company": posting.company,
+                    "mention": " · ".join(mentions),
+                }
             )
+
+    salary_role_count = len(salary_mentions)
+    salary_coverage = salary_role_count / len(postings) if postings else 0.0
 
     return {
         "total_roles": len(postings),
@@ -496,7 +504,9 @@ def _scope_data(
         "top_gaps": _ranked(gaps, 12),
         "study_priorities": _ranked(study_topics, 12),
         "salary_mentions": salary_mentions[:20],
-        "salary_coverage": len({item["title"] + item["company"] for item in salary_mentions}),
+        "salary_role_count": salary_role_count,
+        "salary_coverage": salary_coverage,
+        "salary_coverage_percent": round(salary_coverage * 100, 1),
     }
 
 
