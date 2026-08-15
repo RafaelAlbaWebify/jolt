@@ -213,6 +213,42 @@ def _matched_terms(text: str, terms: list[str]) -> tuple[str, ...]:
     return tuple(matches)
 
 
+_WEAK_CAPABILITY_TERMS = frozenset(
+    {
+        "connectivity",
+        "infrastructure",
+        "json",
+        "network",
+    }
+)
+
+
+def _matched_capability_terms(
+    title: str,
+    text: str,
+    capability: CapabilityEvidence,
+) -> tuple[str, ...]:
+    matches = _matched_terms(text, capability.terms)
+    if not matches:
+        return ()
+
+    strong_matches = tuple(
+        term for term in matches if _normalize_match_text(term) not in _WEAK_CAPABILITY_TERMS
+    )
+    if strong_matches:
+        return matches
+
+    capability_identity = _normalize_match_text(f"{capability.id} {capability.label}")
+    identity_anchored_terms = [
+        term for term in matches if _normalize_match_text(term) in capability_identity
+    ]
+    if not identity_anchored_terms:
+        return ()
+
+    title_matches = _matched_terms(title, identity_anchored_terms)
+    return matches if title_matches else ()
+
+
 def _role_term_specificity(terms: tuple[str, ...]) -> int:
     return sum(len(_normalize_match_text(term).split()) * 100 + len(term) for term in terms)
 
@@ -243,9 +279,106 @@ def _select_role_family(
         )
         candidates.append((score, family))
 
-    if not candidates:
+    if candidates:
+        return max(candidates, key=lambda item: item[0])[1]
+
+    spanish_title_hints: dict[str, tuple[str, ...]] = {
+        "support": (
+            "soporte técnico",
+            "soporte tecnico",
+            "técnico de soporte",
+            "tecnico de soporte",
+            "soporte de sistemas",
+            "service desk",
+            "help desk",
+        ),
+        "operations": (
+            "administrador de sistemas",
+            "administradora de sistemas",
+            "técnico de sistemas",
+            "tecnico de sistemas",
+            "administración de sistemas",
+            "administracion de sistemas",
+            "administrador microsoft 365",
+            "administradora microsoft 365",
+            "técnico de infraestructura",
+            "tecnico de infraestructura",
+        ),
+        "service_management": (
+            "gestor de servicios",
+            "gestora de servicios",
+            "gestión de servicios",
+            "gestion de servicios",
+            "responsable de servicios",
+        ),
+    }
+
+    fallback_candidates: list[tuple[tuple[int, int, int], RoleFamily]] = []
+
+    for index, family in enumerate(profile.role_families):
+        family_identity = _normalize_match_text(f"{family.id} {family.label}")
+
+        bucket: str | None = None
+
+        if any(
+            marker in family_identity
+            for marker in (
+                "service management",
+                "service_management",
+                "service manager",
+                "gestión de servicios",
+                "gestion de servicios",
+            )
+        ):
+            bucket = "service_management"
+
+        if bucket is None and any(
+            marker in family_identity
+            for marker in (
+                "support",
+                "soporte",
+                "service desk",
+                "help desk",
+            )
+        ):
+            bucket = "support"
+
+        if bucket is None and any(
+            marker in family_identity
+            for marker in (
+                "operations",
+                "operation",
+                "systems",
+                "system",
+                "sistemas",
+                "infrastructure",
+                "infraestructura",
+                "endpoint",
+            )
+        ):
+            bucket = "operations"
+
+        if bucket is None:
+            continue
+
+        hint_matches = _matched_terms(
+            title,
+            list(spanish_title_hints[bucket]),
+        )
+        if not hint_matches:
+            continue
+
+        score = (
+            _role_term_specificity(hint_matches),
+            priority_rank[family.priority] * 100 + family.strategic_value,
+            -index,
+        )
+        fallback_candidates.append((score, family))
+
+    if not fallback_candidates:
         return None
-    return max(candidates, key=lambda item: item[0])[1]
+
+    return max(fallback_candidates, key=lambda item: item[0])[1]
 
 
 def _gap_type(evidence_level: int) -> GapType:
@@ -409,7 +542,11 @@ def assess_posting(
 
     capability_results: list[CapabilityAssessment] = []
     for capability in profile.capabilities:
-        matches = _matched_terms(text, capability.terms)
+        matches = _matched_capability_terms(
+            title,
+            text,
+            capability,
+        )
         if not matches:
             continue
         capability_results.append(
@@ -447,7 +584,6 @@ def assess_posting(
     preparation_feasibility = (
         100 if required_hours == 0 else min(100, available_hours * 100 // required_hours)
     )
-    opportunity_quality = 50
     strategic_value = role_family.strategic_value if role_family else 35
 
     dimensions = {
@@ -455,11 +591,15 @@ def assess_posting(
         "demonstrated_capability": demonstrated,
         "transferable_capability": transferable,
         "gap_feasibility": preparation_feasibility,
-        "opportunity_quality": opportunity_quality,
         "strategic_value": strategic_value,
     }
     weights = profile.weights.model_dump()
-    fit_now = round(sum(dimensions[key] * weights[key] for key in weights) / 100)
+    available_weight = sum(weights[key] for key in dimensions)
+    fit_now = (
+        round(sum(dimensions[key] * weights[key] for key in dimensions) / available_weight)
+        if available_weight
+        else 0
+    )
 
     preparable = [
         item
