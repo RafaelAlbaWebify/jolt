@@ -468,13 +468,20 @@ def _learning_signal_rows(
             }
         )
 
+    def sort_key(row: dict[str, object]) -> tuple[float, int, int]:
+        indicator_value = row.get("evidence_priority_indicator")
+        required_value = row.get("required_count")
+        demand_value = row.get("demand")
+
+        indicator = float(indicator_value) if isinstance(indicator_value, (int, float)) else 0.0
+        required = required_value if isinstance(required_value, int) else 0
+        demand = demand_value if isinstance(demand_value, int) else 0
+
+        return indicator, required, demand
+
     return sorted(
         rows,
-        key=lambda row: (
-            float(row["evidence_priority_indicator"]),
-            int(row["required_count"]),
-            int(row["demand"]),
-        ),
+        key=sort_key,
         reverse=True,
     )[:25]
 
