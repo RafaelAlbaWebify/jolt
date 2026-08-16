@@ -324,6 +324,192 @@ def _ranked(counter: Counter[str], limit: int = 12) -> list[dict[str, object]]:
     return [{"label": label, "count": count} for label, count in counter.most_common(limit)]
 
 
+MARKET_BASELINE_LABEL = "Market Baseline v1 — 16 Aug 2026"
+MARKET_BASELINE_AT = datetime(2026, 8, 16, 16, 26, tzinfo=UTC)
+
+
+def _strings_under_evidence_keys(
+    payload: object,
+    key_markers: tuple[str, ...],
+) -> list[str]:
+    collected: list[str] = []
+
+    def collect(value: object, active: bool = False) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                key_text = str(key).casefold()
+                child_active = active or any(marker in key_text for marker in key_markers)
+                collect(child, child_active)
+            return
+
+        if isinstance(value, list):
+            for child in value:
+                collect(child, active)
+            return
+
+        if active and isinstance(value, str):
+            collected.append(value)
+
+    collect(payload)
+    return collected
+
+
+def _assessment_skill_labels(
+    payload: dict[str, Any],
+    key_markers: tuple[str, ...],
+) -> set[str]:
+    evidence_text = "\n".join(_strings_under_evidence_keys(payload, key_markers))
+    if not evidence_text:
+        return set()
+    return set(_skill_evidence(evidence_text))
+
+
+def _capability_state(
+    *,
+    gap_count: int,
+    strength_count: int,
+) -> str:
+    if gap_count and strength_count:
+        return "partial"
+    if gap_count:
+        return "missing"
+    if strength_count:
+        return "covered"
+    return "unknown"
+
+
+def _interview_signal(
+    *,
+    demand: int,
+    required: int,
+    gap_count: int,
+) -> str:
+    if required >= 2 or (demand and required / demand >= 0.5):
+        return "High"
+    if required or gap_count >= 2:
+        return "Medium"
+    return "Low"
+
+
+def _learning_signal_rows(
+    *,
+    skills: Counter[str],
+    required_skills: Counter[str],
+    preferred_skills: Counter[str],
+    gap_skills: Counter[str],
+    strength_skills: Counter[str],
+    skill_role_families: dict[str, Counter[str]],
+    gap_shortfalls: dict[str, list[int]],
+) -> list[dict[str, object]]:
+    if not skills:
+        return []
+
+    max_demand = max(skills.values())
+    family_universe = {
+        family for family_counter in skill_role_families.values() for family in family_counter
+    }
+    max_families = max(1, len(family_universe))
+
+    rows: list[dict[str, object]] = []
+
+    for skill, demand in skills.items():
+        required = required_skills.get(skill, 0)
+        preferred = preferred_skills.get(skill, 0)
+        gap_count = gap_skills.get(skill, 0)
+        strength_count = strength_skills.get(skill, 0)
+        families = skill_role_families.get(skill, Counter())
+        role_family_count = len(families)
+
+        shortfalls = gap_shortfalls.get(skill, [])
+        avg_shortfall = round(sum(shortfalls) / len(shortfalls), 1) if shortfalls else None
+
+        demand_component = demand / max_demand
+        gap_component = gap_count / max(1, demand)
+        required_component = required / max(1, demand)
+        leverage_component = role_family_count / max_families
+        shortfall_component = min(avg_shortfall / 40.0, 1.0) if avg_shortfall is not None else 0.0
+
+        indicator = round(
+            10
+            * (
+                0.25 * demand_component
+                + 0.25 * gap_component
+                + 0.25 * required_component
+                + 0.15 * leverage_component
+                + 0.10 * shortfall_component
+            ),
+            1,
+        )
+
+        rows.append(
+            {
+                "skill": skill,
+                "demand": demand,
+                "required_count": required,
+                "preferred_count": preferred,
+                "gap_count": gap_count,
+                "average_fit_shortfall_proxy": avg_shortfall,
+                "role_family_count": role_family_count,
+                "role_family_split": [
+                    {"label": label, "count": count} for label, count in families.most_common()
+                ],
+                "capability_state": _capability_state(
+                    gap_count=gap_count,
+                    strength_count=strength_count,
+                ),
+                "interview_signal": _interview_signal(
+                    demand=demand,
+                    required=required,
+                    gap_count=gap_count,
+                ),
+                "preparation_hours": None,
+                "trend": "baseline",
+                "evidence_priority_indicator": indicator,
+            }
+        )
+
+    return sorted(
+        rows,
+        key=lambda row: (
+            float(row["evidence_priority_indicator"]),
+            int(row["required_count"]),
+            int(row["demand"]),
+        ),
+        reverse=True,
+    )[:25]
+
+
+def _learning_refresh_status(
+    postings: list[MarketPosting],
+) -> dict[str, object]:
+    now = datetime.now(UTC)
+    jobs_since_baseline = sum(
+        1
+        for posting in postings
+        if (_as_aware(posting.created_at) or datetime.min.replace(tzinfo=UTC)) > MARKET_BASELINE_AT
+    )
+    days_since_baseline = max(
+        0,
+        (now.date() - MARKET_BASELINE_AT.date()).days,
+    )
+
+    reasons: list[str] = []
+    if jobs_since_baseline >= 10:
+        reasons.append("10_new_relevant_jobs")
+    if days_since_baseline >= 7:
+        reasons.append("weekly_refresh")
+
+    return {
+        "baseline_label": MARKET_BASELINE_LABEL,
+        "baseline_at": MARKET_BASELINE_AT.isoformat(),
+        "jobs_since_baseline": jobs_since_baseline,
+        "days_since_baseline": days_since_baseline,
+        "refresh_due": bool(reasons),
+        "trigger_reasons": reasons,
+        "policy": "Recalculate after 10 new relevant jobs or 7 days, whichever comes first.",
+    }
+
+
 def _manual_market_postings(
     session: Session,
 ) -> list[Posting]:
@@ -478,6 +664,10 @@ def _scope_data(
     required_skills: Counter[str] = Counter()
     preferred_skills: Counter[str] = Counter()
     mentioned_skills: Counter[str] = Counter()
+    gap_skills: Counter[str] = Counter()
+    strength_skills: Counter[str] = Counter()
+    skill_role_families: dict[str, Counter[str]] = {}
+    gap_shortfalls: dict[str, list[int]] = {}
     decision_bands: Counter[str] = Counter()
     technical_fit_bands: Counter[str] = Counter()
     salary_mentions: list[dict[str, str]] = []
@@ -493,8 +683,13 @@ def _scope_data(
             locations[posting.location] += 1
 
         searchable = f"{posting.title}\n{posting.description}"
-        for label, strength in _skill_evidence(searchable).items():
+        posting_skill_evidence = _skill_evidence(searchable)
+
+        for label, strength in posting_skill_evidence.items():
             skills[label] += 1
+            family_counter = skill_role_families.setdefault(label, Counter())
+            family_counter[family] += 1
+
             if strength == 2:
                 required_skills[label] += 1
             if strength == 1:
@@ -506,6 +701,25 @@ def _scope_data(
         if evaluation:
             technical_fit_bands[_technical_fit_band(evaluation.ranking_score)] += 1
             decision_bands[_decision_band(evaluation.recommendation)] += 1
+
+            assessment = _assessment_payload(evaluation)
+
+            gap_labels = _assessment_skill_labels(
+                assessment,
+                ("gap", "missing", "weakness", "development"),
+            )
+            strength_labels = _assessment_skill_labels(
+                assessment,
+                ("strength", "demonstrated", "transferable", "capability"),
+            )
+
+            for label in gap_labels:
+                gap_skills[label] += 1
+                if evaluation.ranking_score < 80:
+                    gap_shortfalls.setdefault(label, []).append(80 - evaluation.ranking_score)
+
+            for label in strength_labels:
+                strength_skills[label] += 1
 
         mentions = _salary_mentions(posting.description)
         if mentions:
@@ -534,6 +748,24 @@ def _scope_data(
         "required_skills": _ranked(required_skills, 20),
         "preferred_skills": _ranked(preferred_skills, 20),
         "mentioned_skills": _ranked(mentioned_skills, 20),
+        "learning_signals": _learning_signal_rows(
+            skills=skills,
+            required_skills=required_skills,
+            preferred_skills=preferred_skills,
+            gap_skills=gap_skills,
+            strength_skills=strength_skills,
+            skill_role_families=skill_role_families,
+            gap_shortfalls=gap_shortfalls,
+        ),
+        "learning_signal_explanation": (
+            "This is an evidence indicator, not a career prescription. "
+            "Demand, explicit requirement frequency, saved gap evidence, "
+            "role-family spread and technical-fit shortfall are combined "
+            "transparently. Preparation hours remain unavailable unless "
+            "JOLT has retained evidence for them. Fit shortfall is a proxy "
+            "to the 80-point technical-fit threshold, not an attributed "
+            "per-skill penalty."
+        ),
         "decision_distribution": [
             {"label": label, "count": decision_bands.get(label, 0)} for label in _DECISION_BANDS
         ],
@@ -710,6 +942,7 @@ def build_market_intelligence(
         ),
         "evaluation_coverage": evaluation_coverage,
         "evidence_provenance": evidence_provenance,
+        "learning_refresh": _learning_refresh_status(target_postings),
         "duplicate_groups": duplicate_groups,
         "excluded_synthetic_count": (len(active_records) - len(production_records)),
         "outside_title_examples": _ranked(
