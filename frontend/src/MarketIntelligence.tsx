@@ -2,6 +2,32 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Metric = { label: string; count: number };
 type SalaryMention = { title: string; company: string; mention: string };
+type LearningSignal = {
+  skill: string;
+  demand: number;
+  required_count: number;
+  preferred_count: number;
+  gap_count: number;
+  average_fit_shortfall_proxy: number | null;
+  role_family_count: number;
+  role_family_split: Metric[];
+  capability_state: "covered" | "partial" | "missing" | "unknown";
+  interview_signal: "High" | "Medium" | "Low";
+  preparation_hours: number | null;
+  trend: string;
+  evidence_priority_indicator: number;
+};
+
+type LearningRefresh = {
+  baseline_label: string;
+  baseline_at: string;
+  jobs_since_baseline: number;
+  days_since_baseline: number;
+  refresh_due: boolean;
+  trigger_reasons: string[];
+  policy: string;
+};
+
 type ScopeData = {
   total_roles: number;
   role_families: Metric[];
@@ -13,6 +39,8 @@ type ScopeData = {
   required_skills: Metric[];
   preferred_skills: Metric[];
   mentioned_skills: Metric[];
+  learning_signals: LearningSignal[];
+  learning_signal_explanation: string;
   salary_mentions: SalaryMention[];
   salary_role_count: number;
   salary_coverage: number;
@@ -30,6 +58,7 @@ type EvidenceProvenance = {
 type MarketData = {
   filters?: { timeframe: Timeframe; source_scope: SourceScope };
   evidence_provenance: EvidenceProvenance;
+  learning_refresh: LearningRefresh;
   total_unique_roles: number;
   target_role_count: number;
   outside_target_count: number;
@@ -39,7 +68,7 @@ type MarketData = {
   fit_explanation: string;
 };
 type Scope = "target" | "all";
-type MarketView = "overview" | "demand" | "salary";
+type MarketView = "overview" | "demand" | "learning" | "salary";
 type Props = { apiBase: string; active: boolean };
 
 function readable(value: string) {
@@ -122,6 +151,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <div className="market-view-tabs" role="tablist" aria-label="Market insight views">
             <button type="button" role="tab" aria-selected={view === "overview"} className={view === "overview" ? "workspace-nav-active" : "secondary"} onClick={() => setView("overview")}>Overview</button>
             <button type="button" role="tab" aria-selected={view === "demand"} className={view === "demand" ? "workspace-nav-active" : "secondary"} onClick={() => setView("demand")}>Demand signals</button>
+            <button type="button" role="tab" aria-selected={view === "learning"} className={view === "learning" ? "workspace-nav-active" : "secondary"} onClick={() => setView("learning")}>Learning signals</button>
             <button type="button" role="tab" aria-selected={view === "salary"} className={view === "salary" ? "workspace-nav-active" : "secondary"} onClick={() => setView("salary")}>Salary evidence</button>
           </div>
         </div>
@@ -162,6 +192,74 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               <Ranking title="Locations" items={current.top_locations} />
               <Ranking title="Seniority" items={current.seniority} />
               <Ranking title="Companies" items={current.top_companies} />
+            </div>
+          )}
+
+          {view === "learning" && (
+            <div role="tabpanel" aria-label="Learning signals" className="market-learning-panel">
+              <section className="market-card market-learning-baseline">
+                <div>
+                  <p className="eyebrow">Adaptive market baseline</p>
+                  <h3>{data?.learning_refresh.baseline_label ?? "Market baseline"}</h3>
+                  <p>{data?.learning_refresh.policy}</p>
+                </div>
+                <div className="market-learning-refresh-stats">
+                  <span><strong>{data?.learning_refresh.jobs_since_baseline ?? 0}</strong> new relevant jobs</span>
+                  <span><strong>{data?.learning_refresh.days_since_baseline ?? 0}</strong> days</span>
+                  <span><strong>{data?.learning_refresh.refresh_due ? "Due" : "Current"}</strong> refresh</span>
+                </div>
+              </section>
+
+              <section className="market-card">
+                <h3>Learning evidence</h3>
+                <p>{current.learning_signal_explanation}</p>
+              </section>
+
+              {current.learning_signals.length === 0 ? (
+                <section className="market-card"><p>No learning evidence is available in this scope.</p></section>
+              ) : (
+                <div className="market-learning-table-wrap">
+                  <table className="market-learning-table">
+                    <thead>
+                      <tr>
+                        <th>Skill</th>
+                        <th>Demand</th>
+                        <th>Required</th>
+                        <th>Preferred</th>
+                        <th>Gap</th>
+                        <th>Fit shortfall*</th>
+                        <th>Roles helped</th>
+                        <th>Capability</th>
+                        <th>Interview signal</th>
+                        <th>Prep</th>
+                        <th>Trend</th>
+                        <th>Evidence indicator</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {current.learning_signals.map((item) => (
+                        <tr key={item.skill}>
+                          <td><strong>{item.skill}</strong></td>
+                          <td>{item.demand}</td>
+                          <td>{item.required_count}</td>
+                          <td>{item.preferred_count}</td>
+                          <td>{item.gap_count}</td>
+                          <td>{item.average_fit_shortfall_proxy == null ? "—" : `-${item.average_fit_shortfall_proxy}`}</td>
+                          <td title={item.role_family_split.map((part) => `${part.label}: ${part.count}`).join(" · ")}>{item.role_family_count} families</td>
+                          <td>{readable(item.capability_state)}</td>
+                          <td>{item.interview_signal}</td>
+                          <td>{item.preparation_hours == null ? "Evidence unavailable" : `${item.preparation_hours}h`}</td>
+                          <td>{item.trend === "baseline" ? "Baseline" : readable(item.trend)}</td>
+                          <td><strong>{item.evidence_priority_indicator.toFixed(1)} / 10</strong></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="market-learning-footnote">
+                    * Fit shortfall is the average distance to JOLT's 80-point technical-fit threshold for opportunities where saved gap evidence names that skill. It is not presented as a causal per-skill penalty.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
