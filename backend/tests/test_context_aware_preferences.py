@@ -369,3 +369,141 @@ def test_explicit_germany_based_candidate_requirement_still_blocks(
     assert preference_blockers("Only for candidates already based in Germany.") == [
         "remote work is restricted to residence in another country"
     ]
+
+
+def test_portuguese_preferred_after_required_english_is_not_required(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    text = "Fluent Spanish and professional-level English are required; Portuguese is preferred."
+
+    assert preference_blockers(text) == []
+
+
+def test_short_portugues_alias_does_not_match_inside_portuguese(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    text = "Professional-level English is required. Portuguese is preferred."
+
+    assert preference_blockers(text) == []
+
+
+def test_amazon_benefits_status_example_is_not_temporary_job(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    text = (
+        "Benefits can vary by location, regularly scheduled hours, "
+        "length of employment, and job status such as seasonal or "
+        "temporary employment."
+    )
+
+    assert preference_blockers(text) == []
+
+
+def test_explicit_temporary_employment_duration_still_blocks(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("This is temporary employment for six months.") == [
+        "temporary or fixed-term employment"
+    ]
+
+
+def test_legacy_20km_uncertainty_is_removed_from_remote_role(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-work-mode",
+            label=(
+                "Onsite or hybrid work requires confirmation that the "
+                "workplace is within 20 km of Vigo city"
+            ),
+            terms=["hybrid"],
+            outcome="uncertain",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Technical Support Specialist",
+        location="Spain",
+        description=(
+            "This role is fully remote from anywhere in Spain. "
+            "Support hybrid infrastructure for customers."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible"
+    assert not any("20 km" in uncertainty for uncertainty in assessment.uncertainties)
+
+
+def test_legacy_uncertainty_is_replaced_by_30km_runtime_rule(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-work-mode",
+            label=(
+                "Onsite or hybrid work requires confirmation that the "
+                "workplace is within 20 km of Vigo city"
+            ),
+            terms=["hybrid"],
+            outcome="uncertain",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Technical Support Engineer",
+        location="Spain",
+        description="Hybrid\nAdvanced troubleshooting.",
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert any("configured 30 km radius" in uncertainty for uncertainty in assessment.uncertainties)
+    assert not any("20 km" in uncertainty for uncertainty in assessment.uncertainties)
+
+
+def test_legacy_uncertainty_does_not_prevent_madrid_rejection(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-work-mode",
+            label=(
+                "Onsite or hybrid work requires confirmation that the "
+                "workplace is within 20 km of Vigo city"
+            ),
+            terms=["hybrid"],
+            outcome="uncertain",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description="Hybrid\nAdvanced troubleshooting.",
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "outside the configured 30 km local radius" in blocker for blocker in assessment.blockers
+    )

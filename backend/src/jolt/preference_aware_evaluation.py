@@ -139,7 +139,9 @@ _RELOCATION_PATTERNS = (
 _EXCLUDED_EMPLOYMENT_PATTERNS = (
     (r"\binternship\b|\bintern\b|\bpraktikum\b|\btrainee internship\b", "internship"),
     (
-        r"\btemporary\s+(?:role|position|contract|employment|assignment|job)\b|"
+        r"\btemporary\s+(?:role|position|contract|assignment|job)\b|"
+        r"\b(?:employment|job|contract)\s+type\s*[:\-]?\s*temporary\b|"
+        r"\btemporary\s+employment\s+(?:for|lasting|until)\b|"
         r"\bfixed[-\s]term\b|\bbefristet\b|"
         r"\barbeitnehmerüberlassung\b|\barbeitnehmerueberlassung\b",
         "temporary or fixed-term employment",
@@ -222,7 +224,8 @@ def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
 
         language_found = False
         for alias in aliases:
-            for match in re.finditer(re.escape(alias), text):
+            alias_pattern = rf"(?<!\w){re.escape(alias)}(?!\w)"
+            for match in re.finditer(alias_pattern, text):
                 start = max(0, match.start() - 100)
                 end = min(len(text), match.end() + 100)
                 window = text[start:end]
