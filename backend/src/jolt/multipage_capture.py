@@ -138,18 +138,88 @@ def _visible_job_ids(cards: Locator) -> tuple[str, ...]:
     return tuple(visible)
 
 
-def _detail_description(page: Page) -> str:
-    for selector in DETAIL_SELECTORS:
+DETAIL_DESCRIPTION_SELECTORS = (
+    "#job-details",
+    ".jobs-description__content",
+    ".jobs-box__html-content",
+    *DETAIL_SELECTORS,
+)
+
+DETAIL_COMPANY_SELECTORS = (
+    ".job-details-jobs-unified-top-card__company-name a",
+    ".job-details-jobs-unified-top-card__company-name",
+)
+
+DETAIL_LOCATION_SELECTORS = (
+    ".job-details-jobs-unified-top-card__primary-description-container",
+    ".job-details-jobs-unified-top-card__tertiary-description-container",
+)
+
+
+def _locator_text(
+    page: Page,
+    selectors: tuple[str, ...],
+    *,
+    minimum_length: int = 1,
+    timeout_ms: int = 4_000,
+) -> str:
+    for selector in selectors:
         locator = page.locator(selector)
         try:
             if locator.count() == 0:
                 continue
+            text = " ".join(locator.first.inner_text(timeout=timeout_ms).split()).strip()
         except TimeoutError:
             continue
-        text = safe_text(locator.first)
-        if len(text) >= 40:
+
+        if len(text) >= minimum_length:
             return text
+
     return ""
+
+
+def _detail_description(page: Page) -> str:
+    return _locator_text(
+        page,
+        DETAIL_DESCRIPTION_SELECTORS,
+        minimum_length=40,
+        timeout_ms=4_000,
+    )
+
+
+def _wait_for_detail_description(
+    page: Page,
+    timeout_ms: int = 12_000,
+) -> str:
+    deadline = datetime.now(UTC).timestamp() + timeout_ms / 1000
+
+    while datetime.now(UTC).timestamp() < deadline:
+        description = _detail_description(page)
+        if description:
+            return description
+        page.wait_for_timeout(500)
+
+    return ""
+
+
+def _detail_company(page: Page) -> str:
+    return _locator_text(
+        page,
+        DETAIL_COMPANY_SELECTORS,
+        timeout_ms=4_000,
+    )
+
+
+def _detail_location(page: Page) -> str:
+    text = _locator_text(
+        page,
+        DETAIL_LOCATION_SELECTORS,
+        timeout_ms=4_000,
+    )
+    if not text:
+        return ""
+
+    return text.split(" ? ", 1)[0].strip()
 
 
 def capture_page_cards(
@@ -220,17 +290,42 @@ def capture_page_cards(
             )
             continue
 
-        verified = wait_for_expected_detail(page, source_job_id)
-        detail_html = page.content() if verified else ""
-        description = _detail_description(page) if verified else ""
-        reason = (
-            "" if verified else "Detail panel did not reach the expected LinkedIn job identity."
+        identity_verified = wait_for_expected_detail(
+            page,
+            source_job_id,
         )
+
+        detail_html = page.content() if identity_verified else ""
+        description = _wait_for_detail_description(page) if identity_verified else ""
+
+        verified = identity_verified and bool(description)
+
+        if verified:
+            detail_company = _detail_company(page)
+            detail_location = _detail_location(page)
+
+            if detail_company:
+                company = detail_company
+
+            if detail_location:
+                location = detail_location
+
+        if verified:
+            reason = ""
+        elif identity_verified:
+            reason = (
+                "Detail panel matched the expected LinkedIn job identity "
+                "but no usable job description loaded."
+            )
+        else:
+            reason = "Detail panel did not reach the expected LinkedIn job identity."
+
         with contextlib.suppress(Exception):
             page.screenshot(
                 path=evidence_dir / f"page_{page_number}_job_{source_job_id}.png",
                 full_page=False,
             )
+
         captured.append(
             CapturedCard(
                 source_job_id=source_job_id,
