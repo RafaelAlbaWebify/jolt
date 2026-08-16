@@ -274,19 +274,9 @@ def _role_family_bucket(family: RoleFamily) -> str | None:
     ):
         return "service_management"
 
-    if any(
-        marker in identity
-        for marker in (
-            "application support",
-            "enterprise application support",
-            "support",
-            "service desk",
-            "help desk",
-            "soporte",
-        )
-    ):
-        return "support"
-
+    # Explicit operations/systems/infrastructure identity must win before
+    # generic support wording. IT Operations families can legitimately
+    # contain "support" in their labels without becoming support families.
     if any(
         marker in identity
         for marker in (
@@ -301,6 +291,19 @@ def _role_family_bucket(family: RoleFamily) -> str | None:
         )
     ):
         return "operations"
+
+    if any(
+        marker in identity
+        for marker in (
+            "application support",
+            "enterprise application support",
+            "support",
+            "service desk",
+            "help desk",
+            "soporte",
+        )
+    ):
+        return "support"
 
     return None
 
