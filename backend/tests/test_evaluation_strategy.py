@@ -650,3 +650,117 @@ def test_helpdesk_manager_falls_back_to_service_management() -> None:
     )
 
     assert result.role_family_id == "service_management"
+
+
+def test_operations_family_identity_wins_over_generic_support_wording() -> None:
+    from jolt.evaluation_strategy import (
+        CapabilityEvidence,
+        RoleFamily,
+        StrategyProfile,
+        assess_posting,
+    )
+
+    profile = StrategyProfile(
+        profile_id="role-family-precedence-test",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="enterprise_application_support",
+                label="Enterprise Application Support",
+                priority="primary",
+                terms=["application support"],
+                strategic_value=100,
+            ),
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations and Infrastructure Support",
+                priority="primary",
+                terms=["it operations"],
+                strategic_value=90,
+            ),
+            RoleFamily(
+                id="service_management",
+                label="Service Management",
+                priority="secondary",
+                terms=["service manager"],
+                strategic_value=78,
+            ),
+        ],
+        capabilities=[
+            CapabilityEvidence(
+                id="windows",
+                label="Windows",
+                terms=["windows"],
+                evidence_level=5,
+            )
+        ],
+    )
+
+    titles = (
+        "Técnico/a de Monitorización (24x7) Remoto",
+        "Técnico/a de Sistemas - Madrid",
+        "Especialista en TI",
+        "Gestor/a de Sistemas",
+        "Senior TechOps Engineer",
+        "Infrastructure Engineer",
+        "Coordinación Técnica Senior de Infraestructuras TI",
+        "Técnico/a de Sistemas Microsoft 365",
+        "Administrador de Sistemas y Ciberseguridad",
+    )
+
+    for title in titles:
+        result = assess_posting(
+            profile,
+            title,
+            "Spain",
+            "Windows administration and infrastructure operations.",
+        )
+
+        assert result.role_family_id == "it_operations", title
+
+
+def test_support_family_still_remains_support_after_precedence_fix() -> None:
+    from jolt.evaluation_strategy import (
+        CapabilityEvidence,
+        RoleFamily,
+        StrategyProfile,
+        assess_posting,
+    )
+
+    profile = StrategyProfile(
+        profile_id="support-family-precedence-test",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="enterprise_application_support",
+                label="Enterprise Application Support",
+                priority="primary",
+                terms=["application support"],
+                strategic_value=100,
+            ),
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations and Infrastructure Support",
+                priority="primary",
+                terms=["it operations"],
+                strategic_value=90,
+            ),
+        ],
+        capabilities=[
+            CapabilityEvidence(
+                id="windows",
+                label="Windows",
+                terms=["windows"],
+                evidence_level=5,
+            )
+        ],
+    )
+
+    result = assess_posting(
+        profile,
+        "Técnico/a de Soporte",
+        "Spain",
+        "Windows user support.",
+    )
+
+    assert result.role_family_id == "enterprise_application_support"
