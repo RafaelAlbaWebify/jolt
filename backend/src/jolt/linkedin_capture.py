@@ -324,7 +324,11 @@ def _virtualized_description(page: Page) -> str:
         if len(text) >= 40:
             return text
 
-    return ""
+    # LinkedIn currently mixes virtualized listing cards with the
+    # traditional detail DOM. The saved real capture evidence contains
+    # the usable description under #job-details even when the listing
+    # itself is virtualized.
+    return multipage_capture._wait_for_detail_description(page)
 
 
 def _virtualized_company_location(
@@ -433,34 +437,50 @@ def capture_page_cards(
 
             seen.add(source_job_id)
 
-            verified = wait_for_expected_detail(
+            identity_verified = wait_for_expected_detail(
                 page,
                 source_job_id,
             )
 
-            detail_html = page.content() if verified else ""
+            detail_html = page.content() if identity_verified else ""
 
             detail_context = (
                 _virtualized_detail_context(
                     page,
                     virtualized_title,
                 )
-                if verified
+                if identity_verified
                 else ""
             )
 
-            description = _virtualized_description(page) if verified else ""
+            description = _virtualized_description(page) if identity_verified else ""
+
+            verified = identity_verified and bool(description)
 
             company, location = _virtualized_company_location(
                 detail_context,
                 virtualized_title,
             )
 
-            reason = (
-                ""
-                if verified
-                else ("Detail panel did not reach the expected LinkedIn job identity.")
-            )
+            if verified:
+                detail_company = multipage_capture._detail_company(page)
+                detail_location = multipage_capture._detail_location(page)
+
+                if detail_company:
+                    company = detail_company
+
+                if detail_location:
+                    location = detail_location
+
+            if verified:
+                reason = ""
+            elif identity_verified:
+                reason = (
+                    "Detail panel matched the expected LinkedIn job identity "
+                    "but no usable job description loaded."
+                )
+            else:
+                reason = "Detail panel did not reach the expected LinkedIn job identity."
 
             with contextlib.suppress(Exception):
                 page.screenshot(
