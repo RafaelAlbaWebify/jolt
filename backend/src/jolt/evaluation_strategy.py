@@ -253,6 +253,106 @@ def _role_term_specificity(terms: tuple[str, ...]) -> int:
     return sum(len(_normalize_match_text(term).split()) * 100 + len(term) for term in terms)
 
 
+def _normalize_role_title(title: str) -> str:
+    normalized = _normalize_match_text(title)
+    normalized = re.sub(r"(?<=\w)/(?:a|o)(?=\s|$)", "", normalized)
+    normalized = re.sub(r"(?<=\w)\((?:a|o)\)(?=\s|$)", "", normalized)
+    return normalized
+
+
+def _role_family_bucket(family: RoleFamily) -> str | None:
+    identity = _normalize_match_text(f"{family.id.replace('_', ' ')} {family.label}")
+
+    if any(
+        marker in identity
+        for marker in (
+            "service management",
+            "service manager",
+            "gestión de servicios",
+            "gestion de servicios",
+        )
+    ):
+        return "service_management"
+
+    if any(
+        marker in identity
+        for marker in (
+            "application support",
+            "enterprise application support",
+            "support",
+            "service desk",
+            "help desk",
+            "soporte",
+        )
+    ):
+        return "support"
+
+    if any(
+        marker in identity
+        for marker in (
+            "it operations",
+            "operations",
+            "systems",
+            "system",
+            "infrastructure",
+            "endpoint",
+            "sistemas",
+            "infraestructura",
+        )
+    ):
+        return "operations"
+
+    return None
+
+
+def _fallback_role_bucket(title: str) -> str | None:
+    normalized = _normalize_role_title(title)
+
+    service_management_patterns = (
+        r"\bhelp\s*desk manager\b",
+        r"\bservice manager\b",
+        r"\bcoordinador de soporte\b",
+        r"\bcoordinadora de soporte\b",
+    )
+    if any(re.search(pattern, normalized) for pattern in service_management_patterns):
+        return "service_management"
+
+    support_patterns = (
+        r"\btechnical support\b",
+        r"\btech support\b",
+        r"\bapplication support\b",
+        r"\btechnical service engineer\b",
+        r"\btécnico de soporte\b",
+        r"\btecnico de soporte\b",
+        r"\bingeniero de soporte\b",
+        r"\bingeniera de soporte\b",
+        r"\bsoporte técnico\b",
+        r"\bsoporte tecnico\b",
+        r"\bsoporte de sistemas\b",
+    )
+    if any(re.search(pattern, normalized) for pattern in support_patterns):
+        return "support"
+
+    operations_patterns = (
+        r"\binfrastructure engineer\b",
+        r"\btechops\b",
+        r"\bit specialist\b",
+        r"\binformation technology specialist\b",
+        r"\bespecialista en ti\b",
+        r"\btecnico de sistemas\b",
+        r"\btécnico de sistemas\b",
+        r"\bgestor de sistemas\b",
+        r"\badministrador de sistemas\b",
+        r"\binfraestructuras ti\b",
+        r"\bmonitorizacion\b",
+        r"\bmonitorización\b",
+    )
+    if any(re.search(pattern, normalized) for pattern in operations_patterns):
+        return "operations"
+
+    return None
+
+
 def _select_role_family(
     profile: StrategyProfile,
     title: str,
@@ -261,10 +361,11 @@ def _select_role_family(
 ) -> RoleFamily | None:
     candidates: list[tuple[tuple[int, int, int, int, int], RoleFamily]] = []
     body = "\n".join([location, description])
+    normalized_title = _normalize_role_title(title)
     priority_rank = {"primary": 3, "secondary": 2, "opportunistic": 1, "excluded": 0}
 
     for index, family in enumerate(profile.role_families):
-        title_matches = _matched_terms(title, family.terms)
+        title_matches = _matched_terms(normalized_title, family.terms)
         body_matches = _matched_terms(body, family.terms)
         if not title_matches and not body_matches:
             continue
@@ -282,94 +383,17 @@ def _select_role_family(
     if candidates:
         return max(candidates, key=lambda item: item[0])[1]
 
-    spanish_title_hints: dict[str, tuple[str, ...]] = {
-        "support": (
-            "soporte técnico",
-            "soporte tecnico",
-            "técnico de soporte",
-            "tecnico de soporte",
-            "soporte de sistemas",
-            "service desk",
-            "help desk",
-        ),
-        "operations": (
-            "administrador de sistemas",
-            "administradora de sistemas",
-            "técnico de sistemas",
-            "tecnico de sistemas",
-            "administración de sistemas",
-            "administracion de sistemas",
-            "administrador microsoft 365",
-            "administradora microsoft 365",
-            "técnico de infraestructura",
-            "tecnico de infraestructura",
-        ),
-        "service_management": (
-            "gestor de servicios",
-            "gestora de servicios",
-            "gestión de servicios",
-            "gestion de servicios",
-            "responsable de servicios",
-        ),
-    }
+    fallback_bucket = _fallback_role_bucket(title)
+    if fallback_bucket is None:
+        return None
 
-    fallback_candidates: list[tuple[tuple[int, int, int], RoleFamily]] = []
+    fallback_candidates: list[tuple[tuple[int, int], RoleFamily]] = []
 
     for index, family in enumerate(profile.role_families):
-        family_identity = _normalize_match_text(f"{family.id} {family.label}")
-
-        bucket: str | None = None
-
-        if any(
-            marker in family_identity
-            for marker in (
-                "service management",
-                "service_management",
-                "service manager",
-                "gestión de servicios",
-                "gestion de servicios",
-            )
-        ):
-            bucket = "service_management"
-
-        if bucket is None and any(
-            marker in family_identity
-            for marker in (
-                "support",
-                "soporte",
-                "service desk",
-                "help desk",
-            )
-        ):
-            bucket = "support"
-
-        if bucket is None and any(
-            marker in family_identity
-            for marker in (
-                "operations",
-                "operation",
-                "systems",
-                "system",
-                "sistemas",
-                "infrastructure",
-                "infraestructura",
-                "endpoint",
-            )
-        ):
-            bucket = "operations"
-
-        if bucket is None:
-            continue
-
-        hint_matches = _matched_terms(
-            title,
-            list(spanish_title_hints[bucket]),
-        )
-        if not hint_matches:
+        if _role_family_bucket(family) != fallback_bucket:
             continue
 
         score = (
-            _role_term_specificity(hint_matches),
             priority_rank[family.priority] * 100 + family.strategic_value,
             -index,
         )
@@ -378,7 +402,10 @@ def _select_role_family(
     if not fallback_candidates:
         return None
 
-    return max(fallback_candidates, key=lambda item: item[0])[1]
+    return max(
+        fallback_candidates,
+        key=lambda item: item[0],
+    )[1]
 
 
 def _gap_type(evidence_level: int) -> GapType:

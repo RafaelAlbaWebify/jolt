@@ -366,6 +366,37 @@ def _location_contains_term(location: str, terms: tuple[str, ...]) -> bool:
     return any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized) for term in terms)
 
 
+_LEGACY_LOCAL_WORK_MODE_UNCERTAINTY_PREFIX = "Onsite or hybrid work requires confirmation "
+
+
+def _remove_legacy_local_work_mode_uncertainty(
+    assessment: StrategyAssessment,
+) -> StrategyAssessment:
+    retained = tuple(
+        uncertainty
+        for uncertainty in assessment.uncertainties
+        if not uncertainty.startswith(_LEGACY_LOCAL_WORK_MODE_UNCERTAINTY_PREFIX)
+    )
+
+    if retained == assessment.uncertainties:
+        return assessment
+
+    eligibility = assessment.eligibility
+
+    if (
+        eligibility in {"uncertain", "eligible_with_conditions"}
+        and not retained
+        and not assessment.blockers
+    ):
+        eligibility = "eligible"
+
+    return replace(
+        assessment,
+        eligibility=eligibility,
+        uncertainties=retained,
+    )
+
+
 def _apply_local_work_mode_eligibility(
     assessment: StrategyAssessment,
     *,
@@ -590,6 +621,9 @@ def calibrated_strategy_assessment(
         title=title,
         location=location,
         description=sanitized_description,
+    )
+    assessment = _remove_legacy_local_work_mode_uncertainty(
+        assessment,
     )
     assessment = _apply_saved_preferences(
         assessment,

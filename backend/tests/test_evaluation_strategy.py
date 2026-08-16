@@ -549,3 +549,104 @@ def test_profile_defined_role_terms_still_take_precedence_over_fallback() -> Non
     )
 
     assert result.role_family_id == "explicit_family"
+
+
+def test_gendered_spanish_support_title_is_classified() -> None:
+    result = assess_posting(
+        _profile(),
+        "Técnico/a de soporte",
+        "Spain",
+        "Soporte a usuarios.",
+    )
+
+    assert result.role_family_id == "application_support"
+
+
+def test_spanish_systems_administrator_falls_back_to_operations() -> None:
+    profile = _profile(
+        role_families=[
+            {
+                "id": "it_operations",
+                "label": "IT Operations",
+                "priority": "primary",
+                "terms": ["it operations"],
+                "strategic_value": 90,
+            },
+            {
+                "id": "application_support",
+                "label": "Application Support",
+                "priority": "secondary",
+                "terms": ["application support"],
+                "strategic_value": 75,
+            },
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Administrador de Sistemas y Ciberseguridad",
+        "Spain",
+        "Microsoft 365, Entra ID and endpoint administration.",
+    )
+
+    assert result.role_family_id == "it_operations"
+
+
+def test_infrastructure_engineer_falls_back_to_operations() -> None:
+    profile = _profile(
+        role_families=[
+            {
+                "id": "it_operations",
+                "label": "IT Operations",
+                "priority": "primary",
+                "terms": ["it operations"],
+                "strategic_value": 90,
+            },
+            {
+                "id": "application_support",
+                "label": "Application Support",
+                "priority": "secondary",
+                "terms": ["application support"],
+                "strategic_value": 75,
+            },
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Infrastructure Engineer",
+        "Spain",
+        "Infrastructure administration and operations.",
+    )
+
+    assert result.role_family_id == "it_operations"
+
+
+def test_helpdesk_manager_falls_back_to_service_management() -> None:
+    profile = _profile(
+        role_families=[
+            {
+                "id": "service_management",
+                "label": "Service Management",
+                "priority": "secondary",
+                "terms": ["service manager"],
+                "strategic_value": 78,
+            },
+            {
+                "id": "application_support",
+                "label": "Application Support",
+                "priority": "primary",
+                "terms": ["application support"],
+                "strategic_value": 95,
+            },
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Helpdesk Manager",
+        "Spain",
+        "Own support operations and service delivery.",
+    )
+
+    assert result.role_family_id == "service_management"
