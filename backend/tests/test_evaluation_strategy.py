@@ -367,3 +367,185 @@ def test_strength_and_gap_capability_sets_never_overlap() -> None:
     gap_labels = {gap.label for gap in result.gaps}
 
     assert strength_labels.isdisjoint(gap_labels)
+
+
+def test_unverified_opportunity_quality_is_not_scored() -> None:
+    result = assess_posting(
+        _profile(),
+        "Application Support Engineer",
+        "Remote",
+        "Own incidents, SQL troubleshooting and API support.",
+    )
+
+    assert "opportunity_quality" not in result.dimensions
+    assert set(result.dimensions) == {
+        "role_alignment",
+        "demonstrated_capability",
+        "transferable_capability",
+        "gap_feasibility",
+        "strategic_value",
+    }
+
+
+def test_fit_score_renormalizes_only_available_dimensions() -> None:
+    profile = _profile()
+
+    result = assess_posting(
+        profile,
+        "Application Support Engineer",
+        "Remote",
+        "Own incidents and escalation.",
+    )
+
+    weights = profile.weights.model_dump()
+    expected_weight = sum(weights[key] for key in result.dimensions)
+    expected_fit = round(
+        sum(result.dimensions[key] * weights[key] for key in result.dimensions) / expected_weight
+    )
+
+    assert result.fit_now == expected_fit
+
+
+def test_json_alone_does_not_create_powershell_evidence() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "powershell_automation",
+                "label": "PowerShell automation",
+                "terms": ["powershell", "json"],
+                "evidence_level": 4,
+                "transferable_to": [],
+                "preparation_topics": [],
+            }
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "IT Support Engineer",
+        "Remote",
+        "Inspect JSON payloads while troubleshooting integrations.",
+    )
+
+    assert result.strengths == ()
+    assert result.gaps == ()
+
+
+def test_generic_network_body_word_does_not_create_network_evidence() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "network_operations",
+                "label": "Network operations",
+                "terms": ["network", "tcp/ip"],
+                "evidence_level": 4,
+                "transferable_to": [],
+                "preparation_topics": [],
+            }
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "IT Support Engineer",
+        "Remote",
+        "Work with network teams and business stakeholders.",
+    )
+
+    assert result.strengths == ()
+    assert result.gaps == ()
+
+
+def test_network_title_can_anchor_network_capability() -> None:
+    profile = _profile(
+        capabilities=[
+            {
+                "id": "network_operations",
+                "label": "Network operations",
+                "terms": ["network", "tcp/ip"],
+                "evidence_level": 4,
+                "transferable_to": [],
+                "preparation_topics": [],
+            }
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Network Support Engineer",
+        "Remote",
+        "Support enterprise network operations.",
+    )
+
+    assert any(strength.startswith("Network operations:") for strength in result.strengths)
+
+
+def test_spanish_support_title_falls_back_to_support_family() -> None:
+    result = assess_posting(
+        _profile(),
+        "Técnico de soporte",
+        "Vigo, España",
+        "Atención a usuarios y resolución de incidencias.",
+    )
+
+    assert result.role_family_id == "application_support"
+
+
+def test_spanish_systems_title_falls_back_to_it_operations_family() -> None:
+    profile = _profile(
+        role_families=[
+            {
+                "id": "it_operations",
+                "label": "IT Operations",
+                "priority": "primary",
+                "terms": ["it operations", "systems engineer"],
+                "strategic_value": 90,
+            },
+            {
+                "id": "application_support",
+                "label": "Application Support",
+                "priority": "secondary",
+                "terms": ["application support"],
+                "strategic_value": 75,
+            },
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Administrador de sistemas Microsoft 365",
+        "España",
+        "Administración de plataforma corporativa.",
+    )
+
+    assert result.role_family_id == "it_operations"
+
+
+def test_profile_defined_role_terms_still_take_precedence_over_fallback() -> None:
+    profile = _profile(
+        role_families=[
+            {
+                "id": "explicit_family",
+                "label": "Explicit Family",
+                "priority": "primary",
+                "terms": ["técnico de soporte"],
+                "strategic_value": 95,
+            },
+            {
+                "id": "application_support",
+                "label": "Application Support",
+                "priority": "secondary",
+                "terms": ["application support"],
+                "strategic_value": 75,
+            },
+        ]
+    )
+
+    result = assess_posting(
+        profile,
+        "Técnico de soporte",
+        "Vigo, España",
+        "Soporte general.",
+    )
+
+    assert result.role_family_id == "explicit_family"
