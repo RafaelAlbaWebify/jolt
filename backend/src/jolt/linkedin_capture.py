@@ -791,7 +791,7 @@ def submit_capture(
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=180) as response:
             result = json.loads(response.read().decode("utf-8"))
             if rejected_items:
                 result["client_rejected_items"] = rejected_items
