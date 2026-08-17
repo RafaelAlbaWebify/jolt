@@ -21,6 +21,7 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.evaluation_authority import authoritative_evaluations
+from jolt.linkedin_source_urls import absolute_linkedin_url
 from jolt.semantic_duplicates import group_semantic_duplicates
 
 
@@ -48,6 +49,18 @@ class OpportunityIndexItem(BaseModel):
 
 
 _CAPTURE_SOURCE_TYPES = {"linkedin_fixture", "linkedin_live"}
+
+
+def _display_source_url(
+    source_document: SourceDocument | None,
+    canonical_url: str,
+) -> str:
+    source_url = source_document.source_url if source_document else canonical_url
+
+    if source_document is not None and source_document.source_type in _CAPTURE_SOURCE_TYPES:
+        return absolute_linkedin_url(source_url)
+
+    return source_url
 
 
 def _document_state(application: Application | None, documents: list[ApplicationDocument]) -> str:
@@ -241,8 +254,9 @@ def list_opportunity_index(
             OpportunityIndexItem(
                 posting_id=posting.id,
                 evaluation_id=evaluation.id,
-                source_url=(
-                    source_document.source_url if source_document else posting.canonical_url
+                source_url=_display_source_url(
+                    source_document,
+                    posting.canonical_url,
                 ),
                 title=posting.title,
                 company=posting.company,

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Posting, SourceDocument
+from jolt.linkedin_source_urls import absolute_linkedin_url
 from jolt.workflow import normalize_url
 
 
@@ -43,7 +44,11 @@ def _evidence_for_posting(
             {
                 "source_document_id": document.id,
                 "source_type": document.source_type,
-                "source_url": document.source_url,
+                "source_url": (
+                    absolute_linkedin_url(document.source_url)
+                    if document.source_type in {"linkedin_fixture", "linkedin_live"}
+                    else document.source_url
+                ),
                 "identity_status": (
                     "original"
                     if document.id == posting.source_document_id
@@ -57,7 +62,11 @@ def _evidence_for_posting(
     duplicate_count = sum(item["identity_status"] == "confirmed_duplicate" for item in evidence)
     return {
         "posting_id": posting.id,
-        "canonical_url": posting.canonical_url,
+        "canonical_url": (
+            absolute_linkedin_url(posting.canonical_url)
+            if original.source_type in {"linkedin_fixture", "linkedin_live"}
+            else posting.canonical_url
+        ),
         "identity_status": posting.identity_status,
         "evidence_count": len(evidence),
         "duplicate_evidence_count": duplicate_count,
