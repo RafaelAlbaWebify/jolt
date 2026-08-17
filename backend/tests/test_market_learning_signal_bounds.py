@@ -9,6 +9,7 @@ def test_learning_indicator_is_bounded_to_ten() -> None:
         required_skills=Counter({"REST API": 1}),
         preferred_skills=Counter(),
         gap_skills=Counter({"REST API": 32}),
+        capability_gap_skills=Counter({"REST API": 32}),
         strength_skills=Counter(),
         skill_role_families={"REST API": Counter({"Technical / product support": 1})},
         gap_shortfalls={"REST API": [40] * 32},
