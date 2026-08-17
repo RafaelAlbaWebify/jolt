@@ -95,6 +95,8 @@ def _looks_like_noise(line: str) -> bool:
     lowered = line.casefold()
     if len(line) < 6 or len(line) > 130:
         return True
+    if line.endswith((".", "!", "?", ";")):
+        return True
     if lowered.startswith(("recommended", "jobs based", "show all", "see more", "sort by")):
         return True
     return "linkedin" in lowered and not _line_has_role(line)

@@ -115,3 +115,30 @@ Troubleshoot APIs and production incidents.
 
     assert first_result.posting_id == second_result.posting_id
     assert second_result.identity_status == "confirmed_duplicate"
+
+
+def test_professional_extractor_does_not_promote_role_prose_to_title() -> None:
+    source_url = "https://www.linkedin.com/jobs/search/?keywords=support"
+
+    rendered_text = """
+Application Support Engineer
+Acme SaaS Operations
+Remote Spain
+Troubleshoot SQL incidents, API integrations, logs, RCA, Microsoft 365 and Windows application support.
+
+Technical Support Engineer
+Contoso Cloud Services
+Hybrid Galicia
+Support enterprise users with Azure, DNS, PowerShell, ServiceNow and production incidents.
+"""
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs",
+        source_url=source_url,
+        text=rendered_text,
+    )
+
+    assert [candidate.raw_text.splitlines()[0] for candidate in candidates] == [
+        "Application Support Engineer",
+        "Technical Support Engineer",
+    ]
