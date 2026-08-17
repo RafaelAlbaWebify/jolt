@@ -18,6 +18,7 @@ from playwright.sync_api import BrowserContext, Locator, Page, TimeoutError, syn
 from pydantic import ValidationError
 
 from jolt import multipage_capture
+from jolt.linkedin_source_urls import absolute_linkedin_url
 from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.supervised_capture import (
     CapturedCard,
@@ -249,7 +250,7 @@ def _wait_for_virtualized_identity(
             link_title = " ".join(safe_text(link).split()).casefold()
 
             if link_title == expected_title:
-                return source_job_id, href
+                return source_job_id, absolute_linkedin_url(href)
 
         page.wait_for_timeout(250)
 
