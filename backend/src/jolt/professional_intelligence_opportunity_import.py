@@ -95,6 +95,8 @@ def _looks_like_noise(line: str) -> bool:
     lowered = line.casefold()
     if len(line) < 6 or len(line) > 130:
         return True
+    if line.endswith((".", "!", "?", ";")):
+        return True
     if lowered.startswith(("recommended", "jobs based", "show all", "see more", "sort by")):
         return True
     return "linkedin" in lowered and not _line_has_role(line)
@@ -211,7 +213,11 @@ def import_professional_opportunity_candidates(
             warnings.append(f"No job-like rows were extracted from career source {source_id}.")
             continue
         for candidate in candidates:
-            intake = ingest_capture_item(session, candidate)
+            intake = ingest_capture_item(
+                session,
+                candidate,
+                use_source_url_for_identity=False,
+            )
             if intake.identity_status == "confirmed_duplicate":
                 skipped += 1
                 continue
