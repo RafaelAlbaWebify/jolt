@@ -57,6 +57,20 @@ function captureBound(run: CaptureRunSummary): string {
   return `${run.observed_item_count} observed · ${requested} requested`;
 }
 
+function externalCaptureUrl(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+
+  if (trimmed.startsWith("/jobs/") || trimmed.startsWith("jobs/")) {
+    return new URL(trimmed, "https://www.linkedin.com/").toString();
+  }
+
+  return trimmed;
+}
+
 export function CaptureHistory({ apiBase, onError }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [runs, setRuns] = useState<CaptureRunSummary[]>([]);
@@ -197,7 +211,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
           <p><strong>Capture bound:</strong> {captureBound(selected)}</p>
           <p><strong>Status:</strong> {selected.status.replaceAll("_", " ")}</p>
           <p><strong>Stop reason:</strong> {readableReason(selected.stop_reason)}</p>
-          {selected.search_url && <p><a href={selected.search_url} target="_blank" rel="noreferrer">Open source search</a></p>}
+          {selected.search_url && <p><a href={externalCaptureUrl(selected.search_url)} target="_blank" rel="noreferrer">Open source search</a></p>}
           {selected.warnings.length > 0 && (
             <div>
               <strong>Warnings</strong>
@@ -211,7 +225,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                 <div>
                   <h4>{item.title || `Captured job ${item.source_job_id}`}</h4>
                   <p>{[item.company, item.location].filter(Boolean).join(" · ")}</p>
-                  {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">Open job</a>}
+                  {item.source_url && <a href={externalCaptureUrl(item.source_url)} target="_blank" rel="noreferrer">Open job</a>}
                   {item.verification_reasons.length > 0 && (
                     <ul>{item.verification_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
                   )}
