@@ -364,6 +364,36 @@ def _assessment_skill_labels(
     return set(_skill_evidence(evidence_text))
 
 
+def _assessment_gap_skill_labels(
+    payload: dict[str, Any],
+) -> set[str]:
+    raw_gaps = payload.get("gaps")
+    if not isinstance(raw_gaps, list):
+        return set()
+
+    labels: set[str] = set()
+
+    for gap in raw_gaps:
+        evidence_parts: list[str] = []
+
+        if isinstance(gap, str):
+            evidence_parts.append(gap)
+
+        if isinstance(gap, dict):
+            label = gap.get("label")
+            if isinstance(label, str):
+                evidence_parts.append(label)
+
+            matched_terms = gap.get("matched_terms")
+            if isinstance(matched_terms, list):
+                evidence_parts.extend(item for item in matched_terms if isinstance(item, str))
+
+        if evidence_parts:
+            labels.update(_skill_evidence("\n".join(evidence_parts)))
+
+    return labels
+
+
 def _capability_state(
     *,
     gap_count: int,
@@ -397,6 +427,7 @@ def _learning_signal_rows(
     required_skills: Counter[str],
     preferred_skills: Counter[str],
     gap_skills: Counter[str],
+    capability_gap_skills: Counter[str],
     strength_skills: Counter[str],
     skill_role_families: dict[str, Counter[str]],
     gap_shortfalls: dict[str, list[int]],
@@ -454,7 +485,7 @@ def _learning_signal_rows(
                     {"label": label, "count": count} for label, count in families.most_common()
                 ],
                 "capability_state": _capability_state(
-                    gap_count=gap_count,
+                    gap_count=capability_gap_skills.get(skill, 0),
                     strength_count=strength_count,
                 ),
                 "interview_signal": _interview_signal(
@@ -672,6 +703,7 @@ def _scope_data(
     preferred_skills: Counter[str] = Counter()
     mentioned_skills: Counter[str] = Counter()
     gap_skills: Counter[str] = Counter()
+    capability_gap_skills: Counter[str] = Counter()
     strength_skills: Counter[str] = Counter()
     skill_role_families: dict[str, Counter[str]] = {}
     gap_shortfalls: dict[str, list[int]] = {}
@@ -711,10 +743,7 @@ def _scope_data(
 
             assessment = _assessment_payload(evaluation)
 
-            gap_labels = _assessment_skill_labels(
-                assessment,
-                ("gap", "missing", "weakness", "development"),
-            )
+            gap_labels = _assessment_gap_skill_labels(assessment)
             gap_labels &= set(posting_skill_evidence)
 
             strength_labels = _assessment_skill_labels(
@@ -723,8 +752,10 @@ def _scope_data(
             )
 
             for label in gap_labels:
-                gap_skills[label] += 1
+                capability_gap_skills[label] += 1
+
                 if evaluation.ranking_score < 80:
+                    gap_skills[label] += 1
                     gap_shortfalls.setdefault(label, []).append(80 - evaluation.ranking_score)
 
             for label in strength_labels:
@@ -762,6 +793,7 @@ def _scope_data(
             required_skills=required_skills,
             preferred_skills=preferred_skills,
             gap_skills=gap_skills,
+            capability_gap_skills=capability_gap_skills,
             strength_skills=strength_skills,
             skill_role_families=skill_role_families,
             gap_shortfalls=gap_shortfalls,
