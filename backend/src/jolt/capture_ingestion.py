@@ -19,7 +19,12 @@ from jolt.workflow import (
 )
 
 
-def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> IntakeResponse:
+def ingest_capture_item(
+    session: Session,
+    request: ManualIntakeRequest,
+    *,
+    use_source_url_for_identity: bool = True,
+) -> IntakeResponse:
     """Stage one captured posting without committing the surrounding capture transaction."""
     content_hash = hashlib.sha256(request.raw_text.encode("utf-8")).hexdigest()
     source = SourceDocument(
@@ -34,7 +39,8 @@ def ingest_capture_item(session: Session, request: ManualIntakeRequest) -> Intak
     session.flush()
 
     canonical_url = normalize_url(request.source_url)
-    identity_key = posting_identity_key(canonical_url, content_hash)
+    identity_url = canonical_url if use_source_url_for_identity else ""
+    identity_key = posting_identity_key(identity_url, content_hash)
     duplicate = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
 
     if duplicate is not None:

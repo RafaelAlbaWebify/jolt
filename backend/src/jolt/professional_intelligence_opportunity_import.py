@@ -211,7 +211,11 @@ def import_professional_opportunity_candidates(
             warnings.append(f"No job-like rows were extracted from career source {source_id}.")
             continue
         for candidate in candidates:
-            intake = ingest_capture_item(session, candidate)
+            intake = ingest_capture_item(
+                session,
+                candidate,
+                use_source_url_for_identity=False,
+            )
             if intake.identity_status == "confirmed_duplicate":
                 skipped += 1
                 continue
