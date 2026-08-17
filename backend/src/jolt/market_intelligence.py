@@ -424,9 +424,9 @@ def _learning_signal_rows(
         avg_shortfall = round(sum(shortfalls) / len(shortfalls), 1) if shortfalls else None
 
         demand_component = demand / max_demand
-        gap_component = gap_count / max(1, demand)
-        required_component = required / max(1, demand)
-        leverage_component = role_family_count / max_families
+        gap_component = min(gap_count / max(1, demand), 1.0)
+        required_component = min(required / max(1, demand), 1.0)
+        leverage_component = min(role_family_count / max_families, 1.0)
         shortfall_component = min(avg_shortfall / 40.0, 1.0) if avg_shortfall is not None else 0.0
 
         indicator = round(
@@ -715,6 +715,8 @@ def _scope_data(
                 assessment,
                 ("gap", "missing", "weakness", "development"),
             )
+            gap_labels &= set(posting_skill_evidence)
+
             strength_labels = _assessment_skill_labels(
                 assessment,
                 ("strength", "demonstrated", "transferable", "capability"),
