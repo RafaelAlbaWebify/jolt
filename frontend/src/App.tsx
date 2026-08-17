@@ -61,6 +61,18 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const PAGE_SIZE = 5;
 const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject", "needs_more_information"];
 
+
+function externalSourceUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (trimmed.startsWith("/jobs/") || trimmed.startsWith("jobs/")) {
+    return new URL(trimmed, "https://www.linkedin.com/").toString();
+  }
+  return trimmed;
+}
+
 function decisionLabel(value: ReviewChoice | null) {
   return value ? value.replaceAll("_", " ") : "Pending review";
 }
@@ -117,7 +129,7 @@ function Sources({ postingId }: { postingId: string }) {
             repeated observations
           </p>
           {data.canonical_url && (
-            <a href={data.canonical_url} target="_blank" rel="noreferrer">
+            <a href={externalSourceUrl(data.canonical_url)} target="_blank" rel="noreferrer">
               Open canonical job
             </a>
           )}
@@ -128,7 +140,7 @@ function Sources({ postingId }: { postingId: string }) {
                   {new Date(item.captured_at).toLocaleString()} · {item.source_type}
                 </span>
                 {item.source_url && (
-                  <a href={item.source_url} target="_blank" rel="noreferrer">
+                  <a href={externalSourceUrl(item.source_url)} target="_blank" rel="noreferrer">
                     source
                   </a>
                 )}
@@ -658,7 +670,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
                     </select>
                   </label>
                   {selectedDetail.source_url && (
-                    <a className="primary-link" href={selectedDetail.source_url} target="_blank" rel="noreferrer">
+                    <a className="primary-link" href={externalSourceUrl(selectedDetail.source_url)} target="_blank" rel="noreferrer">
                       Open source job
                     </a>
                   )}

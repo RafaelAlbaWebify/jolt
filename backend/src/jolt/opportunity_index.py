@@ -57,6 +57,9 @@ def _display_source_url(
 ) -> str:
     source_url = source_document.source_url if source_document else canonical_url
 
+    if source_url.startswith(("/jobs/", "jobs/", "//www.linkedin.com/")):
+        return absolute_linkedin_url(source_url)
+
     if source_document is not None and source_document.source_type in _CAPTURE_SOURCE_TYPES:
         return absolute_linkedin_url(source_url)
 
