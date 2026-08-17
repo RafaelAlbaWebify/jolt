@@ -212,8 +212,8 @@ def _linkedin_safety_warning(page: Any) -> str | None:
 
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
-    except Exception:
-        return None
+    except Exception as exc:
+        raise RuntimeError("Unable to inspect LinkedIn page safety state.") from exc
 
     markers = (
         "your account has been temporarily restricted",
@@ -411,8 +411,8 @@ def _page_needs_linkedin_login(page: Any) -> bool:
         return True
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
-    except Exception:
-        return False
+    except Exception as exc:
+        raise RuntimeError("Unable to inspect LinkedIn login/checkpoint state.") from exc
     login_markers = (
         "sign in",
         "join linkedin",
