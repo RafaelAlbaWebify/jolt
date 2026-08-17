@@ -36,6 +36,13 @@ class ManualIntakeRequest(BaseModel):
     source_url: str = ""
     source_type: str = "manual"
 
+    @field_validator("raw_text")
+    @classmethod
+    def reject_blank_raw_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("raw_text must contain non-whitespace evidence")
+        return value
+
 
 class IntakeResponse(BaseModel):
     source_document_id: str
