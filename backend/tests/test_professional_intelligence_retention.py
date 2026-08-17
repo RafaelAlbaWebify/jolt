@@ -150,3 +150,63 @@ def test_retention_preview_uses_default_evidence_root(tmp_path: Path) -> None:
     assert payload["expired_artifact_count"] == 0
     assert payload["existing_file_count"] == 0
     assert payload["candidates"] == []
+
+
+def test_retention_commit_failure_preserves_evidence_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    client, database_url, run_root = _configured_client(tmp_path)
+    run_id = run_root.name
+
+    expired_path = run_root / "expired" / "page-diagnostics.json"
+    expired_path.parent.mkdir(parents=True)
+    expired_path.write_bytes(b"must-survive")
+
+    expired_id = _add_artifact(
+        database_url,
+        run_id=run_id,
+        source_id="expired",
+        filename=expired_path.name,
+        created_at=utc_now() - timedelta(days=31),
+        retention_days=30,
+    )
+
+    from jolt import professional_intelligence_retention as retention_module
+
+    factory = create_session_factory(database_url)
+
+    with factory() as session:
+        original_commit = session.commit
+
+        def failing_commit() -> None:
+            raise RuntimeError("simulated database commit failure")
+
+        monkeypatch.setattr(session, "commit", failing_commit)
+
+        request = retention_module.ProfessionalRetentionCleanupRequest(
+            confirmation_phrase=RETENTION_CLEANUP_CONFIRMATION_PHRASE,
+        )
+
+        try:
+            retention_module.cleanup_expired_professional_evidence(
+                session,
+                request,
+            )
+        except RuntimeError as exc:
+            assert str(exc) == "simulated database commit failure"
+        else:
+            raise AssertionError("Expected simulated commit failure.")
+
+        monkeypatch.setattr(session, "commit", original_commit)
+
+    assert expired_path.exists()
+    assert expired_path.read_bytes() == b"must-survive"
+
+    with factory() as session:
+        retained = session.get(
+            ProfessionalCaptureArtifact,
+            expired_id,
+        )
+
+    assert retained is not None

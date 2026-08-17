@@ -140,20 +140,26 @@ def cleanup_expired_professional_evidence(
     deleted_file_count = 0
     deleted_bytes = 0
 
+    files_to_delete: list[tuple[Path, int]] = []
+    for artifact in expired:
+        final_path = _artifact_path(professional_root, artifact.relative_path)
+        staged_path = final_path.with_name(f"{final_path.name}.staged")
+        for path in (final_path, staged_path):
+            if path.is_file():
+                files_to_delete.append((path, path.stat().st_size))
+        session.delete(artifact)
+
     try:
-        for artifact in expired:
-            final_path = _artifact_path(professional_root, artifact.relative_path)
-            staged_path = final_path.with_name(f"{final_path.name}.staged")
-            for path in (final_path, staged_path):
-                if path.is_file():
-                    deleted_bytes += path.stat().st_size
-                    path.unlink()
-                    deleted_file_count += 1
-            session.delete(artifact)
         session.commit()
     except Exception:
         session.rollback()
         raise
+
+    for path, size in files_to_delete:
+        if path.is_file():
+            path.unlink()
+            deleted_file_count += 1
+            deleted_bytes += size
 
     for path in sorted(professional_root.rglob("*"), reverse=True):
         if path.is_dir():
