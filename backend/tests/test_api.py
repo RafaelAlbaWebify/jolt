@@ -89,6 +89,25 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert "application_support" in opportunity["dimensions"]
 
 
+def test_manual_intake_rejects_whitespace_only_evidence(tmp_path: Path) -> None:
+    client = _client(tmp_path / "whitespace.db")
+
+    response = client.post(
+        "/api/intake/manual",
+        json={
+            "raw_text": "   \n\t   ",
+            "source_type": "manual",
+            "source_url": "",
+        },
+    )
+
+    assert response.status_code == 422
+
+    opportunities = client.get("/api/opportunities")
+    assert opportunities.status_code == 200
+    assert opportunities.json() == []
+
+
 def test_missing_information_does_not_become_hard_reject(tmp_path: Path) -> None:
     client = _client(tmp_path / "uncertain.db")
     response = client.post(
