@@ -258,7 +258,8 @@ def authorize_professional_capture_run(
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
         raise LookupError(f"Professional capture run {run_id} was not found.")
-    if run.status not in {"planned", "expired"} and not is_linkedin_login_retry_run(run):
+    current_status = effective_capture_run_status(run)
+    if current_status not in {"planned", "expired"} and not is_linkedin_login_retry_run(run):
         raise ValueError(
             "Only planned, expired, or LinkedIn-login-required capture runs can be authorized."
         )

@@ -123,3 +123,54 @@ def test_unknown_preview_run_returns_not_found(tmp_path: Path) -> None:
     response = client.get("/api/professional-intelligence/capture-runs/missing")
 
     assert response.status_code == 404
+
+
+def test_expired_authorization_can_be_authorized_again(tmp_path: Path) -> None:
+    from datetime import timedelta
+
+    from jolt.database import create_session_factory, utc_now
+    from jolt.professional_intelligence_records import ProfessionalCaptureRun
+
+    database_url = f"sqlite:///{(tmp_path / 'expired-authorization.db').as_posix()}"
+    client = TestClient(create_app(database_url))
+
+    run = client.post("/api/professional-intelligence/capture-runs").json()
+    endpoint = f"/api/professional-intelligence/capture-runs/{run['id']}/authorize"
+
+    first = client.post(
+        endpoint,
+        json={
+            "confirmation_phrase": CONFIRMATION_PHRASE,
+            "user_present": True,
+        },
+    )
+    assert first.status_code == 200
+    first_payload = first.json()
+
+    factory = create_session_factory(database_url)
+    with factory() as session:
+        stored = session.get(ProfessionalCaptureRun, run["id"])
+        assert stored is not None
+        stored.authorization_expires_at = utc_now() - timedelta(minutes=1)
+        session.commit()
+
+    expired = client.get(f"/api/professional-intelligence/capture-runs/{run['id']}")
+    assert expired.status_code == 200
+    assert expired.json()["status"] == "expired"
+
+    renewed = client.post(
+        endpoint,
+        json={
+            "confirmation_phrase": CONFIRMATION_PHRASE,
+            "user_present": True,
+        },
+    )
+
+    assert renewed.status_code == 200
+    renewed_payload = renewed.json()
+    assert renewed_payload["status"] == "authorized"
+    assert renewed_payload["authorized_at"] is not None
+    assert renewed_payload["authorization_expires_at"] > renewed_payload["authorized_at"]
+    assert (
+        renewed_payload["authorization_expires_at"] != (first_payload["authorization_expires_at"])
+    )
