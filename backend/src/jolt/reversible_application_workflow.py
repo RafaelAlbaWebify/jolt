@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -28,12 +29,22 @@ TERMINAL_APPLICATION_STATUSES = {"rejected", "withdrawn", "no_response", "closed
 
 
 def _outcome_history_note(outcome: Outcome) -> str:
-    details = [f"Previous outcome: {outcome.outcome_type}."]
-    if outcome.reason_code:
-        details.append(f"Reason: {outcome.reason_code}.")
-    if outcome.notes:
-        details.append(f"Outcome notes: {outcome.notes}")
-    return " ".join(details)
+    payload = {
+        "id": outcome.id,
+        "posting_id": outcome.posting_id,
+        "application_id": outcome.application_id,
+        "outcome_type": outcome.outcome_type,
+        "stage_reached": outcome.stage_reached,
+        "reason_code": outcome.reason_code,
+        "notes": outcome.notes,
+        "recorded_at": outcome.recorded_at.isoformat(),
+    }
+    return "Preserved outcome JSON: " + json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def transition_application_reversibly(
