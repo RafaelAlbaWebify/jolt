@@ -140,6 +140,11 @@ def _extract_candidates_from_text(
         company = "LinkedIn captured source"
         location = ""
         following = lines[index + 1 : index + 1 + _MAX_DESCRIPTION_LINES]
+        for boundary_index, candidate_line in enumerate(following):
+            if _line_has_role(candidate_line) and not _looks_like_noise(candidate_line):
+                following = following[:boundary_index]
+                break
+
         if following:
             first = following[0]
             if not _looks_like_location(first) and not _line_has_role(first) and len(first) <= 90:

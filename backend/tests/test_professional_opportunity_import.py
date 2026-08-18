@@ -216,3 +216,39 @@ def test_professional_extractor_preserves_more_than_eight_candidates() -> None:
 
     for index in range(12):
         assert any(f"Company {index}" in raw_text for raw_text in raw_texts)
+
+
+def test_professional_extractor_does_not_mix_adjacent_job_evidence() -> None:
+    from jolt.professional_intelligence_opportunity_import import (
+        _extract_candidates_from_text,
+    )
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs-preferences",
+        source_url="https://www.linkedin.com/jobs/search-results/",
+        text="\n".join(
+            [
+                "Application Support Engineer",
+                "Acme Applications",
+                "Remote Spain",
+                "Troubleshoot SQL incidents and REST APIs.",
+                "Technical Support Engineer",
+                "Contoso Cloud",
+                "Hybrid Madrid",
+                "Operate Azure infrastructure and PowerShell automation.",
+            ]
+        ),
+    )
+
+    assert len(candidates) == 2
+
+    first = candidates[0].raw_text
+    second = candidates[1].raw_text
+
+    assert "Acme Applications" in first
+    assert "SQL incidents" in first
+    assert "Contoso Cloud" not in first
+    assert "Azure infrastructure" not in first
+
+    assert "Contoso Cloud" in second
+    assert "Azure infrastructure" in second
