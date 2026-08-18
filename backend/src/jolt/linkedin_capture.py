@@ -997,8 +997,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--max-pages", type=int, default=3)
     parser.add_argument("--no-login-pause", action="store_true")
     args = parser.parse_args(argv)
-    if args.max_jobs < 1 or args.max_jobs > 50:
-        parser.error("--max-jobs must be between 1 and 50.")
+    if args.max_jobs < 1 or args.max_jobs > 100:
+        parser.error("--max-jobs must be between 1 and 100.")
     if args.max_pages < 1 or args.max_pages > 10:
         parser.error("--max-pages must be between 1 and 10.")
     return args

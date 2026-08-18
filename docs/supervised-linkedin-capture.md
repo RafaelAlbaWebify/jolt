@@ -28,7 +28,7 @@ After confirmation, the runner:
 8. Produces a single timestamped ZIP directly in Downloads.
 9. Deletes its temporary staging directory.
 
-The default limit is 10 jobs and the hard maximum is 50 jobs per invocation. The runner does not paginate, auto-apply, send messages, bypass login challenges, or solve CAPTCHAs.
+The default limit is 10 jobs and the hard maximum is 100 jobs per invocation. The runner does not paginate, auto-apply, send messages, bypass login challenges, or solve CAPTCHAs.
 
 ## Command
 

@@ -18,7 +18,7 @@ type Props = {
 
 const DEFAULT_URL = "https://www.linkedin.com/jobs/search/";
 const MIN_JOBS = 1;
-const MAX_JOBS = 50;
+const MAX_JOBS = 100;
 
 function clampJobs(value: number) {
   if (!Number.isFinite(value)) return MIN_JOBS;

@@ -69,10 +69,18 @@ def test_local_capture_rejects_parallel_run() -> None:
 
 
 def test_local_capture_validates_bounds() -> None:
+    accepted = local_linkedin_capture.LocalLinkedInCaptureRequest(
+        search_url="https://www.linkedin.com/jobs/search/",
+        max_jobs=100,
+        max_pages=10,
+    )
+    assert accepted.max_jobs == 100
+    assert accepted.max_pages == 10
+
     with pytest.raises(ValidationError):
         local_linkedin_capture.LocalLinkedInCaptureRequest(
             search_url="https://www.linkedin.com/jobs/search/",
-            max_jobs=51,
+            max_jobs=101,
             max_pages=3,
         )
     with pytest.raises(ValidationError):
