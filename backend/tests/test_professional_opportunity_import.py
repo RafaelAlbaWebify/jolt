@@ -185,3 +185,34 @@ def test_professional_extractor_preserves_same_title_different_companies() -> No
     assert len(candidates) == 2
     assert "Acme Support" in candidates[0].raw_text
     assert "Contoso Cloud" in candidates[1].raw_text
+
+
+def test_professional_extractor_preserves_more_than_eight_candidates() -> None:
+    from jolt.professional_intelligence_opportunity_import import (
+        _extract_candidates_from_text,
+    )
+
+    rows: list[str] = []
+
+    for index in range(12):
+        rows.extend(
+            [
+                "Technical Support Engineer",
+                f"Company {index}",
+                "Remote Spain",
+                f"Support production systems, APIs and incidents for customer {index}.",
+            ]
+        )
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs-preferences",
+        source_url="https://www.linkedin.com/jobs/search-results/",
+        text="\n".join(rows),
+    )
+
+    assert len(candidates) == 12
+
+    raw_texts = [candidate.raw_text for candidate in candidates]
+
+    for index in range(12):
+        assert any(f"Company {index}" in raw_text for raw_text in raw_texts)
