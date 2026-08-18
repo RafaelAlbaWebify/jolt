@@ -112,9 +112,9 @@ class LinkedInLiveCapturePageRequest(BaseModel):
 
 class LinkedInLiveCaptureRequest(BaseModel):
     search_url: str = ""
-    items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=50)
+    items: list[LinkedInLiveCaptureItemRequest] = Field(min_length=1, max_length=100)
     pages: list[LinkedInLiveCapturePageRequest] = Field(default_factory=list, max_length=10)
-    requested_item_limit: int | None = Field(default=None, ge=1, le=50)
+    requested_item_limit: int | None = Field(default=None, ge=1, le=100)
     stop_reason: str = Field(default="", max_length=80)
 
     @model_validator(mode="after")

@@ -63,7 +63,7 @@ describe("LinkedInJobCaptureLauncher", () => {
     expect(screen.getByText("20 jobs maximum across 4 page(s).")).toBeInTheDocument();
   });
 
-  it("never submits more than 50 jobs", async () => {
+  it("never submits more than 100 jobs", async () => {
     let submitted: Record<string, unknown> | null = null;
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
@@ -80,7 +80,7 @@ describe("LinkedInJobCaptureLauncher", () => {
           ...idleStatus,
           status: "queued",
           search_url: "https://www.linkedin.com/jobs/search/",
-          max_jobs: 50,
+          max_jobs: 100,
           max_pages: 3,
         }), { status: 200 });
       }
@@ -98,13 +98,13 @@ describe("LinkedInJobCaptureLauncher", () => {
       "Maximum jobs",
     ) as HTMLInputElement;
 
-    expect(jobsInput.max).toBe("50");
+    expect(jobsInput.max).toBe("100");
 
     fireEvent.change(jobsInput, {
-      target: { value: "100" },
+      target: { value: "150" },
     });
 
-    expect(jobsInput.value).toBe("50");
+    expect(jobsInput.value).toBe("100");
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -115,7 +115,7 @@ describe("LinkedInJobCaptureLauncher", () => {
     await waitFor(() => {
       expect(submitted).toEqual({
         search_url: "https://www.linkedin.com/jobs/search/",
-        max_jobs: 50,
+        max_jobs: 100,
         max_pages: 3,
       });
     });
@@ -135,9 +135,9 @@ describe("LinkedInJobCaptureLauncher", () => {
             {
               type: "less_than_equal",
               loc: ["body", "max_jobs"],
-              msg: "Input should be less than or equal to 50",
-              input: 100,
-              ctx: { le: 50 },
+              msg: "Input should be less than or equal to 100",
+              input: 101,
+              ctx: { le: 100 },
             },
           ],
         }), {
@@ -165,7 +165,7 @@ describe("LinkedInJobCaptureLauncher", () => {
 
     expect(
       await screen.findByText(
-        "max_jobs: Input should be less than or equal to 50",
+        "max_jobs: Input should be less than or equal to 100",
       ),
     ).toBeInTheDocument();
 
