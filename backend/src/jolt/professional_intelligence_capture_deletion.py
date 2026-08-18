@@ -50,7 +50,7 @@ def delete_professional_capture_run(
     ).all()
 
     evidence_root = get_professional_evidence_root(session)
-    deleted_evidence_directory = False
+    run_directory: Path | None = None
     if evidence_root.root_path:
         root = Path(evidence_root.root_path).resolve(strict=False)
         professional_root = (root / "professional-intelligence").resolve(strict=False)
@@ -61,14 +61,21 @@ def delete_professional_capture_run(
             raise ValueError(
                 "Capture evidence must remain contained under the Professional evidence root."
             ) from exc
-        if run_directory.exists():
-            shutil.rmtree(run_directory)
-            deleted_evidence_directory = True
 
     for artifact in artifacts:
         session.delete(artifact)
     session.delete(run)
-    session.commit()
+
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+    deleted_evidence_directory = False
+    if run_directory is not None and run_directory.exists():
+        shutil.rmtree(run_directory)
+        deleted_evidence_directory = True
 
     return ProfessionalCaptureDeletionResult(
         run_id=run_id,
