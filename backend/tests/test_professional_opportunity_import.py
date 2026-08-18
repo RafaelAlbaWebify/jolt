@@ -158,3 +158,30 @@ def test_professional_opportunity_import_rejects_unready_run(tmp_path: Path) -> 
     )
 
     assert imported.status_code == 422
+
+
+def test_professional_extractor_preserves_same_title_different_companies() -> None:
+    from jolt.professional_intelligence_opportunity_import import (
+        _extract_candidates_from_text,
+    )
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs-preferences",
+        source_url="https://www.linkedin.com/jobs/search-results/",
+        text="\n".join(
+            [
+                "Technical Support Engineer",
+                "Acme Support",
+                "Remote Spain",
+                "Support Azure, Windows and production incidents.",
+                "Technical Support Engineer",
+                "Contoso Cloud",
+                "Hybrid Madrid",
+                "Support SaaS applications, APIs and customer incidents.",
+            ]
+        ),
+    )
+
+    assert len(candidates) == 2
+    assert "Acme Support" in candidates[0].raw_text
+    assert "Contoso Cloud" in candidates[1].raw_text
