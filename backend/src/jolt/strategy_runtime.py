@@ -152,6 +152,65 @@ _FOREIGN_COUNTRY_LOCATION_TERMS = (
     "switzerland",
     "united kingdom",
     "uk",
+    "united states",
+    "united states of america",
+    "usa",
+    "u.s.",
+    "u.s.a.",
+)
+
+_US_STATE_ABBREVIATIONS = (
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+    "dc",
 )
 
 _FOREIGN_RESIDENCE_PATTERN = (
@@ -331,6 +390,10 @@ def _normalized_location_scope(location: str) -> str:
         return "broad"
 
     if any(term in normalized for term in _FOREIGN_COUNTRY_LOCATION_TERMS):
+        return "foreign_country"
+
+    state_pattern = r",\s*(?:" + "|".join(_US_STATE_ABBREVIATIONS) + r")(?:\b|$)"
+    if re.search(state_pattern, normalized):
         return "foreign_country"
 
     return "unknown"
@@ -593,7 +656,7 @@ def _calibrate_interview_uplift(assessment: StrategyAssessment) -> StrategyAsses
     recommendation = assessment.recommendation
     confidence = assessment.confidence
 
-    if assessment.eligibility == "uncertain":
+    if assessment.eligibility in {"uncertain", "eligible_with_conditions"}:
         recommendation = "pursue_if_condition_met"
         confidence = "low"
     elif recommendation == "strong_pursue" and capped_interview < 80:
