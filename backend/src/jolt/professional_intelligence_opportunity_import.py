@@ -132,14 +132,10 @@ def _extract_candidates_from_text(
 ) -> list[ManualIntakeRequest]:
     lines = _clean_lines(text)
     candidates: list[ManualIntakeRequest] = []
-    seen_titles: set[str] = set()
+    seen_candidates: set[tuple[str, str, str]] = set()
     for index, line in enumerate(lines):
         if _looks_like_noise(line) or not _line_has_role(line):
             continue
-        normalized_title = line.casefold()
-        if normalized_title in seen_titles:
-            continue
-        seen_titles.add(normalized_title)
 
         company = "LinkedIn captured source"
         location = ""
@@ -153,6 +149,15 @@ def _extract_candidates_from_text(
             if _looks_like_location(candidate_line):
                 location = candidate_line
                 break
+
+        candidate_key = (
+            line.casefold(),
+            company.casefold(),
+            location.casefold(),
+        )
+        if candidate_key in seen_candidates:
+            continue
+        seen_candidates.add(candidate_key)
 
         description_lines = [line, *following]
         raw_text = "\n".join(
