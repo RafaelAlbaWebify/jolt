@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import jolt.reversible_application_workflow as reversible
@@ -16,9 +18,14 @@ class FakeApplication:
 
 @dataclass
 class FakeOutcome:
+    id: str = "outcome-1"
+    posting_id: str = "posting-1"
+    application_id: str = "application-1"
     outcome_type: str = "rejected_by_employer"
+    stage_reached: str = "technical_interview"
     reason_code: str = "skills_gap"
     notes: str = "Employer closed the process."
+    recorded_at: datetime = datetime(2026, 8, 18, 18, 0, tzinfo=UTC)
 
 
 class FakeSession:
@@ -94,9 +101,21 @@ def test_closed_application_can_reopen_and_preserve_outcome_in_history(monkeypat
     assert event.event_type == "application_reopened"
     assert event.from_status == "rejected"
     assert event.to_status == "submitted"
-    assert "Previous outcome: rejected_by_employer." in event.notes
-    assert "Reason: skills_gap." in event.notes
-    assert "Employer closed the process." in event.notes
+
+    prefix = "Preserved outcome JSON: "
+    assert prefix in event.notes
+    preserved = json.loads(event.notes.split(prefix, 1)[1])
+
+    assert preserved == {
+        "id": "outcome-1",
+        "posting_id": "posting-1",
+        "application_id": "application-1",
+        "outcome_type": "rejected_by_employer",
+        "stage_reached": "technical_interview",
+        "reason_code": "skills_gap",
+        "notes": "Employer closed the process.",
+        "recorded_at": "2026-08-18T18:00:00+00:00",
+    }
     assert session.committed is True
 
 
