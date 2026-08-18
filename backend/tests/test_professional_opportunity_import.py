@@ -252,3 +252,51 @@ def test_professional_extractor_does_not_mix_adjacent_job_evidence() -> None:
 
     assert "Contoso Cloud" in second
     assert "Azure infrastructure" in second
+
+
+def test_professional_extractor_preserves_same_identity_with_different_evidence() -> None:
+    from jolt.professional_intelligence_opportunity_import import (
+        _extract_candidates_from_text,
+    )
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs-preferences",
+        source_url="https://www.linkedin.com/jobs/search-results/",
+        text="\n".join(
+            [
+                "Technical Support Engineer",
+                "Acme Support",
+                "Remote Spain",
+                "Operate Azure infrastructure and PowerShell automation.",
+                "Technical Support Engineer",
+                "Acme Support",
+                "Remote Spain",
+                "Troubleshoot SQL databases and REST API incidents.",
+            ]
+        ),
+    )
+
+    assert len(candidates) == 2
+    assert "Azure infrastructure" in candidates[0].raw_text
+    assert "SQL databases" in candidates[1].raw_text
+
+
+def test_professional_extractor_deduplicates_identical_candidate_evidence() -> None:
+    from jolt.professional_intelligence_opportunity_import import (
+        _extract_candidates_from_text,
+    )
+
+    repeated = [
+        "Technical Support Engineer",
+        "Acme Support",
+        "Remote Spain",
+        "Operate Azure infrastructure and PowerShell automation.",
+    ]
+
+    candidates = _extract_candidates_from_text(
+        source_id="linkedin-jobs-preferences",
+        source_url="https://www.linkedin.com/jobs/search-results/",
+        text="\n".join([*repeated, *repeated]),
+    )
+
+    assert len(candidates) == 1

@@ -132,7 +132,7 @@ def _extract_candidates_from_text(
 ) -> list[ManualIntakeRequest]:
     lines = _clean_lines(text)
     candidates: list[ManualIntakeRequest] = []
-    seen_candidates: set[tuple[str, str, str]] = set()
+    seen_candidate_evidence: set[str] = set()
     for index, line in enumerate(lines):
         if _looks_like_noise(line) or not _line_has_role(line):
             continue
@@ -155,15 +155,6 @@ def _extract_candidates_from_text(
                 location = candidate_line
                 break
 
-        candidate_key = (
-            line.casefold(),
-            company.casefold(),
-            location.casefold(),
-        )
-        if candidate_key in seen_candidates:
-            continue
-        seen_candidates.add(candidate_key)
-
         description_lines = [line, *following]
         raw_text = "\n".join(
             part
@@ -175,6 +166,10 @@ def _extract_candidates_from_text(
             ]
             if part
         )
+        candidate_evidence_key = raw_text.casefold()
+        if candidate_evidence_key in seen_candidate_evidence:
+            continue
+        seen_candidate_evidence.add(candidate_evidence_key)
         candidates.append(
             ManualIntakeRequest(
                 raw_text=raw_text,
