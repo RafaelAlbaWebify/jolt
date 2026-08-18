@@ -15,6 +15,7 @@ from jolt.schemas import (
     CaptureItemResponse,
     CapturePageResponse,
     CaptureRunResponse,
+    LinkedInLiveCaptureItemRequest,
     LinkedInLiveCaptureRequest,
     ManualIntakeRequest,
 )
@@ -28,6 +29,33 @@ def _posting_text(title: str, company: str, location: str, description: str) -> 
     if description:
         lines.append(description)
     return "\n".join(line for line in lines if line).strip()
+
+
+def _live_item_structure_failures(
+    evidence: LinkedInLiveCaptureItemRequest,
+) -> list[str]:
+    failures: list[str] = []
+
+    title = evidence.title.strip()
+    company = evidence.company.strip()
+    description = evidence.description.strip()
+
+    if not title:
+        failures.append("Verified detail panel contained no usable job title.")
+    elif len(title) > 240:
+        failures.append("Verified detail panel contained an implausibly long job title.")
+
+    if not company:
+        failures.append("Verified detail panel contained no usable company name.")
+    elif len(company) > 180 or len(company.split()) > 24:
+        failures.append(
+            "Verified detail panel company field appears to contain job-description prose."
+        )
+
+    if not description:
+        failures.append("Verified detail panel contained no usable job description text.")
+
+    return failures
 
 
 def _resolve_stop_reason(request: LinkedInLiveCaptureRequest, observed_count: int) -> str:
@@ -99,11 +127,13 @@ def run_linkedin_live_capture(
         responses: list[CaptureItemResponse] = []
         warnings: list[str] = []
         for evidence in request.items:
-            verified = evidence.identity_verified and bool(evidence.description.strip())
+            structural_failures = _live_item_structure_failures(evidence)
+            verified = evidence.identity_verified and not structural_failures
             status = "verified" if verified else "rejected_unverified"
             reasons = [evidence.verification_reason] if evidence.verification_reason else []
-            if evidence.identity_verified and not evidence.description.strip():
-                reasons.append("Verified detail panel contained no usable job description text.")
+            reasons.extend(structural_failures)
+            if not evidence.identity_verified and not evidence.verification_reason:
+                reasons.append("LinkedIn detail-panel identity was not verified.")
 
             source_document_id: str | None = None
             posting_id: str | None = None

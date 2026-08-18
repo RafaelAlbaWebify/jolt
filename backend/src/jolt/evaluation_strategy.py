@@ -332,6 +332,11 @@ def _fallback_role_bucket(title: str) -> str | None:
         r"\bsoporte técnico\b",
         r"\bsoporte tecnico\b",
         r"\bsoporte de sistemas\b",
+        r"\bhelp\s*desk\b",
+        r"\bhelpdesk\b",
+        r"\bsupport analyst\b",
+        r"\bescalation engineer\b",
+        r"\btechnical consultant\b",
     )
     if any(re.search(pattern, normalized) for pattern in support_patterns):
         return "support"
@@ -349,6 +354,12 @@ def _fallback_role_bucket(title: str) -> str | None:
         r"\binfraestructuras ti\b",
         r"\bmonitorizacion\b",
         r"\bmonitorización\b",
+        r"\bsystems? administrator\b",
+        r"\bsystems? engineer\b",
+        r"\bnetwork operations cent(?:er|re)\b",
+        r"\bnoc\b",
+        r"\bit\s*(?:&|and)\s*operations specialist\b",
+        r"\bit operations specialist\b",
     )
     if any(re.search(pattern, normalized) for pattern in operations_patterns):
         return "operations"
@@ -366,6 +377,24 @@ def _select_role_family(
     body = "\n".join([location, description])
     normalized_title = _normalize_role_title(title)
     priority_rank = {"primary": 3, "secondary": 2, "opportunistic": 1, "excluded": 0}
+
+    if re.search(r"\b(?:microsoft\s*365|office\s*365|m365)\b", normalized_title):
+        m365_families = [
+            family
+            for family in profile.role_families
+            if any(
+                marker in _normalize_match_text(f"{family.id.replace('_', ' ')} {family.label}")
+                for marker in ("m365", "microsoft 365", "office 365")
+            )
+        ]
+        if m365_families:
+            return max(
+                m365_families,
+                key=lambda family: (
+                    priority_rank[family.priority],
+                    family.strategic_value,
+                ),
+            )
 
     for index, family in enumerate(profile.role_families):
         title_matches = _matched_terms(normalized_title, family.terms)

@@ -101,21 +101,59 @@ def descriptions_are_materially_similar(first: str, second: str) -> bool:
     return matcher.ratio() >= 0.86
 
 
+def descriptions_are_nearly_identical(first: str, second: str) -> bool:
+    first_normalized = normalize_duplicate_text(first)
+    second_normalized = normalize_duplicate_text(second)
+
+    if not first_normalized or not second_normalized:
+        return False
+
+    first_tokens = _description_tokens(first)
+    second_tokens = _description_tokens(second)
+    union = first_tokens | second_tokens
+    token_ratio = len(first_tokens & second_tokens) / len(union) if union else 0.0
+
+    if token_ratio >= 0.90:
+        return True
+
+    matcher = SequenceMatcher(
+        None,
+        first_normalized[:6000],
+        second_normalized[:6000],
+        autojunk=False,
+    )
+
+    if matcher.quick_ratio() < 0.93:
+        return False
+
+    return matcher.ratio() >= 0.93
+
+
 def are_semantic_duplicates(
     first: DuplicateCandidate,
     second: DuplicateCandidate,
     *,
     descriptions: dict[str, str],
 ) -> bool:
-    if normalize_duplicate_text(first.company) != normalize_duplicate_text(second.company):
-        return False
-
     if normalize_duplicate_text(first.title) != normalize_duplicate_text(second.title):
         return False
 
-    return descriptions_are_materially_similar(
-        descriptions.get(first.posting_id, ""),
-        descriptions.get(second.posting_id, ""),
+    first_description = descriptions.get(first.posting_id, "")
+    second_description = descriptions.get(second.posting_id, "")
+
+    same_company = normalize_duplicate_text(first.company) == normalize_duplicate_text(
+        second.company
+    )
+
+    if same_company:
+        return descriptions_are_materially_similar(
+            first_description,
+            second_description,
+        )
+
+    return descriptions_are_nearly_identical(
+        first_description,
+        second_description,
     )
 
 
