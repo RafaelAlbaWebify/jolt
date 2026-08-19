@@ -39,6 +39,7 @@ from jolt.application_work_items import (
     update_interview,
     update_task,
 )
+from jolt.errors import JoltNotFoundError
 from jolt.professional_intelligence_registry import (
     ProfessionalSourceUpdateRequest,
     list_configured_professional_sources,
@@ -80,7 +81,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> ProfessionalIntelligenceSource:
         try:
             return update_professional_source(session, source_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -96,7 +97,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> ProfessionalIntelligenceSource:
         try:
             return reset_professional_source(session, source_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get("/api/applications/{application_id}/tasks", response_model=list[TaskResponse])
@@ -105,7 +106,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> list[TaskResponse]:
         try:
             return list_tasks(session, application_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/applications/{application_id}/tasks", response_model=TaskResponse)
@@ -114,7 +115,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> TaskResponse:
         try:
             return create_task(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -125,7 +126,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> TaskResponse:
         try:
             return update_task(session, task_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -136,7 +137,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> TaskResponse:
         try:
             return set_task_status(session, task_id, "completed")
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -147,7 +148,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> TaskResponse:
         try:
             return set_task_status(session, task_id, "open")
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -161,7 +162,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> list[InterviewResponse]:
         try:
             return list_interviews(session, application_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/applications/{application_id}/interviews", response_model=InterviewResponse)
@@ -172,7 +173,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> InterviewResponse:
         try:
             return create_interview(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -188,7 +189,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> InterviewResponse:
         try:
             return update_interview(session, interview_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -204,7 +205,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> InterviewResponse:
         try:
             return set_interview_status(session, interview_id, "completed", request.outcome_notes)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -220,7 +221,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> InterviewResponse:
         try:
             return set_interview_status(session, interview_id, "cancelled", request.outcome_notes)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -231,7 +232,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> list[ContactResponse]:
         try:
             return list_contacts(session, application_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/applications/{application_id}/contacts", response_model=ContactResponse)
@@ -240,7 +241,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> ContactResponse:
         try:
             return create_contact(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -251,7 +252,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> ContactResponse:
         try:
             return update_contact(session, contact_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -264,7 +265,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> list[DocumentResponse]:
         try:
             return list_documents(session, application_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/applications/{application_id}/documents", response_model=DocumentResponse)
@@ -273,7 +274,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> DocumentResponse:
         try:
             return create_document(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -284,7 +285,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> DocumentResponse:
         try:
             return update_document(session, document_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -311,7 +312,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
                 mime_type=mime_type,
                 content=content,
             )
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ArchivedApplicationReadOnlyError as exc:
             _raise_read_only_conflict(exc)
@@ -326,7 +327,7 @@ def build_application_work_items_router(get_session: SessionProvider) -> APIRout
     ) -> Response:
         try:
             filename, mime_type, content = get_document_file(session, document_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
         encoded_filename = quote(filename)

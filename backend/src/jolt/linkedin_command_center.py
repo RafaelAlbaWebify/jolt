@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import LinkedInPresenceCapture, LinkedInPresenceRecommendation, utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.market_intelligence import build_market_intelligence
 
 LinkedInCaptureCategory = Literal[
@@ -224,7 +225,7 @@ def _validate_capture_id(session: Session, capture_id: str | None) -> None:
     if capture_id:
         found = session.get(LinkedInPresenceCapture, capture_id)
         if found is None:
-            raise LookupError(f"LinkedIn capture {capture_id} was not found")
+            raise JoltNotFoundError(f"LinkedIn capture {capture_id} was not found")
 
 
 def _create_recommendation_row(
@@ -279,7 +280,7 @@ def update_linkedin_recommendation_status(
 ) -> LinkedInRecommendationResponse:
     recommendation = session.get(LinkedInPresenceRecommendation, recommendation_id)
     if recommendation is None:
-        raise LookupError(f"LinkedIn recommendation {recommendation_id} was not found")
+        raise JoltNotFoundError(f"LinkedIn recommendation {recommendation_id} was not found")
     recommendation.status = request.status
     recommendation.updated_at = utc_now()
     session.add(recommendation)

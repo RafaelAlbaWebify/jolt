@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from jolt.application_archival import require_writable_application
 from jolt.application_records import ApplicationContact, ApplicationDocument
 from jolt.database import Application, ApplicationEvent, utc_now
+from jolt.errors import JoltNotFoundError
 
 DocumentType = Literal[
     "resume", "cover_letter", "preparation_pack", "portfolio", "certificate", "other"
@@ -129,7 +130,7 @@ class DocumentResponse(DocumentRequest):
 def _application(session: Session, application_id: str) -> Application:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     return application
 
 
@@ -238,7 +239,7 @@ def create_contact(
 def update_contact(session: Session, contact_id: str, request: ContactRequest) -> ContactResponse:
     contact = session.get(ApplicationContact, contact_id)
     if contact is None:
-        raise LookupError("Application contact was not found.")
+        raise JoltNotFoundError("Application contact was not found.")
     require_writable_application(session, contact.application_id)
     before = _contact_values(contact)
     for field, value in request.model_dump().items():
@@ -288,7 +289,7 @@ def update_document(
 ) -> DocumentResponse:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
-        raise LookupError("Application document was not found.")
+        raise JoltNotFoundError("Application document was not found.")
     require_writable_application(session, document.application_id)
     before = _document_values(document)
     for field, value in request.model_dump().items():
@@ -336,7 +337,7 @@ def store_document_file(
 ) -> DocumentResponse:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
-        raise LookupError("Application document was not found.")
+        raise JoltNotFoundError("Application document was not found.")
 
     require_writable_application(session, document.application_id)
 
@@ -378,10 +379,10 @@ def get_document_file(
 ) -> tuple[str, str, bytes]:
     document = session.get(ApplicationDocument, document_id)
     if document is None:
-        raise LookupError("Application document was not found.")
+        raise JoltNotFoundError("Application document was not found.")
 
     if document.file_content is None or not document.stored_filename:
-        raise LookupError("Application document file was not found.")
+        raise JoltNotFoundError("Application document file was not found.")
 
     return (
         document.stored_filename,

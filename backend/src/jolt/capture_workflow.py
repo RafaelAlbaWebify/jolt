@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from jolt.capture_artifacts import CaptureArtifact, stage_capture_artifact
 from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.market_intelligence_observations import (
     extract_market_intelligence_observations,
 )
@@ -203,7 +204,7 @@ def list_capture_runs(session: Session) -> list[CaptureRunSummary]:
 def get_capture_run(session: Session, capture_run_id: str) -> CaptureRunResponse:
     run = session.get(CaptureRun, capture_run_id)
     if run is None:
-        raise LookupError("Capture run was not found.")
+        raise JoltNotFoundError("Capture run was not found.")
     pages = session.scalars(
         select(CapturePage)
         .where(CapturePage.capture_run_id == capture_run_id)

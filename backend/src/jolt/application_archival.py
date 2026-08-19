@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Application, ApplicationEvent, utc_now
+from jolt.errors import JoltNotFoundError
 
 ARCHIVED_APPLICATION_STATUS = "archived"
 DEFAULT_RESTORE_STATUS = "preparing"
@@ -38,7 +39,7 @@ def require_writable_application(session: Session, application_id: str) -> Appli
 
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     if application.status == ARCHIVED_APPLICATION_STATUS:
         raise ArchivedApplicationReadOnlyError(
             "Archived applications are read-only. Restore the application before making changes."
@@ -62,7 +63,7 @@ def archive_application_card(
 ) -> ApplicationArchiveResponse:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     if application.status == ARCHIVED_APPLICATION_STATUS:
         return ApplicationArchiveResponse(
             application_id=application.id,
@@ -105,7 +106,7 @@ def restore_application_card(
 ) -> ApplicationArchiveResponse:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     if application.status != ARCHIVED_APPLICATION_STATUS:
         return ApplicationArchiveResponse(
             application_id=application.id,

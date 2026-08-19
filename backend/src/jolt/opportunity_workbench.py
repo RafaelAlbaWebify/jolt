@@ -15,6 +15,7 @@ from jolt.application_readiness import (
 )
 from jolt.automated_review import analyze_posting
 from jolt.database import Application, Outcome, Posting, ReviewDecision
+from jolt.errors import JoltNotFoundError
 from jolt.evaluation_authority import authoritative_evaluation, latest_readiness_report
 from jolt.evaluation_strategy import StrategyAssessment
 from jolt.schemas import ApplicationReadinessSummary, OpportunitySummary, StrategyGapSummary
@@ -163,9 +164,9 @@ def list_opportunity_workbench(session: Session) -> list[OpportunitySummary]:
 def get_opportunity_workbench(session: Session, posting_id: str) -> OpportunitySummary:
     posting = session.get(Posting, posting_id)
     if posting is None:
-        raise LookupError(f"Opportunity {posting_id} was not found.")
+        raise JoltNotFoundError(f"Opportunity {posting_id} was not found.")
 
     summary = _build_summary(session, posting)
     if summary is None:
-        raise LookupError(f"Opportunity {posting_id} has no evaluation.")
+        raise JoltNotFoundError(f"Opportunity {posting_id} has no evaluation.")
     return summary

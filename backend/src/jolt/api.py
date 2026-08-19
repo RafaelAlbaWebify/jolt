@@ -11,6 +11,7 @@ from jolt.application_preparation_pack import build_application_preparation_pack
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
+from jolt.errors import JoltNotFoundError
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
@@ -98,7 +99,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> CaptureRunResponse:
         try:
             return get_capture_run(session, capture_run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
@@ -109,7 +110,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ReviewResponse:
         try:
             return record_review(session, posting_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/identity-evidence", tags=["identity"])
@@ -124,7 +125,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> dict[str, object]:
         try:
             return opportunity_identity_evidence(session, posting_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/opportunities/{posting_id}/readiness/history", tags=["readiness"])
@@ -133,7 +134,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> list[dict[str, object]]:
         try:
             return list_readiness_history(session, posting_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/api/opportunities/{posting_id}/readiness/refresh", tags=["readiness"])
@@ -142,7 +143,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> dict[str, object]:
         try:
             return refresh_readiness_report(session, posting_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
@@ -157,7 +158,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ApplicationResponse:
         try:
             return create_application(session, posting_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -172,7 +173,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ApplicationResponse:
         try:
             return get_application(session, application_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post(
@@ -187,7 +188,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ApplicationResponse:
         try:
             return transition_application(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -204,7 +205,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> ApplicationResponse:
         try:
             return record_outcome(session, application_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -237,7 +238,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> OpportunitySummary:
         try:
             return get_opportunity_workbench(session, posting_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/market-intelligence", tags=["analysis"])
@@ -260,7 +261,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> StreamingResponse:
         try:
             content = build_application_preparation_pack(session, posting_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         filename = f"JOLT_PREPARATION_{posting_id}.zip"
         return StreamingResponse(

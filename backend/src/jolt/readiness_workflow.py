@@ -14,12 +14,13 @@ from jolt.application_readiness import (
     readiness_payload,
 )
 from jolt.database import Posting, utc_now
+from jolt.errors import JoltNotFoundError
 
 
 def _get_posting(session: Session, posting_id: str) -> Posting:
     posting = session.get(Posting, posting_id)
     if posting is None:
-        raise LookupError(f"Posting {posting_id} was not found.")
+        raise JoltNotFoundError(f"Posting {posting_id} was not found.")
     return posting
 
 

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Application, CaptureItem, CaptureRun, Posting, ReviewDecision
+from jolt.errors import JoltNotFoundError
 
 ARCHIVED_CAPTURE_STATUS = "archived"
 LEGACY_UNKNOWN_STOP_REASON = "legacy_unknown"
@@ -72,7 +73,7 @@ def archive_capture_run(
     """
     run = session.get(CaptureRun, capture_run_id)
     if run is None:
-        raise LookupError("Capture run was not found.")
+        raise JoltNotFoundError("Capture run was not found.")
     if run.status == "running":
         raise ValueError("A running capture run must be stopped before it can be archived.")
 

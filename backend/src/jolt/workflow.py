@@ -22,6 +22,7 @@ from jolt.database import (
     SourceDocument,
     utc_now,
 )
+from jolt.errors import JoltNotFoundError
 from jolt.schemas import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -270,7 +271,7 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
     posting = session.get(Posting, posting_id)
     evaluation = session.get(Evaluation, request.evaluation_id)
     if posting is None or evaluation is None or evaluation.posting_id != posting_id:
-        raise LookupError("Posting or evaluation was not found.")
+        raise JoltNotFoundError("Posting or evaluation was not found.")
     review = ReviewDecision(
         id=str(uuid4()),
         posting_id=posting_id,
@@ -328,7 +329,7 @@ def create_application(
 ) -> ApplicationResponse:
     posting = session.get(Posting, posting_id)
     if posting is None:
-        raise LookupError("Posting was not found.")
+        raise JoltNotFoundError("Posting was not found.")
     latest_review = session.scalar(
         select(ReviewDecision)
         .where(ReviewDecision.posting_id == posting_id)
@@ -388,7 +389,7 @@ def record_outcome(
 ) -> ApplicationResponse:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     existing = session.scalar(select(Outcome).where(Outcome.application_id == application_id))
     if existing is not None:
         raise ValueError("This application already has an outcome.")
@@ -445,7 +446,7 @@ def record_outcome(
 def get_application(session: Session, application_id: str) -> ApplicationResponse:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     return build_application_response(session, application)
 
 

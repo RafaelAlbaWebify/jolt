@@ -8,6 +8,8 @@ from pathlib import Path
 from threading import Lock
 from types import TracebackType
 
+from jolt.errors import JoltNotFoundError
+
 try:  # pragma: no cover - greenlet is an implementation detail of Playwright sync.
     from greenlet import getcurrent as _get_current_greenlet
 except Exception:  # pragma: no cover - keep diagnostics optional.
@@ -409,7 +411,7 @@ def start_bounded_professional_capture(
 ) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     options = ProfessionalCaptureOptions.model_validate_json(run.capture_options_json)
 
     with BoundedVisibleCaptureSession(session, run_id, options) as capture_session:

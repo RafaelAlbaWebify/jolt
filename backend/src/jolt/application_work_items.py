@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from jolt.application_archival import require_writable_application
 from jolt.application_records import ApplicationInterview, ApplicationTask
 from jolt.database import Application, ApplicationEvent, utc_now
+from jolt.errors import JoltNotFoundError
 
 TaskStatus = Literal["open", "completed"]
 InterviewStatus = Literal["scheduled", "completed", "cancelled"]
@@ -121,7 +122,7 @@ class InterviewResponse(BaseModel):
 def _application(session: Session, application_id: str) -> Application:
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     return application
 
 
@@ -238,7 +239,7 @@ def create_task(session: Session, application_id: str, request: TaskCreateReques
 def update_task(session: Session, task_id: str, request: TaskUpdateRequest) -> TaskResponse:
     task = session.get(ApplicationTask, task_id)
     if task is None:
-        raise LookupError("Application task was not found.")
+        raise JoltNotFoundError("Application task was not found.")
     require_writable_application(session, task.application_id)
     before = _task_values(task)
     now = utc_now()
@@ -263,7 +264,7 @@ def update_task(session: Session, task_id: str, request: TaskUpdateRequest) -> T
 def set_task_status(session: Session, task_id: str, status: TaskStatus) -> TaskResponse:
     task = session.get(ApplicationTask, task_id)
     if task is None:
-        raise LookupError("Application task was not found.")
+        raise JoltNotFoundError("Application task was not found.")
     require_writable_application(session, task.application_id)
     if task.status == status:
         return _task_response(task)
@@ -336,7 +337,7 @@ def update_interview(
 ) -> InterviewResponse:
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
-        raise LookupError("Application interview was not found.")
+        raise JoltNotFoundError("Application interview was not found.")
     require_writable_application(session, interview.application_id)
     before = _interview_values(interview)
     now = utc_now()
@@ -371,7 +372,7 @@ def set_interview_status(
 ) -> InterviewResponse:
     interview = session.get(ApplicationInterview, interview_id)
     if interview is None:
-        raise LookupError("Application interview was not found.")
+        raise JoltNotFoundError("Application interview was not found.")
     require_writable_application(session, interview.application_id)
     normalized_outcome = outcome_notes.strip()
     if interview.status == status and not normalized_outcome:
