@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.professional_intelligence_capture_runs import (
     ProfessionalCaptureRunResponse,
     ProfessionalSourceProgress,
@@ -364,7 +365,7 @@ def _update_source_progress(
         if item.source_id == source_id:
             progress[index] = item.model_copy(update=changes)
             return
-    raise LookupError(f"Source progress for {source_id} was not found.")
+    raise JoltNotFoundError(f"Source progress for {source_id} was not found.")
 
 
 def _stop_on_failure_enabled(run: ProfessionalCaptureRun) -> bool:
@@ -429,7 +430,7 @@ def start_professional_supervised_capture(
 ) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     if effective_capture_run_status(run) != "authorized":
         raise ValueError("A current explicit authorization is required before capture.")
     evidence_root = get_professional_evidence_root(session)
@@ -474,7 +475,7 @@ def start_professional_supervised_capture(
             session.expire_all()
             run = session.get(ProfessionalCaptureRun, run_id)
             if run is None:
-                raise LookupError(f"Professional capture run {run_id} was not found.")
+                raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
             progress = _load_progress(run)
             if run.cancel_requested:
                 run.status = "cancelled"
@@ -553,7 +554,7 @@ def start_professional_supervised_capture(
 
         run = session.get(ProfessionalCaptureRun, run_id)
         if run is None:
-            raise LookupError(f"Professional capture run {run_id} was not found.")
+            raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
         run.status = (
             "completed"
             if all(status == "complete" for status in statuses)

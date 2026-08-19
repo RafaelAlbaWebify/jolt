@@ -23,6 +23,7 @@ from jolt.database import (
     ReviewDecision,
     SourceDocument,
 )
+from jolt.errors import JoltNotFoundError
 from jolt.market_intelligence import build_market_intelligence
 from jolt.strategy_runtime import ENGINE_VERSION
 
@@ -60,7 +61,7 @@ def _latest_capture(session: Session) -> CaptureRun:
         .limit(1)
     )
     if capture is None:
-        raise LookupError("No capture run exists to review.")
+        raise JoltNotFoundError("No capture run exists to review.")
     return capture
 
 

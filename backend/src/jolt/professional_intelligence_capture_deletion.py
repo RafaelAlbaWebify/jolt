@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.errors import JoltNotFoundError
 from jolt.professional_intelligence_capture_runs import get_professional_capture_run
 from jolt.professional_intelligence_evidence_root import get_professional_evidence_root
 from jolt.professional_intelligence_records import (
@@ -37,7 +38,7 @@ def delete_professional_capture_run(
 
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     if run.status == "running":
         raise ValueError("A running capture must be cancelled before it can be deleted.")
 

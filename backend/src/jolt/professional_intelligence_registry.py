@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.professional_intelligence_records import ProfessionalSourceOverride
 from jolt.professional_intelligence_sources import (
     ProfessionalIntelligenceSource,
@@ -67,7 +68,7 @@ def update_professional_source(
     defaults = professional_intelligence_source_defaults()
     default = defaults.get(source_id)
     if default is None:
-        raise LookupError(f"Unknown Professional Intelligence source: {source_id}")
+        raise JoltNotFoundError(f"Unknown Professional Intelligence source: {source_id}")
 
     normalized_url = validate_professional_source_url(request.url)
     for source in list_configured_professional_sources(session):
@@ -107,7 +108,7 @@ def reset_professional_source(session: Session, source_id: str) -> ProfessionalI
     defaults = professional_intelligence_source_defaults()
     default = defaults.get(source_id)
     if default is None:
-        raise LookupError(f"Unknown Professional Intelligence source: {source_id}")
+        raise JoltNotFoundError(f"Unknown Professional Intelligence source: {source_id}")
 
     override = session.get(ProfessionalSourceOverride, source_id)
     if override is not None:

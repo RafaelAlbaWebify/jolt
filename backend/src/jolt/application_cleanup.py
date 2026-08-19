@@ -12,6 +12,7 @@ from jolt.application_records import (
     ApplicationTask,
 )
 from jolt.database import Application, ApplicationEvent, Outcome
+from jolt.errors import JoltNotFoundError
 
 TERMINAL_APPLICATION_STATUSES = {
     "rejected",
@@ -48,7 +49,7 @@ def delete_archived_application(
 
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
 
     deletable_statuses = {
         ARCHIVED_APPLICATION_STATUS,

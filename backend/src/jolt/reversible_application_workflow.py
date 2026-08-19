@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from jolt.application_response import build_application_response
 from jolt.database import Application, ApplicationEvent, Outcome, utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.schemas import ApplicationResponse, ApplicationTransitionRequest
 
 VALID_APPLICATION_STATUSES = {
@@ -56,7 +57,7 @@ def transition_application_reversibly(
 
     application = session.get(Application, application_id)
     if application is None:
-        raise LookupError("Application was not found.")
+        raise JoltNotFoundError("Application was not found.")
     if request.status not in VALID_APPLICATION_STATUSES:
         raise ValueError(f"Unknown application status: {request.status}.")
     if request.status == application.status:

@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from jolt.application_readiness import ensure_readiness_report, readiness_payload
 from jolt.database import Posting
+from jolt.errors import JoltNotFoundError
 
 
-class PreparationPackPostingNotFound(Exception):
+class PreparationPackPostingNotFound(JoltNotFoundError):
     """Raised only when the requested posting does not exist."""
 
 

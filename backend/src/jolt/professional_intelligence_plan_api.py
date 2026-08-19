@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.local_linkedin_capture import (
     LocalLinkedInCaptureRequest,
     LocalLinkedInCaptureStatus,
@@ -220,7 +221,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalArtifactManifestEntry:
         try:
             return validate_professional_artifact_manifest_entry(session, entry)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -279,7 +280,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRunResponse:
         try:
             return get_professional_capture_run(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get(
@@ -292,7 +293,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalEvidenceRunReview:
         try:
             return review_professional_capture_evidence(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -307,7 +308,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRoutingSummary:
         try:
             return build_professional_capture_routing_summary(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post(
@@ -320,7 +321,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalOpportunityImportResult:
         try:
             return import_professional_opportunity_candidates(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -335,7 +336,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalStructuredExtraction:
         try:
             return extract_professional_intelligence(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -351,7 +352,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRunResponse:
         try:
             return authorize_professional_capture_run(session, run_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -371,7 +372,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
                 raise ValueError("Only authorized capture runs can be started.")
             background_tasks.add_task(_run_professional_capture_background, get_session, run_id)
             return _queued_capture_response(run)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -386,7 +387,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureRunResponse:
         try:
             return cancel_professional_capture_run(session, run_id)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -402,7 +403,7 @@ def build_professional_intelligence_plan_router(get_session: SessionProvider) ->
     ) -> ProfessionalCaptureDeletionResult:
         try:
             return delete_professional_capture_run(session, run_id, request)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

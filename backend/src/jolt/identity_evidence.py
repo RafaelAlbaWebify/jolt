@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Posting, SourceDocument
+from jolt.errors import JoltNotFoundError
 from jolt.linkedin_source_urls import absolute_linkedin_url
 from jolt.workflow import normalize_url
 
@@ -113,7 +114,7 @@ def list_identity_evidence(session: Session) -> list[dict[str, object]]:
 def opportunity_identity_evidence(session: Session, posting_id: str) -> dict[str, object]:
     posting = session.get(Posting, posting_id)
     if posting is None:
-        raise LookupError("Posting was not found.")
+        raise JoltNotFoundError("Posting was not found.")
 
     documents = session.scalars(select(SourceDocument).order_by(SourceDocument.captured_at)).all()
     documents_by_id = {document.id: document for document in documents}

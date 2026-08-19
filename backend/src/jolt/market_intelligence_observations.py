@@ -13,6 +13,7 @@ from jolt.database import (
     Posting,
     utc_now,
 )
+from jolt.errors import JoltNotFoundError
 from jolt.strategy_runtime import ENGINE_VERSION
 
 
@@ -53,7 +54,7 @@ def extract_market_intelligence_observations(
 
     run = session.get(CaptureRun, capture_run_id)
     if run is None:
-        raise LookupError("Capture run was not found.")
+        raise JoltNotFoundError("Capture run was not found.")
 
     captured_at = run.completed_at or run.started_at
 

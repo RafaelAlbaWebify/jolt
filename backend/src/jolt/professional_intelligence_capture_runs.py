@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
+from jolt.errors import JoltNotFoundError
 from jolt.professional_intelligence_capture_plan import build_professional_capture_plan
 from jolt.professional_intelligence_records import (
     ProfessionalCaptureArtifact,
@@ -246,7 +247,7 @@ def get_professional_capture_run(session: Session, run_id: str) -> ProfessionalC
     recover_stale_professional_capture_runs(session)
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     return _to_response(session, run)
 
 
@@ -257,7 +258,7 @@ def authorize_professional_capture_run(
 ) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     current_status = effective_capture_run_status(run)
     if current_status not in {"planned", "expired"} and not is_linkedin_login_retry_run(run):
         raise ValueError(
@@ -287,7 +288,7 @@ def cancel_professional_capture_run(
 ) -> ProfessionalCaptureRunResponse:
     run = session.get(ProfessionalCaptureRun, run_id)
     if run is None:
-        raise LookupError(f"Professional capture run {run_id} was not found.")
+        raise JoltNotFoundError(f"Professional capture run {run_id} was not found.")
     if run.status == "running":
         run.cancel_requested = True
         run.progress_updated_at = utc_now()
