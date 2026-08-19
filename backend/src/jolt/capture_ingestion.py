@@ -46,7 +46,9 @@ def ingest_capture_item(
     if duplicate is not None:
         parsed = parse_manual_text(request.raw_text)
 
-        duplicate.source_document_id = source.id
+        # Keep the first source_document_id immutable as the posting's
+        # original provenance anchor. Mutable posting fields may still
+        # refresh from the newest confirmed duplicate evidence.
         duplicate.canonical_url = canonical_url
         duplicate.title = parsed.title
         duplicate.company = parsed.company

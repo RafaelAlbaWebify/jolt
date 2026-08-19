@@ -64,7 +64,8 @@ def test_duplicate_capture_refreshes_posting_with_newest_evidence(tmp_path) -> N
         assert second.source_document_id != first_source_id
         assert second.evaluation_id != first_evaluation_id
 
-        assert posting.source_document_id == second.source_document_id
+        assert posting.source_document_id == first_source_id
+        assert posting.source_document_id != second.source_document_id
         assert posting.title == "Technical Support Engineer"
         assert posting.company == "Example Company"
         assert posting.location == "Remote Spain"

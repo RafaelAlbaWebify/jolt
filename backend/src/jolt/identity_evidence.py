@@ -17,25 +17,31 @@ def _evidence_for_posting(
     documents_by_url: dict[str, list[SourceDocument]],
     documents_by_hash: dict[str, list[SourceDocument]],
 ) -> dict[str, object]:
-    original = documents_by_id.get(posting.source_document_id)
-    if original is None:
+    referenced = documents_by_id.get(posting.source_document_id)
+    if referenced is None:
         raise RuntimeError("Posting source document was not found.")
 
     candidates = [
         *documents_by_url.get(posting.canonical_url, []),
-        *documents_by_hash.get(original.content_hash, []),
+        *documents_by_hash.get(referenced.content_hash, []),
     ]
+    ordered_candidates = sorted(
+        {document.id: document for document in candidates}.values(),
+        key=lambda item: (item.captured_at, item.id),
+    )
+    original_id = ordered_candidates[0].id if ordered_candidates else referenced.id
+
     evidence: list[dict[str, object]] = []
     seen: set[str] = set()
 
-    for document in sorted(candidates, key=lambda item: item.captured_at):
+    for document in ordered_candidates:
         if document.id in seen:
             continue
         match_basis = ""
         normalized_source_url = normalize_url(document.source_url)
         if posting.canonical_url and normalized_source_url == posting.canonical_url:
             match_basis = "canonical_url"
-        elif document.content_hash == original.content_hash:
+        elif document.content_hash == referenced.content_hash:
             match_basis = "content_hash"
         if not match_basis:
             continue
@@ -50,9 +56,7 @@ def _evidence_for_posting(
                     else document.source_url
                 ),
                 "identity_status": (
-                    "original"
-                    if document.id == posting.source_document_id
-                    else "confirmed_duplicate"
+                    "original" if document.id == original_id else "confirmed_duplicate"
                 ),
                 "match_basis": match_basis,
                 "captured_at": document.captured_at.isoformat(),
@@ -64,7 +68,7 @@ def _evidence_for_posting(
         "posting_id": posting.id,
         "canonical_url": (
             absolute_linkedin_url(posting.canonical_url)
-            if original.source_type in {"linkedin_fixture", "linkedin_live"}
+            if referenced.source_type in {"linkedin_fixture", "linkedin_live"}
             else posting.canonical_url
         ),
         "identity_status": posting.identity_status,
