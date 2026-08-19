@@ -553,6 +553,21 @@ def _apply_local_work_mode_eligibility(
     return assessment
 
 
+def _has_explicit_cross_border_eligibility(text: str) -> bool:
+    normalized = " ".join(text.casefold().split())
+    patterns = (
+        r"\bremote\s+(?:worldwide|globally|internationally)\b",
+        r"\bwork\s+from\s+anywhere\b",
+        r"\b(?:available|open)\s+(?:across|throughout|within)\s+"
+        r"(?:emea|europe|the european union|eu)\b",
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain\b",
+        r"\b(?:work|working)\s+(?:remotely\s+)?from\s+spain\b",
+        r"\b(?:hiring|hire|employment)\s+in\s+spain\b",
+        r"\binternational\s+(?:b2b|contractor|contracting)\b",
+    )
+    return any(re.search(item, normalized) for item in patterns)
+
+
 def _apply_location_eligibility(
     assessment: StrategyAssessment,
     *,
@@ -586,29 +601,58 @@ def _apply_location_eligibility(
             blockers=blockers,
         )
 
-    if scope != "foreign_country":
-        return assessment
+    if scope == "foreign_country":
+        if _has_explicit_cross_border_eligibility(combined_text):
+            return assessment
 
-    uncertainties = tuple(
-        dict.fromkeys(
-            [
-                *assessment.uncertainties,
-                (
-                    "Location eligibility: the vacancy is advertised as remote "
-                    "from another specific country; cross-border employment from "
-                    "Spain has not been confirmed."
-                ),
-            ]
+        blockers = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.blockers,
+                    (
+                        "Location eligibility: the vacancy is explicitly tied to "
+                        f"{location or 'another specific country'}, and the posting "
+                        "does not establish that employment from Spain is permitted."
+                    ),
+                ]
+            )
         )
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            blockers=blockers,
+        )
+
+    normalized_location = " ".join(location.casefold().split())
+    explicit_remote = (
+        normalized_location in {"remote", "fully remote", "100% remote"}
+        or _explicit_work_mode(combined_text) == "remote"
     )
 
-    return replace(
-        assessment,
-        eligibility="eligible_with_conditions",
-        recommendation="pursue_if_condition_met",
-        confidence="low",
-        uncertainties=uncertainties,
-    )
+    if scope == "unknown" and explicit_remote:
+        uncertainties = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.uncertainties,
+                    (
+                        "Location eligibility: the vacancy is remote but does not "
+                        "state an employment geography or explicitly confirm that "
+                        "employment from Spain is permitted."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            uncertainties=uncertainties,
+        )
+
+    return assessment
 
 
 def _apply_saved_preferences(
