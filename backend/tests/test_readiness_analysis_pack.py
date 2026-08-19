@@ -42,9 +42,10 @@ def test_analysis_pack_includes_application_readiness(tmp_path) -> None:
         report = reports[0]
         assert report["posting_id"] == posting_id
         assert report["profile_version_id"] == "rafael-job-search:v2"
-        assert report["engine_version"] == "application-readiness-v1"
-        assert report["readiness_score"] > 0
+        assert report["engine_version"] == "application-evidence-preparation-v2"
+        assert "priority" not in report
+        assert "readiness_score" not in report
         assert report["evidence_matches"]
         assert report["checklist"]
         readme = archive.read("README.md").decode("utf-8")
-        assert "Application readiness reports: 1" in readme
+        assert "Application evidence-preparation reports: 1" in readme

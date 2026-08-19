@@ -258,8 +258,6 @@ class ApplicationReadinessSummary(BaseModel):
     report_id: str
     profile_version_id: str
     engine_version: str
-    priority: str
-    readiness_score: int
     evidence_matches: list[str] = Field(default_factory=list)
     credibility_warnings: list[str] = Field(default_factory=list)
     cv_tailoring_points: list[str] = Field(default_factory=list)

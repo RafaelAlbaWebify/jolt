@@ -2,8 +2,6 @@ export type ApplicationReadinessData = {
   report_id: string;
   profile_version_id: string;
   engine_version: string;
-  priority: string;
-  readiness_score: number;
   evidence_matches: string[];
   credibility_warnings: string[];
   cv_tailoring_points: string[];
@@ -27,9 +25,7 @@ function ReadinessList({ title, items }: { title: string; items?: string[] | nul
 export function ApplicationReadiness({ readiness }: { readiness: ApplicationReadinessData }) {
   return (
     <details className="application-readiness">
-      <summary>
-        Application readiness · {readiness.priority} priority · {readiness.readiness_score}/100
-      </summary>
+      <summary>Application evidence preparation</summary>
       <p className="confidence">
         {readiness.engine_version} · profile {readiness.profile_version_id}
       </p>
