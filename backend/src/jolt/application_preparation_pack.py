@@ -21,7 +21,7 @@ def _markdown(posting: Posting, readiness: dict[str, object]) -> str:
     return "\n".join(
         [
             f"# JOLT Application Preparation Pack\n\n## Opportunity\n\n- Title: {posting.title}\n- Company: {posting.company}\n- Location: {posting.location}\n- Source: {posting.canonical_url or posting.source_document.source_url}\n",
-            f"## Readiness\n\n- Priority: {readiness['priority']}\n- Score: {readiness['readiness_score']}/100\n- Profile: {readiness['profile_version_id']}\n- Engine: {readiness['engine_version']}\n",
+            f"## Evidence preparation\n\n- Profile: {readiness['profile_version_id']}\n- Engine: {readiness['engine_version']}\n",
             section("Evidence to use", "evidence_matches"),
             section("Credibility warnings", "credibility_warnings"),
             section("CV tailoring points", "cv_tailoring_points"),
