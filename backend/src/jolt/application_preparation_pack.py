@@ -10,6 +10,10 @@ from jolt.application_readiness import ensure_readiness_report, readiness_payloa
 from jolt.database import Posting
 
 
+class PreparationPackPostingNotFound(Exception):
+    """Raised only when the requested posting does not exist."""
+
+
 def _markdown(posting: Posting, readiness: dict[str, object]) -> str:
     def section(title: str, key: str) -> str:
         values = readiness.get(key, [])
@@ -37,7 +41,7 @@ def _markdown(posting: Posting, readiness: dict[str, object]) -> str:
 def build_application_preparation_pack(session: Session, posting_id: str) -> bytes:
     posting = session.get(Posting, posting_id)
     if posting is None:
-        raise LookupError("Posting not found.")
+        raise PreparationPackPostingNotFound("Posting not found.")
 
     report = ensure_readiness_report(session, posting)
     readiness = readiness_payload(report)

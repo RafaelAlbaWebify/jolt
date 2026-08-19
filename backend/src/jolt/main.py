@@ -17,7 +17,10 @@ from jolt.application_cleanup import (
     ApplicationDeleteResponse,
     delete_archived_application,
 )
-from jolt.application_preparation_pack import build_application_preparation_pack
+from jolt.application_preparation_pack import (
+    PreparationPackPostingNotFound,
+    build_application_preparation_pack,
+)
 from jolt.application_work_items_api import build_application_work_items_router
 from jolt.automated_review import ensure_automated_reviews
 from jolt.capture_analysis_pack import build_analysis_pack
@@ -591,7 +594,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> StreamingResponse:
         try:
             content = build_application_preparation_pack(session, posting_id)
-        except LookupError as exc:
+        except PreparationPackPostingNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         filename = f"JOLT_PREPARATION_{posting_id}.zip"
         return StreamingResponse(
