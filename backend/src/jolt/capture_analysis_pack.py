@@ -85,8 +85,6 @@ def _readiness_data(session: Session) -> list[dict[str, object]]:
                 "posting_id": report.posting_id,
                 "profile_version_id": report.profile_version_id,
                 "engine_version": report.engine_version,
-                "priority": report.priority,
-                "readiness_score": report.readiness_score,
                 "evidence_matches": payload.get("evidence_matches", []),
                 "credibility_warnings": payload.get("credibility_warnings", []),
                 "cv_tailoring_points": payload.get("cv_tailoring_points", []),
@@ -145,8 +143,6 @@ def build_analysis_pack(session: Session) -> bytes:
             "posting_id",
             "profile_version_id",
             "engine_version",
-            "priority",
-            "readiness_score",
             "created_at",
         ],
     )
@@ -159,7 +155,7 @@ def build_analysis_pack(session: Session) -> bytes:
         f"- Capture runs: {len(runs)}\n"
         f"- Capture items: {len(items)}\n"
         f"- Rejected capture items: {rejected}\n"
-        f"- Application readiness reports: {len(readiness_reports)}\n",
+        f"- Application evidence-preparation reports: {len(readiness_reports)}\n",
     )
     files["README.md"] = summary.encode("utf-8")
 

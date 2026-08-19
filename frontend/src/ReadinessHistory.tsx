@@ -61,13 +61,13 @@ export function ReadinessHistory({
 
   return (
     <details className="readiness-history">
-      <summary>Readiness report history</summary>
+      <summary>Evidence-preparation report history</summary>
       <div className="readiness-history-actions">
         <button type="button" className="secondary" disabled={disabled || loading} onClick={loadHistory}>
-          {loading ? "Loading…" : "Load history"}
+          {loading ? "Loading…" : "Load evidence history"}
         </button>
         <button type="button" className="secondary" disabled={disabled || loading} onClick={refreshReadiness}>
-          Recalculate readiness
+          Refresh evidence preparation
         </button>
       </div>
       {history && history.length === 0 && <p>No readiness reports exist for {title}.</p>}
@@ -77,7 +77,7 @@ export function ReadinessHistory({
             <li key={entry.report_id}>
               <div>
                 <strong>{entry.is_current ? "Current report" : "Historical report"}</strong>
-                <span>{entry.priority} priority · {entry.readiness_score}/100</span>
+                <span>Evidence-preparation record</span>
               </div>
               <small>
                 {entry.engine_version} · {new Date(entry.created_at).toLocaleString()}

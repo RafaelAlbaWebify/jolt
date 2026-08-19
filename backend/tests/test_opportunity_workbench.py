@@ -48,9 +48,9 @@ def test_opportunity_workbench_exposes_evaluation_evidence(tmp_path) -> None:
     readiness = opportunity["readiness"]
     assert readiness["report_id"]
     assert readiness["profile_version_id"] == "rafael-job-search:v2"
-    assert readiness["engine_version"] == "application-readiness-v1"
-    assert readiness["priority"] in {"low", "medium", "high"}
-    assert 0 <= readiness["readiness_score"] <= 100
+    assert readiness["engine_version"] == "application-evidence-preparation-v2"
+    assert "priority" not in readiness
+    assert "readiness_score" not in readiness
     assert readiness["evidence_matches"]
     assert readiness["cv_tailoring_points"]
     assert readiness["interview_questions"]

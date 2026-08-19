@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from jolt.database import Base, Posting, utc_now
 
-READINESS_ENGINE_VERSION = "application-readiness-v1"
+READINESS_ENGINE_VERSION = "application-evidence-preparation-v2"
 PROFILE_VERSION_ID = "rafael-job-search:v2"
 
 
@@ -29,8 +29,6 @@ class ApplicationReadiness(Base):
 
 @dataclass(frozen=True)
 class ReadinessAnalysis:
-    priority: str
-    readiness_score: int
     evidence_matches: list[str]
     credibility_warnings: list[str]
     cv_tailoring_points: list[str]
@@ -41,8 +39,6 @@ class ReadinessAnalysis:
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "priority": self.priority,
-            "readiness_score": self.readiness_score,
             "evidence_matches": self.evidence_matches,
             "credibility_warnings": self.credibility_warnings,
             "cv_tailoring_points": self.cv_tailoring_points,
@@ -186,17 +182,6 @@ def analyze_readiness(posting: Posting) -> ReadinessAnalysis:
             "How would you troubleshoot an API or system-integration failure end to end?"
         )
 
-    score = min(
-        100,
-        35 + len(evidence_matches) * 12 + len(revision_topics) * 3 - len(warnings) * 8,
-    )
-    if len(evidence_matches) >= 4 and not warnings:
-        priority = "high"
-    elif len(evidence_matches) >= 2:
-        priority = "medium"
-    else:
-        priority = "low"
-
     checklist = [
         (
             "Confirm location, remote eligibility from Spain, contract type, salary, shifts, "
@@ -209,8 +194,6 @@ def analyze_readiness(posting: Posting) -> ReadinessAnalysis:
     ]
 
     return ReadinessAnalysis(
-        priority=priority,
-        readiness_score=max(0, score),
         evidence_matches=evidence_matches,
         credibility_warnings=warnings,
         cv_tailoring_points=cv_points,
@@ -240,8 +223,10 @@ def ensure_readiness_report(session: Session, posting: Posting) -> ApplicationRe
         posting_id=posting.id,
         profile_version_id=PROFILE_VERSION_ID,
         engine_version=READINESS_ENGINE_VERSION,
-        priority=analysis.priority,
-        readiness_score=analysis.readiness_score,
+        # Legacy non-null DB columns retained for schema compatibility only.
+        # They are deliberately neutral and are never exposed as career judgments.
+        priority="evidence_only",
+        readiness_score=0,
         report_json=json.dumps(analysis.as_dict(), sort_keys=True),
         created_at=utc_now(),
     )
@@ -252,6 +237,12 @@ def ensure_readiness_report(session: Session, posting: Posting) -> ApplicationRe
 
 def readiness_payload(report: ApplicationReadiness) -> dict[str, object]:
     payload = json.loads(report.report_json)
+
+    # Historical v1 rows may contain JOLT-authored ranking fields.
+    # Keep the stored evidence immutable but never expose those judgments at runtime.
+    payload.pop("priority", None)
+    payload.pop("readiness_score", None)
+
     payload.update(
         {
             "report_id": report.id,

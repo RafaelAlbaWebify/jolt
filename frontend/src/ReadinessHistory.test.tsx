@@ -29,9 +29,7 @@ describe("ReadinessHistory", () => {
           {
             report_id: "report-2",
             profile_version_id: "rafael-job-search:v2",
-            engine_version: "application-readiness-v1",
-            priority: "high",
-            readiness_score: 91,
+            engine_version: "application-evidence-preparation-v2",
             evidence_matches: [],
             credibility_warnings: [],
             cv_tailoring_points: [],
@@ -47,9 +45,7 @@ describe("ReadinessHistory", () => {
           {
             report_id: "report-1",
             profile_version_id: "rafael-job-search:v2",
-            engine_version: "application-readiness-v1",
-            priority: "medium",
-            readiness_score: 75,
+            engine_version: "application-evidence-preparation-v2",
             evidence_matches: [],
             credibility_warnings: [],
             cv_tailoring_points: [],
@@ -76,13 +72,14 @@ describe("ReadinessHistory", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Readiness report history"));
-    fireEvent.click(screen.getByRole("button", { name: "Recalculate readiness" }));
+    fireEvent.click(screen.getByText("Evidence-preparation report history"));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh evidence preparation" }));
 
     expect(await screen.findByText("Current report")).toBeInTheDocument();
     expect(screen.getByText("Historical report")).toBeInTheDocument();
-    expect(screen.getByText("high priority · 91/100")).toBeInTheDocument();
-    expect(screen.getByText("medium priority · 75/100")).toBeInTheDocument();
+    expect(screen.getAllByText("Evidence-preparation record")).toHaveLength(2);
+    expect(screen.queryByText(/priority/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\/100/)).not.toBeInTheDocument();
     expect(onRefreshed).toHaveBeenCalledOnce();
     expect(onError).toHaveBeenCalledWith("");
   });

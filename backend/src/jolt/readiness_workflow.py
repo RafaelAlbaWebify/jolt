@@ -60,8 +60,9 @@ def refresh_readiness_report(session: Session, posting_id: str) -> dict[str, obj
         posting_id=posting.id,
         profile_version_id=PROFILE_VERSION_ID,
         engine_version=READINESS_ENGINE_VERSION,
-        priority=analysis.priority,
-        readiness_score=analysis.readiness_score,
+        # Legacy non-null DB columns retained for schema compatibility only.
+        priority="evidence_only",
+        readiness_score=0,
         report_json=json.dumps(report_data, sort_keys=True),
         created_at=utc_now(),
     )

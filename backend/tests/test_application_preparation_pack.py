@@ -40,6 +40,9 @@ def test_application_preparation_pack_contains_evidence_and_boundaries(tmp_path)
         }
         markdown = archive.read("application-preparation.md").decode("utf-8")
         assert "Application Support Engineer" in markdown
+        assert "Evidence preparation" in markdown
+        assert "Priority:" not in markdown
+        assert "Score:" not in markdown
         assert "CV tailoring points" in markdown
         assert "Likely interview questions" in markdown
         assert "No application, CV edit, or recruiter contact was performed" in archive.read(
