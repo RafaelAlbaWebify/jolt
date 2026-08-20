@@ -315,3 +315,55 @@ def test_spain_work_authorization_does_not_trigger_foreign_blocker() -> None:
     )
 
     assert result == original
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "Remote Americas only",
+        "Americas (Remote)",
+        "North America Remote",
+        "LATAM Remote",
+        "Latin America",
+        "APAC Remote",
+        "Asia Pacific Remote",
+        "Asia-Pacific",
+    ),
+)
+def test_explicit_incompatible_remote_regions_are_ineligible(location: str) -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location=location,
+        description="Remote technical support role.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+
+
+def test_compatible_region_wins_when_mixed_with_apac() -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Application Support Engineer",
+        location="Europe / APAC",
+        description="Remote support position.",
+    )
+
+    assert result == original
+
+
+def test_emea_is_blocked_by_specific_germany_work_authorization() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Application Support Engineer",
+        location="EMEA Remote",
+        description="Applicants must be legally authorized to work in Germany.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
