@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Evaluation, Posting, ProfileVersion, utc_now
+from jolt.employment_geography import FOREIGN_COUNTRY_TERMS, normalized_location_scope
 from jolt.evaluation_strategy import (
     StrategyAssessment,
     StrategyProfile,
@@ -121,100 +122,8 @@ _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS = (
     "pamplona",
 )
 
-_FOREIGN_COUNTRY_LOCATION_TERMS = (
-    "austria",
-    "belgium",
-    "bulgaria",
-    "croatia",
-    "cyprus",
-    "czechia",
-    "czech republic",
-    "denmark",
-    "estonia",
-    "finland",
-    "france",
-    "germany",
-    "greece",
-    "hungary",
-    "ireland",
-    "italy",
-    "latvia",
-    "lithuania",
-    "luxembourg",
-    "netherlands",
-    "norway",
-    "poland",
-    "portugal",
-    "romania",
-    "slovakia",
-    "slovenia",
-    "sweden",
-    "switzerland",
-    "united kingdom",
-    "uk",
-    "united states",
-    "united states of america",
-    "usa",
-    "u.s.",
-    "u.s.a.",
-)
-
-_US_STATE_ABBREVIATIONS = (
-    "al",
-    "ak",
-    "az",
-    "ar",
-    "ca",
-    "co",
-    "ct",
-    "de",
-    "fl",
-    "ga",
-    "hi",
-    "id",
-    "il",
-    "in",
-    "ia",
-    "ks",
-    "ky",
-    "la",
-    "me",
-    "md",
-    "ma",
-    "mi",
-    "mn",
-    "ms",
-    "mo",
-    "mt",
-    "ne",
-    "nv",
-    "nh",
-    "nj",
-    "nm",
-    "ny",
-    "nc",
-    "nd",
-    "oh",
-    "ok",
-    "or",
-    "pa",
-    "ri",
-    "sc",
-    "sd",
-    "tn",
-    "tx",
-    "ut",
-    "vt",
-    "va",
-    "wa",
-    "wv",
-    "wi",
-    "wy",
-    "dc",
-)
-
 _FOREIGN_RESIDENCE_PATTERN = (
-    "(?:" + "|".join(re.escape(location) for location in _FOREIGN_COUNTRY_LOCATION_TERMS) + ")"
+    "(?:" + "|".join(re.escape(location) for location in FOREIGN_COUNTRY_TERMS) + ")"
 )
 
 _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS = (
@@ -381,22 +290,7 @@ def _remove_unsubstantiated_people_management_gap(
 
 
 def _normalized_location_scope(location: str) -> str:
-    normalized = " ".join(location.casefold().split())
-
-    if any(term in normalized for term in _SPAIN_LOCATION_TERMS):
-        return "spain"
-
-    if any(term in normalized for term in _BROAD_REMOTE_LOCATION_TERMS):
-        return "broad"
-
-    if any(term in normalized for term in _FOREIGN_COUNTRY_LOCATION_TERMS):
-        return "foreign_country"
-
-    state_pattern = r",\s*(?:" + "|".join(_US_STATE_ABBREVIATIONS) + r")(?:\b|$)"
-    if re.search(state_pattern, normalized):
-        return "foreign_country"
-
-    return "unknown"
+    return normalized_location_scope(location)
 
 
 def _has_explicit_foreign_residence_requirement(text: str) -> bool:

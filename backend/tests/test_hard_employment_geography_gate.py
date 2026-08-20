@@ -1,5 +1,10 @@
+import pytest
+
 from jolt.evaluation_strategy import StrategyAssessment
-from jolt.strategy_runtime import _apply_location_eligibility
+from jolt.strategy_runtime import (
+    _apply_location_eligibility,
+    _normalized_location_scope,
+)
 
 
 def _assessment() -> StrategyAssessment:
@@ -121,3 +126,94 @@ def test_explicit_global_b2b_overrides_foreign_location() -> None:
         )
         == original
     )
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "Canada (Remote)",
+        "Australia (Remote)",
+        "India (Remote)",
+        "Singapore (Remote)",
+        "Japan (Remote)",
+        "Mexico (Remote)",
+        "Brazil (Remote)",
+        "South Africa (Remote)",
+        "United Arab Emirates (Remote)",
+        "New Zealand (Remote)",
+        "Argentina (Remote)",
+        "South Korea (Remote)",
+    ),
+)
+def test_global_country_matrix_is_hard_blocked_without_spain_evidence(
+    location: str,
+) -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location=location,
+        description="Fully remote technical support position.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "Spain / Portugal (Remote)",
+        "United States / Canada / EMEA",
+        "Europe (Remote)",
+        "European Union (Remote)",
+        "Worldwide Remote",
+        "Global Remote",
+    ),
+)
+def test_explicit_spain_compatible_scope_wins_in_mixed_geography(
+    location: str,
+) -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Technical Support Engineer",
+        location=location,
+        description="Remote technical support role.",
+    )
+
+    assert result == original
+
+
+def test_country_matching_uses_boundaries_not_substrings() -> None:
+    assert _normalized_location_scope("India (Remote)") == "foreign_country"
+    assert _normalized_location_scope("Indianapolis") == "unknown"
+    assert _normalized_location_scope("China (Remote)") == "foreign_country"
+    assert _normalized_location_scope("Chinatown") == "unknown"
+
+
+def test_foreign_country_becomes_allowed_with_explicit_spain_permission() -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Application Support Engineer",
+        location="Canada (Remote)",
+        description="Candidates based in Spain may work remotely in this position.",
+    )
+
+    assert result == original
+
+
+def test_bare_remote_stays_confirmation_not_automatic_permission() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Application Support Engineer",
+        location="Remote",
+        description="Fully remote position.",
+    )
+
+    assert result.eligibility == "eligible_with_conditions"
+    assert result.recommendation == "pursue_if_condition_met"
+    assert result.confidence == "low"
