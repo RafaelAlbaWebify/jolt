@@ -507,3 +507,101 @@ def test_legacy_uncertainty_does_not_prevent_madrid_rejection(
     assert any(
         "outside the configured 30 km local radius" in blocker for blocker in assessment.blockers
     )
+
+
+def test_structured_madrid_hybrid_location_is_ineligible(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain (Hybrid)",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "outside the configured 30 km local radius" in blocker for blocker in assessment.blockers
+    )
+
+
+def test_structured_barcelona_onsite_location_is_ineligible(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Barcelona, Spain · On-site",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+
+
+def test_structured_vigo_hybrid_location_remains_actionable(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Vigo, Galicia, Spain (Hybrid)",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_structured_remote_location_does_not_trigger_radius_block(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain (Remote)",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_location_remote_and_description_hybrid_is_conflicting_evidence(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain (Remote)",
+        description=(
+            "This is a hybrid role with advanced troubleshooting for enterprise customers."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any(
+        "conflicting explicit remote and hybrid/onsite evidence" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_hybrid_infrastructure_still_does_not_become_work_mode(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=(
+            "Support enterprise hybrid infrastructure and cloud services. "
+            "No workplace mode is stated."
+        ),
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any("local radius" in blocker for blocker in assessment.blockers)

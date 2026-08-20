@@ -60,18 +60,24 @@ _EXPLICIT_REMOTE_WORK_PATTERNS = (
     r"\bremote\s+(?:role|position|work|working|arrangement)\b",
     r"\bthis\s+role\s+is\s+remote\b",
     r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*remote\b",
+    r"\(\s*remote\s*\)",
+    r"(?m)(?:^|[·|/,])\s*remote\s*$",
 )
 
 _EXPLICIT_HYBRID_WORK_PATTERNS = (
     r"(?im)^\s*hybrid\s*$",
     r"\bhybrid\s+(?:role|position|work|working|schedule|arrangement)\b",
     r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*hybrid\b",
+    r"\(\s*hybrid\s*\)",
+    r"(?m)(?:^|[·|/,])\s*hybrid\s*$",
 )
 
 _EXPLICIT_ONSITE_WORK_PATTERNS = (
     r"(?im)^\s*(?:on[- ]?site|onsite)\s*$",
     r"\b(?:on[- ]?site|onsite)\s+(?:role|position|work|working|requirement)\b",
     r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*(?:on[- ]?site|onsite)\b",
+    r"\(\s*(?:on[- ]?site|onsite)\s*\)",
+    r"(?m)(?:^|[·|/,])\s*(?:on[- ]?site|onsite)\s*$",
 )
 
 _VIGO_LOCAL_LOCATION_TERMS = (
@@ -378,7 +384,7 @@ def _apply_local_work_mode_eligibility(
         return assessment
 
     preferences = load_job_search_preferences()
-    evidence_text = "\n".join((title, description))
+    evidence_text = "\n".join((title, location, description))
     work_mode = _explicit_work_mode(evidence_text)
 
     if work_mode is None or work_mode == "remote":
