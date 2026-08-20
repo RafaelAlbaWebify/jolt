@@ -25,7 +25,6 @@ BROAD_SPAIN_COMPATIBLE_TERMS = (
     "worldwide",
     "global",
     "anywhere",
-    "international",
     "european union",
     "europe",
     "emea",

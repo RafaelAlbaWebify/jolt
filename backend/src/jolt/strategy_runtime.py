@@ -449,17 +449,42 @@ def _apply_local_work_mode_eligibility(
 
 def _has_explicit_cross_border_eligibility(text: str) -> bool:
     normalized = " ".join(text.casefold().split())
-    patterns = (
+
+    # Negative statements take precedence over positive-looking wording.
+    negative_patterns = (
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:are|may be|can be)\s+not\s+(?:eligible|accepted|considered|hired)\b",
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:are not|aren't)\s+(?:eligible|accepted|considered|hired)\b",
+        r"\b(?:cannot|can't|may not|must not)\s+work(?:\s+remotely)?\s+from\s+spain\b",
+        r"\bspain\s+(?:is\s+)?(?:not|isn't)\s+"
+        r"(?:eligible|supported|available|permitted|allowed)\b",
+        r"\b(?:no|without)\s+(?:hiring|employment|contracting)\s+in\s+spain\b",
+        r"\b(?:exclude|excluding|excluded)\s+"
+        r"(?:candidates|applicants|residents)?\s*(?:from|in)?\s*spain\b",
+    )
+
+    if any(re.search(pattern, normalized) for pattern in negative_patterns):
+        return False
+
+    positive_patterns = (
         r"\bremote\s+(?:worldwide|globally|internationally)\b",
         r"\bwork\s+from\s+anywhere\b",
         r"\b(?:available|open)\s+(?:across|throughout|within)\s+"
         r"(?:emea|europe|the european union|eu)\b",
-        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain\b",
-        r"\b(?:work|working)\s+(?:remotely\s+)?from\s+spain\b",
-        r"\b(?:hiring|hire|employment)\s+in\s+spain\b",
-        r"\binternational\s+(?:b2b|contractor|contracting)\b",
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:(?:are|may be|can be)\s+"
+        r"(?:eligible|accepted|considered|hired)"
+        r"|(?:may|can)\s+work(?:\s+remotely)?)\b",
+        r"\b(?:may|can|are permitted to|are allowed to)\s+"
+        r"(?:work|work remotely)\s+from\s+spain\b",
+        r"\b(?:hiring|hire|employment)\s+(?:is\s+)?"
+        r"(?:available|supported|permitted)\s+in\s+spain\b",
+        r"\binternational\s+(?:b2b|contractor|contracting)\s+"
+        r"(?:is\s+)?(?:supported|available|permitted|accepted)\b",
     )
-    return any(re.search(item, normalized) for item in patterns)
+
+    return any(re.search(pattern, normalized) for pattern in positive_patterns)
 
 
 def _apply_location_eligibility(

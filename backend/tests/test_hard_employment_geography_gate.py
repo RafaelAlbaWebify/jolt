@@ -217,3 +217,48 @@ def test_bare_remote_stays_confirmation_not_automatic_permission() -> None:
     assert result.eligibility == "eligible_with_conditions"
     assert result.recommendation == "pursue_if_condition_met"
     assert result.confidence == "low"
+
+
+def test_negative_spain_statement_never_grants_cross_border_permission() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location="Canada (Remote)",
+        description="Candidates based in Spain are not eligible for this position.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+
+
+def test_negative_spain_work_statement_never_grants_permission() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location="United States (Remote)",
+        description="Employees may not work remotely from Spain.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+
+
+def test_positive_spain_permission_requires_actual_permission_language() -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Technical Support Engineer",
+        location="Canada (Remote)",
+        description="Candidates based in Spain are eligible for this position.",
+    )
+
+    assert result == original
+
+
+def test_international_falls_is_not_global_scope() -> None:
+    assert _normalized_location_scope("International Falls, MN") == "foreign_country"
+
+
+def test_generic_international_location_is_not_automatic_permission() -> None:
+    assert _normalized_location_scope("International") == "unknown"
