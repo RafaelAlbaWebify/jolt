@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Evaluation, Posting, ProfileVersion, utc_now
+from jolt.employment_geography import FOREIGN_COUNTRY_TERMS, normalized_location_scope
 from jolt.evaluation_strategy import (
     StrategyAssessment,
     StrategyProfile,
@@ -121,100 +122,8 @@ _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS = (
     "pamplona",
 )
 
-_FOREIGN_COUNTRY_LOCATION_TERMS = (
-    "austria",
-    "belgium",
-    "bulgaria",
-    "croatia",
-    "cyprus",
-    "czechia",
-    "czech republic",
-    "denmark",
-    "estonia",
-    "finland",
-    "france",
-    "germany",
-    "greece",
-    "hungary",
-    "ireland",
-    "italy",
-    "latvia",
-    "lithuania",
-    "luxembourg",
-    "netherlands",
-    "norway",
-    "poland",
-    "portugal",
-    "romania",
-    "slovakia",
-    "slovenia",
-    "sweden",
-    "switzerland",
-    "united kingdom",
-    "uk",
-    "united states",
-    "united states of america",
-    "usa",
-    "u.s.",
-    "u.s.a.",
-)
-
-_US_STATE_ABBREVIATIONS = (
-    "al",
-    "ak",
-    "az",
-    "ar",
-    "ca",
-    "co",
-    "ct",
-    "de",
-    "fl",
-    "ga",
-    "hi",
-    "id",
-    "il",
-    "in",
-    "ia",
-    "ks",
-    "ky",
-    "la",
-    "me",
-    "md",
-    "ma",
-    "mi",
-    "mn",
-    "ms",
-    "mo",
-    "mt",
-    "ne",
-    "nv",
-    "nh",
-    "nj",
-    "nm",
-    "ny",
-    "nc",
-    "nd",
-    "oh",
-    "ok",
-    "or",
-    "pa",
-    "ri",
-    "sc",
-    "sd",
-    "tn",
-    "tx",
-    "ut",
-    "vt",
-    "va",
-    "wa",
-    "wv",
-    "wi",
-    "wy",
-    "dc",
-)
-
 _FOREIGN_RESIDENCE_PATTERN = (
-    "(?:" + "|".join(re.escape(location) for location in _FOREIGN_COUNTRY_LOCATION_TERMS) + ")"
+    "(?:" + "|".join(re.escape(location) for location in FOREIGN_COUNTRY_TERMS) + ")"
 )
 
 _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS = (
@@ -381,22 +290,7 @@ def _remove_unsubstantiated_people_management_gap(
 
 
 def _normalized_location_scope(location: str) -> str:
-    normalized = " ".join(location.casefold().split())
-
-    if any(term in normalized for term in _SPAIN_LOCATION_TERMS):
-        return "spain"
-
-    if any(term in normalized for term in _BROAD_REMOTE_LOCATION_TERMS):
-        return "broad"
-
-    if any(term in normalized for term in _FOREIGN_COUNTRY_LOCATION_TERMS):
-        return "foreign_country"
-
-    state_pattern = r",\s*(?:" + "|".join(_US_STATE_ABBREVIATIONS) + r")(?:\b|$)"
-    if re.search(state_pattern, normalized):
-        return "foreign_country"
-
-    return "unknown"
+    return normalized_location_scope(location)
 
 
 def _has_explicit_foreign_residence_requirement(text: str) -> bool:
@@ -553,6 +447,46 @@ def _apply_local_work_mode_eligibility(
     return assessment
 
 
+def _has_explicit_cross_border_eligibility(text: str) -> bool:
+    normalized = " ".join(text.casefold().split())
+
+    # Negative statements take precedence over positive-looking wording.
+    negative_patterns = (
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:are|may be|can be)\s+not\s+(?:eligible|accepted|considered|hired)\b",
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:are not|aren't)\s+(?:eligible|accepted|considered|hired)\b",
+        r"\b(?:cannot|can't|may not|must not)\s+work(?:\s+remotely)?\s+from\s+spain\b",
+        r"\bspain\s+(?:is\s+)?(?:not|isn't)\s+"
+        r"(?:eligible|supported|available|permitted|allowed)\b",
+        r"\b(?:no|without)\s+(?:hiring|employment|contracting)\s+in\s+spain\b",
+        r"\b(?:exclude|excluding|excluded)\s+"
+        r"(?:candidates|applicants|residents)?\s*(?:from|in)?\s*spain\b",
+    )
+
+    if any(re.search(pattern, normalized) for pattern in negative_patterns):
+        return False
+
+    positive_patterns = (
+        r"\bremote\s+(?:worldwide|globally|internationally)\b",
+        r"\bwork\s+from\s+anywhere\b",
+        r"\b(?:available|open)\s+(?:across|throughout|within)\s+"
+        r"(?:emea|europe|the european union|eu)\b",
+        r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
+        r"\s+(?:(?:are|may be|can be)\s+"
+        r"(?:eligible|accepted|considered|hired)"
+        r"|(?:may|can)\s+work(?:\s+remotely)?)\b",
+        r"\b(?:may|can|are permitted to|are allowed to)\s+"
+        r"(?:work|work remotely)\s+from\s+spain\b",
+        r"\b(?:hiring|hire|employment)\s+(?:is\s+)?"
+        r"(?:available|supported|permitted)\s+in\s+spain\b",
+        r"\binternational\s+(?:b2b|contractor|contracting)\s+"
+        r"(?:is\s+)?(?:supported|available|permitted|accepted)\b",
+    )
+
+    return any(re.search(pattern, normalized) for pattern in positive_patterns)
+
+
 def _apply_location_eligibility(
     assessment: StrategyAssessment,
     *,
@@ -586,29 +520,58 @@ def _apply_location_eligibility(
             blockers=blockers,
         )
 
-    if scope != "foreign_country":
-        return assessment
+    if scope == "foreign_country":
+        if _has_explicit_cross_border_eligibility(combined_text):
+            return assessment
 
-    uncertainties = tuple(
-        dict.fromkeys(
-            [
-                *assessment.uncertainties,
-                (
-                    "Location eligibility: the vacancy is advertised as remote "
-                    "from another specific country; cross-border employment from "
-                    "Spain has not been confirmed."
-                ),
-            ]
+        blockers = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.blockers,
+                    (
+                        "Location eligibility: the vacancy is explicitly tied to "
+                        f"{location or 'another specific country'}, and the posting "
+                        "does not establish that employment from Spain is permitted."
+                    ),
+                ]
+            )
         )
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            blockers=blockers,
+        )
+
+    normalized_location = " ".join(location.casefold().split())
+    explicit_remote = (
+        normalized_location in {"remote", "fully remote", "100% remote"}
+        or _explicit_work_mode(combined_text) == "remote"
     )
 
-    return replace(
-        assessment,
-        eligibility="eligible_with_conditions",
-        recommendation="pursue_if_condition_met",
-        confidence="low",
-        uncertainties=uncertainties,
-    )
+    if scope == "unknown" and explicit_remote:
+        uncertainties = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.uncertainties,
+                    (
+                        "Location eligibility: the vacancy is remote but does not "
+                        "state an employment geography or explicitly confirm that "
+                        "employment from Spain is permitted."
+                    ),
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            uncertainties=uncertainties,
+        )
+
+    return assessment
 
 
 def _apply_saved_preferences(

@@ -37,7 +37,7 @@ def test_location_scope_recognizes_spain_and_broad_regions() -> None:
     assert _normalized_location_scope("EMEA (Remote)") == "broad"
 
 
-def test_foreign_country_remote_role_becomes_conditional() -> None:
+def test_foreign_country_remote_role_is_ineligible_without_cross_border_evidence() -> None:
     result = _apply_location_eligibility(
         _assessment(),
         title="Technical Support Specialist",
@@ -45,10 +45,13 @@ def test_foreign_country_remote_role_becomes_conditional() -> None:
         description="Remote technical support role.",
     )
 
-    assert result.eligibility == "eligible_with_conditions"
-    assert result.recommendation == "pursue_if_condition_met"
-    assert result.confidence == "low"
-    assert any("cross-border employment from Spain" in item for item in result.uncertainties)
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+    assert any(
+        "does not establish that employment from Spain is permitted" in item
+        for item in result.blockers
+    )
 
 
 def test_spain_remote_role_remains_actionable() -> None:
