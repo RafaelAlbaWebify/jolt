@@ -262,3 +262,108 @@ def test_international_falls_is_not_global_scope() -> None:
 
 def test_generic_international_location_is_not_automatic_permission() -> None:
     assert _normalized_location_scope("International") == "unknown"
+
+
+def test_broad_region_is_blocked_by_foreign_legal_work_authorization() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location="EMEA (Remote)",
+        description="Applicants must be legally authorized to work in Germany.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+
+
+def test_broad_region_is_blocked_by_existing_us_authorization_requirement() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Application Support Engineer",
+        location="Remote Europe",
+        description=(
+            "Candidates must already be authorized to work in the "
+            "United States. Sponsorship is not available."
+        ),
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+
+
+def test_foreign_eligibility_to_work_requirement_is_blocking() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Support Engineer",
+        location="Europe",
+        description="You must be eligible to work in the United Kingdom.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+
+
+def test_spain_work_authorization_does_not_trigger_foreign_blocker() -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Technical Support Engineer",
+        location="Spain (Remote)",
+        description="Applicants must be legally authorized to work in Spain.",
+    )
+
+    assert result == original
+
+
+@pytest.mark.parametrize(
+    "location",
+    (
+        "Remote Americas only",
+        "Americas (Remote)",
+        "North America Remote",
+        "LATAM Remote",
+        "Latin America",
+        "APAC Remote",
+        "Asia Pacific Remote",
+        "Asia-Pacific",
+    ),
+)
+def test_explicit_incompatible_remote_regions_are_ineligible(location: str) -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Technical Support Engineer",
+        location=location,
+        description="Remote technical support role.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"
+
+
+def test_compatible_region_wins_when_mixed_with_apac() -> None:
+    original = _assessment()
+
+    result = _apply_location_eligibility(
+        original,
+        title="Application Support Engineer",
+        location="Europe / APAC",
+        description="Remote support position.",
+    )
+
+    assert result == original
+
+
+def test_emea_is_blocked_by_specific_germany_work_authorization() -> None:
+    result = _apply_location_eligibility(
+        _assessment(),
+        title="Application Support Engineer",
+        location="EMEA Remote",
+        description="Applicants must be legally authorized to work in Germany.",
+    )
+
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+    assert result.confidence == "high"

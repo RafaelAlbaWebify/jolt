@@ -31,6 +31,16 @@ BROAD_SPAIN_COMPATIBLE_TERMS = (
     "eu remote",
 )
 
+INCOMPATIBLE_REGION_TERMS = (
+    "americas",
+    "north america",
+    "latin america",
+    "latam",
+    "apac",
+    "asia pacific",
+    "asia-pacific",
+)
+
 # Country names and common hiring-location aliases.
 #
 # Spain is intentionally excluded because it has its own positive scope.
@@ -323,18 +333,22 @@ def _contains_term(text: str, terms: tuple[str, ...]) -> bool:
 def normalized_location_scope(location: str) -> str:
     normalized = " ".join(location.casefold().split())
 
-    # Positive evidence deliberately wins for mixed eligible scopes:
+    # Explicit Spain-compatible evidence wins for mixed scopes:
     #
     #   Spain / Portugal       -> Spain is explicitly available
     #   US / Canada / EMEA     -> EMEA explicitly includes Spain
+    #   Europe / APAC          -> Europe explicitly includes Spain
     #
-    # A specific foreign location without one of these positive signals
-    # remains foreign-country-only evidence.
+    # An explicitly incompatible region or specific foreign location
+    # without positive Spain-compatible evidence is foreign-only.
     if _contains_term(normalized, SPAIN_LOCATION_TERMS):
         return "spain"
 
     if _contains_term(normalized, BROAD_SPAIN_COMPATIBLE_TERMS):
         return "broad"
+
+    if _contains_term(normalized, INCOMPATIBLE_REGION_TERMS):
+        return "foreign_country"
 
     if _contains_term(normalized, FOREIGN_COUNTRY_TERMS):
         return "foreign_country"

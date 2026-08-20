@@ -127,17 +127,30 @@ _FOREIGN_RESIDENCE_PATTERN = (
 )
 
 _EXPLICIT_FOREIGN_RESIDENCE_PATTERNS = (
-    rf"\bmust\s+(?:already\s+)?(?:live|reside|be based)\s+in\s+"
+    rf"\bmust\s+(?:already\s+)?(?:live|reside|be based)\s+in\s+(?:the\s+)?"
     rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
     rf"\bonly\s+(?:open|available)\s+to\s+(?:candidates|applicants)\s+"
-    rf"(?:living|resident|based)\s+in\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
-    rf"\brequires?\s+(?:current\s+)?(?:residence|residency)\s+in\s+"
+    rf"(?:living|resident|based)\s+in\s+(?:the\s+)?"
     rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
-    rf"\bwork\s+authori[sz]ation\s+(?:is\s+)?required\s+in\s+"
+    rf"\brequires?\s+(?:current\s+)?(?:residence|residency)\s+in\s+(?:the\s+)?"
     rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
-    rf"\bright\s+to\s+work\s+in\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
-    rf"\bremote\s+(?:only\s+)?within\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
-    rf"\bremote\s+from\s+{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bwork\s+authori[sz]ation\s+(?:is\s+)?required\s+in\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bright\s+to\s+work\s+in\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\b(?:must|required\s+to)\s+(?:already\s+)?(?:be\s+)?"
+    rf"(?:legally\s+)?authori[sz]ed\s+to\s+work\s+in\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\b(?:must|required\s+to)\s+(?:already\s+)?(?:be\s+)?"
+    rf"(?:legally\s+)?eligible\s+to\s+work\s+in\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\b(?:candidates|applicants|employees)\s+must\s+(?:already\s+)?"
+    rf"(?:be\s+)?(?:legally\s+)?authori[sz]ed\s+to\s+work\s+in\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+(?:only\s+)?within\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
+    rf"\bremote\s+from\s+(?:the\s+)?"
+    rf"{_FOREIGN_RESIDENCE_PATTERN}\b",
 )
 
 _EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS = (
