@@ -202,3 +202,28 @@ def test_different_companies_with_only_generic_similarity_remain_separate() -> N
     )
 
     assert len(groups) == 2
+
+
+def test_conditional_state_cannot_promote_do_not_pursue() -> None:
+    assessment = StrategyAssessment(
+        eligibility="eligible_with_conditions",
+        recommendation="do_not_pursue",
+        confidence="high",
+        role_family_id="data_ml",
+        fit_now=30,
+        fit_by_interview=40,
+        fit_on_the_job=45,
+        interview_days=10,
+        estimated_preparation_hours=0,
+        dimensions={},
+        strengths=(),
+        gaps=(),
+        blockers=("Excluded role family: Data / ML Engineering.",),
+        uncertainties=("Remote employment geography needs confirmation.",),
+        preparation_plan=(),
+    )
+
+    calibrated = _calibrate_interview_uplift(assessment)
+
+    assert calibrated.recommendation == "do_not_pursue"
+    assert calibrated.confidence == "high"

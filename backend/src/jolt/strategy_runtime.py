@@ -342,7 +342,44 @@ def _location_contains_term(location: str, terms: tuple[str, ...]) -> bool:
     return any(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized) for term in terms)
 
 
+def _has_explicit_spain_geography(text: str) -> bool:
+    normalized = " ".join(text.casefold().split())
+
+    negative_patterns = (
+        r"\b(?:candidates|applicants|employees)\s+"
+        r"(?:based|located|resident)?\s*(?:in|from)?\s*spain\s+"
+        r"(?:are|may be|can be)?\s*not\s+"
+        r"(?:eligible|accepted|considered|hired|permitted)\b",
+        r"\b(?:candidates|applicants|employees)\s+"
+        r"(?:based|located|resident)?\s*(?:in|from)?\s*spain\s+"
+        r"(?:are not|aren't)\s+"
+        r"(?:eligible|accepted|considered|hired|permitted)\b",
+        r"\b(?:cannot|can't|may not|must not)\s+"
+        r"work(?:\s+remotely)?\s+from\s+spain\b",
+        r"\bspain\s+(?:is\s+)?(?:not|isn't)\s+"
+        r"(?:eligible|supported|available|permitted|allowed)\b",
+        r"\b(?:no|without)\s+"
+        r"(?:hiring|employment|contracting)\s+in\s+spain\b",
+        r"\b(?:exclude|excluding|excluded)\s+"
+        r"(?:candidates|applicants|employees|residents)?\s*"
+        r"(?:from|in)?\s*spain\b",
+    )
+
+    if any(re.search(pattern, normalized) for pattern in negative_patterns):
+        return False
+
+    return any(
+        re.search(pattern, normalized)
+        for pattern in (
+            r"(?<!\w)spain(?!\w)",
+            r"(?<!\w)españa(?!\w)",
+            r"(?<!\w)espana(?!\w)",
+        )
+    )
+
+
 _LEGACY_LOCAL_WORK_MODE_UNCERTAINTY_PREFIX = "Onsite or hybrid work requires confirmation "
+_LEGACY_REMOTE_WORK_UNCERTAINTY_PREFIX = "Remote work is suitable when the employer can contract "
 
 
 def _remove_legacy_local_work_mode_uncertainty(
@@ -352,6 +389,34 @@ def _remove_legacy_local_work_mode_uncertainty(
         uncertainty
         for uncertainty in assessment.uncertainties
         if not uncertainty.startswith(_LEGACY_LOCAL_WORK_MODE_UNCERTAINTY_PREFIX)
+    )
+
+    if retained == assessment.uncertainties:
+        return assessment
+
+    eligibility = assessment.eligibility
+
+    if (
+        eligibility in {"uncertain", "eligible_with_conditions"}
+        and not retained
+        and not assessment.blockers
+    ):
+        eligibility = "eligible"
+
+    return replace(
+        assessment,
+        eligibility=eligibility,
+        uncertainties=retained,
+    )
+
+
+def _remove_legacy_remote_work_uncertainty(
+    assessment: StrategyAssessment,
+) -> StrategyAssessment:
+    retained = tuple(
+        uncertainty
+        for uncertainty in assessment.uncertainties
+        if not uncertainty.startswith(_LEGACY_REMOTE_WORK_UNCERTAINTY_PREFIX)
     )
 
     if retained == assessment.uncertainties:
@@ -418,8 +483,9 @@ def _apply_local_work_mode_eligibility(
         location,
         _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS,
     )
+    explicit_spain_option = _has_explicit_spain_geography(title)
 
-    if clearly_distant or scope == "foreign_country":
+    if clearly_distant or (scope == "foreign_country" and not explicit_spain_option):
         blockers = tuple(
             dict.fromkeys(
                 [
@@ -441,7 +507,11 @@ def _apply_local_work_mode_eligibility(
             blockers=blockers,
         )
 
-    if scope == "spain" or not location.strip():
+    if (
+        scope == "spain"
+        or not location.strip()
+        or (scope == "foreign_country" and explicit_spain_option)
+    ):
         uncertainties = tuple(
             dict.fromkeys(
                 [
@@ -539,8 +609,10 @@ def _apply_location_eligibility(
             blockers=blockers,
         )
 
+    explicit_spain_option = _has_explicit_spain_geography(title)
+
     if scope == "foreign_country":
-        if _has_explicit_cross_border_eligibility(combined_text):
+        if explicit_spain_option or _has_explicit_cross_border_eligibility(combined_text):
             return assessment
 
         blockers = tuple(
@@ -562,6 +634,9 @@ def _apply_location_eligibility(
             confidence="high",
             blockers=blockers,
         )
+
+    if scope == "spain":
+        assessment = _remove_legacy_remote_work_uncertainty(assessment)
 
     normalized_location = " ".join(location.casefold().split())
     explicit_remote = (
@@ -637,6 +712,12 @@ def _calibrate_interview_uplift(assessment: StrategyAssessment) -> StrategyAsses
     capped_interview = min(assessment.fit_by_interview, assessment.fit_now + 10)
     recommendation = assessment.recommendation
     confidence = assessment.confidence
+
+    if recommendation == "do_not_pursue":
+        return replace(
+            assessment,
+            fit_by_interview=capped_interview,
+        )
 
     if assessment.eligibility in {"uncertain", "eligible_with_conditions"}:
         recommendation = "pursue_if_condition_met"
