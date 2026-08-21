@@ -605,3 +605,98 @@ def test_hybrid_infrastructure_still_does_not_become_work_mode(monkeypatch) -> N
 
     assert assessment.eligibility != "ineligible"
     assert not any("local radius" in blocker for blocker in assessment.blockers)
+
+
+def test_explicit_spain_remote_removes_obsolete_contracting_uncertainty(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-remote-contracting",
+            label=(
+                "Remote work is suitable when the employer can contract "
+                "Rafael from Spain or through his Irish limited company"
+            ),
+            terms=["remote"],
+            outcome="eligible_with_conditions",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Remote Data Annotator Jobs Barcelona",
+        location="Barcelona, Catalonia, Spain",
+        description="Remote role with advanced troubleshooting.",
+    )
+
+    assert assessment.eligibility == "eligible"
+    assert not any(
+        uncertainty.startswith("Remote work is suitable when the employer can contract ")
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_mixed_country_hybrid_with_explicit_spain_is_not_portugal_only(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Innovative Project Planner - Italy, Portugal, Spain (Hybrid)",
+        location="Portugal",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert not any(
+        "vacancy is explicitly tied to Portugal" in blocker for blocker in assessment.blockers
+    )
+    assert any(
+        "within the configured 30 km radius" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_mixed_country_remote_with_explicit_spain_is_not_foreign_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer - Portugal / Spain (Remote)",
+        location="Portugal",
+        description="Advanced troubleshooting for enterprise customers.",
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any(
+        "vacancy is explicitly tied to Portugal" in blocker for blocker in assessment.blockers
+    )
+
+
+def test_incidental_spain_description_does_not_override_foreign_scope(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Portugal",
+        description=(
+            "Remote role based in Portugal. "
+            "Provide troubleshooting support to customers in Spain and France."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "vacancy is explicitly tied to Portugal" in blocker for blocker in assessment.blockers
+    )
