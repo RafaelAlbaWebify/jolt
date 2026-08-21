@@ -133,3 +133,49 @@ def test_opportunity_index_orders_actionable_roles_before_blocked_roles() -> Non
 
     ordered = sorted([blocked, viable, strong], key=_opportunity_sort_key)
     assert [item.posting_id for item in ordered] == ["strong", "viable", "blocked"]
+
+
+def test_european_internal_wording_is_not_an_internship(monkeypatch) -> None:
+    monkeypatch.setattr(
+        preference_module,
+        "load_job_search_preferences",
+        _preferences,
+    )
+
+    dutch = preference_module.preference_blockers(
+        "IT Field Service Technician. Minimaal 5-7 jaar ervaring. "
+        "Binnen Honeywell zijn hiervoor zowel intern als extern "
+        "voldoende mogelijkheden."
+    )
+
+    german = preference_module.preference_blockers(
+        "Systems Engineer - Linux & Bare Metal. "
+        "Unsere Expertise geben wir nicht nur intern, sondern auch "
+        "gerne auf Konferenzen und in der Tech-Community weiter."
+    )
+
+    assert "internship" not in dutch
+    assert "internship" not in german
+
+
+def test_explicit_intern_job_titles_remain_blocked(monkeypatch) -> None:
+    monkeypatch.setattr(
+        preference_module,
+        "load_job_search_preferences",
+        _preferences,
+    )
+
+    examples = (
+        "IT Intern",
+        "Software Intern",
+        "Technical Support Intern",
+        "Data Intern",
+        "Security Intern",
+        "Intern position in the infrastructure team",
+        "IT Support Internship",
+        "Praktikum IT Support",
+    )
+
+    for text in examples:
+        blockers = preference_module.preference_blockers(text)
+        assert "internship" in blockers

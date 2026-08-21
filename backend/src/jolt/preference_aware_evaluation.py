@@ -137,7 +137,15 @@ _RELOCATION_PATTERNS = (
 )
 
 _EXCLUDED_EMPLOYMENT_PATTERNS = (
-    (r"\binternship\b|\bintern\b|\bpraktikum\b|\btrainee internship\b", "internship"),
+    (
+        r"\binternship\b|"
+        r"\bpraktikum\b|"
+        r"\btrainee\s+internship\b|"
+        r"\b(?:it|software|engineering|technical|support|data|security|cloud|network|"
+        r"systems?|product|operations?)\s+intern\b|"
+        r"\bintern\s+(?:role|position|job|programme|program|opportunity)\b",
+        "internship",
+    ),
     (
         r"\btemporary\s+(?:role|position|contract|assignment|job)\b|"
         r"\b(?:employment|job|contract)\s+type\s*[:\-]?\s*temporary\b|"
