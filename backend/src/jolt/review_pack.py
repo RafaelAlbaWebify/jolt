@@ -24,7 +24,6 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.errors import JoltNotFoundError
-from jolt.market_intelligence import build_market_intelligence
 from jolt.strategy_runtime import ENGINE_VERSION
 
 PACK_VERSION = "1.0"
@@ -522,15 +521,12 @@ def build_review_pack(session: Session) -> bytes:
     market_payload = {
         "latest_capture_id": capture.id,
         "latest_capture_observation_count": len(observations_payload),
-        "capture_batches_view": build_market_intelligence(
-            session,
-            timeframe="all",
-            source_scope="capture_batches",
-        ),
-        "all_sources_view": build_market_intelligence(
-            session,
-            timeframe="all",
-            source_scope="all",
+        "live_market_views_included": False,
+        "export_scope": "persisted_latest_capture_evidence",
+        "note": (
+            "Review Pack export does not rebuild aggregate Market Insights. "
+            "Use market/latest_capture_observations.json for persisted "
+            "capture-level Market Intelligence evidence."
         ),
     }
 
@@ -538,9 +534,9 @@ def build_review_pack(session: Session) -> bytes:
         "README.md": (
             b"# JOLT Review Pack\n\n"
             b"Upload this ZIP to ChatGPT to audit JOLT against its own evidence.\n\n"
-            b"The pack is scoped to the latest capture for job-level evidence and "
-            b"classification lineage, while Market Insights also includes JOLT's "
-            b"current durable capture-market and all-source aggregate views.\n"
+            b"The pack is scoped to the latest capture for job-level evidence, "
+            b"classification lineage, and persisted capture-level Market Intelligence. "
+            b"Live aggregate Market Insights are intentionally not rebuilt during export.\n"
         ),
         "capture/run.json": _json_bytes(capture_payload),
         "capture/pages.json": _json_bytes(page_payload),

@@ -6,7 +6,7 @@ import { ApplicationReadiness } from "./ApplicationReadiness";
 import type { ApplicationReadinessData } from "./ApplicationReadiness";
 import type { ApplicationStatus } from "./ApplicationWorkflow";
 import { AutomatedReview } from "./AutomatedReview";
-import { CaptureHistory } from "./CaptureHistory";
+import { DataTools } from "./DataTools";
 import { OpportunityApplicationHandoff } from "./OpportunityApplicationHandoff";
 import { ReadinessHistory } from "./ReadinessHistory";
 
@@ -421,21 +421,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
     </section>
   );
 
-  const operationsTools = (
-    <details className="panel operations-tools workspace-sidebar-operations">
-      <summary>Data tools: capture batches and exports</summary>
-      <div className="operations-grid">
-        <section aria-labelledby="export-heading">
-          <h2 id="export-heading">Analysis and feedback</h2>
-          <p>Export the complete evidence chain as JSON, CSV, and Markdown.</p>
-          <a href={`${API_BASE}/api/exports/analysis-pack`} download="JOLT_ANALYSIS_PACK.zip">
-            Download analysis pack
-          </a>
-        </section>
-      </div>
-      <CaptureHistory apiBase={API_BASE} onError={setError} />
-    </details>
-  );
+  const operationsTools = <DataTools apiBase={API_BASE} />;
 
   return (
     <main className="opportunity-main">
