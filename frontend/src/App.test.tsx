@@ -127,8 +127,20 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("No pending review items match this view.")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByText("Data tools: capture batches and exports"));
+    fireEvent.click(screen.getByText("Data tools: capture batches, decisions, and exports"));
     await screen.findByText("No active capture batches recorded.");
+
+    expect(
+      screen.getByRole("link", { name: "Download review pack" }),
+    ).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/api/exports/review-pack",
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "Download analysis pack" }),
+    ).not.toBeInTheDocument();
+
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

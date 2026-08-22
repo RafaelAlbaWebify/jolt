@@ -19,8 +19,8 @@ export function DataTools({ apiBase }: Props) {
           <h2 id="export-heading">ChatGPT review</h2>
           <p>
             Export the latest capture, full job evidence, JOLT classifications,
-            profile context, Market Intelligence observations, current Market
-            Insights, and audit lineage in one ZIP.
+            profile context, persisted Market Intelligence observations, and
+            audit lineage in one ZIP.
           </p>
           <a href={`${apiBase}/api/exports/review-pack`} download="JOLT_REVIEW_PACK.zip">
             Download review pack

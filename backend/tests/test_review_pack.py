@@ -228,6 +228,10 @@ def test_review_pack_contains_latest_capture_evidence_classification_market_and_
 
         assert observations[0]["source_job_id"] == "123"
         assert market["latest_capture_id"] == capture.id
-        assert market["capture_batches_view"]["total_unique_roles"] == 1
+        assert market["latest_capture_observation_count"] == 1
+        assert market["live_market_views_included"] is False
+        assert market["export_scope"] == "persisted_latest_capture_evidence"
+        assert "capture_batches_view" not in market
+        assert "all_sources_view" not in market
     finally:
         session.close()
