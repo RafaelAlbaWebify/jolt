@@ -700,3 +700,107 @@ def test_incidental_spain_description_does_not_override_foreign_scope(
     assert any(
         "vacancy is explicitly tied to Portugal" in blocker for blocker in assessment.blockers
     )
+
+
+def test_maltese_speaker_requirement_is_blocked(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Technical Analyst - Fully remote in Malta - Maltese speaker") == [
+        "required language outside current preferences: maltese"
+    ]
+
+
+def test_work_from_anywhere_in_malta_is_not_worldwide_permission(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Analyst - Fully remote in Malta",
+        location="Malta",
+        description=(
+            "Work from anywhere in Malta. Fully remote setup for employees located in Malta."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("vacancy is explicitly tied to Malta" in blocker for blocker in assessment.blockers)
+
+
+def test_unscoped_work_from_anywhere_allows_cross_border_remote(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-remote-contracting",
+            label=(
+                "Remote work is suitable when the employer can contract "
+                "Rafael from Spain or through his Irish limited company"
+            ),
+            terms=["remote", "work from anywhere"],
+            outcome="eligible_with_conditions",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="System Administrator (Remote)",
+        location="European Union",
+        description=(
+            "Location: Remote (Work from Anywhere). "
+            "Manage cloud infrastructure and troubleshoot production systems."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible"
+    assert not any(
+        uncertainty.startswith("Remote work is suitable when the employer can contract ")
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_eu_based_only_remote_clears_legacy_contracting_uncertainty(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+    profile.eligibility_rules.append(
+        EligibilityRule(
+            id="legacy-remote-contracting",
+            label=(
+                "Remote work is suitable when the employer can contract "
+                "Rafael from Spain or through his Irish limited company"
+            ),
+            terms=["remote", "work from anywhere"],
+            outcome="eligible_with_conditions",
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Senior IT & Security Engineer",
+        location="Germany",
+        description=(
+            "Remote-only company. You can work from a beach, a mountain, "
+            "or your home office. We hire EU-based only for this role. "
+            "Work from anywhere."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible"
+    assert not any(
+        uncertainty.startswith("Remote work is suitable when the employer can contract ")
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_preferred_maltese_speaker_is_not_blocked(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Maltese speaker preferred; English is required.") == []

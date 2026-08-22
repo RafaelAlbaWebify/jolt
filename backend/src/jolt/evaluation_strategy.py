@@ -260,6 +260,30 @@ def _normalize_role_title(title: str) -> str:
     return normalized
 
 
+def _is_pure_management_exclusion_family(family: RoleFamily) -> bool:
+    if family.priority != "excluded":
+        return False
+
+    identity = _normalize_match_text(f"{family.id.replace('_', ' ')} {family.label}")
+
+    return "management" in identity and any(
+        marker in identity for marker in ("project", "product", "people")
+    )
+
+
+def _has_explicit_pure_management_title(title: str) -> bool:
+    normalized = _normalize_role_title(title)
+
+    patterns = (
+        r"\bproject\s+(?:manager|management|lead)\b",
+        r"\bproduct\s+(?:manager|management|owner|lead)\b",
+        r"\bprogramme?\s+(?:manager|management|lead)\b",
+        r"\bpeople\s+(?:manager|management|lead)\b",
+    )
+
+    return any(re.search(pattern, normalized) for pattern in patterns)
+
+
 def _role_family_bucket(family: RoleFamily) -> str | None:
     identity = _normalize_match_text(f"{family.id.replace('_', ' ')} {family.label}")
 
@@ -400,6 +424,13 @@ def _select_role_family(
         title_matches = _matched_terms(normalized_title, family.terms)
         body_matches = _matched_terms(body, family.terms)
         if not title_matches and not body_matches:
+            continue
+
+        if (
+            _is_pure_management_exclusion_family(family)
+            and title_matches
+            and not _has_explicit_pure_management_title(title)
+        ):
             continue
 
         excluded_title_precedence = int(family.priority == "excluded" and bool(title_matches))

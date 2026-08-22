@@ -16,6 +16,7 @@ _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
     "italian": ("italian", "italiano", "italienisch"),
     "dutch": ("dutch", "nederlands", "niederländisch", "niederlaendisch"),
     "portuguese": ("portuguese", "português", "portugues"),
+    "maltese": ("maltese", "malti"),
 }
 
 _LANGUAGE_REQUIREMENT_MARKERS = (
@@ -246,7 +247,7 @@ def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
                     break
 
                 if re.search(
-                    rf"\b{re.escape(alias)}[-\s]+speaking\b|"
+                    rf"\b{re.escape(alias)}[-\s]+(?:speaking|speaker)\b|"
                     rf"\b(?:b1|b2|c1|c2)\b.{{0,35}}\b{re.escape(alias)}\b|"
                     rf"\b{re.escape(alias)}\b.{{0,35}}\b(?:b1|b2|c1|c2)\b",
                     window,

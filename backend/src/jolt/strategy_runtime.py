@@ -558,7 +558,7 @@ def _has_explicit_cross_border_eligibility(text: str) -> bool:
 
     positive_patterns = (
         r"\bremote\s+(?:worldwide|globally|internationally)\b",
-        r"\bwork\s+from\s+anywhere\b",
+        r"\bwork\s+from\s+anywhere\b(?!\s+(?:in|within|across)\b)",
         r"\b(?:available|open)\s+(?:across|throughout|within)\s+"
         r"(?:emea|europe|the european union|eu)\b",
         r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
@@ -610,10 +610,11 @@ def _apply_location_eligibility(
         )
 
     explicit_spain_option = _has_explicit_spain_geography(title)
+    explicit_cross_border = _has_explicit_cross_border_eligibility(combined_text)
 
     if scope == "foreign_country":
-        if explicit_spain_option or _has_explicit_cross_border_eligibility(combined_text):
-            return assessment
+        if explicit_spain_option or explicit_cross_border:
+            return _remove_legacy_remote_work_uncertainty(assessment)
 
         blockers = tuple(
             dict.fromkeys(
@@ -635,7 +636,7 @@ def _apply_location_eligibility(
             blockers=blockers,
         )
 
-    if scope == "spain":
+    if scope == "spain" or explicit_cross_border:
         assessment = _remove_legacy_remote_work_uncertainty(assessment)
 
     normalized_location = " ".join(location.casefold().split())
