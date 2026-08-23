@@ -23,7 +23,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v5"
+ENGINE_VERSION = "profile-rules-v6"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -128,6 +128,106 @@ _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS = (
     "pamplona",
 )
 
+_SOURCE_FIRST_SPECIALIST_REQUIREMENTS = (
+    ("AMOS", ("amos",)),
+    ("SunView", ("sunview",)),
+    ("ChangeGear", ("changegear",)),
+    (
+        "SailPoint IdentityIQ",
+        ("sailpoint identityiq", "identityiq", "sailpoint iiq"),
+    ),
+    (
+        "BMC Helix ITSM",
+        ("bmc helix itsm", "bmc helix", "helix itsm"),
+    ),
+    (
+        "BizTalk",
+        ("microsoft biztalk", "biztalk server", "biztalk"),
+    ),
+    (
+        "Zendesk",
+        ("zendesk administrator", "zendesk administration", "zendesk"),
+    ),
+    (
+        "Microsoft Dynamics Customer Service",
+        (
+            "microsoft dynamics customer service",
+            "dynamics customer service",
+        ),
+    ),
+)
+
+_SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
+    (r"\b(?:staff|senior|lead)?\s*data\s+engineer\b", "Data / ML engineering"),
+    (r"\b(?:senior|lead)?\s*data\s+scientist\b", "Data science"),
+    (r"\b(?:senior|lead)?\s*data\s+analyst\b", "Data analysis"),
+    (
+        r"\bdata\s+(?:annotator|annotation|labeler|labeller|labeling|labelling)\b",
+        "Data annotation",
+    ),
+    (
+        r"\bdata\s+governance\s+(?:lead|manager|specialist)\b",
+        "Data governance",
+    ),
+    (r"\bdataops\b", "Data / AI engineering"),
+    (r"\bsap\s+abap\s+developer\b", "Software development"),
+    (r"\b(?:backend|back-end)\s+developer\b", "Software development"),
+    (r"\bprogramador(?:a)?\b", "Software development"),
+    (r"\bproject\s+(?:manager|planner)\b", "Pure project management"),
+    (r"\bproduct\s+(?:manager|director)\b", "Pure product management"),
+    (r"\btransition\s+manager\b", "Pure project management"),
+    (
+        r"\b(?:buyer|procurement\s+manager|category\s+manager)\b",
+        "Procurement",
+    ),
+    (r"\bsales\s+manager\b", "Sales"),
+)
+
+_SOURCE_FIRST_PRESENCE_PATTERNS = (
+    r"\bhybrid\s+(?:role|position|work|working|model|schedule|arrangement)\b",
+    r"\b(?:role|position|work|working|model|schedule|arrangement)"
+    r"\s+(?:is\s+)?hybrid\b",
+    r"\b(?:puesto|trabajo|modalidad)\s+h[ií]brid[oa]\b",
+    r"\bh[ií]brid[oa]\s+(?:puesto|trabajo|modalidad)\b",
+    r"\bon[-\s]?site\b",
+    r"\bonsite\b",
+    r"\bpresencial(?:idad|mente)?\b",
+    r"\boffice\s+attendance\b",
+    r"\battendance\s+(?:at|in|to)\s+(?:the\s+)?office\b",
+    r"\b(?:work|working)\s+(?:from|at|in)\s+(?:the\s+)?office\b",
+    r"\bclient\s+site\b",
+    r"\bcustomer\s+sites?\b",
+    r"\btravel\s+to\s+(?:customer|client)\s+sites?\b",
+    r"\bon[-\s]?site\s+installations?\b",
+    r"\b(?:first|initial)\s+\d+\s+weeks?.{0,60}\boffice\b",
+    r"\b\d+\s+days?\s+(?:per|a)\s+week.{0,60}\b(?:office|client|customer)\b",
+    r"\b\d+\s*-\s*\d+\s+(?:times?|days?)\s+(?:per|a)\s+month\b",
+    r"\b\d+\s*-\s*\d+\s+(?:veces|d[ií]as)\s+al\s+mes\b",
+)
+
+_SOURCE_FIRST_LOCALITY_RESTRICTION_PATTERNS = (
+    r"\bonly\s+(?:candidates|applicants).{0,100}"
+    r"(?:from|based\s+in|located\s+in|living\s+in|near)\b",
+    r"\b(?:candidates|applicants)\s+must.{0,80}"
+    r"(?:be\s+)?(?:based|located|resident)\s+(?:in|near)\b",
+    r"\bonly\s+consider(?:ing|ed)?.{0,60}"
+    r"(?:candidates|applicants).{0,80}(?:from|in|near)\b",
+)
+
+_SOURCE_FIRST_DOMAIN_DEGREE_PATTERNS = (
+    r"\bminimum\s+(?:bs|bsc|bachelor(?:'s)?(?:\s+degree)?)"
+    r"(?:\s+or\s+equivalent)?\s*,?\s+in\s+[^.\n]{3,180}",
+    r"\b(?:bachelor(?:'s)?|university)\s+degree\s+"
+    r"(?:is\s+)?(?:required|mandatory)\s+in\s+[^.\n]{3,180}",
+    r"\bdegree\s+in\s+[^.\n]{3,180}\s+(?:is\s+)?(?:required|mandatory)\b",
+)
+
+_SOURCE_FIRST_CLEARANCE_PATTERNS = (
+    r"\bhps\s+(?:security\s+)?clearance\b",
+    r"\b(?:security\s+)?clearance\s+(?:is\s+)?required\b",
+    r"\brequired\s+(?:security\s+)?clearance\b",
+)
+
 _FOREIGN_RESIDENCE_PATTERN = (
     "(?:" + "|".join(re.escape(location) for location in FOREIGN_COUNTRY_TERMS) + ")"
 )
@@ -172,6 +272,382 @@ _EXPLICIT_PEOPLE_MANAGEMENT_PATTERNS = (
     r"\b(?:hire|hiring),?\s+(?:coach|coaching|develop|developing)\b",
     r"\bcoach(?:ing)?\s+(?:and\s+mentor(?:ing)?\s+)?(?:a|the|our)?\s*team\b",
 )
+
+
+def _source_first_normalize(text: str) -> str:
+    return " ".join(text.casefold().split())
+
+
+def _source_first_term_pattern(term: str) -> re.Pattern[str]:
+    normalized = _source_first_normalize(term)
+    escaped = re.escape(normalized).replace(r"\ ", r"\s+")
+    return re.compile(rf"(?<!\w){escaped}(?!\w)")
+
+
+def _source_first_window(
+    text: str,
+    start: int,
+    end: int,
+    *,
+    radius: int = 120,
+) -> str:
+    return text[max(0, start - radius) : min(len(text), end + radius)]
+
+
+def _source_first_preferred(window: str, alias: str) -> bool:
+    marker = (
+        r"preferred|nice\s+to\s+have|advantage|a\s+plus|"
+        r"desirable|optional|valorable|deseable"
+    )
+    escaped = re.escape(alias)
+    return bool(
+        re.search(
+            rf"\b{escaped}\b.{{0,55}}\b(?:{marker})\b|"
+            rf"\b(?:{marker})\b.{{0,45}}\b{escaped}\b",
+            window,
+        )
+    )
+
+
+def _source_first_alias_required(text: str, alias: str) -> bool:
+    normalized = _source_first_normalize(text)
+    pattern = _source_first_term_pattern(alias)
+
+    mandatory = (
+        r"required|mandatory|essential|must\s+have|"
+        r"requisito\s+imprescindible|requisitos\s+imprescindibles|"
+        r"experiencia\s+imprescindible"
+    )
+
+    experience = (
+        r"hands[-\s]?on\s+experience|proven\s+experience|"
+        r"demonstrable\s+experience|solid\s+experience|"
+        r"professional\s+experience|experiencia\s+profesional|"
+        r"experiencia\s+demostrable"
+    )
+
+    for match in pattern.finditer(normalized):
+        window = _source_first_window(
+            normalized,
+            match.start(),
+            match.end(),
+        )
+
+        if _source_first_preferred(window, alias):
+            continue
+
+        escaped = re.escape(alias)
+
+        checks = (
+            rf"\b(?:{mandatory})\b.{{0,90}}\b{escaped}\b",
+            rf"\b{escaped}\b.{{0,90}}\b(?:{mandatory})\b",
+            rf"\b(?:{experience})\b.{{0,80}}\b{escaped}\b",
+            rf"\b(?:minimum|at\s+least)\s+\d+\+?\s+years?"
+            rf".{{0,90}}\b{escaped}\b",
+            rf"\b\d+\+?\s+years?.{{0,80}}\b{escaped}\b",
+        )
+
+        if any(re.search(check, window) for check in checks):
+            return True
+
+    return False
+
+
+def _source_first_profile_has_evidence(
+    profile: StrategyProfile,
+    aliases: tuple[str, ...],
+) -> bool:
+    for capability in profile.capabilities:
+        if capability.evidence_level <= 0:
+            continue
+
+        text = _source_first_normalize(
+            "\n".join(
+                (
+                    capability.id,
+                    capability.label,
+                    *capability.terms,
+                )
+            )
+        )
+
+        if any(_source_first_term_pattern(alias).search(text) for alias in aliases):
+            return True
+
+    return False
+
+
+def _source_first_missing_platforms(
+    profile: StrategyProfile,
+    text: str,
+) -> tuple[str, ...]:
+    missing: list[str] = []
+
+    for label, aliases in _SOURCE_FIRST_SPECIALIST_REQUIREMENTS:
+        if _source_first_profile_has_evidence(profile, aliases):
+            continue
+
+        if any(_source_first_alias_required(text, alias) for alias in aliases):
+            missing.append(label)
+
+    return tuple(dict.fromkeys(missing))
+
+
+def _source_first_excluded_title(title: str) -> str | None:
+    normalized = _source_first_normalize(title)
+
+    for pattern, label in _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS:
+        if re.search(pattern, normalized):
+            return label
+
+    return None
+
+
+def _source_first_distant_presence(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for place in _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS:
+        place_pattern = _source_first_term_pattern(place)
+
+        for match in place_pattern.finditer(normalized):
+            window = _source_first_window(
+                normalized,
+                match.start(),
+                match.end(),
+                radius=180,
+            )
+
+            if any(re.search(pattern, window) for pattern in _SOURCE_FIRST_PRESENCE_PATTERNS):
+                return place
+
+    return None
+
+
+def _source_first_distant_locality(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for place in _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS:
+        place_pattern = _source_first_term_pattern(place)
+
+        for match in place_pattern.finditer(normalized):
+            window = _source_first_window(
+                normalized,
+                match.start(),
+                match.end(),
+                radius=180,
+            )
+
+            if any(
+                re.search(pattern, window)
+                for pattern in _SOURCE_FIRST_LOCALITY_RESTRICTION_PATTERNS
+            ):
+                return place
+
+    return None
+
+
+def _source_first_domain_degree(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for pattern in _SOURCE_FIRST_DOMAIN_DEGREE_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is not None:
+            return match.group(0)
+
+    return None
+
+
+def _source_first_clearance(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for pattern in _SOURCE_FIRST_CLEARANCE_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is not None:
+            return match.group(0)
+
+    return None
+
+
+def _source_first_large_experience(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    pattern = re.compile(
+        r"\b(?:(?:minimum|at\s+least)\s+)?"
+        r"(?P<years>\d+)\+?\s+years?\s+"
+        r"(?:of\s+)?(?:professional\s+)?experience"
+        r"[^.\n]{0,150}"
+    )
+
+    for match in pattern.finditer(normalized):
+        if int(match.group("years")) < 5:
+            continue
+
+        window = _source_first_window(
+            normalized,
+            match.start(),
+            match.end(),
+            radius=40,
+        )
+
+        if any(
+            marker in window
+            for marker in (
+                "preferred",
+                "nice to have",
+                "advantage",
+                "desirable",
+            )
+        ):
+            continue
+
+        return match.group(0)
+
+    return None
+
+
+def _apply_source_first_requirement_gate(
+    assessment: StrategyAssessment,
+    profile: StrategyProfile,
+    *,
+    title: str,
+    location: str,
+    description: str,
+) -> StrategyAssessment:
+    text = "\n".join((title, location, description))
+
+    excluded = _source_first_excluded_title(title)
+
+    if excluded is not None:
+        return replace(
+            assessment,
+            recommendation="do_not_pursue",
+            confidence="high",
+            fit_now=0,
+            fit_by_interview=0,
+            fit_on_the_job=0,
+            blockers=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.blockers,
+                        (f"Source-first career scope: excluded role family {excluded}."),
+                    ]
+                )
+            ),
+        )
+
+    place = _source_first_distant_presence(text) or _source_first_distant_locality(text)
+
+    if place is not None:
+        preferences = load_job_search_preferences()
+
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            fit_now=0,
+            fit_by_interview=0,
+            fit_on_the_job=0,
+            blockers=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.blockers,
+                        (
+                            "Source-first location eligibility: "
+                            f"required presence/locality around {place} "
+                            "is outside the configured "
+                            f"{preferences.max_hybrid_distance_km} km "
+                            f"radius from {preferences.base_locality}."
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    clearance = _source_first_clearance(text)
+
+    if clearance is not None:
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            fit_now=0,
+            fit_by_interview=0,
+            fit_on_the_job=0,
+            blockers=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.blockers,
+                        (
+                            "Source-first mandatory requirement: "
+                            f"clearance not evidenced: {clearance}."
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    platforms = _source_first_missing_platforms(profile, text)
+
+    if platforms:
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            fit_now=0,
+            fit_by_interview=0,
+            fit_on_the_job=0,
+            blockers=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.blockers,
+                        *(
+                            "Source-first mandatory specialist requirement: "
+                            f"{platform} experience is required "
+                            "but not evidenced."
+                            for platform in platforms
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    unresolved: list[str] = []
+
+    degree = _source_first_domain_degree(text)
+    if degree is not None:
+        unresolved.append("domain-specific education requirement: " + degree)
+
+    experience = _source_first_large_experience(text)
+    if experience is not None:
+        unresolved.append("high-seniority experience requirement: " + experience)
+
+    if not unresolved:
+        return assessment
+
+    return replace(
+        assessment,
+        eligibility="eligible_with_conditions",
+        recommendation="pursue_if_condition_met",
+        confidence="low",
+        fit_now=min(assessment.fit_now, 69),
+        fit_by_interview=min(assessment.fit_by_interview, 69),
+        fit_on_the_job=min(assessment.fit_on_the_job, 74),
+        uncertainties=tuple(
+            dict.fromkeys(
+                [
+                    *assessment.uncertainties,
+                    *(
+                        "Source-first mandatory requirement must "
+                        "be verified before pursuit: " + item
+                        for item in unresolved
+                    ),
+                ]
+            )
+        ),
+    )
 
 
 def load_active_strategy_profile(path: Path | None = None) -> StrategyProfile | None:
@@ -766,6 +1242,13 @@ def calibrated_strategy_assessment(
     )
     assessment = _apply_location_eligibility(
         assessment,
+        title=title,
+        location=location,
+        description=sanitized_description,
+    )
+    assessment = _apply_source_first_requirement_gate(
+        assessment,
+        profile,
         title=title,
         location=location,
         description=sanitized_description,

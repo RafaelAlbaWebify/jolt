@@ -646,7 +646,7 @@ def test_mixed_country_hybrid_with_explicit_spain_is_not_portugal_only(
 
     assessment = calibrated_strategy_assessment(
         _profile(),
-        title="Innovative Project Planner - Italy, Portugal, Spain (Hybrid)",
+        title="Technical Support Engineer - Italy, Portugal, Spain (Hybrid)",
         location="Portugal",
         description="Advanced troubleshooting for enterprise customers.",
     )
@@ -951,3 +951,215 @@ def test_language_advantage_does_not_inherit_required_marker(
     _install_preferences(monkeypatch)
 
     assert preference_blockers("English is mandatory. Polish is an advantage.") == []
+
+
+def test_source_first_nova_field_travel_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical & Field Support Specialist II",
+        location="Madrid, Spain · Remote",
+        description=(
+            "Remote technical support. Perform onsite installations. "
+            "Travel to customer sites around Madrid area."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_remote_locality_restriction_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Office 365 Support Administrator",
+        location="Spain · Remote",
+        description=(
+            "100% remote. Only candidates from Sevilla, Málaga or nearby areas will be considered."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+
+
+def test_source_first_mandatory_amos_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Soporte Aplicativo con AMOS",
+        location="Spain · Remote",
+        description=("Requisito imprescindible: experiencia profesional con AMOS."),
+    )
+
+    assert assessment.eligibility == "ineligible"
+
+
+def test_source_first_preferred_amos_is_not_blocked(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Application Support Specialist",
+        location="Spain · Remote",
+        description=(
+            "AMOS experience preferred but not required. Troubleshoot enterprise applications."
+        ),
+    )
+
+    assert not any("AMOS" in item for item in assessment.blockers)
+
+
+def test_source_first_changegear_sunview_are_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="SunView IT Operations Analyst",
+        location="Spain · Remote",
+        description=("Hands on experience with ChangeGear and SunView is required."),
+    )
+
+    assert assessment.eligibility == "ineligible"
+
+
+def test_source_first_data_engineer_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Staff Data Engineer",
+        location="Spain · Remote",
+        description="Build data pipelines.",
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_workflex_engineer_not_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Senior IT & Security Engineer (AI-Native)",
+        location="European Union · Remote",
+        description=(
+            "EU-based remote-only technical endpoint, identity and security engineering role."
+        ),
+    )
+
+    assert not any("Source-first role eligibility" in item for item in assessment.blockers)
+
+
+def test_source_first_degree_is_conditional(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Specialist II",
+        location="Spain · Remote",
+        description=(
+            "Minimum BS or equivalent, in Chemistry, Biology, "
+            "Medical Technology, Biomedical Engineering or Electronics."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert assessment.fit_by_interview <= 69
+
+
+def test_source_first_large_experience_cannot_strong_pursue(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Cybersecurity Architect",
+        location="Spain · Remote",
+        description=(
+            "Minimum 5 years of experience in perimeter-security architecture and design."
+        ),
+    )
+
+    assert assessment.recommendation != "strong_pursue"
+    assert assessment.fit_by_interview <= 69
+
+
+def test_source_first_excluded_role_preserves_employment_eligibility(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Data Annotator",
+        location="Barcelona, Catalonia, Spain",
+        description=("Remote role based in Spain. Annotate data for an AI training project."),
+    )
+
+    assert assessment.eligibility == "eligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_now == 0
+    assert assessment.fit_by_interview == 0
+    assert assessment.fit_on_the_job == 0
+    assert any("Source-first career scope" in blocker for blocker in assessment.blockers)
+
+
+def test_source_first_hybrid_infrastructure_is_not_work_mode(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=(
+            "Support enterprise hybrid infrastructure, cloud services "
+            "and network connectivity. "
+            "The position does not state a workplace mode."
+        ),
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any(
+        "Source-first location eligibility" in blocker for blocker in assessment.blockers
+    )
+
+
+def test_source_first_explicit_hybrid_role_still_counts_as_work_mode(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Madrid, Community of Madrid, Spain",
+        description=("This is a hybrid role with regular attendance at the Madrid office."),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
