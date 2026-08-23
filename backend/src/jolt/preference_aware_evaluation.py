@@ -17,6 +17,35 @@ _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
     "dutch": ("dutch", "nederlands", "niederländisch", "niederlaendisch"),
     "portuguese": ("portuguese", "português", "portugues"),
     "maltese": ("maltese", "malti"),
+    "russian": ("russian",),
+    "swedish": ("swedish",),
+    "czech": ("czech",),
+    "slovak": ("slovak",),
+    "polish": ("polish",),
+    "danish": ("danish",),
+    "norwegian": ("norwegian",),
+    "finnish": ("finnish",),
+    "greek": ("greek",),
+    "turkish": ("turkish",),
+    "romanian": ("romanian",),
+    "hungarian": ("hungarian",),
+    "bulgarian": ("bulgarian",),
+    "croatian": ("croatian",),
+    "serbian": ("serbian",),
+    "slovenian": ("slovenian",),
+    "lithuanian": ("lithuanian",),
+    "latvian": ("latvian",),
+    "estonian": ("estonian",),
+    "ukrainian": ("ukrainian",),
+    "catalan": ("catalan", "català", "catala"),
+    "basque": ("basque", "euskara"),
+    "galician": ("galician", "galego"),
+    "arabic": ("arabic",),
+    "hebrew": ("hebrew",),
+    "chinese": ("chinese", "mandarin"),
+    "japanese": ("japanese",),
+    "korean": ("korean",),
+    "hindi": ("hindi",),
 }
 
 _LANGUAGE_REQUIREMENT_MARKERS = (
@@ -26,6 +55,8 @@ _LANGUAGE_REQUIREMENT_MARKERS = (
     "must have",
     "fluency",
     "fluent",
+    "proficiency",
+    "proficient",
     "excellent",
     "very good",
     "good command",
@@ -227,30 +258,50 @@ def _language_is_explicitly_preferred(window: str, alias: str) -> bool:
 def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
     required: list[str] = []
 
+    requirement_marker_pattern = "|".join(
+        re.escape(marker) for marker in _LANGUAGE_REQUIREMENT_MARKERS
+    )
+
     for language, aliases in _LANGUAGE_ALIASES.items():
         if language in allowed_languages:
             continue
 
         language_found = False
+
         for alias in aliases:
             alias_pattern = rf"(?<!\w){re.escape(alias)}(?!\w)"
+
             for match in re.finditer(alias_pattern, text):
-                start = max(0, match.start() - 100)
-                end = min(len(text), match.end() + 100)
+                start = max(0, match.start() - 110)
+                end = min(len(text), match.end() + 110)
                 window = text[start:end]
 
+                # Explicit optional/preferred wording wins.
                 if _language_is_explicitly_preferred(window, alias):
                     continue
 
-                if any(marker in window for marker in _LANGUAGE_REQUIREMENT_MARKERS):
-                    language_found = True
-                    break
+                explicit_patterns = (
+                    # Swedish speaking / Maltese speaker
+                    rf"\b{re.escape(alias)}[-\s]+(?:speaking|speaker)\b",
+                    # Native Dutch / native Dutch and/or French speaker
+                    rf"\bnative\b.{{0,55}}\b{re.escape(alias)}\b",
+                    # Mother-tongue Dutch
+                    rf"\bmother[-\s]?tongue\b.{{0,55}}\b{re.escape(alias)}\b",
+                    # Dutch native speaker
+                    rf"\b{re.escape(alias)}\b.{{0,35}}\bnative\s+speaker\b",
+                    # CEFR levels
+                    rf"\b(?:a1|a2|b1|b2|c1|c2)\b.{{0,40}}\b{re.escape(alias)}\b",
+                    rf"\b{re.escape(alias)}\b.{{0,40}}\b(?:a1|a2|b1|b2|c1|c2)\b",
+                    # Fluent/proficient/etc before language
+                    rf"\b(?:{requirement_marker_pattern})\b"
+                    rf".{{0,70}}\b{re.escape(alias)}\b",
+                    # Language before requirement
+                    rf"\b{re.escape(alias)}\b"
+                    rf".{{0,55}}\b(?:{requirement_marker_pattern})\b",
+                )
 
-                if re.search(
-                    rf"\b{re.escape(alias)}[-\s]+(?:speaking|speaker)\b|"
-                    rf"\b(?:b1|b2|c1|c2)\b.{{0,35}}\b{re.escape(alias)}\b|"
-                    rf"\b{re.escape(alias)}\b.{{0,35}}\b(?:b1|b2|c1|c2)\b",
-                    window,
+                if any(
+                    re.search(explicit_pattern, window) for explicit_pattern in explicit_patterns
                 ):
                     language_found = True
                     break

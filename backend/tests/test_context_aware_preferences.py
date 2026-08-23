@@ -804,3 +804,150 @@ def test_preferred_maltese_speaker_is_not_blocked(monkeypatch) -> None:
     _install_preferences(monkeypatch)
 
     assert preference_blockers("Maltese speaker preferred; English is required.") == []
+
+
+def test_fundraise_up_russian_requirement_is_hard_blocked(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    text = (
+        "IT Support Engineer L2. "
+        "Highlights: Location: Spain. "
+        "Languages: Fluent in Russian and English. "
+        "Working hours: 14:00 - 23:00 CET."
+    )
+
+    assert preference_blockers(text) == ["required language outside current preferences: russian"]
+
+
+def test_swedish_speaking_requirement_is_blocked(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("IT Service Desk Technician (Swedish speaking)") == [
+        "required language outside current preferences: swedish"
+    ]
+
+
+def test_czech_and_slovak_required_language_pair_is_blocked(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    blockers = preference_blockers("Excellent communication skills in Czech/Slovak and English.")
+
+    assert "required language outside current preferences: czech" in blockers
+    assert "required language outside current preferences: slovak" in blockers
+
+
+def test_high_proficiency_czech_requirement_is_blocked(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("High proficiency in Czech and English, verbal and written.") == [
+        "required language outside current preferences: czech"
+    ]
+
+
+def test_native_dutch_or_french_requirement_blocks_both_options(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    blockers = preference_blockers("You are a native Dutch and/or French speaker.")
+
+    assert "required language outside current preferences: dutch" in blockers
+    assert "required language outside current preferences: french" in blockers
+
+
+def test_preferred_polish_and_german_are_not_required(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    text = "English C1 level is mandatory. German or Polish: strong advantage and preferred."
+
+    assert preference_blockers(text) == []
+
+
+def test_maltese_language_advantage_is_not_required(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Maltese language skills are an advantage.") == []
+
+
+def test_programming_languages_are_not_human_language_blockers(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Fluent in Python, PowerShell and TypeScript.") == []
+
+
+def test_required_russian_turns_viable_spain_role_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer L2",
+        location="Catalonia, Spain (Remote)",
+        description=(
+            "Languages: Fluent in Russian and English. "
+            "L2 escalations, troubleshooting, SaaS administration, "
+            "identity governance and incident response."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "required language outside current preferences: russian" in blocker
+        for blocker in assessment.blockers
+    )
+
+
+def test_simple_native_dutch_requirement_is_blocked(monkeypatch) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Native Dutch required for customer communication.") == [
+        "required language outside current preferences: dutch"
+    ]
+
+
+def test_native_language_requirement_does_not_depend_on_speaker_suffix(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Native Dutch required for customer communication.") == [
+        "required language outside current preferences: dutch"
+    ]
+
+
+def test_fluent_in_russian_and_english_blocks_russian(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Languages: Fluent in Russian and English.") == [
+        "required language outside current preferences: russian"
+    ]
+
+
+def test_optional_native_language_does_not_block(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("Native Dutch is preferred but not required.") == []
+
+
+def test_language_advantage_does_not_inherit_required_marker(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assert preference_blockers("English is mandatory. Polish is an advantage.") == []
