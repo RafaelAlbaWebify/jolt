@@ -227,3 +227,113 @@ def test_conditional_state_cannot_promote_do_not_pursue() -> None:
 
     assert calibrated.recommendation == "do_not_pursue"
     assert calibrated.confidence == "high"
+
+
+def test_technical_security_engineer_is_not_hijacked_by_management_exclusion() -> None:
+    profile = StrategyProfile(
+        schema_version=1,
+        profile_id="management-regression",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations",
+                priority="primary",
+                terms=["security engineer", "it engineer"],
+                strategic_value=90,
+            ),
+            RoleFamily(
+                id="management",
+                label="Pure Project / Product / People Management",
+                priority="excluded",
+                terms=["security", "it"],
+                strategic_value=10,
+            ),
+        ],
+        capabilities=[],
+        eligibility_rules=[],
+    )
+
+    family = _select_role_family(
+        profile,
+        title="Senior IT & Security Engineer (AI-Native)",
+        location="Spain",
+        description=(
+            "Build identity, endpoint, device and security automation. Hands-on engineering role."
+        ),
+    )
+
+    assert family is not None
+    assert family.id == "it_operations"
+
+
+def test_explicit_project_manager_title_remains_management_excluded() -> None:
+    profile = StrategyProfile(
+        schema_version=1,
+        profile_id="management-regression",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations",
+                priority="primary",
+                terms=["it"],
+                strategic_value=90,
+            ),
+            RoleFamily(
+                id="management",
+                label="Pure Project / Product / People Management",
+                priority="excluded",
+                terms=["project manager", "project"],
+                strategic_value=10,
+            ),
+        ],
+        capabilities=[],
+        eligibility_rules=[],
+    )
+
+    family = _select_role_family(
+        profile,
+        title="IT Project Manager",
+        location="Spain",
+        description="Own project planning, delivery and stakeholder coordination.",
+    )
+
+    assert family is not None
+    assert family.id == "management"
+
+
+def test_data_ml_excluded_title_precedence_is_unchanged() -> None:
+    profile = StrategyProfile(
+        schema_version=1,
+        profile_id="excluded-regression",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations",
+                priority="primary",
+                terms=["engineer"],
+                strategic_value=90,
+            ),
+            RoleFamily(
+                id="data_ml",
+                label="Data / ML Engineering",
+                priority="excluded",
+                terms=["data engineer"],
+                strategic_value=10,
+            ),
+        ],
+        capabilities=[],
+        eligibility_rules=[],
+    )
+
+    family = _select_role_family(
+        profile,
+        title="Staff Data Engineer",
+        location="Spain",
+        description="Build production data pipelines.",
+    )
+
+    assert family is not None
+    assert family.id == "data_ml"
