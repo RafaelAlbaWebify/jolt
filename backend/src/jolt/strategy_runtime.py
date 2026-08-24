@@ -23,7 +23,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v6"
+ENGINE_VERSION = "profile-rules-v7"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -478,15 +478,59 @@ def _source_first_large_experience(text: str) -> str | None:
         r"[^.\n]{0,150}"
     )
 
+    requirement_markers = (
+        "minimum",
+        "at least",
+        "required",
+        "requirement",
+        "requirements",
+        "must have",
+        "must-have",
+        "you have",
+        "you bring",
+        "candidate",
+        "qualifications",
+        "we are looking for",
+        "we're looking for",
+        "seeking",
+    )
+
+    organizational_history_markers = (
+        "company has",
+        "company with",
+        "organisation has",
+        "organization has",
+        "organisation with",
+        "organization with",
+        "we have over",
+        "we have more than",
+        "with over",
+        "with more than",
+        "more than",
+        "over",
+        "founded",
+        "established",
+        "delivering services worldwide",
+        "serving customers",
+    )
+
     for match in pattern.finditer(normalized):
-        if int(match.group("years")) < 5:
+        years = int(match.group("years"))
+
+        if years < 5:
             continue
 
+        # Job requirements above twenty years are implausible enough that
+        # they are substantially more likely to describe company history.
+        if years > 20:
+            continue
+
+        before = normalized[max(0, match.start() - 100) : match.start()]
         window = _source_first_window(
             normalized,
             match.start(),
             match.end(),
-            radius=40,
+            radius=60,
         )
 
         if any(
@@ -498,6 +542,13 @@ def _source_first_large_experience(text: str) -> str | None:
                 "desirable",
             )
         ):
+            continue
+
+        explicit_requirement = any(marker in before for marker in requirement_markers)
+
+        organizational_history = any(marker in before for marker in organizational_history_markers)
+
+        if organizational_history and not explicit_requirement:
             continue
 
         return match.group(0)
@@ -627,6 +678,27 @@ def _apply_source_first_requirement_gate(
     if not unresolved:
         return assessment
 
+    requirement_uncertainties = tuple(
+        "Source-first mandatory requirement must be verified before pursuit: " + item
+        for item in unresolved
+    )
+
+    # Requirement reconciliation is monotonic. A later conditional
+    # requirement may strengthen an otherwise eligible assessment, but
+    # it must never weaken an earlier hard rejection.
+    if assessment.eligibility == "ineligible" or assessment.recommendation == "do_not_pursue":
+        return replace(
+            assessment,
+            uncertainties=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.uncertainties,
+                        *requirement_uncertainties,
+                    ]
+                )
+            ),
+        )
+
     return replace(
         assessment,
         eligibility="eligible_with_conditions",
@@ -639,11 +711,7 @@ def _apply_source_first_requirement_gate(
             dict.fromkeys(
                 [
                     *assessment.uncertainties,
-                    *(
-                        "Source-first mandatory requirement must "
-                        "be verified before pursuit: " + item
-                        for item in unresolved
-                    ),
+                    *requirement_uncertainties,
                 ]
             )
         ),

@@ -1163,3 +1163,115 @@ def test_source_first_explicit_hybrid_role_still_counts_as_work_mode(
 
     assert assessment.eligibility == "ineligible"
     assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_hard_blocker_is_monotonic(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Senior Infrastructure Engineer",
+        location="Poland",
+        description=(
+            "This vacancy is based in Poland. "
+            "Minimum 6 years of experience in infrastructure engineering."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("Location eligibility" in blocker for blocker in assessment.blockers)
+    assert any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_source_first_language_blocker_is_monotonic(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "Fluent Czech is required. Minimum 5 years of experience in enterprise support."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any(
+        "required language outside current preferences: czech" in blocker
+        for blocker in assessment.blockers
+    )
+
+
+def test_source_first_company_history_is_not_seniority_requirement(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "Our company has over 35 years of experience "
+            "delivering IT services worldwide. "
+            "You will troubleshoot customer applications."
+        ),
+    )
+
+    assert not any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_source_first_very_old_company_history_is_not_requirement(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "With more than 90 years of experience in the field "
+            "of public safety communication solutions, the company "
+            "supports customers worldwide."
+        ),
+    )
+
+    assert not any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_source_first_explicit_five_year_requirement_stays_conditional(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "Minimum 5 years of experience in enterprise application support is required."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
