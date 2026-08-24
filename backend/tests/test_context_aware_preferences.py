@@ -1581,3 +1581,165 @@ def test_company_history_guard_still_ignores_old_experience(
         "high-seniority experience requirement" in uncertainty
         for uncertainty in assessment.uncertainties
     )
+
+
+def test_sosmatic_catalan_weekend_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Helpdesk (catalán e inglés) remoto findes",
+        location="Greater Barcelona Metropolitan Area (Remote)",
+        description=(
+            "Dominas el castellano, catalán e inglés. "
+            "Lugar de trabajo: Teletrabajo. "
+            "Horario de oficina de sábados, domingos y festivos "
+            "de 15 a 23h."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("catalan" in blocker.casefold() for blocker in assessment.blockers)
+    assert any("weekend" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_spanish_madrid_hybrid_location_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Técnico de ciberseguridad / certificados digitales",
+        location="Community of Madrid, Spain",
+        description=(
+            "Nivel de inglés alto (C1). Ubicación: Madrid (híbrido). Experiencia: +3 años."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("madrid" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_spanish_minimum_years_sailpoint_is_required(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Consultor/a Sailpoint Senior",
+        location="Spain · Remote",
+        description=(
+            "¿Qué buscamos? "
+            "Mínimo 3 años de experiencia con SailPoint IdentityIQ. "
+            "Nivel de inglés B2."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("sailpoint identityiq" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_biztalk_required_technical_section_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="BizTalk Server Customer Engineer",
+        location="Spain · Remote",
+        description=(
+            "Core Technical Skills (Required) "
+            "BizTalk Server Architecture & Frameworks. "
+            "Strong understanding and practical implementation experience "
+            "with enterprise integration platforms."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("biztalk" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_dynamics_three_year_spanish_requirement_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Service Manager IAM",
+        location="Spain · Remote",
+        description=(
+            "Experiencia de 3 años demostrable en entorno de Microsoft Dynamics Customer Service."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("dynamics customer service" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_sap_employee_central_proven_experience_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="SAP / CPI Integrations Specialist",
+        location="Spain · Remote",
+        description=(
+            "Proven experience with SAP Employee Central and SAP HR module. "
+            "Strong technical knowledge of SAP integrations."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("sap employee central" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_aws_security_specialty_imprescindible_is_hard_rejected(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Ingeniero/a de Seguridad Cloud (AWS)",
+        location="Spain · Remote",
+        description=(
+            "Experiencia demostrable en AWS IAM y AWS Security Hub. "
+            "Imprescindible AWS Certified Security – Specialty."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("aws certified security" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_valorable_specialist_platform_does_not_hard_block(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "SailPoint IdentityIQ experience is valorable. "
+            "Primary work is enterprise technical support and troubleshooting."
+        ),
+    )
+
+    assert not any("sailpoint identityiq" in blocker.casefold() for blocker in assessment.blockers)

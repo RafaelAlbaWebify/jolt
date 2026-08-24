@@ -23,7 +23,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v9"
+ENGINE_VERSION = "profile-rules-v10"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -155,6 +155,17 @@ _SOURCE_FIRST_SPECIALIST_REQUIREMENTS = (
             "dynamics customer service",
         ),
     ),
+    (
+        "SAP Employee Central",
+        (
+            "sap employee central",
+            "employee central",
+        ),
+    ),
+    (
+        "AWS Certified Security - Specialty",
+        ("aws certified security",),
+    ),
 )
 
 _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
@@ -218,6 +229,7 @@ _SOURCE_FIRST_PRESENCE_PATTERNS = (
     r"\b(?:primeras?|iniciales?)\s+\d+\s+semanas?.{0,100}"
     r"\b(?:oficinas?|presencial|situad[oa])\b",
     r"\bdisponibilidad\s+para\s+asistir.{0,100}\boficinas?\b",
+    r"\bubicaci[oó]n\s*:\s*[^.\n]{0,100}\bh[ií]brid[oa]\b",
 )
 
 _SOURCE_FIRST_LOCALITY_RESTRICTION_PATTERNS = (
@@ -334,6 +346,7 @@ def _source_first_alias_required(text: str, alias: str) -> bool:
 
     mandatory = (
         r"required|mandatory|essential|must\s+have|"
+        r"imprescindible|"
         r"requisito\s+imprescindible|requisitos\s+imprescindibles|"
         r"experiencia\s+imprescindible"
     )
@@ -364,6 +377,16 @@ def _source_first_alias_required(text: str, alias: str) -> bool:
             rf"\b(?:minimum|at\s+least)\s+\d+\+?\s+years?"
             rf".{{0,90}}\b{escaped}\b",
             rf"\b\d+\+?\s+years?.{{0,80}}\b{escaped}\b",
+            rf"\bm[ií]nimo\s+\d+\+?\s+a[nñ]os?\s+de\s+experiencia"
+            rf".{{0,90}}\b{escaped}\b",
+            rf"\bexperiencia\s+de\s+\d+\+?\s+a[nñ]os?"
+            rf".{{0,100}}\b{escaped}\b",
+            rf"\bal\s+menos\s+\d+\+?\s+a[nñ]os?\s+de\s+experiencia"
+            rf".{{0,90}}\b{escaped}\b",
+            rf"\b(?:core\s+)?technical\s+skills?\s*\(required\)"
+            rf".{{0,180}}\b{escaped}\b",
+            rf"\b{escaped}\b.{{0,110}}"
+            rf"\bstrong\s+understanding\s+and\s+practical\s+implementation\s+experience\b",
         )
 
         if any(re.search(check, window) for check in checks):

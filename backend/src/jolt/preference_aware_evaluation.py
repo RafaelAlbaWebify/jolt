@@ -37,7 +37,7 @@ _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
     "latvian": ("latvian",),
     "estonian": ("estonian",),
     "ukrainian": ("ukrainian",),
-    "catalan": ("catalan", "català", "catala"),
+    "catalan": ("catalan", "catalán", "català", "catala"),
     "basque": ("basque", "euskara"),
     "galician": ("galician", "galego"),
     "arabic": ("arabic",),
@@ -117,6 +117,10 @@ _SHIFT_PATTERNS: dict[str, tuple[str, ...]] = {
         r"\bturnos?(?:\s+de)?\s+fin\s+de\s+semana\b",
         r"\btrabaj(?:ar|o)\b.{0,35}\bfin\s+de\s+semana\b",
         r"\bdisponibilidad\b.{0,35}\bfin\s+de\s+semana\b",
+        r"\bfindes?\b",
+        r"\bs[aá]bados?\b.{0,45}\bdomingos?\b",
+        r"\bdomingos?\b.{0,45}\bfestivos?\b",
+        r"\bs[aá]bados?\b.{0,70}\bfestivos?\b",
     ),
     "evening": (
         r"\bevening shifts?\b",
@@ -298,6 +302,9 @@ def _required_languages(text: str, allowed_languages: set[str]) -> list[str]:
                     # Language before requirement
                     rf"\b{re.escape(alias)}\b"
                     rf".{{0,55}}\b(?:{requirement_marker_pattern})\b",
+                    # Spanish direct possession/command wording:
+                    # "Dominas el castellano, catalán e inglés."
+                    rf"\bdominas?\b.{{0,90}}\b{re.escape(alias)}\b",
                 )
 
                 if any(
