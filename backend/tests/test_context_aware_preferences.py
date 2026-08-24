@@ -1461,3 +1461,123 @@ def test_explicit_project_manager_title_remains_excluded(
     )
 
     assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_spanish_data_engineer_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Ingeniero de datos",
+        location="Spain · Remote",
+        description=(
+            "Buscamos un Data Engineer para diseñar pipelines, "
+            "Databricks, PySpark y arquitectura de datos."
+        ),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_it_market_lead_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Market Lead – Sur de Europa",
+        location="Spain",
+        description=(
+            "Actuarás como IT Business Partner y Project Manager "
+            "para los mercados del Sur de Europa."
+        ),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_eu_based_remote_candidate_scope_allows_spain(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Senior IT & Security Engineer",
+        location="Germany",
+        description=(
+            "We don't have an office. WorkFlex is a remote-only company. EU-based, English C1+."
+        ),
+    )
+
+    assert assessment.eligibility != "ineligible"
+    assert not any(
+        "does not establish that employment from Spain is permitted" in blocker
+        for blocker in assessment.blockers
+    )
+
+
+def test_eu_based_team_reference_does_not_create_candidate_scope(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Germany",
+        description=(
+            "You will collaborate with our EU-based team. The role is located in Germany."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+
+
+def test_four_year_running_requirement_is_conditional(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "Experience: 4+ years running modern Microsoft-stack IT "
+            "(Entra ID, Microsoft 365 and ideally Intune)."
+        ),
+    )
+
+    assert assessment.eligibility == "eligible_with_conditions"
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )
+
+
+def test_company_history_guard_still_ignores_old_experience(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Technical Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "Our company has more than 35 years of experience "
+            "delivering managed technology services."
+        ),
+    )
+
+    assert not any(
+        "high-seniority experience requirement" in uncertainty
+        for uncertainty in assessment.uncertainties
+    )

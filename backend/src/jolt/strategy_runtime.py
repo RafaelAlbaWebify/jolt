@@ -23,7 +23,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v8"
+ENGINE_VERSION = "profile-rules-v9"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -171,6 +171,7 @@ _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
     ),
     (r"\bdataops\b", "Data / AI engineering"),
     (r"\bdata\s+ops\s+engineer\b", "Data / AI engineering"),
+    (r"\bingenier[oa]\s+de\s+datos\b", "Data / ML engineering"),
     (r"\bdata\s+science\s+specialist\b", "Data science"),
     (
         r"\b(?:senior\s+)?solutions?\s+architect\b.{0,80}"
@@ -185,6 +186,7 @@ _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
     (r"\bproject\s+(?:manager|planner)\b", "Pure project management"),
     (r"\bproduct\s+(?:manager|director)\b", "Pure product management"),
     (r"\btransition\s+manager\b", "Pure project management"),
+    (r"\bit\s+market\s+lead\b", "IT business / project leadership"),
     (
         r"\b(?:buyer|procurement\s+manager|category\s+manager)\b",
         "Procurement",
@@ -491,7 +493,13 @@ def _source_first_large_experience(text: str) -> str | None:
     pattern = re.compile(
         r"\b(?:(?:minimum|at\s+least)\s+)?"
         r"(?P<years>\d+)\+?\s+years?\s+"
-        r"(?:of\s+)?(?:professional\s+)?experience"
+        r"(?:"
+        r"(?:of\s+)?(?:professional\s+)?experience\b"
+        r"|"
+        r"(?:running|operating|administering|managing|supporting)\b"
+        r"|"
+        r"working\s+(?:with|in|on)\b"
+        r")"
         r"[^.\n]{0,150}"
     )
 
@@ -534,7 +542,7 @@ def _source_first_large_experience(text: str) -> str | None:
     for match in pattern.finditer(normalized):
         years = int(match.group("years"))
 
-        if years < 5:
+        if years < 4:
             continue
 
         # Job requirements above twenty years are implausible enough that
@@ -1122,6 +1130,12 @@ def _has_explicit_cross_border_eligibility(text: str) -> bool:
         r"\bwork\s+from\s+anywhere\b(?!\s+(?:in|within|across)\b)",
         r"\b(?:available|open)\s+(?:across|throughout|within)\s+"
         r"(?:emea|europe|the european union|eu)\b",
+        r"\b(?:eu|europe|emea)[-\s]?based\s*(?=,|;|\.|$)",
+        r"\b(?:candidate|applicant|employee|you)\s+"
+        r"(?:must\s+be\s+|are\s+)?(?:eu|europe|emea)[-\s]?based\b",
+        r"\b(?:candidate|applicant|employee|you)\s+"
+        r"(?:must\s+be\s+|are\s+)?based\s+in\s+"
+        r"(?:the\s+)?(?:eu|europe|emea)\b",
         r"\b(?:candidates|applicants)\s+(?:based|located|resident)\s+in\s+spain"
         r"\s+(?:(?:are|may be|can be)\s+"
         r"(?:eligible|accepted|considered|hired)"
