@@ -426,6 +426,12 @@ def _select_role_family(
         if not title_matches and not body_matches:
             continue
 
+        # Excluded career families are title classifications. Description-only
+        # references to managers, architects, developers, sales teams, etc.
+        # must not hijack an otherwise legitimate technical vacancy.
+        if family.priority == "excluded" and not title_matches:
+            continue
+
         if (
             _is_pure_management_exclusion_family(family)
             and title_matches

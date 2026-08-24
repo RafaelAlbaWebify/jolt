@@ -1275,3 +1275,189 @@ def test_source_first_explicit_five_year_requirement_stays_conditional(
         "high-seniority experience requirement" in uncertainty
         for uncertainty in assessment.uncertainties
     )
+
+
+def test_source_first_data_ops_engineer_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Data Ops Engineer + GenAI",
+        location="Spain · Remote",
+        description=(
+            "60% Data / Analytics Engineering and 40% AI Enablement. Python, SQL and ETL/ELT."
+        ),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_data_science_specialist_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Data Science Specialist",
+        location="Spain · Remote",
+        description=("Build machine learning solutions, data models and data pipelines."),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_data_ai_solutions_architect_is_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Senior Solutions Architect Data & AI en Azure",
+        location="Spain · Remote",
+        description=("Design modern data architectures, MLOps and generative AI platforms."),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert assessment.fit_by_interview == 0
+
+
+def test_source_first_spanish_locality_only_remote_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Técnico de Administración y Soporte Office 365",
+        location="Seville, Andalusia, Spain",
+        description=(
+            "Modalidad 100% remoto. "
+            "Solo se valorarán candidaturas de Sevilla, "
+            "Málaga o zonas cercanas."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_two_days_at_client_madrid_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Soporte N1 Microsoft 365",
+        location="Spain",
+        description=(
+            "Modalidad mixta. Aproximadamente 3 días de teletrabajo, "
+            "2 días en cliente, Pozuelo de Alarcón (Madrid)."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_first_eight_weeks_madrid_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Ingeniero SAP Sector Eléctrico",
+        location="Madrid, Spain",
+        description=(
+            "La posición es 100% remoto, pero las primeras 8 semanas "
+            "el candidato debe estar situado en las oficinas de Madrid."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_occasional_madrid_office_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Especialista Técnico PL/SQL Unix",
+        location="Madrid, Spain",
+        description=(
+            "Teletrabajo 100%. Disponibilidad para asistir "
+            "puntualmente a oficinas situadas en Madrid."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+
+
+def test_source_first_spanish_hps_prerequisite_is_ineligible(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Soporte N1 Microsoft 365",
+        location="Spain · Remote",
+        description=(
+            "Requisito previo: Habilitación Personal de Seguridad HPS "
+            "en tramitación o vigente antes de incorporación."
+        ),
+    )
+
+    assert assessment.eligibility == "ineligible"
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("clearance" in blocker.casefold() for blocker in assessment.blockers)
+
+
+def test_excluded_family_body_text_cannot_hijack_technical_title(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    profile = _profile()
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="Senior IT & Security Engineer (AI-Native)",
+        location="European Union · Remote",
+        description=(
+            "Remote-only EU role. Build Entra ID, Microsoft 365, "
+            "Intune, endpoint security and automation. "
+            "You report directly to the Head of Technology."
+        ),
+    )
+
+    assert assessment.role_family_id != "management"
+    assert not any(
+        "Pure Project / Product / People Management" in blocker for blocker in assessment.blockers
+    )
+
+
+def test_explicit_project_manager_title_remains_excluded(
+    monkeypatch,
+) -> None:
+    _install_preferences(monkeypatch)
+
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Project Manager",
+        location="Spain · Remote",
+        description=("Coordinate technical teams and report to the Head of Technology."),
+    )
+
+    assert assessment.recommendation == "do_not_pursue"

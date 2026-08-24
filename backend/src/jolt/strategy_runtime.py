@@ -23,7 +23,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v7"
+ENGINE_VERSION = "profile-rules-v8"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -170,6 +170,15 @@ _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
         "Data governance",
     ),
     (r"\bdataops\b", "Data / AI engineering"),
+    (r"\bdata\s+ops\s+engineer\b", "Data / AI engineering"),
+    (r"\bdata\s+science\s+specialist\b", "Data science"),
+    (
+        r"\b(?:senior\s+)?solutions?\s+architect\b.{0,80}"
+        r"\bdata\s*(?:&|and)\s*ai\b|"
+        r"\bdata\s*(?:&|and)\s*ai\b.{0,80}"
+        r"\b(?:senior\s+)?solutions?\s+architect\b",
+        "Data / AI architecture",
+    ),
     (r"\bsap\s+abap\s+developer\b", "Software development"),
     (r"\b(?:backend|back-end)\s+developer\b", "Software development"),
     (r"\bprogramador(?:a)?\b", "Software development"),
@@ -203,6 +212,10 @@ _SOURCE_FIRST_PRESENCE_PATTERNS = (
     r"\b\d+\s+days?\s+(?:per|a)\s+week.{0,60}\b(?:office|client|customer)\b",
     r"\b\d+\s*-\s*\d+\s+(?:times?|days?)\s+(?:per|a)\s+month\b",
     r"\b\d+\s*-\s*\d+\s+(?:veces|d[ií]as)\s+al\s+mes\b",
+    r"\b\d+\s+d[ií]as?\s+en\s+(?:cliente|oficinas?|presencial)\b",
+    r"\b(?:primeras?|iniciales?)\s+\d+\s+semanas?.{0,100}"
+    r"\b(?:oficinas?|presencial|situad[oa])\b",
+    r"\bdisponibilidad\s+para\s+asistir.{0,100}\boficinas?\b",
 )
 
 _SOURCE_FIRST_LOCALITY_RESTRICTION_PATTERNS = (
@@ -212,6 +225,8 @@ _SOURCE_FIRST_LOCALITY_RESTRICTION_PATTERNS = (
     r"(?:be\s+)?(?:based|located|resident)\s+(?:in|near)\b",
     r"\bonly\s+consider(?:ing|ed)?.{0,60}"
     r"(?:candidates|applicants).{0,80}(?:from|in|near)\b",
+    r"\bsolo\s+se\s+valorar[aá]n\s+candidaturas?.{0,80}\bde\b",
+    r"\bsolo\s+se\s+considerar[aá]n\s+candidaturas?.{0,80}\bde\b",
 )
 
 _SOURCE_FIRST_DOMAIN_DEGREE_PATTERNS = (
@@ -226,6 +241,8 @@ _SOURCE_FIRST_CLEARANCE_PATTERNS = (
     r"\bhps\s+(?:security\s+)?clearance\b",
     r"\b(?:security\s+)?clearance\s+(?:is\s+)?required\b",
     r"\brequired\s+(?:security\s+)?clearance\b",
+    r"\bhabilitaci[oó]n\s+personal\s+de\s+seguridad\s+hps\b",
+    r"\bhps\b.{0,80}\b(?:tramitaci[oó]n|vigente|antes\s+de\s+incorporaci[oó]n)\b",
 )
 
 _FOREIGN_RESIDENCE_PATTERN = (
