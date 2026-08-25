@@ -55,6 +55,7 @@ type SourceEvidence = {
 
 type AppProps = {
   sidebarToolsTarget?: HTMLDivElement | null;
+  evaluationRevision?: number;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -153,7 +154,10 @@ function Sources({ postingId }: { postingId: string }) {
   );
 }
 
-export function App({ sidebarToolsTarget = null }: AppProps) {
+export function App({
+  sidebarToolsTarget = null,
+  evaluationRevision = 0,
+}: AppProps) {
   const [sourceUrl, setSourceUrl] = useState("");
   const [rawText, setRawText] = useState("");
   const [intake, setIntake] = useState<IntakeResult | null>(null);
@@ -173,6 +177,7 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const detailRequestRef = useRef<AbortController | null>(null);
+  const evaluationRevisionRef = useRef(evaluationRevision);
 
   const loadOpportunityIndex = useCallback(async () => {
     const response = await fetch(`${API_BASE}/api/opportunity-index`);
@@ -218,6 +223,27 @@ export function App({ sidebarToolsTarget = null }: AppProps) {
   useEffect(() => {
     if (!hasLoaded) void refreshOpportunities();
   }, [hasLoaded, refreshOpportunities]);
+
+  useEffect(() => {
+    if (evaluationRevisionRef.current === evaluationRevision) {
+      return;
+    }
+
+    evaluationRevisionRef.current = evaluationRevision;
+
+    void (async () => {
+      await refreshOpportunities();
+
+      if (selectedOpportunityId) {
+        await loadDetail(selectedOpportunityId);
+      }
+    })();
+  }, [
+    evaluationRevision,
+    loadDetail,
+    refreshOpportunities,
+    selectedOpportunityId,
+  ]);
 
   useEffect(() => {
     if (!selectedOpportunityId) {

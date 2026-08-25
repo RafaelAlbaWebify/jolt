@@ -17,6 +17,7 @@ import "./ProfessionalStructuredExtraction.css";
 import "./WorkflowRefinement.css";
 import "./ReleaseBlockingUx.css";
 import "./RuntimeIdentity.css";
+import "./JobPreferences.css";
 
 const rootElement = document.getElementById("root");
 
