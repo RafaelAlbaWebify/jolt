@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { DataTools } from "./DataTools";
+import { JobPreferences } from "./JobPreferences";
 import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
@@ -25,6 +26,7 @@ const WORKFLOW_STEPS = ["Capture jobs", "Review opportunities", "Prepare and app
 
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("professional");
+  const [evaluationRevision, setEvaluationRevision] = useState(0);
   const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
   const description = primary?.description ?? "Manage capture history, reviewed decisions, exports, and developer diagnostics.";
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
@@ -75,7 +77,10 @@ export function Workbench() {
             <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />
           </div>
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
-            <App sidebarToolsTarget={hiddenReviewInboxToolsTarget} />
+            <App
+              sidebarToolsTarget={hiddenReviewInboxToolsTarget}
+              evaluationRevision={evaluationRevision}
+            />
           </div>
           <div className="workspace-view workspace-view-applications" hidden={activeView !== "applications"}>
             <ApplicationDashboard apiBase={API_BASE} active={activeView === "applications"} />
@@ -90,9 +95,34 @@ export function Workbench() {
             <section className="panel" aria-labelledby="settings-data-heading">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Secondary utility</p>
+                  <p className="eyebrow">Job strategy</p>
                   <h2 id="settings-data-heading">Settings & Data</h2>
-                  <p>Operational history, reviewed decisions, exports, and diagnostics live here instead of competing with daily work.</p>
+                  <p>
+                    Configure how JOLT judges jobs, then re-evaluate existing opportunities
+                    without changing human review decisions or application records.
+                  </p>
+                </div>
+              </div>
+              <details className="settings-preferences">
+                <summary>Job Search Preferences</summary>
+                <JobPreferences
+                  apiBase={API_BASE}
+                  active={activeView === "settings"}
+                  onEvaluationsRefreshed={() =>
+                    setEvaluationRevision((value) => value + 1)
+                  }
+                />
+              </details>
+            </section>
+
+            <section className="panel" aria-labelledby="operational-data-heading">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Secondary utility</p>
+                  <h2 id="operational-data-heading">Operational Data</h2>
+                  <p>
+                    Capture history, reviewed decisions, exports, and developer diagnostics.
+                  </p>
                 </div>
               </div>
               <DataTools apiBase={API_BASE} />

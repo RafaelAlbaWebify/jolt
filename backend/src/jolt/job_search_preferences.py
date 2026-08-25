@@ -13,9 +13,7 @@ WorkloadPreference = Literal["normal", "high", "unknown"]
 
 def _data_path() -> Path:
     backend_root = Path(__file__).resolve().parents[2]
-    data_dir = backend_root / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "job_search_preferences.json"
+    return backend_root / "data" / "job_search_preferences.json"
 
 
 class JobSearchPreferences(BaseModel):
@@ -76,5 +74,18 @@ def load_job_search_preferences() -> JobSearchPreferences:
 
 def save_job_search_preferences(preferences: JobSearchPreferences) -> JobSearchPreferences:
     path = _data_path()
-    path.write_text(preferences.model_dump_json(indent=2), encoding="utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    try:
+        temporary_path.write_text(
+            preferences.model_dump_json(indent=2),
+            encoding="utf-8",
+        )
+        temporary_path.replace(path)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
     return preferences

@@ -1,9 +1,32 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./App", () => ({ App: () => <section>Opportunity review content</section> }));
+vi.mock("./App", () => ({
+  App: ({ evaluationRevision = 0 }: { evaluationRevision?: number }) => (
+    <section>
+      Opportunity review content revision {evaluationRevision}
+    </section>
+  ),
+}));
 vi.mock("./ApplicationDashboard", () => ({ ApplicationDashboard: () => <section>Application tracking content</section> }));
 vi.mock("./DataTools", () => ({ DataTools: () => <section>Capture history, reviewed decisions, and exports</section> }));
+vi.mock("./JobPreferences", () => ({
+  JobPreferences: ({
+    onEvaluationsRefreshed,
+  }: {
+    onEvaluationsRefreshed?: () => void;
+  }) => (
+    <section>
+      <span>Job search preferences</span>
+      <button
+        type="button"
+        onClick={() => onEvaluationsRefreshed?.()}
+      >
+        Apply preference refresh
+      </button>
+    </section>
+  ),
+}));
 vi.mock("./LinkedInCommandCenter", () => ({ LinkedInCommandCenter: () => <section>LinkedIn profile content</section> }));
 vi.mock("./MarketIntelligence", () => ({ MarketIntelligence: () => <section>Market intelligence content</section> }));
 vi.mock("./ProfessionalIntelligence", () => ({ ProfessionalIntelligence: () => <section>Job capture content</section> }));
@@ -30,14 +53,44 @@ describe("Workbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
     expect(screen.getByRole("heading", { name: "Settings & Data" })).toBeInTheDocument();
     expect(screen.getByText("Capture history, reviewed decisions, and exports")).toBeVisible();
+    expect(screen.getByText("Job Search Preferences")).toBeVisible();
+    expect(screen.getByText("Job search preferences")).not.toBeVisible();
+
+    fireEvent.click(screen.getByText("Job Search Preferences"));
+
+    expect(screen.getByText("Job search preferences")).toBeVisible();
     expect(screen.getByText("Developer diagnostics")).toBeVisible();
+  });
+
+  it("propagates preference re-evaluation to the mounted Review Inbox", () => {
+    render(<Workbench />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Settings & Data" }),
+    );
+
+    fireEvent.click(
+      screen.getByText("Job Search Preferences"),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply preference refresh" }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Review Inbox" }),
+    );
+
+    expect(
+      screen.getByText("Opportunity review content revision 1"),
+    ).toBeVisible();
   });
 
   it("keeps workspaces mounted while showing one active view", () => {
     render(<Workbench />);
 
     const capture = screen.getByText("Job capture content").parentElement;
-    const review = screen.getByText("Opportunity review content").parentElement;
+    const review = screen.getByText(/Opportunity review content revision/).parentElement;
     const applications = screen.getByText("Application tracking content").parentElement;
     const linkedin = screen.getByText("LinkedIn profile content").parentElement;
     const market = screen.getByText("Market intelligence content").parentElement;
