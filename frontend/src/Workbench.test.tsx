@@ -53,6 +53,11 @@ describe("Workbench", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
     expect(screen.getByRole("heading", { name: "Settings & Data" })).toBeInTheDocument();
     expect(screen.getByText("Capture history, reviewed decisions, and exports")).toBeVisible();
+    expect(screen.getByText("Job Search Preferences")).toBeVisible();
+    expect(screen.getByText("Job search preferences")).not.toBeVisible();
+
+    fireEvent.click(screen.getByText("Job Search Preferences"));
+
     expect(screen.getByText("Job search preferences")).toBeVisible();
     expect(screen.getByText("Developer diagnostics")).toBeVisible();
   });
@@ -62,6 +67,10 @@ describe("Workbench", () => {
 
     fireEvent.click(
       screen.getByRole("button", { name: "Settings & Data" }),
+    );
+
+    fireEvent.click(
+      screen.getByText("Job Search Preferences"),
     );
 
     fireEvent.click(

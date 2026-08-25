@@ -103,13 +103,16 @@ export function Workbench() {
                   </p>
                 </div>
               </div>
-              <JobPreferences
-                apiBase={API_BASE}
-                active={activeView === "settings"}
-                onEvaluationsRefreshed={() =>
-                  setEvaluationRevision((value) => value + 1)
-                }
-              />
+              <details className="settings-preferences">
+                <summary>Job Search Preferences</summary>
+                <JobPreferences
+                  apiBase={API_BASE}
+                  active={activeView === "settings"}
+                  onEvaluationsRefreshed={() =>
+                    setEvaluationRevision((value) => value + 1)
+                  }
+                />
+              </details>
             </section>
 
             <section className="panel" aria-labelledby="operational-data-heading">
