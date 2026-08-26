@@ -1214,8 +1214,7 @@ def _explicit_foreign_remote_scope(text: str) -> str | None:
     for pattern in patterns:
         for match in re.finditer(pattern, normalized):
             window = normalized[
-                max(0, match.start() - 120) :
-                min(len(normalized), match.end() + 120)
+                max(0, match.start() - 120) : min(len(normalized), match.end() + 120)
             ]
 
             if any(

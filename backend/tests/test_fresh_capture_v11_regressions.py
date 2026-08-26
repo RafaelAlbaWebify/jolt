@@ -13,20 +13,12 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import JobSearchPreferences
 from jolt.strategy_runtime import calibrated_strategy_assessment
 
-
-_FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "fresh_capture_v11_20260825.json"
-)
+_FIXTURE = Path(__file__).parent / "fixtures" / "fresh_capture_v11_20260825.json"
 
 
 def _jobs() -> dict[str, dict[str, str]]:
     payload = json.loads(_FIXTURE.read_text(encoding="utf-8"))
-    return {
-        job["source_job_id"]: job
-        for job in payload["jobs"]
-    }
+    return {job["source_job_id"]: job for job in payload["jobs"]}
 
 
 JOBS = _jobs()
@@ -156,7 +148,7 @@ def test_fresh_capture_foreign_remote_scope_is_hard_rejected(
     )
 
     assert assessment.recommendation == "do_not_pursue", (
-        f'{job["company"]} / LinkedIn {source_job_id}: '
+        f"{job['company']} / LinkedIn {source_job_id}: "
         f"foreign employment scope must hard reject; "
         f"got recommendation={assessment.recommendation}, "
         f"eligibility={assessment.eligibility}, "
@@ -164,11 +156,8 @@ def test_fresh_capture_foreign_remote_scope_is_hard_rejected(
         f"uncertainties={assessment.uncertainties}"
     )
 
-    assert any(
-        "Location eligibility:" in blocker
-        for blocker in assessment.blockers
-    ), (
-        f'{job["company"]} / LinkedIn {source_job_id}: '
+    assert any("Location eligibility:" in blocker for blocker in assessment.blockers), (
+        f"{job['company']} / LinkedIn {source_job_id}: "
         f"expected an explicit location blocker; "
         f"got {assessment.blockers}"
     )
@@ -198,7 +187,7 @@ def test_fresh_capture_specialist_role_scope_is_hard_rejected(
     )
 
     assert assessment.recommendation == "do_not_pursue", (
-        f'{job["company"]} / LinkedIn {source_job_id}: '
+        f"{job['company']} / LinkedIn {source_job_id}: "
         f"specialist career scope must hard reject; "
         f"got recommendation={assessment.recommendation}, "
         f"eligibility={assessment.eligibility}, "
