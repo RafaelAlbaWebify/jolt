@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Evaluation, Posting, ProfileVersion, utc_now
-from jolt.employment_geography import FOREIGN_COUNTRY_TERMS, normalized_location_scope
+from jolt.employment_geography import (
+    FOREIGN_COUNTRY_TERMS,
+    INCOMPATIBLE_REGION_TERMS,
+    normalized_location_scope,
+)
 from jolt.evaluation_strategy import (
     StrategyAssessment,
     StrategyProfile,
@@ -23,7 +27,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v10"
+ENGINE_VERSION = "profile-rules-v11"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -129,6 +133,24 @@ _CLEARLY_DISTANT_SPANISH_LOCATION_TERMS = (
 )
 
 _SOURCE_FIRST_SPECIALIST_REQUIREMENTS = (
+    (
+        "Microsoft Dynamics 365",
+        (
+            "microsoft dynamics 365",
+            "dynamics 365",
+            "d365",
+        ),
+    ),
+    (
+        "Microsoft Power Platform",
+        (
+            "microsoft power platform",
+            "power platform",
+            "power apps",
+            "power automate",
+            "dataverse",
+        ),
+    ),
     ("AMOS", ("amos",)),
     ("SunView", ("sunview",)),
     ("ChangeGear", ("changegear",)),
@@ -169,6 +191,10 @@ _SOURCE_FIRST_SPECIALIST_REQUIREMENTS = (
 )
 
 _SOURCE_FIRST_EXCLUDED_TITLE_PATTERNS = (
+    (
+        r"\bdynamics\s*365\b.{0,100}\bsolution\s+architect\b",
+        "Dynamics solution architecture",
+    ),
     (r"\b(?:staff|senior|lead)?\s*data\s+engineer\b", "Data / ML engineering"),
     (r"\b(?:senior|lead)?\s*data\s+scientist\b", "Data science"),
     (r"\b(?:senior|lead)?\s*data\s+analyst\b", "Data analysis"),
@@ -377,12 +403,17 @@ def _source_first_alias_required(text: str, alias: str) -> bool:
             rf"\b(?:minimum|at\s+least)\s+\d+\+?\s+years?"
             rf".{{0,90}}\b{escaped}\b",
             rf"\b\d+\+?\s+years?.{{0,80}}\b{escaped}\b",
+            rf"\b{escaped}\b.{{0,100}}\b\d+\+?\s+years?"
+            rf"(?:\s+of)?\s+(?:hands[-\s]?on\s+)?experience\b",
             rf"\bm[ií]nimo\s+\d+\+?\s+a[nñ]os?\s+de\s+experiencia"
             rf".{{0,90}}\b{escaped}\b",
             rf"\bexperiencia\s+de\s+\d+\+?\s+a[nñ]os?"
             rf".{{0,100}}\b{escaped}\b",
             rf"\bal\s+menos\s+\d+\+?\s+a[nñ]os?\s+de\s+experiencia"
             rf".{{0,90}}\b{escaped}\b",
+            rf"\b{escaped}\b.{{0,100}}"
+            rf"\b(?:m[ií]nimo\s+)?\d+\+?\s+a[nñ]os?"
+            rf"(?:\s+de)?\s+experiencia\b",
             rf"\b(?:core\s+)?technical\s+skills?\s*\(required\)"
             rf".{{0,180}}\b{escaped}\b",
             rf"\b{escaped}\b.{{0,110}}"
@@ -1128,6 +1159,79 @@ def _apply_local_work_mode_eligibility(
     return assessment
 
 
+def _explicit_foreign_remote_scope(text: str) -> str | None:
+    normalized = " ".join(text.casefold().split())
+
+    foreign_scope_terms = tuple(
+        dict.fromkeys(
+            (
+                *INCOMPATIBLE_REGION_TERMS,
+                *FOREIGN_COUNTRY_TERMS,
+            )
+        )
+    )
+
+    foreign_scope_pattern = (
+        "(?:"
+        + "|".join(
+            re.escape(term)
+            for term in sorted(
+                foreign_scope_terms,
+                key=len,
+                reverse=True,
+            )
+        )
+        + ")"
+    )
+
+    patterns = (
+        (
+            rf"\bwork\s+from\s+anywhere\s+"
+            rf"(?:in|within|across)\s+(?:the\s+)?"
+            rf"(?P<scope>{foreign_scope_pattern})\b"
+        ),
+        (
+            rf"\b(?P<scope>{foreign_scope_pattern})\s+"
+            rf"remote\s+(?:team|role|position|work|jobs?)\b"
+        ),
+        (
+            rf"\bremote\s+(?:team|role|position|work|jobs?)\s+"
+            rf"(?:in|within|across|for)\s+(?:the\s+)?"
+            rf"(?P<scope>{foreign_scope_pattern})\b"
+        ),
+    )
+
+    spain_compatible_scope_terms = (
+        "spain",
+        "españa",
+        "espana",
+        "european union",
+        "europe",
+        "emea",
+        "eu remote",
+    )
+
+    for pattern in patterns:
+        for match in re.finditer(pattern, normalized):
+            window = normalized[
+                max(0, match.start() - 120) :
+                min(len(normalized), match.end() + 120)
+            ]
+
+            if any(
+                re.search(
+                    rf"(?<!\w){re.escape(term)}(?!\w)",
+                    window,
+                )
+                for term in spain_compatible_scope_terms
+            ):
+                continue
+
+            return match.group("scope")
+
+    return None
+
+
 def _has_explicit_cross_border_eligibility(text: str) -> bool:
     normalized = " ".join(text.casefold().split())
 
@@ -1186,6 +1290,38 @@ def _apply_location_eligibility(
 
     combined_text = "\n".join((title, location, description))
     scope = _normalized_location_scope(location)
+
+    foreign_remote_scope = _explicit_foreign_remote_scope(combined_text)
+
+    if foreign_remote_scope is not None:
+        if scope == "foreign_country":
+            blocker = (
+                "Location eligibility: the vacancy is explicitly tied to "
+                f"{location or 'another specific country'}, and the posting "
+                "does not establish that employment from Spain is permitted."
+            )
+        else:
+            blocker = (
+                "Location eligibility: the vacancy explicitly limits "
+                f"remote employment to {foreign_remote_scope}, which "
+                "does not establish that employment from Spain is permitted."
+            )
+
+        blockers = tuple(
+            dict.fromkeys(
+                [
+                    *assessment.blockers,
+                    blocker,
+                ]
+            )
+        )
+        return replace(
+            assessment,
+            eligibility="ineligible",
+            recommendation="do_not_pursue",
+            confidence="high",
+            blockers=blockers,
+        )
 
     if _has_explicit_foreign_residence_requirement(combined_text):
         blockers = tuple(
