@@ -81,7 +81,7 @@ describe("LinkedInJobCaptureLauncher", () => {
           status: "queued",
           search_url: "https://www.linkedin.com/jobs/search/",
           max_jobs: 100,
-          max_pages: 3,
+          max_pages: 10,
         }), { status: 200 });
       }
 
@@ -99,6 +99,14 @@ describe("LinkedInJobCaptureLauncher", () => {
     ) as HTMLInputElement;
 
     expect(jobsInput.max).toBe("100");
+    expect(jobsInput.value).toBe("100");
+
+    const pagesInput = screen.getByLabelText(
+      "Maximum pages",
+    ) as HTMLInputElement;
+
+    expect(pagesInput.max).toBe("10");
+    expect(pagesInput.value).toBe("10");
 
     fireEvent.change(jobsInput, {
       target: { value: "150" },
@@ -116,7 +124,7 @@ describe("LinkedInJobCaptureLauncher", () => {
       expect(submitted).toEqual({
         search_url: "https://www.linkedin.com/jobs/search/",
         max_jobs: 100,
-        max_pages: 3,
+        max_pages: 10,
       });
     });
   });

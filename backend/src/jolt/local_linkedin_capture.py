@@ -18,8 +18,8 @@ install_preference_aware_evaluation()
 
 class LocalLinkedInCaptureRequest(BaseModel):
     search_url: str = Field(min_length=1, max_length=4000)
-    max_jobs: int = Field(default=10, ge=1, le=100)
-    max_pages: int = Field(default=3, ge=1, le=10)
+    max_jobs: int = Field(default=100, ge=1, le=100)
+    max_pages: int = Field(default=10, ge=1, le=10)
 
 
 class LocalLinkedInCaptureStatus(BaseModel):

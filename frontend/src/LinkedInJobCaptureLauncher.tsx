@@ -77,8 +77,8 @@ function isBusy(status: CaptureStatus["status"]) {
 
 export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
   const [searchUrl, setSearchUrl] = useState(DEFAULT_URL);
-  const [maxJobs, setMaxJobs] = useState(10);
-  const [maxPages, setMaxPages] = useState(3);
+  const [maxJobs, setMaxJobs] = useState(100);
+  const [maxPages, setMaxPages] = useState(10);
   const [status, setStatus] = useState<CaptureStatus>({
     status: "idle",
     search_url: "",

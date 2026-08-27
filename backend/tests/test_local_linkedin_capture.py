@@ -69,6 +69,12 @@ def test_local_capture_rejects_parallel_run() -> None:
 
 
 def test_local_capture_validates_bounds() -> None:
+    defaults = local_linkedin_capture.LocalLinkedInCaptureRequest(
+        search_url="https://www.linkedin.com/jobs/search/",
+    )
+    assert defaults.max_jobs == 100
+    assert defaults.max_pages == 10
+
     accepted = local_linkedin_capture.LocalLinkedInCaptureRequest(
         search_url="https://www.linkedin.com/jobs/search/",
         max_jobs=100,
