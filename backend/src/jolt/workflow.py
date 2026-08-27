@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from jolt.application_response import build_application_response
 from jolt.database import (
+    AIReview,
     Application,
     ApplicationEvent,
     Evaluation,
@@ -267,41 +268,80 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
     )
 
 
-def record_review(session: Session, posting_id: str, request: ReviewRequest) -> ReviewResponse:
+def record_review(
+    session: Session,
+    posting_id: str,
+    request: ReviewRequest,
+) -> ReviewResponse:
     posting = session.get(Posting, posting_id)
-    evaluation = session.get(Evaluation, request.evaluation_id)
-    if posting is None or evaluation is None or evaluation.posting_id != posting_id:
-        raise JoltNotFoundError("Posting or evaluation was not found.")
+
+    if posting is None:
+        raise JoltNotFoundError("Posting was not found.")
+
+    evaluation = None
+    ai_review = None
+
+    if request.ai_review_id is not None:
+        ai_review = session.get(
+            AIReview,
+            request.ai_review_id,
+        )
+
+        if ai_review is None or ai_review.posting_id != posting_id:
+            raise JoltNotFoundError("Posting or AI review was not found.")
+
+    elif request.evaluation_id is not None:
+        evaluation = session.get(
+            Evaluation,
+            request.evaluation_id,
+        )
+
+        if evaluation is None or evaluation.posting_id != posting_id:
+            raise JoltNotFoundError("Posting or evaluation was not found.")
+
+    else:
+        raise ValueError("A review requires ai_review_id or evaluation_id.")
+
+    evaluation_overridden = bool(
+        evaluation is not None and request.decision != evaluation.recommendation
+    )
+
     review = ReviewDecision(
         id=str(uuid4()),
         posting_id=posting_id,
-        evaluation_id=evaluation.id,
+        evaluation_id=(evaluation.id if evaluation is not None else None),
+        ai_review_id=(ai_review.id if ai_review is not None else None),
         decision=request.decision,
         reason_code=request.reason_code,
         notes=request.notes,
-        evaluation_overridden=request.decision != evaluation.recommendation,
+        evaluation_overridden=evaluation_overridden,
         reviewed_at=utc_now(),
     )
+
     session.add(review)
 
     if request.decision == "pursue":
         existing_application = session.scalar(
             select(Application).where(Application.posting_id == posting_id)
         )
+
         if existing_application is None:
             now = utc_now()
+
             application = Application(
                 id=str(uuid4()),
                 posting_id=posting_id,
                 status="preparing",
                 application_url="",
                 resume_used="",
-                notes="Created automatically from pursue review decision.",
+                notes=("Created automatically from pursue review decision."),
                 created_at=now,
                 updated_at=now,
             )
+
             session.add(application)
             session.flush()
+
             session.add(
                 ApplicationEvent(
                     id=str(uuid4()),
@@ -309,16 +349,18 @@ def record_review(session: Session, posting_id: str, request: ReviewRequest) -> 
                     event_type="application_created",
                     from_status="",
                     to_status="preparing",
-                    notes="Created automatically from pursue review decision.",
+                    notes=("Created automatically from pursue review decision."),
                     occurred_at=now,
                 )
             )
 
     session.commit()
+
     return ReviewResponse(
         review_id=review.id,
         posting_id=posting_id,
-        evaluation_id=evaluation.id,
+        evaluation_id=review.evaluation_id,
+        ai_review_id=review.ai_review_id,
         decision=request.decision,
         evaluation_overridden=review.evaluation_overridden,
     )

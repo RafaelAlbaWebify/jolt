@@ -2,48 +2,52 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 
-import { ApplicationReadiness } from "./ApplicationReadiness";
-import type { ApplicationReadinessData } from "./ApplicationReadiness";
 import type { ApplicationStatus } from "./ApplicationWorkflow";
-import { AutomatedReview } from "./AutomatedReview";
 import { DataTools } from "./DataTools";
-import { OpportunityApplicationHandoff } from "./OpportunityApplicationHandoff";
-import { ReadinessHistory } from "./ReadinessHistory";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
-type SortOption = "score_desc" | "score_asc" | "title_asc" | "company_asc";
+type AIReviewDecision = "strong_pursue" | "pursue" | "conditional" | "reject";
+type AIReviewStatus = "reviewed" | "awaiting_ai_review";
+type SortOption = "ai_priority" | "title_asc" | "company_asc";
 
 type OpportunityIndex = {
   posting_id: string;
-  evaluation_id: string;
   source_url: string;
   title: string;
   company: string;
   location: string;
-  recommendation: "pursue" | "consider" | "reject";
-  confidence: string;
-  ranking_score: number;
+
+  ai_review_id: string | null;
+  ai_review_status: AIReviewStatus;
+
+  decision: AIReviewDecision | null;
+  priority_score: number | null;
+
+  geography_status: string | null;
+  clearance_status: string | null;
+  language_status: string | null;
+  technical_fit: number | null;
+
+  duplicate_of_posting_id: string | null;
+
+  summary: string;
+  reasons: string[];
+
   review_decision: ReviewChoice | null;
   application_id?: string | null;
   application_status?: ApplicationStatus | null;
-  outcome_type?: string | null;
+
+  reviewed_at: string | null;
+  imported_at: string | null;
 };
 
-type OpportunityDetail = OpportunityIndex & {
-  proposed_decision: ReviewChoice;
-  fit_summary: string;
-  strengths: string[];
-  gaps: string[];
-  blockers: string[];
-  uncertainties: string[];
-  dimensions: Record<string, number>;
-  reasons: string[];
-  profile_version_id: string;
-  engine_version: string;
-  readiness: ApplicationReadinessData;
+type IntakeResult = {
+  posting_id: string;
+  identity_status: string;
+  title: string;
+  company: string;
+  location: string;
 };
-
-type IntakeResult = OpportunityIndex & { identity_status: string; reasons: string[] };
 
 type SourceEvidence = {
   identity_status: string;
@@ -76,6 +80,50 @@ function externalSourceUrl(value: string) {
 
 function decisionLabel(value: ReviewChoice | null) {
   return value ? value.replaceAll("_", " ") : "Pending review";
+}
+
+function aiDecisionLabel(opportunity: OpportunityIndex) {
+  if (opportunity.ai_review_status !== "reviewed") {
+    return "Awaiting AI review";
+  }
+
+  if (!opportunity.decision) {
+    return "AI review unavailable";
+  }
+
+  return opportunity.decision.replaceAll("_", " ");
+}
+
+function aiPriorityGroup(opportunity: OpportunityIndex) {
+  if (opportunity.ai_review_status !== "reviewed") return 3;
+
+  if (opportunity.decision === "strong_pursue") return 0;
+  if (opportunity.decision === "pursue") return 1;
+  if (opportunity.decision === "conditional") return 2;
+  if (opportunity.decision === "reject") return 4;
+
+  return 3;
+}
+
+function compareAIPriority(
+  left: OpportunityIndex,
+  right: OpportunityIndex,
+) {
+  const groupDifference =
+    aiPriorityGroup(left) - aiPriorityGroup(right);
+
+  if (groupDifference !== 0) {
+    return groupDifference;
+  }
+
+  const leftScore = left.priority_score ?? -1;
+  const rightScore = right.priority_score ?? -1;
+
+  if (leftScore !== rightScore) {
+    return rightScore - leftScore;
+  }
+
+  return left.title.localeCompare(right.title);
 }
 
 function reviewNotice(decision: ReviewChoice, title: string) {
@@ -166,21 +214,18 @@ export function App({
   const [refreshing, setRefreshing] = useState(false);
   const [showManualIntake, setShowManualIntake] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState<SortOption>("score_desc");
+  const [sortOption, setSortOption] = useState<SortOption>("ai_priority");
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
-  const [selectedDetail, setSelectedDetail] = useState<OpportunityDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const detailRequestRef = useRef<AbortController | null>(null);
   const evaluationRevisionRef = useRef(evaluationRevision);
 
   const loadOpportunityIndex = useCallback(async () => {
-    const response = await fetch(`${API_BASE}/api/opportunity-index`);
+    const response = await fetch(`${API_BASE}/api/ai-review/opportunity-index`);
     if (!response.ok) throw await errorFromResponse(response, "Unable to load opportunities.");
     setOpportunities((await response.json()) as OpportunityIndex[]);
     setHasLoaded(true);
@@ -198,28 +243,6 @@ export function App({
     }
   }, [loadOpportunityIndex]);
 
-  const loadDetail = useCallback(async (postingId: string) => {
-    detailRequestRef.current?.abort();
-    const controller = new AbortController();
-    detailRequestRef.current = controller;
-    setDetailLoading(true);
-    setSelectedDetail(null);
-    setError("");
-    try {
-      const response = await fetch(`${API_BASE}/api/opportunity-detail/${postingId}`, { signal: controller.signal });
-      if (!response.ok) throw await errorFromResponse(response, "Unable to load opportunity details.");
-      const detail = (await response.json()) as OpportunityDetail;
-      if (detailRequestRef.current === controller) setSelectedDetail(detail);
-    } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
-      if (detailRequestRef.current === controller) {
-        setError(caught instanceof Error ? caught.message : "Opportunity detail failed.");
-      }
-    } finally {
-      if (detailRequestRef.current === controller) setDetailLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (!hasLoaded) void refreshOpportunities();
   }, [hasLoaded, refreshOpportunities]);
@@ -230,43 +253,20 @@ export function App({
     }
 
     evaluationRevisionRef.current = evaluationRevision;
-
-    void (async () => {
-      await refreshOpportunities();
-
-      if (selectedOpportunityId) {
-        await loadDetail(selectedOpportunityId);
-      }
-    })();
+    void refreshOpportunities();
   }, [
     evaluationRevision,
-    loadDetail,
     refreshOpportunities,
-    selectedOpportunityId,
   ]);
 
-  useEffect(() => {
-    if (!selectedOpportunityId) {
-      detailRequestRef.current?.abort();
-      setDetailLoading(false);
-      setSelectedDetail(null);
-      return;
-    }
-    void loadDetail(selectedOpportunityId);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.requestAnimationFrame(() => inspectorCloseRef.current?.focus());
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setSelectedOpportunityId(null);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      window.requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
-    };
-  }, [loadDetail, selectedOpportunityId]);
-
+  const selectedOpportunity = useMemo(
+    () =>
+      opportunities.find(
+        (opportunity) =>
+          opportunity.posting_id === selectedOpportunityId,
+      ) ?? null,
+    [opportunities, selectedOpportunityId],
+  );
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
     const filtered = opportunities.filter((opportunity) => {
@@ -277,21 +277,21 @@ export function App({
         .includes(normalizedQuery);
     });
     return [...filtered].sort((left, right) => {
-      if (sortOption === "score_asc") return left.ranking_score - right.ranking_score;
-      if (sortOption === "title_asc") return left.title.localeCompare(right.title);
-      if (sortOption === "company_asc") return left.company.localeCompare(right.company);
-      return right.ranking_score - left.ranking_score;
+      if (sortOption === "title_asc") {
+        return left.title.localeCompare(right.title);
+      }
+
+      if (sortOption === "company_asc") {
+        return left.company.localeCompare(right.company);
+      }
+
+      return compareAIPriority(left, right);
     });
   }, [opportunities, searchQuery, sortOption]);
 
   const pageCount = Math.max(1, Math.ceil(visibleOpportunities.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pagedOpportunities = visibleOpportunities.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  async function refreshSelected() {
-    await refreshOpportunities();
-    if (selectedOpportunityId) await loadDetail(selectedOpportunityId);
-  }
 
   async function apiAction(url: string, body: object) {
     setBusy(true);
@@ -303,7 +303,7 @@ export function App({
         body: JSON.stringify(body),
       });
       if (!response.ok) throw await errorFromResponse(response, "The workflow change could not be saved.");
-      await refreshSelected();
+      await refreshOpportunities();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected workflow error.");
       throw caught;
@@ -312,15 +312,32 @@ export function App({
     }
   }
 
-  async function reviewOpportunity(opportunity: OpportunityIndex, decision: ReviewChoice) {
+  async function reviewOpportunity(
+    opportunity: OpportunityIndex,
+    decision: ReviewChoice,
+  ) {
+    if (!opportunity.ai_review_id) {
+      setError(
+        "This job is awaiting AI review and cannot be decided yet.",
+      );
+      return;
+    }
+
     setWorkflowNotice("");
+
     try {
-      await apiAction(`/api/opportunities/${opportunity.posting_id}/reviews`, {
-        evaluation_id: opportunity.evaluation_id,
-        decision,
-      });
+      await apiAction(
+        `/api/opportunities/${opportunity.posting_id}/reviews`,
+        {
+          ai_review_id: opportunity.ai_review_id,
+          decision,
+        },
+      );
+
       setSelectedOpportunityId(null);
-      setWorkflowNotice(reviewNotice(decision, opportunity.title));
+      setWorkflowNotice(
+        reviewNotice(decision, opportunity.title),
+      );
     } catch {
       // apiAction already surfaces the error.
     }
@@ -405,7 +422,7 @@ export function App({
       setSourceUrl("");
       setShowManualIntake(false);
       await refreshOpportunities();
-      setWorkflowNotice(`${loaded.title || "Opportunity"} added to the review inbox.`);
+      setWorkflowNotice(`${loaded.title || "Opportunity"} added and awaiting AI review.`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unexpected intake error.");
     } finally {
@@ -441,13 +458,13 @@ export function App({
           />
         </label>
         <button disabled={busy || !rawText.trim()} type="submit">
-          {busy ? "Processing…" : "Evaluate and add to inbox"}
+          {busy ? "Processing…" : "Clean and add to inbox"}
         </button>
       </form>
     </section>
   );
 
-  const operationsTools = <DataTools apiBase={API_BASE} />;
+  const operationsTools = <DataTools apiBase={API_BASE} onImported={refreshOpportunities} />;
 
   return (
     <main className="opportunity-main">
@@ -479,7 +496,7 @@ export function App({
           <div>
             <p className="eyebrow">Pending review inbox</p>
             <h2 id="queue-heading">Review Inbox</h2>
-            <p>Review newly captured or manually added jobs. A decision removes the item from this inbox.</p>
+            <p>Captured jobs wait here until an external AI review is imported. Human decisions then move them into or out of the application workflow.</p>
           </div>
           <div className="professional-source-editor-actions">
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
@@ -528,8 +545,7 @@ export function App({
                 setPage(1);
               }}
             >
-              <option value="score_desc">Highest score</option>
-              <option value="score_asc">Lowest score</option>
+              <option value="ai_priority">AI priority</option>
               <option value="title_asc">Title A–Z</option>
               <option value="company_asc">Company A–Z</option>
             </select>
@@ -554,24 +570,30 @@ export function App({
                     <h3>{opportunity.title || "Untitled opportunity"}</h3>
                     <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
                   </div>
-                  <div className={`score score-${opportunity.recommendation}`}>
-                    <strong>{opportunity.ranking_score}</strong>
-                    <span>{opportunity.recommendation}</span>
+                  <div className={`score score-${opportunity.decision ?? "awaiting"}`}>
+                    <strong>
+                      {opportunity.priority_score ?? "—"}
+                    </strong>
+                    <span>{aiDecisionLabel(opportunity)}</span>
                   </div>
                   <div className="opportunity-state">
                     <strong>
-                      {opportunity.outcome_type ??
-                        opportunity.application_status ??
-                        decisionLabel(opportunity.review_decision)}
+                      {opportunity.ai_review_status === "reviewed"
+                        ? "AI reviewed"
+                        : "Awaiting AI review"}
                     </strong>
-                    <span>{opportunity.confidence} confidence</span>
+                    <span>
+                      {opportunity.ai_review_status === "reviewed"
+                        ? `Technical fit ${opportunity.technical_fit ?? "—"}`
+                        : "Export capture → AI analysis → import review"}
+                    </span>
                   </div>
                   <label className="decision-control">
                     <span>Decision</span>
                     <select
                       aria-label={`Decision for ${opportunity.title}`}
                       value={opportunity.review_decision ?? ""}
-                      disabled={busy}
+                      disabled={busy || !opportunity.ai_review_id}
                       onChange={(event) => {
                         const decision = event.target.value as ReviewChoice;
                         if (decision) {
@@ -625,8 +647,12 @@ export function App({
           </button>
         </div>
       </section>
-      {selectedOpportunityId && (
-        <div className="inspector-backdrop" role="presentation" onMouseDown={() => setSelectedOpportunityId(null)}>
+      {selectedOpportunityId && selectedOpportunity && (
+        <div
+          className="inspector-backdrop"
+          role="presentation"
+          onMouseDown={() => setSelectedOpportunityId(null)}
+        >
           <aside
             className="opportunity-inspector"
             role="dialog"
@@ -636,9 +662,15 @@ export function App({
           >
             <header className="inspector-header">
               <div>
-                <p className="eyebrow">Opportunity inspector</p>
-                <h2 id="opportunity-inspector-title">{selectedDetail?.title ?? "Loading opportunity…"}</h2>
-                <p>{selectedDetail ? [selectedDetail.company, selectedDetail.location].filter(Boolean).join(" · ") : ""}</p>
+                <p className="eyebrow">AI-reviewed opportunity</p>
+                <h2 id="opportunity-inspector-title">
+                  {selectedOpportunity.title || "Untitled opportunity"}
+                </h2>
+                <p>
+                  {[selectedOpportunity.company, selectedOpportunity.location]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
               <button
                 ref={inspectorCloseRef}
@@ -649,71 +681,166 @@ export function App({
                 Close
               </button>
             </header>
-            {detailLoading && (
-              <div className="inspector-loading" role="status">
-                Loading full analysis…
+
+            <div className="inspector-sticky-actions">
+              <div
+                className={`score score-${
+                  selectedOpportunity.decision ?? "awaiting"
+                }`}
+              >
+                <strong>
+                  {selectedOpportunity.priority_score ?? "—"}
+                </strong>
+                <span>
+                  {aiDecisionLabel(selectedOpportunity)}
+                </span>
               </div>
-            )}
-            {selectedDetail && (
-              <>
-                <div className="inspector-sticky-actions">
-                  <div className={`score score-${selectedDetail.recommendation}`}>
-                    <strong>{selectedDetail.ranking_score}</strong>
-                    <span>{selectedDetail.recommendation}</span>
-                  </div>
-                  <label className="decision-control">
-                    <span>Decision</span>
-                    <select
-                      value={selectedDetail.review_decision ?? ""}
-                      disabled={busy}
-                      onChange={(event) => {
-                        const decision = event.target.value as ReviewChoice;
-                        if (decision) {
-                          void reviewOpportunity(selectedDetail, decision);
-                        }
-                      }}
-                    >
-                      <option value="">Pending review</option>
-                      {REVIEW_CHOICES.map((choice) => (
-                        <option value={choice} key={choice}>
-                          {choice.replaceAll("_", " ")}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {selectedDetail.source_url && (
-                    <a className="primary-link" href={externalSourceUrl(selectedDetail.source_url)} target="_blank" rel="noreferrer">
-                      Open source job
-                    </a>
+
+              <label className="decision-control">
+                <span>Human decision</span>
+                <select
+                  value={selectedOpportunity.review_decision ?? ""}
+                  disabled={busy || !selectedOpportunity.ai_review_id}
+                  onChange={(event) => {
+                    const decision =
+                      event.target.value as ReviewChoice;
+
+                    if (decision) {
+                      void reviewOpportunity(
+                        selectedOpportunity,
+                        decision,
+                      );
+                    }
+                  }}
+                >
+                  <option value="">
+                    {selectedOpportunity.ai_review_id
+                      ? "Pending review"
+                      : "Awaiting AI review"}
+                  </option>
+
+                  {REVIEW_CHOICES.map((choice) => (
+                    <option value={choice} key={choice}>
+                      {choice.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedOpportunity.source_url && (
+                <a
+                  className="primary-link"
+                  href={externalSourceUrl(
+                    selectedOpportunity.source_url,
                   )}
-                  <a href={`${API_BASE}/api/opportunities/${selectedDetail.posting_id}/preparation-pack`} download>
-                    Download prep pack
-                  </a>
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open source job
+                </a>
+              )}
+            </div>
+
+            {selectedOpportunity.ai_review_status ===
+            "awaiting_ai_review" ? (
+              <section
+                className="automated-review"
+                aria-label="AI review status"
+              >
+                <div className="automated-review-heading">
+                  <div>
+                    <span className="review-label">
+                      Classification authority
+                    </span>
+                    <strong>Awaiting AI review</strong>
+                  </div>
                 </div>
-                <div className="opportunity-detail-grid compact-detail-grid">
-                  <AutomatedReview review={selectedDetail} />
-                  <ApplicationReadiness readiness={selectedDetail.readiness} />
-                  <Sources postingId={selectedDetail.posting_id} />
-                  <details className="inspector-collapsible">
-                    <summary>Readiness report history</summary>
-                    <ReadinessHistory
-                      apiBase={API_BASE}
-                      postingId={selectedDetail.posting_id}
-                      title={selectedDetail.title || "Untitled opportunity"}
-                      disabled={busy}
-                      onRefreshed={refreshSelected}
-                      onError={setError}
-                    />
-                  </details>
-                  <OpportunityApplicationHandoff
-                    applicationId={selectedDetail.application_id}
-                    applicationStatus={selectedDetail.application_status}
-                    outcomeType={selectedDetail.outcome_type}
-                    reviewDecision={selectedDetail.review_decision}
-                  />
+
+                <p>
+                  JOLT has captured and cleaned the source evidence.
+                  Export the AI review package, analyze it externally,
+                  then import the returned review file.
+                </p>
+              </section>
+            ) : (
+              <section
+                className="automated-review"
+                aria-label="External AI job review"
+              >
+                <div className="automated-review-heading">
+                  <div>
+                    <span className="review-label">
+                      External AI decision
+                    </span>
+                    <strong>
+                      {aiDecisionLabel(selectedOpportunity)}
+                    </strong>
+                  </div>
+                  <span>
+                    Human confirmation required
+                  </span>
                 </div>
-              </>
+
+                {selectedOpportunity.summary && (
+                  <p>{selectedOpportunity.summary}</p>
+                )}
+
+                <div className="dimension-grid">
+                  <div>
+                    <span>AI priority</span>
+                    <strong>
+                      {selectedOpportunity.priority_score ?? "—"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Technical fit</span>
+                    <strong>
+                      {selectedOpportunity.technical_fit ?? "—"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Geography</span>
+                    <strong>
+                      {selectedOpportunity.geography_status ?? "unknown"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Clearance</span>
+                    <strong>
+                      {selectedOpportunity.clearance_status ?? "unknown"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Language</span>
+                    <strong>
+                      {selectedOpportunity.language_status ?? "unknown"}
+                    </strong>
+                  </div>
+                </div>
+
+                {selectedOpportunity.reasons.length > 0 && (
+                  <div className="review-evidence-group">
+                    <strong>AI review reasons</strong>
+                    <ul>
+                      {selectedOpportunity.reasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedOpportunity.duplicate_of_posting_id && (
+                  <p>
+                    Duplicate of posting:{" "}
+                    <code>
+                      {selectedOpportunity.duplicate_of_posting_id}
+                    </code>
+                  </p>
+                )}
+              </section>
             )}
+
+            <Sources postingId={selectedOpportunity.posting_id} />
           </aside>
         </div>
       )}

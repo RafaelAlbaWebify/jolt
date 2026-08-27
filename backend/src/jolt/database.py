@@ -121,12 +121,82 @@ class Evaluation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class AIReview(Base):
+    __tablename__ = "ai_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "capture_run_id",
+            "posting_id",
+            "review_source",
+            name="uq_ai_review_capture_posting_source",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    capture_run_id: Mapped[str] = mapped_column(
+        ForeignKey("capture_runs.id"),
+        nullable=False,
+        index=True,
+    )
+    posting_id: Mapped[str] = mapped_column(
+        ForeignKey("postings.id"),
+        nullable=False,
+        index=True,
+    )
+    source_job_id: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True,
+    )
+    review_source: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        index=True,
+    )
+    review_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    contract_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    decision: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        index=True,
+    )
+    priority_score: Mapped[int] = mapped_column(nullable=False)
+    geography_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    clearance_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    language_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    technical_fit: Mapped[int] = mapped_column(nullable=False)
+    duplicate_of_posting_id: Mapped[str | None] = mapped_column(
+        ForeignKey("postings.id"),
+        nullable=True,
+        index=True,
+    )
+    summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    reviewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    imported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class ReviewDecision(Base):
     __tablename__ = "review_decisions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     posting_id: Mapped[str] = mapped_column(ForeignKey("postings.id"), index=True)
-    evaluation_id: Mapped[str] = mapped_column(ForeignKey("evaluations.id"), index=True)
+    evaluation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("evaluations.id"),
+        nullable=True,
+        index=True,
+    )
+    ai_review_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ai_reviews.id"),
+        nullable=True,
+        index=True,
+    )
     decision: Mapped[str] = mapped_column(String(40), nullable=False)
     reason_code: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     notes: Mapped[str] = mapped_column(Text, default="", nullable=False)

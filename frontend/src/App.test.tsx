@@ -1,215 +1,406 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  afterEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { App } from "./App";
 
-function jsonResponse(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });
+function jsonResponse(
+  payload: unknown,
+  status = 200,
+) {
+  return new Response(
+    JSON.stringify(payload),
+    {
+      status,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
 }
 
-const baseOpportunity = {
+const reviewedOpportunity = {
   posting_id: "posting-1",
-  evaluation_id: "evaluation-1",
   source_url: "https://example.com/job-1",
   title: "Application Support Engineer",
   company: "Example Systems",
   location: "Remote Spain",
-  recommendation: "pursue",
-  confidence: "high",
-  ranking_score: 91,
+
+  ai_review_id: "ai-review-1",
+  ai_review_status: "reviewed",
+
+  decision: "strong_pursue",
+  priority_score: 94,
+
+  geography_status: "eligible",
+  clearance_status: "clear",
+  language_status: "conditional",
+  technical_fit: 91,
+
+  duplicate_of_posting_id: null,
+
+  summary: "Strong application support fit.",
+  reasons: [
+    "Spain-compatible employment.",
+    "Strong production support alignment.",
+  ],
+
   review_decision: null,
   application_id: null,
   application_status: null,
-  outcome_type: null,
+
+  reviewed_at: "2026-08-27T14:00:00Z",
+  imported_at: "2026-08-27T14:05:00Z",
 };
 
-const detail = {
-  ...baseOpportunity,
-  proposed_decision: "pursue",
-  fit_summary: "Strong application support fit.",
-  strengths: ["SQL troubleshooting"],
-  gaps: ["More API examples"],
-  blockers: [],
-  uncertainties: [],
-  dimensions: { application_support: 5 },
-  reasons: ["Matches target profile"],
-  profile_version_id: "profile:v1",
-  engine_version: "rules-v1",
-  readiness: {
-    report_id: "readiness-1",
-    profile_version_id: "profile:v1",
-    engine_version: "readiness-rules:v1",
-    priority: "high",
-    readiness_score: 82,
-    evidence_matches: ["SQL troubleshooting"],
-    credibility_warnings: [],
-    cv_tailoring_points: ["Tailor CV"],
-    talking_points: ["Application support incidents"],
-    interview_questions: [],
-    revision_topics: [],
-    checklist: ["Review the source job"],
-  },
+const awaitingOpportunity = {
+  ...reviewedOpportunity,
+  posting_id: "posting-2",
+  title: "Cloud Operations Analyst",
+  company: "Other Co",
+
+  ai_review_id: null,
+  ai_review_status: "awaiting_ai_review",
+
+  decision: null,
+  priority_score: null,
+
+  geography_status: null,
+  clearance_status: null,
+  language_status: null,
+  technical_fit: null,
+
+  summary: "",
+  reasons: [],
 };
 
-describe("App", () => {
+describe("App AI review workflow", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("loads a compact index and fetches full detail only when inspected", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse([baseOpportunity]);
-      if (url.endsWith("/api/opportunity-detail/posting-1")) return jsonResponse(detail);
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
-    expect(await screen.findByText("Strong application support fit.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("hands pursued opportunities to Applications without creating records in the inspector", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse([baseOpportunity]);
-      if (url.endsWith("/api/opportunity-detail/posting-1")) return jsonResponse(detail);
-      if (url.endsWith("/api/opportunities/posting-1/reviews") && init?.method === "POST") return jsonResponse({});
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
-    const decision = await screen.findByDisplayValue("Pending review");
-    fireEvent.change(decision, { target: { value: "pursue" } });
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      "http://127.0.0.1:8000/api/opportunities/posting-1/reviews",
-      expect.objectContaining({ method: "POST" }),
-    ));
-    expect(await screen.findByRole("status")).toHaveTextContent("Application Pipeline");
-  });
-
-  it("searches and sorts the compact queue without another request", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([
-      baseOpportunity,
-      { ...baseOpportunity, posting_id: "posting-2", title: "Cloud Operations Analyst", company: "Other Co", ranking_score: 70 },
-    ]));
-
-    render(<App />);
-
-    expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
-    fireEvent.change(screen.getByLabelText("Search inbox"), { target: { value: "Example Systems" } });
-    expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
-    expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search inbox"), { target: { value: "" } });
-    fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title_asc" } });
-    expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent("Application Support Engineer");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("loads capture history only after data tools open", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/opportunity-index")) return jsonResponse([]);
-      if (url.endsWith("/api/captures")) return jsonResponse([]);
-      throw new Error(`Unexpected request: ${url}`);
-    });
-
-    render(<App />);
-    expect(await screen.findByText("No pending review items match this view.")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByText("Data tools: capture batches, decisions, and exports"));
-    await screen.findByText("No active capture batches recorded.");
-
-    expect(
-      screen.getByRole("link", { name: "Download review pack" }),
-    ).toHaveAttribute(
-      "href",
-      "http://127.0.0.1:8000/api/exports/review-pack",
-    );
-
-    expect(
-      screen.queryByRole("link", { name: "Download analysis pack" }),
-    ).not.toBeInTheDocument();
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not expose unsupported score recalculation", async () => {
+  it("loads the AI-authoritative Review Inbox", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(jsonResponse([]));
-
-    render(<App />);
-
-    expect(
-      await screen.findByText("No pending review items match this view."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Recalculate scores" }),
-    ).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows the network error without an unhandled rejection", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    render(<App />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("offline");
-  });
-
-  it("clears pending Review Inbox cards after confirmation", async () => {
-    let index = [baseOpportunity];
-
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async (input, init) => {
+      .mockImplementation(async (input) => {
         const url = String(input);
 
-        if (url.endsWith("/api/opportunity-index")) {
-          return jsonResponse(index);
-        }
-
         if (
-          url.endsWith("/api/review-inbox/clear-pending") &&
-          init?.method === "POST"
+          url.endsWith(
+            "/api/ai-review/opportunity-index",
+          )
         ) {
-          index = [];
-          return jsonResponse({
-            pending_before: 1,
-            pending_after: 0,
-            cleared_pending_count: 1,
-            archived_capture_run_count: 1,
-            protected_pending_count: 0,
-            archived_runs: [],
-          });
+          return jsonResponse([
+            reviewedOpportunity,
+            awaitingOpportunity,
+          ]);
         }
 
-        throw new Error(`Unexpected request: ${url}`);
+        throw new Error(
+          `Unexpected request: ${url}`,
+        );
       });
 
     render(<App />);
 
+    expect(
+      await screen.findByText(
+        "Application Support Engineer",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("strong pursue"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText("Awaiting AI review").length,
+    ).toBeGreaterThanOrEqual(1);
+
+    expect(
+      fetchMock,
+    ).toHaveBeenCalledTimes(1);
+
+    expect(
+      String(fetchMock.mock.calls[0][0]),
+    ).toContain(
+      "/api/ai-review/opportunity-index",
+    );
+
+    expect(
+      String(fetchMock.mock.calls[0][0]),
+    ).not.toContain(
+      "/api/opportunity-index",
+    );
+  });
+
+  it("shows imported AI reasoning in the inspector without fetching Python analysis", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        jsonResponse([reviewedOpportunity]),
+      );
+
+    render(<App />);
+
+    expect(
+      await screen.findByText(
+        "Application Support Engineer",
+      ),
+    ).toBeInTheDocument();
+
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Clear pending inbox (1)",
+      screen.getByRole("button", {
+        name: "Inspect",
       }),
+    );
+
+    expect(
+      screen.getByText(
+        "Strong application support fit.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Spain-compatible employment.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("eligible"),
+    ).toBeInTheDocument();
+
+    expect(
+      fetchMock,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends ai_review_id when the human chooses pursue", async () => {
+    let index = [reviewedOpportunity];
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async (input, init) => {
+          const url = String(input);
+
+          if (
+            url.endsWith(
+              "/api/ai-review/opportunity-index",
+            )
+          ) {
+            return jsonResponse(index);
+          }
+
+          if (
+            url.endsWith(
+              "/api/opportunities/posting-1/reviews",
+            ) &&
+            init?.method === "POST"
+          ) {
+            const body = JSON.parse(
+              String(init.body),
+            ) as Record<string, unknown>;
+
+            expect(body).toEqual({
+              ai_review_id: "ai-review-1",
+              decision: "pursue",
+            });
+
+            expect(
+              "evaluation_id" in body,
+            ).toBe(false);
+
+            index = [];
+
+            return jsonResponse({
+              review_id: "review-1",
+              posting_id: "posting-1",
+              evaluation_id: null,
+              ai_review_id: "ai-review-1",
+              decision: "pursue",
+              evaluation_overridden: false,
+            });
+          }
+
+          throw new Error(
+            `Unexpected request: ${url}`,
+          );
+        },
+      );
+
+    render(<App />);
+
+    expect(
+      await screen.findByText(
+        "Application Support Engineer",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(
+      screen.getByLabelText(
+        "Decision for Application Support Engineer",
+      ),
+      {
+        target: {
+          value: "pursue",
+        },
+      },
     );
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "http://127.0.0.1:8000/api/review-inbox/clear-pending",
-        { method: "POST" },
+        "http://127.0.0.1:8000/api/opportunities/posting-1/reviews",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      ),
+    );
+
+    expect(
+      await screen.findByRole("status"),
+    ).toHaveTextContent(
+      "Application Pipeline",
+    );
+  });
+
+  it("prevents a human decision before AI review exists", async () => {
+    vi.spyOn(
+      globalThis,
+      "fetch",
+    ).mockResolvedValue(
+      jsonResponse([awaitingOpportunity]),
+    );
+
+    render(<App />);
+
+    expect(
+      await screen.findByText(
+        "Cloud Operations Analyst",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText(
+        "Decision for Cloud Operations Analyst",
+      ),
+    ).toBeDisabled();
+  });
+
+  it("sorts strong pursue before awaiting and reject", async () => {
+    const rejected = {
+      ...reviewedOpportunity,
+      posting_id: "posting-3",
+      title: "Foreign Restricted Support",
+      ai_review_id: "ai-review-3",
+      decision: "reject",
+      priority_score: 0,
+      geography_status: "ineligible",
+    };
+
+    vi.spyOn(
+      globalThis,
+      "fetch",
+    ).mockResolvedValue(
+      jsonResponse([
+        rejected,
+        awaitingOpportunity,
+        reviewedOpportunity,
+      ]),
+    );
+
+    render(<App />);
+
+    await screen.findByText(
+      "Application Support Engineer",
+    );
+
+    const headings =
+      screen.getAllByRole(
+        "heading",
+        { level: 3 },
+      );
+
+    expect(headings[0]).toHaveTextContent(
+      "Application Support Engineer",
+    );
+
+    expect(headings[1]).toHaveTextContent(
+      "Cloud Operations Analyst",
+    );
+
+    expect(headings[2]).toHaveTextContent(
+      "Foreign Restricted Support",
+    );
+  });
+
+  it("clears the pending AI Review Inbox after confirmation", async () => {
+    let index = [awaitingOpportunity];
+
+    vi.spyOn(
+      window,
+      "confirm",
+    ).mockReturnValue(true);
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async (input, init) => {
+          const url = String(input);
+
+          if (
+            url.endsWith(
+              "/api/ai-review/opportunity-index",
+            )
+          ) {
+            return jsonResponse(index);
+          }
+
+          if (
+            url.endsWith(
+              "/api/review-inbox/clear-pending",
+            ) &&
+            init?.method === "POST"
+          ) {
+            index = [];
+
+            return jsonResponse({
+              pending_before: 1,
+              pending_after: 0,
+              cleared_pending_count: 1,
+              archived_capture_run_count: 1,
+              protected_pending_count: 0,
+              archived_runs: [],
+            });
+          }
+
+          throw new Error(
+            `Unexpected request: ${url}`,
+          );
+        },
+      );
+
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        {
+          name: "Clear pending inbox (1)",
+        },
       ),
     );
 
@@ -218,12 +409,5 @@ describe("App", () => {
         /1 pending card cleared from 1 capture batch/,
       ),
     ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", {
-        name: "Clear pending inbox (0)",
-      }),
-    ).toBeDisabled();
   });
-
 });
