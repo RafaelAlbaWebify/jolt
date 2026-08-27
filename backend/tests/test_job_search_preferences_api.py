@@ -198,7 +198,7 @@ def test_saved_preferences_change_next_evaluation_refresh(
 
     first_refresh_payload = first_refresh.json()
 
-    assert first_refresh_payload["authoritative_engine"] == "profile-rules-v10"
+    assert first_refresh_payload["authoritative_engine"] == "profile-rules-v11"
 
     assert first_refresh_payload["strategy_evaluation_count"] == 1
 
@@ -208,7 +208,7 @@ def test_saved_preferences_change_next_evaluation_refresh(
 
     before_payload = before.json()
 
-    assert before_payload["engine_version"] == "profile-rules-v10"
+    assert before_payload["engine_version"] == "profile-rules-v11"
 
     assert before_payload["recommendation"] == "do_not_pursue"
 
@@ -238,7 +238,7 @@ def test_saved_preferences_change_next_evaluation_refresh(
 
     second_refresh_payload = second_refresh.json()
 
-    assert second_refresh_payload["authoritative_engine"] == "profile-rules-v10"
+    assert second_refresh_payload["authoritative_engine"] == "profile-rules-v11"
 
     assert second_refresh_payload["strategy_evaluation_count"] == 1
 
@@ -248,7 +248,7 @@ def test_saved_preferences_change_next_evaluation_refresh(
 
     after_payload = after.json()
 
-    assert after_payload["engine_version"] == "profile-rules-v10"
+    assert after_payload["engine_version"] == "profile-rules-v11"
 
     assert not any(
         "excluded keyword: quantumwidget" in blocker.casefold()
