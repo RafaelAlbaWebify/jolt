@@ -203,7 +203,8 @@ class CaptureRunResponse(CaptureRunSummary):
 
 
 class ReviewRequest(BaseModel):
-    evaluation_id: str
+    evaluation_id: str | None = None
+    ai_review_id: str | None = None
     decision: ReviewChoice
     reason_code: str = ""
     notes: str = ""
@@ -212,7 +213,8 @@ class ReviewRequest(BaseModel):
 class ReviewResponse(BaseModel):
     review_id: str
     posting_id: str
-    evaluation_id: str
+    evaluation_id: str | None = None
+    ai_review_id: str | None = None
     decision: ReviewChoice
     evaluation_overridden: bool
 

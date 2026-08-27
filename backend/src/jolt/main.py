@@ -7,6 +7,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.ai_review_import import (
+    AIReviewImportRequest,
+    AIReviewImportResponse,
+    import_ai_review,
+)
+from jolt.ai_review_opportunity_index import (
+    AIReviewOpportunityIndexItem,
+    list_ai_review_opportunity_index,
+)
+from jolt.ai_review_pack import build_ai_review_pack
 from jolt.application_archival import (
     ApplicationArchiveRequest,
     ApplicationArchiveResponse,
@@ -392,6 +402,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
         return list_opportunity_index(session, include_reviewed=include_reviewed)
 
     @app.get(
+        "/api/ai-review/opportunity-index",
+        response_model=list[AIReviewOpportunityIndexItem],
+        tags=["ai-review"],
+    )
+    def ai_review_opportunity_index(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> list[AIReviewOpportunityIndexItem]:
+        return list_ai_review_opportunity_index(session)
+
+    @app.get(
         "/api/application-index", response_model=list[OpportunityIndexItem], tags=["applications"]
     )
     def application_index(
@@ -602,6 +622,36 @@ def create_app(database_url: str | None = None) -> FastAPI:
             BytesIO(content),
             media_type="application/zip",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    @app.post(
+        "/api/ai-review/import",
+        response_model=AIReviewImportResponse,
+        tags=["ai-review"],
+    )
+    def ai_review_import(
+        request: AIReviewImportRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> AIReviewImportResponse:
+        try:
+            return import_ai_review(session, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/exports/ai-review-pack", tags=["exports"])
+    def ai_review_pack(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        try:
+            content = build_ai_review_pack(session)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/zip",
+            headers={"Content-Disposition": ("attachment; filename=JOLT_AI_REVIEW_INPUT.zip")},
         )
 
     @app.get("/api/exports/review-pack", tags=["exports"])
