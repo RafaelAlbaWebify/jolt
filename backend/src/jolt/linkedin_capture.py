@@ -18,7 +18,7 @@ from playwright.sync_api import BrowserContext, Locator, Page, TimeoutError, syn
 from pydantic import ValidationError
 
 from jolt import multipage_capture
-from jolt.linkedin_source_urls import absolute_linkedin_url
+from jolt.linkedin_source_urls import absolute_linkedin_url, normalize_linkedin_search_url
 from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.supervised_capture import (
     CapturedCard,
@@ -56,6 +56,24 @@ class CaptureResult:
     stop_reason: str
     search_state: dict[str, Any]
     retry_metrics: RetryMetrics
+
+
+def _best_effort_screenshot(
+    page: Page,
+    path: Path,
+    *,
+    full_page: bool = False,
+) -> bool:
+    """Capture optional PNG evidence without allowing it to fail the run."""
+    try:
+        page.screenshot(
+            path=path,
+            full_page=full_page,
+            timeout=5_000,
+        )
+    except Exception:
+        return False
+    return True
 
 
 def _merge_page_evidence_ids(
@@ -226,12 +244,21 @@ def _click_virtualized_card(
 def _wait_for_virtualized_identity(
     page: Page,
     title: str,
+    *,
+    previous_job_id: str = "",
     timeout_ms: int = 8_000,
 ) -> tuple[str, str]:
     expected_title = " ".join(title.split()).casefold()
     deadline = datetime.now(UTC).timestamp() + timeout_ms / 1000
 
     while datetime.now(UTC).timestamp() < deadline:
+        current_job_id = extract_job_id(page.url)
+        if current_job_id and current_job_id != previous_job_id:
+            return (
+                current_job_id,
+                f"https://www.linkedin.com/jobs/view/{current_job_id}/",
+            )
+
         links = page.locator("a[href*='/jobs/view/']")
 
         try:
@@ -391,6 +418,8 @@ def capture_page_cards(
         virtualized_title = _virtualized_card_title(card)
 
         if virtualized_title:
+            previous_job_id = extract_job_id(page.url)
+
             if not _click_virtualized_card(card, metrics):
                 skipped.append(
                     multipage_capture.SkippedCard(
@@ -408,6 +437,7 @@ def capture_page_cards(
             source_job_id, source_url = _wait_for_virtualized_identity(
                 page,
                 virtualized_title,
+                previous_job_id=previous_job_id,
             )
 
             if not source_job_id:
@@ -878,9 +908,9 @@ def run_capture(
                 context.tracing.start(screenshots=True, snapshots=True, sources=False)
                 page = context.pages[0] if context.pages else context.new_page()
                 page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
-                page.screenshot(
-                    path=evidence_dir / "01_search_opened.png",
-                    full_page=False,
+                _best_effort_screenshot(
+                    page,
+                    evidence_dir / "01_search_opened.png",
                 )
 
                 if pause_for_login:
@@ -891,7 +921,7 @@ def run_capture(
                     )
                     input("Press Enter to start the bounded capture: ")
 
-                search_url = page.url
+                search_url = normalize_linkedin_search_url(page.url)
                 search_state = extract_search_state(page, effective_url=search_url)
                 cards, pages, skipped, stop_reason = capture_pages(
                     page,
@@ -902,9 +932,9 @@ def run_capture(
                 )
                 if not cards:
                     raise RuntimeError("No usable LinkedIn job cards were captured.")
-                page.screenshot(
-                    path=evidence_dir / "99_capture_complete.png",
-                    full_page=False,
+                _best_effort_screenshot(
+                    page,
+                    evidence_dir / "99_capture_complete.png",
                 )
                 context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
                 context.close()
@@ -993,8 +1023,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--api-url", default=DEFAULT_API_URL)
     parser.add_argument("--profile-dir", type=Path, required=True)
     parser.add_argument("--output-zip", type=Path, required=True)
-    parser.add_argument("--max-jobs", type=int, default=10)
-    parser.add_argument("--max-pages", type=int, default=3)
+    parser.add_argument("--max-jobs", type=int, default=100)
+    parser.add_argument("--max-pages", type=int, default=10)
     parser.add_argument("--no-login-pause", action="store_true")
     args = parser.parse_args(argv)
     if args.max_jobs < 1 or args.max_jobs > 100:

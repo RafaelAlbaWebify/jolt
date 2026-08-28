@@ -16,6 +16,7 @@ type TestOpportunity = {
   application_id: string | null;
   application_status: TestApplicationStatus | null;
   outcome_type: string | null;
+  last_activity_at?: string | null;
 };
 
 type TestApplication = {
@@ -156,6 +157,46 @@ describe("ApplicationDashboard", () => {
     expect(screen.getByLabelText("Interviewing count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Offer count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Closed count")).toHaveTextContent("1");
+  });
+
+  it("sorts each application lane from newest activity to oldest", async () => {
+    const older: TestOpportunity = {
+      ...submittedOpportunity,
+      posting_id: "posting-applied-older",
+      application_id: "application-older",
+      title: "Older Support Role",
+      last_activity_at: "2026-08-27T08:00:00+00:00",
+    };
+    const newer: TestOpportunity = {
+      ...submittedOpportunity,
+      posting_id: "posting-applied-newer",
+      application_id: "application-newer",
+      title: "Newest Support Role",
+      last_activity_at: "2026-08-28T10:30:00+00:00",
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([older, newer]),
+    );
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    await screen.findByRole("heading", { name: "Application Pipeline" });
+
+    const appliedLane = screen
+      .getByRole("heading", { name: "Applied" })
+      .closest("section");
+
+    expect(appliedLane).not.toBeNull();
+
+    const cards = within(appliedLane!).getAllByRole("button", {
+      name: /^Open /,
+    });
+
+    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Open Newest Support Role",
+      "Open Older Support Role",
+    ]);
   });
 
   it("ignores reviewed rows that no longer own an Application record", async () => {

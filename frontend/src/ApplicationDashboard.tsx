@@ -127,6 +127,23 @@ function deduplicateOpportunities(items: Opportunity[]) {
   return [...unique.values()];
 }
 
+function activityTimestamp(item: Opportunity) {
+  if (!item.last_activity_at) return Number.NEGATIVE_INFINITY;
+  const parsed = Date.parse(item.last_activity_at);
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function newestActivityFirst(left: Opportunity, right: Opportunity) {
+  const leftTimestamp = activityTimestamp(left);
+  const rightTimestamp = activityTimestamp(right);
+
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp;
+  }
+
+  return opportunityIdentity(left).localeCompare(opportunityIdentity(right));
+}
+
 function availableTargetLanes(item: Opportunity): PipelineLane[] {
   const currentLane = activeLaneFor(item);
   if (!currentLane) return [];
@@ -388,7 +405,9 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     () => Object.fromEntries(
       LANES.map((lane) => [
         lane.id,
-        visibleActiveCandidates.filter((item) => activeLaneFor(item) === lane.id),
+        visibleActiveCandidates
+          .filter((item) => activeLaneFor(item) === lane.id)
+          .sort(newestActivityFirst),
       ]),
     ) as Record<PipelineLane, Opportunity[]>,
     [visibleActiveCandidates],
