@@ -9,6 +9,15 @@ type CaptureStatus = {
   started_at: string;
   completed_at: string;
   error: string;
+  captured_count: number;
+  verified_count: number;
+  skipped_count: number;
+  pages_used: number;
+  stop_reason: string;
+  retry_attempted_count: number;
+  new_items: number;
+  duplicate_items: number;
+  health: "" | "green" | "yellow" | "red";
 };
 
 type Props = {
@@ -88,6 +97,15 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
     started_at: "",
     completed_at: "",
     error: "",
+    captured_count: 0,
+    verified_count: 0,
+    skipped_count: 0,
+    pages_used: 0,
+    stop_reason: "",
+    retry_attempted_count: 0,
+    new_items: 0,
+    duplicate_items: 0,
+    health: "",
   });
   const [error, setError] = useState("");
 
@@ -202,7 +220,23 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
         <div role="status">
           <strong>Status: {status.status}</strong>
           <p>{status.max_jobs} jobs maximum across {status.max_pages} page(s).</p>
-          {status.status === "completed" && <p>Capture completed and the evidence ZIP was saved to Downloads.</p>}
+          {status.status === "completed" && (
+            <>
+              <p>Capture completed and the evidence ZIP was saved to Downloads.</p>
+              <p>
+                <strong>Capture health: {status.health || "unknown"}</strong>
+              </p>
+              <p>
+                {status.captured_count} captured · {status.verified_count} verified ·{" "}
+                {status.skipped_count} skipped · {status.pages_used} page(s)
+              </p>
+              <p>
+                {status.new_items} new · {status.duplicate_items} already known ·{" "}
+                {status.retry_attempted_count} retries
+              </p>
+              {status.stop_reason && <p>Stop reason: {status.stop_reason.replaceAll("_", " ")}</p>}
+            </>
+          )}
           {status.status === "failed" && <p>{status.error || "Capture failed. Review the generated evidence package and backend logs."}</p>}
         </div>
       )}

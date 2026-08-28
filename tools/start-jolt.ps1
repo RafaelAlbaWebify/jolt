@@ -2,10 +2,10 @@
 param(
     [switch]$StartLinkedInCapture,
     [string]$SearchUrl = "https://www.linkedin.com/jobs/search/",
-    [ValidateRange(1, 50)]
-    [int]$MaxJobs = 10,
+    [ValidateRange(1, 100)]
+    [int]$MaxJobs = 100,
     [ValidateRange(1, 10)]
-    [int]$MaxPages = 3,
+    [int]$MaxPages = 10,
     [switch]$NoBrowser
 )
 

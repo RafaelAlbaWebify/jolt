@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from jolt import local_linkedin_capture
+from jolt import linkedin_capture, local_linkedin_capture
 
 
 def _reset_status() -> None:
@@ -12,7 +12,7 @@ def _reset_status() -> None:
     )
 
 
-def test_local_capture_preserves_url_and_multi_page_bounds(
+def test_local_capture_normalizes_url_and_preserves_multi_page_bounds(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -30,8 +30,9 @@ def test_local_capture_preserves_url_and_multi_page_bounds(
     monkeypatch.setattr(local_linkedin_capture, "run_capture", fake_run_capture)
     request = local_linkedin_capture.LocalLinkedInCaptureRequest(
         search_url=(
-            "https://www.linkedin.com/jobs/search/?geoId=91000000"
-            "&keywords=IT%20Support&refresh=true"
+            "https://www.linkedin.com/jobs/search/?currentJobId=123456"
+            "&geoId=91000000&keywords=IT%20Support&refresh=true"
+            "&trackingId=transient"
         ),
         max_jobs=20,
         max_pages=4,
@@ -39,7 +40,9 @@ def test_local_capture_preserves_url_and_multi_page_bounds(
 
     queued = local_linkedin_capture.queue_local_linkedin_capture(request)
     assert queued.status == "queued"
-    assert queued.search_url == request.search_url
+    assert queued.search_url == (
+        "https://www.linkedin.com/jobs/search/?geoId=91000000&keywords=IT+Support"
+    )
     assert queued.max_jobs == 20
     assert queued.max_pages == 4
 
@@ -47,12 +50,26 @@ def test_local_capture_preserves_url_and_multi_page_bounds(
 
     completed = local_linkedin_capture.get_local_linkedin_capture_status()
     assert completed.status == "completed"
-    assert observed["search_url"] == request.search_url
+    assert observed["search_url"] == queued.search_url
     assert observed["max_jobs"] == 20
     assert observed["max_pages"] == 4
     assert observed["pause_for_login"] is False
     assert str(observed["api_url"]) == "http://127.0.0.1:8000"
     assert Path(completed.output_zip).exists()
+
+
+def test_best_effort_screenshot_never_aborts_capture(tmp_path: Path) -> None:
+    class BrokenScreenshotPage:
+        def screenshot(self, **_: object) -> None:
+            raise RuntimeError("fonts never loaded")
+
+    assert (
+        linkedin_capture._best_effort_screenshot(  # noqa: SLF001
+            BrokenScreenshotPage(),  # type: ignore[arg-type]
+            tmp_path / "optional.png",
+        )
+        is False
+    )
 
 
 def test_local_capture_rejects_parallel_run() -> None:
