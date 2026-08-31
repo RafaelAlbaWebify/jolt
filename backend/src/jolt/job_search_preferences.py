@@ -36,12 +36,21 @@ class JobSearchPreferences(BaseModel):
     languages: list[str] = Field(default_factory=lambda: ["Spanish", "English"])
     expected_salary_eur_min: int | None = Field(default=35000, ge=0, le=250000)
     expected_salary_eur_target: int | None = Field(default=45000, ge=0, le=250000)
+
+    # Employment urgency takes precedence over shift comfort. Shift data may still
+    # be reported by AI, but it must never act as an automatic rejection rule.
     preferred_shifts: list[ShiftPreference] = Field(
-        default_factory=lambda: ["business_hours", "flexible"]
+        default_factory=lambda: [
+            "business_hours",
+            "flexible",
+            "evening",
+            "night",
+            "rotating",
+            "weekend",
+        ]
     )
-    excluded_shifts: list[ShiftPreference] = Field(
-        default_factory=lambda: ["night", "rotating", "weekend"]
-    )
+    excluded_shifts: list[ShiftPreference] = Field(default_factory=list)
+
     preferred_workload: WorkloadPreference = "normal"
     excluded_keywords: list[str] = Field(
         default_factory=lambda: ["dispatch", "field sales", "door to door", "commission only"]
@@ -58,7 +67,33 @@ class JobSearchPreferences(BaseModel):
             "powershell",
         ]
     )
-    notes: str = "Prefer stable remote or hybrid support roles that bridge IT operations and application/software support. Avoid irrelevant dispatch-style work."
+
+    # External AI review policy. These values are exported with every review pack
+    # so an external reviewer does not have to infer eligibility rules from memory.
+    employment_urgency: Literal["normal", "high"] = "high"
+    geography_policy: Literal["explicit_restrictions_only"] = "explicit_restrictions_only"
+    direct_contact_before_apply: bool = False
+    max_public_eligibility_check_minutes: int = Field(default=5, ge=0, le=30)
+    learning_horizon_days: int = Field(default=14, ge=1, le=90)
+    current_learning: list[str] = Field(
+        default_factory=lambda: [
+            "Microsoft Azure",
+            "Microsoft Intune",
+            "Entra ID",
+            "endpoint management",
+        ]
+    )
+    evaluation_policy_notes: str = (
+        "A foreign listing location is neutral unless the vacancy explicitly restricts "
+        "residency, work authorization, hiring region, citizenship, or clearance. "
+        "Do not reject for shifts, unfamiliar tools, specialist technologies, seniority gaps, "
+        "or role-family changes before AI evaluates transferability and learnability. "
+        "Do not require contacting an employer merely to determine basic eligibility before applying."
+    )
+    notes: str = (
+        "Prioritize realistic applications quickly. Prefer remote or hybrid support work, but do not "
+        "discard otherwise viable opportunities solely because of shifts or a foreign LinkedIn location."
+    )
 
 
 def load_job_search_preferences() -> JobSearchPreferences:
