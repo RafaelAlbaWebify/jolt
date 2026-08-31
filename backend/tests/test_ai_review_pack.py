@@ -129,6 +129,8 @@ def test_ai_review_pack_contains_candidate_policy_and_unified_contract(
         assert candidate["employment_urgency"] == "high"
         assert candidate["geography_policy"] == "explicit_restrictions_only"
         assert candidate["direct_contact_before_apply"] is False
+        assert candidate["relocation_allowed"] is False
+        assert candidate["language_certifications"] == []
         assert candidate["excluded_shifts"] == []
         assert "Microsoft Intune" in candidate["current_learning"]
 
@@ -162,6 +164,10 @@ def test_ai_review_pack_contains_candidate_policy_and_unified_contract(
         assert "market_insights" in template
 
         assert "foreign LinkedIn/listing location is neutral" in readme
+        assert "required physical workplace" in readme
+        assert "candidate does not relocate" in readme
+        assert "CEFR level such as C1" in readme
+        assert "Do not invent a certificate requirement" in readme
         assert "Shifts, weekends and holidays are not rejection criteria" in readme
     finally:
         session.close()
