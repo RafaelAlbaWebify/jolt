@@ -19,6 +19,11 @@ from jolt.database import (
     utc_now,
 )
 from jolt.errors import JoltNotFoundError
+from jolt.market_preparation_import import (
+    MarketPreparationAction,
+    MarketPreparationImportRequest,
+    import_market_preparation,
+)
 
 AIReviewDecision = Literal[
     "strong_pursue",
@@ -31,6 +36,13 @@ GeographyStatus = Literal[
     "eligible",
     "conditional",
     "ineligible",
+    "unknown",
+]
+
+GeographyBasis = Literal[
+    "explicit_eligible",
+    "neutral_location",
+    "explicit_restricted",
     "unknown",
 ]
 
@@ -48,6 +60,29 @@ LanguageStatus = Literal[
     "unknown",
 ]
 
+Learnability = Literal[
+    "already_ready",
+    "quick_1_7_days",
+    "short_1_2_weeks",
+    "substantial",
+    "unknown",
+]
+
+HardBlockerType = Literal[
+    "language",
+    "geography",
+    "work_authorization",
+    "citizenship",
+    "clearance",
+    "duplicate",
+    "other_legal",
+]
+
+
+class AIReviewHardBlocker(BaseModel):
+    blocker_type: HardBlockerType
+    evidence: str = Field(min_length=1)
+
 
 class AIReviewJob(BaseModel):
     posting_id: str = Field(min_length=1)
@@ -62,15 +97,36 @@ class AIReviewJob(BaseModel):
     summary: str = ""
     reasons: list[str] = Field(default_factory=list)
 
+    # Contract v2 structured analysis. Defaults preserve v1 compatibility.
+    geography_basis: GeographyBasis = "unknown"
+    hard_blockers: list[AIReviewHardBlocker] = Field(default_factory=list)
+    transferable_skills: list[str] = Field(default_factory=list)
+    skill_gaps: list[str] = Field(default_factory=list)
+    learnability: Learnability = "unknown"
+    preparation_actions: list[str] = Field(default_factory=list)
+
+
+class AIMarketInsights(BaseModel):
+    summary: str = ""
+    demanded_technologies: list[str] = Field(default_factory=list)
+    recurring_skill_gaps: list[str] = Field(default_factory=list)
+    quick_learn_gaps: list[str] = Field(default_factory=list)
+    strong_existing_skills: list[str] = Field(default_factory=list)
+    promising_role_families: list[str] = Field(default_factory=list)
+    search_terms: list[str] = Field(default_factory=list)
+    learning_priorities: list[str] = Field(default_factory=list)
+    application_strategy: list[str] = Field(default_factory=list)
+
 
 class AIReviewImportRequest(BaseModel):
     contract_type: Literal["jolt_ai_review"]
-    contract_version: Literal["1.0"]
+    contract_version: Literal["1.0", "2.0"]
     capture_run_id: str = Field(min_length=1)
     review_source: Literal["chatgpt_source_first"]
     review_version: str = Field(min_length=1, max_length=80)
     reviewed_at: datetime
     jobs: list[AIReviewJob]
+    market_insights: AIMarketInsights | None = None
 
 
 class AIReviewImportResponse(BaseModel):
@@ -79,6 +135,7 @@ class AIReviewImportResponse(BaseModel):
     created_count: int
     updated_count: int
     protected_human_state_count: int
+    market_insight_action_count: int = 0
 
 
 def _validate_capture_membership(
@@ -126,24 +183,104 @@ def _validate_capture_membership(
             if job.duplicate_of_posting_id == job.posting_id:
                 raise ValueError("A posting cannot be marked as a duplicate of itself.")
 
-            if (
-                session.get(
-                    Posting,
-                    job.duplicate_of_posting_id,
-                )
-                is None
-            ):
+            if session.get(Posting, job.duplicate_of_posting_id) is None:
                 raise ValueError(
                     "duplicate_of_posting_id references unknown posting: "
                     f"{job.duplicate_of_posting_id}"
                 )
 
 
+def _analysis_payload(job: AIReviewJob) -> dict[str, object]:
+    return {
+        "reasons": job.reasons,
+        "geography_basis": job.geography_basis,
+        "hard_blockers": [item.model_dump(mode="json") for item in job.hard_blockers],
+        "transferable_skills": job.transferable_skills,
+        "skill_gaps": job.skill_gaps,
+        "learnability": job.learnability,
+        "preparation_actions": job.preparation_actions,
+    }
+
+
+def _market_actions(
+    market: AIMarketInsights,
+) -> MarketPreparationImportRequest:
+    def actions(
+        values: list[str],
+        *,
+        action_type: str,
+        rationale: str,
+        priority: Literal["high", "medium", "low"] = "medium",
+    ) -> list[MarketPreparationAction]:
+        return [
+            MarketPreparationAction(
+                action_type=action_type,
+                title=value,
+                rationale=rationale,
+                proposed_action=value,
+                priority=priority,
+                source="chatgpt_ai_review_v2",
+            )
+            for value in values
+        ]
+
+    return MarketPreparationImportRequest(
+        source="chatgpt_ai_review_v2",
+        summary=market.summary,
+        market_recommendations=(
+            actions(
+                market.demanded_technologies,
+                action_type="market_demand",
+                rationale="Technology demand observed across the reviewed vacancy batch.",
+            )
+            + actions(
+                market.promising_role_families,
+                action_type="role_family",
+                rationale="Role family with useful transferability or market demand.",
+            )
+        ),
+        preparation_plan=(
+            actions(
+                market.quick_learn_gaps,
+                action_type="quick_learning",
+                rationale="Gap judged practical to close quickly with focused study or lab work.",
+                priority="high",
+            )
+            + actions(
+                market.learning_priorities,
+                action_type="learning_priority",
+                rationale="Learning priority derived from the reviewed vacancy batch.",
+                priority="high",
+            )
+            + actions(
+                market.recurring_skill_gaps,
+                action_type="recurring_gap",
+                rationale="Recurring skill gap found across multiple opportunities.",
+            )
+        ),
+        search_filter_improvements=actions(
+            market.search_terms,
+            action_type="search_term",
+            rationale="Search term suggested by current market evidence.",
+        ),
+        application_strategy=actions(
+            market.application_strategy,
+            action_type="application_strategy",
+            rationale="Application strategy derived from the same AI review round.",
+        ),
+        raw_payload=market.model_dump(mode="json"),
+    )
+
+
 def import_ai_review(
     session: Session,
     request: AIReviewImportRequest,
 ) -> AIReviewImportResponse:
-    """Persist external AI analysis without altering human/application state."""
+    """Persist external AI analysis without altering human/application state.
+
+    Contract v2 also imports market and preparation intelligence from the same
+    review round, eliminating the need for a second ChatGPT interchange package.
+    """
 
     _validate_capture_membership(session, request)
 
@@ -179,6 +316,11 @@ def import_ai_review(
     imported_at = utc_now()
 
     for job in request.jobs:
+        analysis_json = json.dumps(
+            _analysis_payload(job),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
         review = existing_reviews.get(job.posting_id)
 
         if review is None:
@@ -198,10 +340,7 @@ def import_ai_review(
                 technical_fit=job.technical_fit,
                 duplicate_of_posting_id=job.duplicate_of_posting_id,
                 summary=job.summary,
-                reasons_json=json.dumps(
-                    job.reasons,
-                    ensure_ascii=False,
-                ),
+                reasons_json=analysis_json,
                 reviewed_at=request.reviewed_at,
                 imported_at=imported_at,
             )
@@ -220,15 +359,17 @@ def import_ai_review(
         review.technical_fit = job.technical_fit
         review.duplicate_of_posting_id = job.duplicate_of_posting_id
         review.summary = job.summary
-        review.reasons_json = json.dumps(
-            job.reasons,
-            ensure_ascii=False,
-        )
+        review.reasons_json = analysis_json
         review.reviewed_at = request.reviewed_at
         review.imported_at = imported_at
         updated_count += 1
 
     session.commit()
+
+    market_action_count = 0
+    if request.market_insights is not None:
+        market_response = import_market_preparation(_market_actions(request.market_insights))
+        market_action_count = market_response.imported_count
 
     return AIReviewImportResponse(
         capture_run_id=request.capture_run_id,
@@ -236,4 +377,5 @@ def import_ai_review(
         created_count=created_count,
         updated_count=updated_count,
         protected_human_state_count=len(protected_human_state),
+        market_insight_action_count=market_action_count,
     )
