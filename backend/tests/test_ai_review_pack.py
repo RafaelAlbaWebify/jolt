@@ -16,7 +16,7 @@ from jolt.database import (
 )
 
 
-def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
+def test_ai_review_pack_contains_candidate_policy_and_unified_contract(
     tmp_path,
 ) -> None:
     database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
@@ -28,7 +28,7 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
         raw_text = (
             "Technical Support Engineer\n"
             "Example Systems\n"
-            "Location: Spain Remote\n"
+            "Location: United Kingdom Remote\n"
             "Troubleshoot Windows, SQL, logs and REST APIs.\n"
             "Job search faster with Premium\n"
             "Promotional LinkedIn material that must not reach analysis."
@@ -42,7 +42,6 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
             content_hash="a" * 64,
             captured_at=now,
         )
-
         posting = Posting(
             id="posting-ai-1",
             source_document_id=source.id,
@@ -50,12 +49,11 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
             identity_key="linkedin:123",
             title="Technical Support Engineer",
             company="Example Systems",
-            location="Spain · Remote",
+            location="United Kingdom · Remote",
             description=raw_text,
             identity_status="verified",
             created_at=now,
         )
-
         capture = CaptureRun(
             id="capture-ai-1",
             source="linkedin",
@@ -69,7 +67,6 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
             started_at=now,
             completed_at=now,
         )
-
         page = CapturePage(
             id="page-ai-1",
             capture_run_id=capture.id,
@@ -78,7 +75,6 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
             next_control_present=False,
             next_control_enabled=False,
         )
-
         item = CaptureItem(
             id="item-ai-1",
             capture_run_id=capture.id,
@@ -104,9 +100,9 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
 
         with ZipFile(BytesIO(payload)) as archive:
             names = set(archive.namelist())
-
             assert names == {
                 "README.md",
+                "candidate/job_search_preferences.json",
                 "capture/pages.json",
                 "capture/run.json",
                 "contract/ai_review_response_template.json",
@@ -116,30 +112,38 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
 
             manifest = json.loads(archive.read("manifest.json"))
             jobs = json.loads(archive.read("jobs/ai_review_jobs.json"))
+            candidate = json.loads(archive.read("candidate/job_search_preferences.json"))
             template = json.loads(archive.read("contract/ai_review_response_template.json"))
+            readme = archive.read("README.md").decode("utf-8")
 
         assert manifest["pack_type"] == "jolt_ai_review_input"
-        assert manifest["capture_run_id"] == capture.id
+        assert manifest["pack_version"] == "2.0"
+        assert manifest["review_contract_version"] == "2.0"
         assert manifest["classification_authority"] == "external_ai"
+        assert manifest["market_intelligence_authority"] == "external_ai"
+        assert manifest["candidate_context_included"] is True
+        assert manifest["market_insights_return_in_same_contract"] is True
         assert manifest["jolt_decisions_included"] is False
         assert manifest["jolt_scores_included"] is False
 
-        job = jobs[0]
+        assert candidate["employment_urgency"] == "high"
+        assert candidate["geography_policy"] == "explicit_restrictions_only"
+        assert candidate["direct_contact_before_apply"] is False
+        assert candidate["relocation_allowed"] is False
+        assert candidate["language_certifications"] == []
+        assert candidate["excluded_shifts"] == []
+        assert "Microsoft Intune" in candidate["current_learning"]
 
+        job = jobs[0]
         assert job["posting_id"] == posting.id
         assert job["source_job_id"] == "123"
-        assert job["title"] == posting.title
-        assert job["company"] == posting.company
-
         assert "Troubleshoot Windows" in job["analysis_text"]
         assert "Job search faster with Premium" not in job["analysis_text"]
         assert "Promotional LinkedIn material" not in job["analysis_text"]
-
         assert job["audit"]["source_raw_text"] == raw_text
         assert job["audit"]["source_raw_text_sha256"]
 
         serialized = json.dumps(job).casefold()
-
         assert '"recommendation"' not in serialized
         assert '"ranking_score"' not in serialized
         assert '"eligibility"' not in serialized
@@ -148,6 +152,25 @@ def test_ai_review_pack_contains_clean_evidence_but_no_jolt_decisions(
         assert '"evaluation_id"' not in serialized
 
         assert template["capture_run_id"] == capture.id
+        assert template["contract_version"] == "2.0"
         assert template["review_source"] == "chatgpt_source_first"
+        template_job = template["jobs"][0]
+        assert "geography_basis" in template_job
+        assert "hard_blockers" in template_job
+        assert "transferable_skills" in template_job
+        assert "skill_gaps" in template_job
+        assert "learnability" in template_job
+        assert "preparation_actions" in template_job
+        assert template_job["language_required_level"] is None
+        assert template_job["language_certificate_required"] is False
+        assert template_job["language_requirement_evidence"] is None
+        assert "market_insights" in template
+
+        assert "foreign LinkedIn/listing location is neutral" in readme
+        assert "required physical workplace" in readme
+        assert "candidate does not relocate" in readme
+        assert "European level C1 in English is mandatory" in readme
+        assert "language_certificate_required=true" in readme
+        assert "Shifts, weekends and holidays are not rejection criteria" in readme
     finally:
         session.close()
