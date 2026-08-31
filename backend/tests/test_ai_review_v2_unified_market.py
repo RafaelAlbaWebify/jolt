@@ -122,7 +122,9 @@ def test_v2_import_persists_structured_review_and_market_insights(tmp_path, monk
                     "promising_role_families": ["Technical Support"],
                     "search_terms": ["Azure technical support"],
                     "learning_priorities": ["Continue Azure and Intune lab work"],
-                    "application_strategy": ["Apply where Azure is preferred rather than mandatory"],
+                    "application_strategy": [
+                        "Apply where Azure is preferred rather than mandatory"
+                    ],
                 },
             }
         )
