@@ -21,42 +21,31 @@ describe("DataTools", () => {
     vi.restoreAllMocks();
   });
 
-  it("exports clean capture evidence for external AI review", () => {
+  it("exports one package for AI review and Market Insights", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([]),
-        { status: 200 },
-      ),
+      new Response(JSON.stringify([]), { status: 200 }),
     );
 
-    render(
-      <DataTools
-        apiBase="http://127.0.0.1:8000"
-      />,
-    );
+    render(<DataTools apiBase="http://127.0.0.1:8000" />);
 
     const link = screen.getByRole("link", {
-      name: "Download AI review package",
+      name: "Download for ChatGPT",
     });
 
     expect(link).toHaveAttribute(
       "href",
       "http://127.0.0.1:8000/api/exports/ai-review-pack",
     );
-
     expect(link).toHaveAttribute(
       "download",
       "JOLT_AI_REVIEW_INPUT.zip",
     );
-
     expect(
-      screen.getByText(
-        /JOLT does not include its own recommendation, score, or eligibility decision/i,
-      ),
+      screen.getByText(/one JSON file with both Review Inbox decisions and Market Insights/i),
     ).toBeInTheDocument();
   });
 
-  it("imports an AI review JSON and refreshes the inbox", async () => {
+  it("imports jobs and Market Insights with one JSON", async () => {
     const onImported = vi.fn();
 
     const fetchMock = vi
@@ -69,6 +58,7 @@ describe("DataTools", () => {
             created_count: 2,
             updated_count: 0,
             protected_human_state_count: 0,
+            market_insight_action_count: 7,
           }),
           {
             status: 200,
@@ -90,28 +80,22 @@ describe("DataTools", () => {
       [
         JSON.stringify({
           contract_type: "jolt_ai_review",
-          contract_version: "1.0",
+          contract_version: "2.0",
           capture_run_id: "capture-1",
           review_source: "chatgpt_source_first",
-          review_version: "2026-08-27.1",
-          reviewed_at: "2026-08-27T16:00:00+02:00",
+          review_version: "2026-08-31.1",
+          reviewed_at: "2026-08-31T12:00:00+02:00",
           jobs: [],
+          market_insights: {},
         }),
       ],
       "JOLT_AI_REVIEW.json",
-      {
-        type: "application/json",
-      },
+      { type: "application/json" },
     );
 
-    fireEvent.change(
-      screen.getByLabelText("Import AI review"),
-      {
-        target: {
-          files: [file],
-        },
-      },
-    );
+    fireEvent.change(screen.getByLabelText("Import AI review"), {
+      target: { files: [file] },
+    });
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -125,12 +109,9 @@ describe("DataTools", () => {
       ),
     );
 
-    expect(
-      await screen.findByRole("status"),
-    ).toHaveTextContent(
-      "2 AI-reviewed jobs imported",
-    );
-
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("2 AI-reviewed jobs imported");
+    expect(status).toHaveTextContent("7 Market Insight actions updated from the same review");
     expect(onImported).toHaveBeenCalledTimes(1);
   });
 });
