@@ -104,6 +104,9 @@ class AIReviewJob(BaseModel):
     skill_gaps: list[str] = Field(default_factory=list)
     learnability: Learnability = "unknown"
     preparation_actions: list[str] = Field(default_factory=list)
+    language_required_level: str | None = None
+    language_certificate_required: bool = False
+    language_requirement_evidence: str | None = None
 
 
 class AIMarketInsights(BaseModel):
@@ -199,6 +202,9 @@ def _analysis_payload(job: AIReviewJob) -> dict[str, object]:
         "skill_gaps": job.skill_gaps,
         "learnability": job.learnability,
         "preparation_actions": job.preparation_actions,
+        "language_required_level": job.language_required_level,
+        "language_certificate_required": job.language_certificate_required,
+        "language_requirement_evidence": job.language_requirement_evidence,
     }
 
 
