@@ -37,6 +37,9 @@ class AIReviewOpportunityIndexItem(BaseModel):
     geography_basis: str | None = None
     clearance_status: str | None = None
     language_status: str | None = None
+    language_required_level: str | None = None
+    language_certificate_required: bool = False
+    language_requirement_evidence: str | None = None
     technical_fit: int | None = None
 
     duplicate_of_posting_id: str | None = None
@@ -251,6 +254,19 @@ def list_ai_review_opportunity_index(session: Session) -> list[AIReviewOpportuni
                 ),
                 clearance_status=ai_review.clearance_status,
                 language_status=ai_review.language_status,
+                language_required_level=(
+                    str(analysis.get("language_required_level"))
+                    if analysis.get("language_required_level") is not None
+                    else None
+                ),
+                language_certificate_required=bool(
+                    analysis.get("language_certificate_required", False)
+                ),
+                language_requirement_evidence=(
+                    str(analysis.get("language_requirement_evidence"))
+                    if analysis.get("language_requirement_evidence") is not None
+                    else None
+                ),
                 technical_fit=ai_review.technical_fit,
                 duplicate_of_posting_id=ai_review.duplicate_of_posting_id,
                 summary=ai_review.summary,
