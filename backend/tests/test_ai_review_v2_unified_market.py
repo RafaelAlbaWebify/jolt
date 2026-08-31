@@ -33,7 +33,7 @@ def test_v2_import_persists_structured_review_and_market_insights(tmp_path, monk
             id="source-v2",
             source_type="linkedin",
             source_url="https://www.linkedin.com/jobs/view/200/",
-            raw_text="Remote technical support. Azure preferred.",
+            raw_text="Remote technical support. Azure preferred. English C1 required.",
             content_hash="c" * 64,
             captured_at=now,
         )
@@ -61,7 +61,7 @@ def test_v2_import_persists_structured_review_and_market_insights(tmp_path, monk
             title="Technical Support Engineer",
             company="Example",
             location="United Kingdom · Remote",
-            description="Remote technical support. Azure preferred.",
+            description="Remote technical support. Azure preferred. English C1 required.",
             identity_status="verified",
             created_at=now,
         )
@@ -102,6 +102,9 @@ def test_v2_import_persists_structured_review_and_market_insights(tmp_path, monk
                         "geography_basis": "neutral_location",
                         "clearance_status": "clear",
                         "language_status": "clear",
+                        "language_required_level": "English C1",
+                        "language_certificate_required": False,
+                        "language_requirement_evidence": "English C1 required.",
                         "technical_fit": 82,
                         "duplicate_of_posting_id": None,
                         "hard_blockers": [],
@@ -142,12 +145,18 @@ def test_v2_import_persists_structured_review_and_market_insights(tmp_path, monk
         assert analysis["hard_blockers"] == []
         assert analysis["learnability"] == "quick_1_7_days"
         assert analysis["skill_gaps"] == ["Azure administration"]
+        assert analysis["language_required_level"] == "English C1"
+        assert analysis["language_certificate_required"] is False
+        assert analysis["language_requirement_evidence"] == "English C1 required."
 
         inbox = list_ai_review_opportunity_index(session)
         assert len(inbox) == 1
         assert inbox[0].geography_basis == "neutral_location"
         assert inbox[0].transferable_skills == ["Windows troubleshooting", "incident ownership"]
         assert inbox[0].learnability == "quick_1_7_days"
+        assert inbox[0].language_required_level == "English C1"
+        assert inbox[0].language_certificate_required is False
+        assert inbox[0].language_requirement_evidence == "English C1 required."
 
         market = list_market_preparation_imports()
         assert market.latest_import is not None
