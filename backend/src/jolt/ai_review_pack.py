@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
 from jolt.errors import JoltNotFoundError
+from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import sanitize_capture_text
 
-PACK_VERSION = "1.0"
-REVIEW_CONTRACT_VERSION = "1.0"
+PACK_VERSION = "2.0"
+REVIEW_CONTRACT_VERSION = "2.0"
 
 
 def _json_bytes(value: object) -> bytes:
@@ -41,10 +42,7 @@ def _iso(value: datetime | None) -> str | None:
 def _latest_capture(session: Session) -> CaptureRun:
     capture = session.scalar(
         select(CaptureRun)
-        .order_by(
-            CaptureRun.started_at.desc(),
-            CaptureRun.id.desc(),
-        )
+        .order_by(CaptureRun.started_at.desc(), CaptureRun.id.desc())
         .limit(1)
     )
     if capture is None:
@@ -61,9 +59,7 @@ def _analysis_text(
     source_raw_text: str,
 ) -> str:
     evidence = source_raw_text.strip() or description.strip()
-
     cleaned = sanitize_capture_text(evidence)
-
     header = "\n".join(
         (
             f"Title: {title.strip()}",
@@ -71,23 +67,20 @@ def _analysis_text(
             f"Location: {location.strip()}",
         )
     )
-
-    if not cleaned:
-        return header
-
-    return f"{header}\n\n{cleaned}".strip()
+    return header if not cleaned else f"{header}\n\n{cleaned}".strip()
 
 
 def build_ai_review_pack(session: Session) -> bytes:
-    """Export latest captured evidence for external AI classification.
+    """Export the latest vacancy evidence and candidate policy for one AI round.
 
-    This export deliberately contains no JOLT recommendation, score,
-    eligibility classification, profile evaluation, or proposed decision.
-    JOLT's role here is evidence capture, identity linkage, and text cleaning.
+    JOLT remains evidence/workflow authority only. The external AI is responsible
+    for recommendation, transferability, hard-blocker interpretation, learnability,
+    and aggregate market intelligence.
     """
 
     generated_at = datetime.now().astimezone().isoformat()
     capture = _latest_capture(session)
+    preferences = load_job_search_preferences()
 
     pages = list(
         session.scalars(
@@ -96,7 +89,6 @@ def build_ai_review_pack(session: Session) -> bytes:
             .order_by(CapturePage.page_number, CapturePage.id)
         ).all()
     )
-
     items = list(
         session.scalars(
             select(CaptureItem)
@@ -106,7 +98,6 @@ def build_ai_review_pack(session: Session) -> bytes:
     )
 
     posting_ids = {item.posting_id for item in items if item.posting_id is not None}
-
     postings = (
         list(
             session.scalars(
@@ -118,14 +109,12 @@ def build_ai_review_pack(session: Session) -> bytes:
         if posting_ids
         else []
     )
-
     posting_by_id = {posting.id: posting for posting in postings}
 
     source_document_ids = {
         item.source_document_id for item in items if item.source_document_id is not None
     }
     source_document_ids.update(posting.source_document_id for posting in postings)
-
     source_documents = (
         list(
             session.scalars(
@@ -137,7 +126,6 @@ def build_ai_review_pack(session: Session) -> bytes:
         if source_document_ids
         else []
     )
-
     source_by_id = {source.id: source for source in source_documents}
 
     capture_payload = {
@@ -156,7 +144,6 @@ def build_ai_review_pack(session: Session) -> bytes:
         "item_count": len(items),
         "verified_item_count": sum(item.detail_status == "verified" for item in items),
     }
-
     page_payload = [
         {
             "capture_run_id": page.capture_run_id,
@@ -169,14 +156,11 @@ def build_ai_review_pack(session: Session) -> bytes:
     ]
 
     jobs_payload: list[dict[str, object]] = []
-
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
-
         source_document_id = (
             posting.source_document_id if posting is not None else item.source_document_id
         )
-
         source = source_by_id.get(source_document_id) if source_document_id is not None else None
 
         title = posting.title if posting is not None else item.title
@@ -185,9 +169,6 @@ def build_ai_review_pack(session: Session) -> bytes:
         description = posting.description if posting is not None else ""
         source_raw_text = source.raw_text if source is not None else ""
 
-        clean_description = sanitize_capture_text(description)
-        clean_source_text = sanitize_capture_text(source_raw_text)
-
         jobs_payload.append(
             {
                 "capture_run_id": item.capture_run_id,
@@ -195,16 +176,16 @@ def build_ai_review_pack(session: Session) -> bytes:
                 "posting_id": item.posting_id,
                 "source_job_id": item.source_job_id,
                 "source_url": item.source_url,
-                "canonical_url": (posting.canonical_url if posting is not None else ""),
+                "canonical_url": posting.canonical_url if posting is not None else "",
                 "title": title,
                 "company": company,
                 "location": location,
-                "identity_status": (posting.identity_status if posting is not None else ""),
+                "identity_status": posting.identity_status if posting is not None else "",
                 "detail_status": item.detail_status,
                 "verification_reasons": _json_list(item.verification_reasons_json),
                 "source_document_id": source_document_id,
-                "description_clean": clean_description,
-                "source_text_clean": clean_source_text,
+                "description_clean": sanitize_capture_text(description),
+                "source_text_clean": sanitize_capture_text(source_raw_text),
                 "analysis_text": _analysis_text(
                     title=title,
                     company=company,
@@ -221,6 +202,8 @@ def build_ai_review_pack(session: Session) -> bytes:
             }
         )
 
+    candidate_payload = preferences.model_dump(mode="json")
+
     response_template = {
         "contract_type": "jolt_ai_review",
         "contract_version": REVIEW_CONTRACT_VERSION,
@@ -235,28 +218,68 @@ def build_ai_review_pack(session: Session) -> bytes:
                 "decision": "strong_pursue|pursue|conditional|reject",
                 "priority_score": 0,
                 "geography_status": "eligible|conditional|ineligible|unknown",
+                "geography_basis": "explicit_eligible|neutral_location|explicit_restricted|unknown",
                 "clearance_status": "clear|conditional|blocked|unknown",
                 "language_status": "clear|conditional|blocked|unknown",
                 "technical_fit": 0,
                 "duplicate_of_posting_id": None,
+                "hard_blockers": [
+                    {
+                        "blocker_type": "language|geography|work_authorization|citizenship|clearance|duplicate|other_legal",
+                        "evidence": "Exact vacancy evidence for the blocker",
+                    }
+                ],
+                "transferable_skills": [],
+                "skill_gaps": [],
+                "learnability": "already_ready|quick_1_7_days|short_1_2_weeks|substantial|unknown",
+                "preparation_actions": [],
                 "summary": "",
                 "reasons": [],
             }
         ],
+        "market_insights": {
+            "summary": "",
+            "demanded_technologies": [],
+            "recurring_skill_gaps": [],
+            "quick_learn_gaps": [],
+            "strong_existing_skills": [],
+            "promising_role_families": [],
+            "search_terms": [],
+            "learning_priorities": [],
+            "application_strategy": [],
+        },
     }
 
+    readme = """# JOLT AI Review + Market Insights Package
+
+One package, one external AI analysis round, one return import.
+
+JOLT has captured, linked and cleaned vacancy evidence. It has NOT supplied a
+recommendation, ranking score, eligibility decision, or classifier result as
+review authority.
+
+Use:
+- `jobs/ai_review_jobs.json` for source-first vacancy evidence.
+- `candidate/job_search_preferences.json` for candidate constraints and policy.
+- `contract/ai_review_response_template.json` for the exact return shape.
+
+Critical review policy:
+- A foreign LinkedIn/listing location is neutral by itself.
+- Reject geography only on positive restrictive evidence such as mandatory
+  residency, work authorization, hiring-region limits, citizenship or clearance.
+- Mandatory unsupported human language remains a hard blocker.
+- Shifts, weekends and holidays are not rejection criteria.
+- Unfamiliar tools, specialist technologies, seniority gaps and different role
+  families require AI transferability + learnability assessment before rejection.
+- Prefer a good application over unnecessary pre-application employer contact.
+- Aggregate Market Insights must come from this same reviewed vacancy batch.
+"""
+
     files: dict[str, bytes] = {
-        "README.md": (
-            b"# JOLT AI Review Package\n\n"
-            b"This package is for external source-first AI analysis.\n\n"
-            b"JOLT has captured, linked, and cleaned the vacancy evidence. "
-            b"It has NOT supplied a recommendation, ranking score, eligibility "
-            b"decision, or classifier result as review authority.\n\n"
-            b"Primary analysis input: jobs/ai_review_jobs.json\n"
-            b"Expected return shape: contract/ai_review_response_template.json\n"
-        ),
+        "README.md": readme.encode("utf-8"),
         "capture/run.json": _json_bytes(capture_payload),
         "capture/pages.json": _json_bytes(page_payload),
+        "candidate/job_search_preferences.json": _json_bytes(candidate_payload),
         "jobs/ai_review_jobs.json": _json_bytes(jobs_payload),
         "contract/ai_review_response_template.json": _json_bytes(response_template),
     }
@@ -268,8 +291,11 @@ def build_ai_review_pack(session: Session) -> bytes:
         "generated_at": generated_at,
         "capture_run_id": capture.id,
         "classification_authority": "external_ai",
+        "market_intelligence_authority": "external_ai",
         "jolt_decisions_included": False,
         "jolt_scores_included": False,
+        "candidate_context_included": True,
+        "market_insights_return_in_same_contract": True,
         "counts": {
             "capture_pages": len(page_payload),
             "capture_items": len(jobs_payload),
@@ -283,17 +309,10 @@ def build_ai_review_pack(session: Session) -> bytes:
             for name, content in sorted(files.items())
         },
     }
-
     files["manifest.json"] = _json_bytes(manifest)
 
     output = io.BytesIO()
-
-    with ZipFile(
-        output,
-        "w",
-        compression=ZIP_DEFLATED,
-    ) as archive:
+    with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
         for name, content in sorted(files.items()):
             archive.writestr(name, content)
-
     return output.getvalue()
