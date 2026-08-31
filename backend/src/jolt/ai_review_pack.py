@@ -41,9 +41,7 @@ def _iso(value: datetime | None) -> str | None:
 
 def _latest_capture(session: Session) -> CaptureRun:
     capture = session.scalar(
-        select(CaptureRun)
-        .order_by(CaptureRun.started_at.desc(), CaptureRun.id.desc())
-        .limit(1)
+        select(CaptureRun).order_by(CaptureRun.started_at.desc(), CaptureRun.id.desc()).limit(1)
     )
     if capture is None:
         raise JoltNotFoundError("No capture run exists to export for AI review.")
