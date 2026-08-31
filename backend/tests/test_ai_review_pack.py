@@ -161,13 +161,16 @@ def test_ai_review_pack_contains_candidate_policy_and_unified_contract(
         assert "skill_gaps" in template_job
         assert "learnability" in template_job
         assert "preparation_actions" in template_job
+        assert template_job["language_required_level"] is None
+        assert template_job["language_certificate_required"] is False
+        assert template_job["language_requirement_evidence"] is None
         assert "market_insights" in template
 
         assert "foreign LinkedIn/listing location is neutral" in readme
         assert "required physical workplace" in readme
         assert "candidate does not relocate" in readme
-        assert "CEFR level such as C1" in readme
-        assert "Do not invent a certificate requirement" in readme
+        assert "European level C1 in English is mandatory" in readme
+        assert "language_certificate_required=true" in readme
         assert "Shifts, weekends and holidays are not rejection criteria" in readme
     finally:
         session.close()
