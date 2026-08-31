@@ -19,6 +19,8 @@ ALL_SHIFTS: list[ShiftPreference] = [
     "weekend",
 ]
 
+CURRENT_AI_REVIEW_POLICY_VERSION = "2026-08-31.3"
+
 
 def _data_path() -> Path:
     backend_root = Path(__file__).resolve().parents[2]
@@ -72,6 +74,7 @@ class JobSearchPreferences(BaseModel):
 
     # External AI review policy. These values are exported with every review pack
     # so an external reviewer does not have to infer eligibility rules from memory.
+    review_policy_version: str = CURRENT_AI_REVIEW_POLICY_VERSION
     employment_urgency: Literal["normal", "high"] = "high"
     geography_policy: Literal["explicit_restrictions_only"] = "explicit_restrictions_only"
     direct_contact_before_apply: bool = False
@@ -92,9 +95,11 @@ class JobSearchPreferences(BaseModel):
         "The candidate is not willing to relocate. A stated onsite workplace, client site, "
         "office attendance requirement, or assignment to a named distant physical workplace "
         "is positive geography evidence and must be treated as a hard blocker when it cannot "
-        "be satisfied from the base locality. Do not reject for shifts, unfamiliar tools, "
-        "specialist technologies, seniority gaps, or role-family changes before AI evaluates "
-        "transferability and learnability. A stated CEFR language level is a mandatory "
+        "be satisfied from the base locality. A remote scope such as 'Remote (USA)', 'remote "
+        "within Germany', or an explicit country/region-only hiring statement is also positive "
+        "geography evidence, not a neutral location label. Do not reject for shifts, unfamiliar "
+        "tools, specialist technologies, seniority gaps, or role-family changes before AI "
+        "evaluates transferability and learnability. A stated CEFR language level is a mandatory "
         "proficiency requirement; treat an official language certificate as mandatory only "
         "when the vacancy explicitly asks for certification, a certificate, or documentary proof. "
         "Do not require contacting an employer merely to determine basic eligibility before applying."
@@ -110,6 +115,7 @@ class JobSearchPreferences(BaseModel):
     def enforce_employment_urgency_policy(self) -> JobSearchPreferences:
         """Normalize old saved preferences so deprecated blockers cannot return."""
 
+        self.review_policy_version = CURRENT_AI_REVIEW_POLICY_VERSION
         self.excluded_shifts = []
         self.preferred_shifts = list(ALL_SHIFTS)
         self.employment_urgency = "high"
