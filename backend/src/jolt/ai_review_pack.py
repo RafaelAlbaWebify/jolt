@@ -263,9 +263,16 @@ Use:
 
 Critical review policy:
 - A foreign LinkedIn/listing location is neutral by itself.
-- Reject geography only on positive restrictive evidence such as mandatory
-  residency, work authorization, hiring-region limits, citizenship or clearance.
+- Geography becomes a hard blocker on positive evidence: mandatory residency,
+  work authorization, hiring-region limits, citizenship/clearance, OR a required
+  physical workplace outside the candidate's accepted commuting range when the
+  candidate does not relocate. Phrases such as "Location: Brussels", "work from
+  the European Commission", required office attendance, or a named client site
+  are physical-workplace evidence, not a neutral listing location.
 - Mandatory unsupported human language remains a hard blocker.
+- A stated CEFR level such as C1 is a mandatory proficiency requirement. Do not
+  invent a certificate requirement unless the vacancy explicitly asks for a
+  certificate, certification, credential, or documentary proof.
 - Shifts, weekends and holidays are not rejection criteria.
 - Unfamiliar tools, specialist technologies, seniority gaps and different role
   families require AI transferability + learnability assessment before rejection.
