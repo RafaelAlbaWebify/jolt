@@ -4,11 +4,20 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 WorkMode = Literal["remote", "hybrid", "onsite"]
 ShiftPreference = Literal["business_hours", "flexible", "evening", "night", "rotating", "weekend"]
 WorkloadPreference = Literal["normal", "high", "unknown"]
+
+ALL_SHIFTS: list[ShiftPreference] = [
+    "business_hours",
+    "flexible",
+    "evening",
+    "night",
+    "rotating",
+    "weekend",
+]
 
 
 def _data_path() -> Path:
@@ -39,16 +48,7 @@ class JobSearchPreferences(BaseModel):
 
     # Employment urgency takes precedence over shift comfort. Shift data may still
     # be reported by AI, but it must never act as an automatic rejection rule.
-    preferred_shifts: list[ShiftPreference] = Field(
-        default_factory=lambda: [
-            "business_hours",
-            "flexible",
-            "evening",
-            "night",
-            "rotating",
-            "weekend",
-        ]
-    )
+    preferred_shifts: list[ShiftPreference] = Field(default_factory=lambda: list(ALL_SHIFTS))
     excluded_shifts: list[ShiftPreference] = Field(default_factory=list)
 
     preferred_workload: WorkloadPreference = "normal"
@@ -95,6 +95,17 @@ class JobSearchPreferences(BaseModel):
         "discard otherwise viable opportunities solely because of shifts or a foreign LinkedIn location."
     )
 
+    @model_validator(mode="after")
+    def enforce_employment_urgency_policy(self) -> JobSearchPreferences:
+        """Normalize old saved preferences so shifts can never become blockers again."""
+
+        self.excluded_shifts = []
+        self.preferred_shifts = list(ALL_SHIFTS)
+        self.employment_urgency = "high"
+        self.geography_policy = "explicit_restrictions_only"
+        self.direct_contact_before_apply = False
+        return self
+
 
 def load_job_search_preferences() -> JobSearchPreferences:
     path = _data_path()
@@ -108,6 +119,10 @@ def load_job_search_preferences() -> JobSearchPreferences:
 
 
 def save_job_search_preferences(preferences: JobSearchPreferences) -> JobSearchPreferences:
+    # Revalidate before persistence so stale UI clients cannot restore deprecated
+    # shift exclusions or the former geography policy.
+    preferences = JobSearchPreferences.model_validate(preferences.model_dump())
+
     path = _data_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
