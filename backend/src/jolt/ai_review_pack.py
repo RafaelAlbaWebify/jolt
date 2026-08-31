@@ -219,6 +219,9 @@ def build_ai_review_pack(session: Session) -> bytes:
                 "geography_basis": "explicit_eligible|neutral_location|explicit_restricted|unknown",
                 "clearance_status": "clear|conditional|blocked|unknown",
                 "language_status": "clear|conditional|blocked|unknown",
+                "language_required_level": None,
+                "language_certificate_required": False,
+                "language_requirement_evidence": None,
                 "technical_fit": 0,
                 "duplicate_of_posting_id": None,
                 "hard_blockers": [
@@ -270,9 +273,11 @@ Critical review policy:
   the European Commission", required office attendance, or a named client site
   are physical-workplace evidence, not a neutral listing location.
 - Mandatory unsupported human language remains a hard blocker.
-- A stated CEFR level such as C1 is a mandatory proficiency requirement. Do not
-  invent a certificate requirement unless the vacancy explicitly asks for a
-  certificate, certification, credential, or documentary proof.
+- Record stated CEFR/language level separately from certification. For example,
+  "European level C1 in English is mandatory" means C1 proficiency is mandatory.
+  Set `language_required_level` accordingly, but set
+  `language_certificate_required=true` only when the vacancy explicitly asks for
+  a certificate, certification, credential, diploma, or documentary proof.
 - Shifts, weekends and holidays are not rejection criteria.
 - Unfamiliar tools, specialist technologies, seniority gaps and different role
   families require AI transferability + learnability assessment before rejection.
