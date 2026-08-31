@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import { AIMarketInsights } from "./AIMarketInsights";
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { DataTools } from "./DataTools";
@@ -19,7 +20,7 @@ const PRIMARY_VIEWS: Array<{ id: PrimaryView; label: string; description: string
   { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added jobs and decide what moves forward." },
   { id: "applications", label: "Applications", description: "Track preparation, submissions, interviews, offers, outcomes, and archived records." },
   { id: "linkedin", label: "LinkedIn Profile", description: "Refresh profile evidence and manage concrete profile improvements." },
-  { id: "market", label: "Market Insights", description: "Use retained job evidence to improve search strategy and preparation priorities." },
+  { id: "market", label: "Market Insights", description: "Use AI-reviewed vacancy evidence plus retained market statistics to improve search strategy and preparation priorities." },
 ];
 
 const WORKFLOW_STEPS = ["Capture jobs", "Review opportunities", "Prepare and apply", "Track outcomes", "Learn from the market"];
@@ -89,6 +90,7 @@ export function Workbench() {
             <LinkedInCommandCenter apiBase={API_BASE} active={activeView === "linkedin"} />
           </div>
           <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
+            <AIMarketInsights apiBase={API_BASE} active={activeView === "market"} />
             <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
           </div>
           <div className="workspace-view workspace-view-settings" hidden={activeView !== "settings"}>
@@ -98,8 +100,8 @@ export function Workbench() {
                   <p className="eyebrow">Job strategy</p>
                   <h2 id="settings-data-heading">Settings & Data</h2>
                   <p>
-                    Configure how JOLT judges jobs, then re-evaluate existing opportunities
-                    without changing human review decisions or application records.
+                    Configure candidate context used by the external AI review. JOLT preserves
+                    human review decisions and application records.
                   </p>
                 </div>
               </div>
@@ -118,10 +120,10 @@ export function Workbench() {
             <section className="panel" aria-labelledby="operational-data-heading">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Secondary utility</p>
-                  <h2 id="operational-data-heading">Operational Data</h2>
+                  <p className="eyebrow">Single AI interchange</p>
+                  <h2 id="operational-data-heading">AI Review & Data</h2>
                   <p>
-                    Capture history, reviewed decisions, exports, and developer diagnostics.
+                    One download and one import update Review Inbox decisions and Market Insights.
                   </p>
                 </div>
               </div>
