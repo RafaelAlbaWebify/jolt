@@ -107,7 +107,9 @@ def build_linkedin_profile_exchange(session: Session) -> AIExchangeInput:
 def _apply_linkedin_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
     unknown = sorted(set(output.context_patch) - _LINKEDIN_PATCH_KEYS)
     if unknown:
-        raise ValueError(f"LinkedIn context patch contains non-patchable keys: {', '.join(unknown)}")
+        raise ValueError(
+            f"LinkedIn context patch contains non-patchable keys: {', '.join(unknown)}"
+        )
 
     current = load_global_ai_context()
     update = current.model_dump()
