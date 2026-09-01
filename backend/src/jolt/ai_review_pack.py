@@ -61,9 +61,7 @@ def _analysis_text(
     source_raw_text: str,
 ) -> str:
     evidence = source_raw_text.strip() or description.strip()
-
     cleaned = sanitize_capture_text(evidence)
-
     header = "\n".join(
         (
             f"Title: {title.strip()}",
@@ -71,21 +69,12 @@ def _analysis_text(
             f"Location: {location.strip()}",
         )
     )
-
     if not cleaned:
         return header
-
     return f"{header}\n\n{cleaned}".strip()
 
 
-def build_ai_review_pack(session: Session) -> bytes:
-    """Export latest captured evidence for external AI classification.
-
-    This export deliberately contains no JOLT recommendation, score,
-    eligibility classification, profile evaluation, or proposed decision.
-    JOLT's role here is evidence capture, identity linkage, and text cleaning.
-    """
-
+def _build_ai_review_payloads(session: Session) -> dict[str, object]:
     generated_at = datetime.now().astimezone().isoformat()
     capture = _latest_capture(session)
 
@@ -96,7 +85,6 @@ def build_ai_review_pack(session: Session) -> bytes:
             .order_by(CapturePage.page_number, CapturePage.id)
         ).all()
     )
-
     items = list(
         session.scalars(
             select(CaptureItem)
@@ -106,7 +94,6 @@ def build_ai_review_pack(session: Session) -> bytes:
     )
 
     posting_ids = {item.posting_id for item in items if item.posting_id is not None}
-
     postings = (
         list(
             session.scalars(
@@ -118,14 +105,12 @@ def build_ai_review_pack(session: Session) -> bytes:
         if posting_ids
         else []
     )
-
     posting_by_id = {posting.id: posting for posting in postings}
 
     source_document_ids = {
         item.source_document_id for item in items if item.source_document_id is not None
     }
     source_document_ids.update(posting.source_document_id for posting in postings)
-
     source_documents = (
         list(
             session.scalars(
@@ -137,7 +122,6 @@ def build_ai_review_pack(session: Session) -> bytes:
         if source_document_ids
         else []
     )
-
     source_by_id = {source.id: source for source in source_documents}
 
     capture_payload = {
@@ -169,14 +153,11 @@ def build_ai_review_pack(session: Session) -> bytes:
     ]
 
     jobs_payload: list[dict[str, object]] = []
-
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
-
         source_document_id = (
             posting.source_document_id if posting is not None else item.source_document_id
         )
-
         source = source_by_id.get(source_document_id) if source_document_id is not None else None
 
         title = posting.title if posting is not None else item.title
@@ -185,9 +166,6 @@ def build_ai_review_pack(session: Session) -> bytes:
         description = posting.description if posting is not None else ""
         source_raw_text = source.raw_text if source is not None else ""
 
-        clean_description = sanitize_capture_text(description)
-        clean_source_text = sanitize_capture_text(source_raw_text)
-
         jobs_payload.append(
             {
                 "capture_run_id": item.capture_run_id,
@@ -195,16 +173,16 @@ def build_ai_review_pack(session: Session) -> bytes:
                 "posting_id": item.posting_id,
                 "source_job_id": item.source_job_id,
                 "source_url": item.source_url,
-                "canonical_url": (posting.canonical_url if posting is not None else ""),
+                "canonical_url": posting.canonical_url if posting is not None else "",
                 "title": title,
                 "company": company,
                 "location": location,
-                "identity_status": (posting.identity_status if posting is not None else ""),
+                "identity_status": posting.identity_status if posting is not None else "",
                 "detail_status": item.detail_status,
                 "verification_reasons": _json_list(item.verification_reasons_json),
                 "source_document_id": source_document_id,
-                "description_clean": clean_description,
-                "source_text_clean": clean_source_text,
+                "description_clean": sanitize_capture_text(description),
+                "source_text_clean": sanitize_capture_text(source_raw_text),
                 "analysis_text": _analysis_text(
                     title=title,
                     company=company,
@@ -230,7 +208,7 @@ def build_ai_review_pack(session: Session) -> bytes:
         "reviewed_at": "<ISO-8601 timestamp>",
         "jobs": [
             {
-                "posting_id": "<posting_id from jobs/ai_review_jobs.json>",
+                "posting_id": "<posting_id from jobs>",
                 "source_job_id": "<source_job_id>",
                 "decision": "strong_pursue|pursue|conditional|reject",
                 "priority_score": 0,
@@ -245,6 +223,55 @@ def build_ai_review_pack(session: Session) -> bytes:
         ],
     }
 
+    return {
+        "generated_at": generated_at,
+        "capture_run_id": capture.id,
+        "capture": capture_payload,
+        "pages": page_payload,
+        "jobs": jobs_payload,
+        "response_template": response_template,
+        "verified_items": sum(item.detail_status == "verified" for item in items),
+    }
+
+
+def build_ai_review_json(session: Session) -> bytes:
+    """Build one self-contained UTF-8 JSON file for external AI review."""
+    payloads = _build_ai_review_payloads(session)
+    jobs = payloads["jobs"]
+    pages = payloads["pages"]
+    assert isinstance(jobs, list)
+    assert isinstance(pages, list)
+
+    document = {
+        "pack_type": "jolt_ai_review_input",
+        "pack_version": PACK_VERSION,
+        "review_contract_version": REVIEW_CONTRACT_VERSION,
+        "generated_at": payloads["generated_at"],
+        "capture_run_id": payloads["capture_run_id"],
+        "classification_authority": "external_ai",
+        "jolt_decisions_included": False,
+        "jolt_scores_included": False,
+        "counts": {
+            "capture_pages": len(pages),
+            "capture_items": len(jobs),
+            "verified_items": payloads["verified_items"],
+        },
+        "capture": payloads["capture"],
+        "pages": pages,
+        "jobs": jobs,
+        "response_template": payloads["response_template"],
+    }
+    return _json_bytes(document)
+
+
+def build_ai_review_pack(session: Session) -> bytes:
+    """Export the legacy multi-file ZIP AI review package."""
+    payloads = _build_ai_review_payloads(session)
+    jobs = payloads["jobs"]
+    pages = payloads["pages"]
+    assert isinstance(jobs, list)
+    assert isinstance(pages, list)
+
     files: dict[str, bytes] = {
         "README.md": (
             b"# JOLT AI Review Package\n\n"
@@ -255,25 +282,25 @@ def build_ai_review_pack(session: Session) -> bytes:
             b"Primary analysis input: jobs/ai_review_jobs.json\n"
             b"Expected return shape: contract/ai_review_response_template.json\n"
         ),
-        "capture/run.json": _json_bytes(capture_payload),
-        "capture/pages.json": _json_bytes(page_payload),
-        "jobs/ai_review_jobs.json": _json_bytes(jobs_payload),
-        "contract/ai_review_response_template.json": _json_bytes(response_template),
+        "capture/run.json": _json_bytes(payloads["capture"]),
+        "capture/pages.json": _json_bytes(pages),
+        "jobs/ai_review_jobs.json": _json_bytes(jobs),
+        "contract/ai_review_response_template.json": _json_bytes(payloads["response_template"]),
     }
 
     manifest = {
         "pack_type": "jolt_ai_review_input",
         "pack_version": PACK_VERSION,
         "review_contract_version": REVIEW_CONTRACT_VERSION,
-        "generated_at": generated_at,
-        "capture_run_id": capture.id,
+        "generated_at": payloads["generated_at"],
+        "capture_run_id": payloads["capture_run_id"],
         "classification_authority": "external_ai",
         "jolt_decisions_included": False,
         "jolt_scores_included": False,
         "counts": {
-            "capture_pages": len(page_payload),
-            "capture_items": len(jobs_payload),
-            "verified_items": sum(item.detail_status == "verified" for item in items),
+            "capture_pages": len(pages),
+            "capture_items": len(jobs),
+            "verified_items": payloads["verified_items"],
         },
         "files": {
             name: {
@@ -283,17 +310,10 @@ def build_ai_review_pack(session: Session) -> bytes:
             for name, content in sorted(files.items())
         },
     }
-
     files["manifest.json"] = _json_bytes(manifest)
 
     output = io.BytesIO()
-
-    with ZipFile(
-        output,
-        "w",
-        compression=ZIP_DEFLATED,
-    ) as archive:
+    with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
         for name, content in sorted(files.items()):
             archive.writestr(name, content)
-
     return output.getvalue()
