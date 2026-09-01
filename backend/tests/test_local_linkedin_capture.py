@@ -1,3 +1,5 @@
+import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,34 @@ def _reset_status() -> None:
     )
 
 
+def _write_capture_zip(output_zip: Path) -> None:
+    output_zip.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(output_zip, "w") as archive:
+        archive.writestr(
+            "capture_summary.json",
+            json.dumps(
+                {
+                    "captured_count": 1,
+                    "verified_count": 1,
+                    "skipped_cards": [],
+                    "pages": [{"page_number": 1}],
+                    "stop_reason": "requested_limit_reached",
+                    "retry_metrics": {
+                        "retry_attempted_count": 0,
+                        "failed_after_retry_count": 0,
+                    },
+                }
+            ),
+        )
+        archive.writestr(
+            "api_result.json",
+            json.dumps({"items": [{"identity_status": "new"}]}),
+        )
+        archive.writestr("run.log", "capture completed")
+        archive.writestr("evidence/job_detail_123.html", "<html>job evidence</html>")
+        archive.writestr("evidence/job_detail_123.png", b"png")
+
+
 def test_local_capture_normalizes_url_and_preserves_multi_page_bounds(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -23,8 +53,7 @@ def test_local_capture_normalizes_url_and_preserves_multi_page_bounds(
     def fake_run_capture(**kwargs: object) -> Path:
         observed.update(kwargs)
         output_zip = Path(str(kwargs["output_zip"]))
-        output_zip.parent.mkdir(parents=True, exist_ok=True)
-        output_zip.write_bytes(b"capture")
+        _write_capture_zip(output_zip)
         return output_zip
 
     monkeypatch.setattr(local_linkedin_capture, "run_capture", fake_run_capture)
@@ -45,6 +74,9 @@ def test_local_capture_normalizes_url_and_preserves_multi_page_bounds(
     )
     assert queued.max_jobs == 20
     assert queued.max_pages == 4
+    assert queued.export_format == "json"
+    assert queued.output_json.endswith(".json")
+    assert queued.output_zip == ""
 
     local_linkedin_capture.run_queued_local_linkedin_capture()
 
@@ -55,7 +87,62 @@ def test_local_capture_normalizes_url_and_preserves_multi_page_bounds(
     assert observed["max_pages"] == 4
     assert observed["pause_for_login"] is False
     assert str(observed["api_url"]) == "http://127.0.0.1:8000"
-    assert Path(completed.output_zip).exists()
+    assert Path(completed.output_json).exists()
+    assert not Path(completed.output_json).with_suffix(".zip").exists()
+
+    exported = json.loads(Path(completed.output_json).read_text(encoding="utf-8"))
+    assert exported["contract_type"] == "jolt_linkedin_capture"
+    assert exported["contract_version"] == "1.0"
+    assert exported["text_artifacts"]["run.log"] == "capture completed"
+    assert exported["text_artifacts"]["evidence/job_detail_123.html"] == (
+        "<html>job evidence</html>"
+    )
+    assert exported["binary_artifacts"] == [
+        {
+            "path": "evidence/job_detail_123.png",
+            "size_bytes": 3,
+            "compressed_size_bytes": 3,
+        }
+    ]
+
+
+def test_local_capture_can_preserve_zip_or_create_both(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+    def fake_run_capture(**kwargs: object) -> Path:
+        output_zip = Path(str(kwargs["output_zip"]))
+        _write_capture_zip(output_zip)
+        return output_zip
+
+    monkeypatch.setattr(local_linkedin_capture, "run_capture", fake_run_capture)
+
+    _reset_status()
+    zip_request = local_linkedin_capture.LocalLinkedInCaptureRequest(
+        search_url="https://www.linkedin.com/jobs/search/?keywords=Support",
+        export_format="zip",
+    )
+    zip_queued = local_linkedin_capture.queue_local_linkedin_capture(zip_request)
+    assert zip_queued.output_json == ""
+    assert zip_queued.output_zip.endswith(".zip")
+    local_linkedin_capture.run_queued_local_linkedin_capture()
+    zip_completed = local_linkedin_capture.get_local_linkedin_capture_status()
+    assert Path(zip_completed.output_zip).exists()
+
+    _reset_status()
+    both_request = local_linkedin_capture.LocalLinkedInCaptureRequest(
+        search_url="https://www.linkedin.com/jobs/search/?keywords=Support",
+        export_format="both",
+    )
+    both_queued = local_linkedin_capture.queue_local_linkedin_capture(both_request)
+    assert both_queued.output_json.endswith(".json")
+    assert both_queued.output_zip.endswith(".zip")
+    local_linkedin_capture.run_queued_local_linkedin_capture()
+    both_completed = local_linkedin_capture.get_local_linkedin_capture_status()
+    assert Path(both_completed.output_json).exists()
+    assert Path(both_completed.output_zip).exists()
 
 
 def test_best_effort_screenshot_never_aborts_capture(tmp_path: Path) -> None:
@@ -85,20 +172,23 @@ def test_local_capture_rejects_parallel_run() -> None:
         local_linkedin_capture.queue_local_linkedin_capture(request)
 
 
-def test_local_capture_validates_bounds() -> None:
+def test_local_capture_validates_bounds_and_export_format() -> None:
     defaults = local_linkedin_capture.LocalLinkedInCaptureRequest(
         search_url="https://www.linkedin.com/jobs/search/",
     )
     assert defaults.max_jobs == 100
     assert defaults.max_pages == 10
+    assert defaults.export_format == "json"
 
     accepted = local_linkedin_capture.LocalLinkedInCaptureRequest(
         search_url="https://www.linkedin.com/jobs/search/",
         max_jobs=100,
         max_pages=10,
+        export_format="both",
     )
     assert accepted.max_jobs == 100
     assert accepted.max_pages == 10
+    assert accepted.export_format == "both"
 
     with pytest.raises(ValidationError):
         local_linkedin_capture.LocalLinkedInCaptureRequest(
@@ -111,4 +201,9 @@ def test_local_capture_validates_bounds() -> None:
             search_url="https://www.linkedin.com/jobs/search/",
             max_jobs=10,
             max_pages=11,
+        )
+    with pytest.raises(ValidationError):
+        local_linkedin_capture.LocalLinkedInCaptureRequest(
+            search_url="https://www.linkedin.com/jobs/search/",
+            export_format="tar",  # type: ignore[arg-type]
         )
