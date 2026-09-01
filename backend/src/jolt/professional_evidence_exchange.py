@@ -211,7 +211,9 @@ def import_professional_evidence_exchange(
     output: AIExchangeOutput,
 ) -> ProfessionalEvidenceExchangeImportResponse:
     if output.scope.section != "professional_evidence":
-        raise ValueError("Professional evidence import requires scope.section=professional_evidence")
+        raise ValueError(
+            "Professional evidence import requires scope.section=professional_evidence"
+        )
     context = _apply_professional_context_patch(output)
     feedback_record = save_ai_exchange_feedback(output)
     return ProfessionalEvidenceExchangeImportResponse(
