@@ -86,6 +86,7 @@ class UnifiedAIUpdate(BaseModel):
     contract_type: Literal["jolt_ai_work_package_update"] = "jolt_ai_work_package_update"
     contract_version: Literal["1.0"] = "1.0"
     package_id: str = Field(min_length=1)
+    source_context_version: str = Field(min_length=1)
     reviewed_at: datetime
     review_source: Literal["chatgpt"] = "chatgpt"
     review_version: str = Field(min_length=1, max_length=80)
@@ -136,17 +137,39 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
         review_inbox=_review_inbox_payload(session),
         exchanges=[_without_duplicate_context(exchange) for exchange in exchanges],
         instructions={
-            "workflow": "Analyze this one file and return one jolt_ai_work_package_update JSON file.",
-            "reasoning_authority": "ChatGPT performs semantic reasoning; JOLT provides evidence, deterministic facts, validation, storage, and workflow state.",
-            "context": "Use global_context for all sections. Do not invent unsupported experience or silently change user-owned preferences.",
-            "review_inbox": "If review_inbox is present, return its jolt_ai_review payload in review_inbox using its response_template exactly.",
-            "section_outputs": "Return at most one AIExchangeOutput per supplied exchange section. Set each section output context_patch to an empty object.",
-            "context_patch": (
-                "Put all durable AI-derived context changes only in the update's top-level context_patch. "
-                "Allowed namespaces: market_summary, skills_gap_summary, application_strategy, outcome_strategy, "
-                "profile_strategy, capture_strategy, audit_summary, professional_evidence_summary."
+            "workflow": (
+                "Analyze this one file and return one jolt_ai_work_package_update JSON file."
             ),
-            "protected": "Never patch job_search_preferences, human review decisions, applications, outcomes, raw captures, source documents, or postings.",
+            "reasoning_authority": (
+                "ChatGPT performs semantic reasoning; JOLT provides evidence, deterministic facts, "
+                "validation, storage, and workflow state."
+            ),
+            "context": (
+                "Use global_context for all sections. Do not invent unsupported experience or "
+                "silently change user-owned preferences."
+            ),
+            "freshness": (
+                "Copy context_version exactly into source_context_version in the returned update. "
+                "JOLT rejects stale updates if its context changed after export."
+            ),
+            "review_inbox": (
+                "If review_inbox is present, return its jolt_ai_review payload in review_inbox "
+                "using its response_template exactly."
+            ),
+            "section_outputs": (
+                "Return at most one AIExchangeOutput per supplied exchange section. Set each "
+                "section output context_patch to an empty object."
+            ),
+            "context_patch": (
+                "Put all durable AI-derived context changes only in the update's top-level "
+                "context_patch. Allowed namespaces: market_summary, skills_gap_summary, "
+                "application_strategy, outcome_strategy, profile_strategy, capture_strategy, "
+                "audit_summary, professional_evidence_summary."
+            ),
+            "protected": (
+                "Never patch job_search_preferences, human review decisions, applications, "
+                "outcomes, raw captures, source documents, or postings."
+            ),
         },
     )
 
@@ -162,6 +185,14 @@ def _validate_unified_update(update: UnifiedAIUpdate) -> None:
         raise ValueError(
             "Unified AI context patch contains non-patchable keys: " + ", ".join(unknown_context)
         )
+
+    current_context = build_global_context_snapshot()
+    current_version = global_context_version(current_context)
+    if update.source_context_version != current_version:
+        raise ValueError(
+            "Unified AI update is stale: source_context_version does not match current JOLT context"
+        )
+
     seen: set[str] = set()
     for output in update.exchanges:
         section = output.scope.section
