@@ -97,6 +97,60 @@
   padding-bottom: 8px;
 }
 
+.capture-export-format {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #dfe4ec;
+  border-radius: 10px;
+}
+
+.capture-export-format legend {
+  padding: 0 5px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #344054;
+}
+
+.capture-export-format > label:not(.capture-export-other) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 9px 10px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+
+.capture-export-format input[type="radio"],
+.capture-export-format input[type="checkbox"] {
+  width: auto;
+  margin: 2px 0 0;
+}
+
+.capture-export-format label > span {
+  display: grid;
+  gap: 2px;
+  color: inherit;
+}
+
+.capture-export-format small {
+  color: #667085;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.capture-export-other {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
 @media (max-width: 1050px) {
   .linkedin-target-table,
   .linkedin-overview-grid {
@@ -110,8 +164,13 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .linkedin-target-row {
+  .linkedin-target-row,
+  .capture-export-format {
     grid-template-columns: 1fr;
+  }
+
+  .capture-export-other {
+    grid-column: 1;
   }
 
   .linkedin-target-row .button-row {
