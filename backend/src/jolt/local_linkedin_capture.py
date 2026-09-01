@@ -20,11 +20,14 @@ from jolt.preference_aware_evaluation import install_preference_aware_evaluation
 install_linkedin_url_normalization()
 install_preference_aware_evaluation()
 
+CaptureExportFormat = Literal["json", "zip", "both"]
+
 
 class LocalLinkedInCaptureRequest(BaseModel):
     search_url: str = Field(min_length=1, max_length=4000)
     max_jobs: int = Field(default=100, ge=1, le=100)
     max_pages: int = Field(default=10, ge=1, le=10)
+    export_format: CaptureExportFormat = "json"
 
 
 class LocalLinkedInCaptureStatus(BaseModel):
@@ -32,6 +35,8 @@ class LocalLinkedInCaptureStatus(BaseModel):
     search_url: str = ""
     max_jobs: int = 0
     max_pages: int = 0
+    export_format: CaptureExportFormat = "json"
+    output_json: str = ""
     output_zip: str = ""
     started_at: str = ""
     completed_at: str = ""
@@ -69,9 +74,78 @@ def _downloads_dir() -> Path:
     return downloads
 
 
-def _new_output_zip() -> Path:
+def _new_output_paths() -> tuple[Path, Path]:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return _downloads_dir() / f"JOLT_LINKEDIN_CAPTURE_{timestamp}.zip"
+    base = _downloads_dir() / f"JOLT_LINKEDIN_CAPTURE_{timestamp}"
+    return base.with_suffix(".json"), base.with_suffix(".zip")
+
+
+def _is_text_artifact(name: str) -> bool:
+    return Path(name).suffix.lower() in {
+        ".json",
+        ".txt",
+        ".log",
+        ".html",
+        ".htm",
+        ".md",
+        ".csv",
+        ".xml",
+    }
+
+
+def _export_capture_json(output_zip: Path, output_json: Path) -> Path:
+    """Aggregate capture text evidence into one portable UTF-8 JSON document."""
+    text_artifacts: dict[str, str] = {}
+    binary_artifacts: list[dict[str, int | str]] = []
+
+    with zipfile.ZipFile(output_zip) as archive:
+        names = archive.namelist()
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            if _is_text_artifact(info.filename):
+                text_artifacts[info.filename] = archive.read(info.filename).decode(
+                    "utf-8",
+                    errors="replace",
+                )
+            else:
+                binary_artifacts.append(
+                    {
+                        "path": info.filename,
+                        "size_bytes": info.file_size,
+                        "compressed_size_bytes": info.compress_size,
+                    }
+                )
+
+        def parsed_json(name: str) -> object | None:
+            if name not in names:
+                return None
+            try:
+                return json.loads(archive.read(name))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return None
+
+        capture_summary = parsed_json("capture_summary.json")
+        api_result = parsed_json("api_result.json")
+
+    document = {
+        "contract_type": "jolt_linkedin_capture",
+        "contract_version": "1.0",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "capture_summary": capture_summary,
+        "api_result": api_result,
+        "text_artifacts": text_artifacts,
+        "binary_artifacts": binary_artifacts,
+        "binary_artifact_note": (
+            "Binary artifacts are listed by path and size but are not embedded. "
+            "Use the ZIP export when screenshots or other binary evidence are required."
+        ),
+    }
+    output_json.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return output_json
 
 
 def _capture_metrics(output_zip: Path) -> dict[str, int | str]:
@@ -160,13 +234,15 @@ def queue_local_linkedin_capture(
     with _STATUS_LOCK:
         if _STATUS.status in {"queued", "running"}:
             raise ValueError("A LinkedIn capture is already running.")
-        output_zip = _new_output_zip()
+        output_json, output_zip = _new_output_paths()
         _STATUS = LocalLinkedInCaptureStatus(
             status="queued",
             search_url=normalize_linkedin_search_url(request.search_url),
             max_jobs=request.max_jobs,
             max_pages=request.max_pages,
-            output_zip=str(output_zip),
+            export_format=request.export_format,
+            output_json=str(output_json) if request.export_format in {"json", "both"} else "",
+            output_zip=str(output_zip) if request.export_format in {"zip", "both"} else "",
         )
         return _STATUS.model_copy(deep=True)
 
@@ -181,8 +257,19 @@ def run_queued_local_linkedin_capture() -> None:
                 search_url=_STATUS.search_url,
                 max_jobs=_STATUS.max_jobs,
                 max_pages=_STATUS.max_pages,
+                export_format=_STATUS.export_format,
             )
-            output_zip = Path(_STATUS.output_zip)
+            output_json = Path(_STATUS.output_json) if _STATUS.output_json else None
+            output_zip = Path(_STATUS.output_zip) if _STATUS.output_zip else None
+            # The capture engine's certified evidence package remains ZIP-based. For
+            # JSON-only export, create that package temporarily and remove it after
+            # the portable JSON has been generated and metrics have been calculated.
+            if output_zip is not None:
+                working_zip = output_zip
+            elif output_json is not None:
+                working_zip = output_json.with_suffix(".zip")
+            else:
+                raise RuntimeError("No LinkedIn capture export path was selected.")
             _STATUS = _STATUS.model_copy(
                 update={
                     "status": "running",
@@ -195,11 +282,16 @@ def run_queued_local_linkedin_capture() -> None:
                 search_url=request.search_url,
                 api_url="http://127.0.0.1:8000",
                 profile_dir=_profile_dir(),
-                output_zip=output_zip,
+                output_zip=working_zip,
                 max_jobs=request.max_jobs,
                 max_pages=request.max_pages,
                 pause_for_login=False,
             )
+            metrics = _capture_metrics(working_zip)
+            if output_json is not None:
+                _export_capture_json(working_zip, output_json)
+            if output_zip is None:
+                working_zip.unlink(missing_ok=True)
         except Exception as exc:
             with _STATUS_LOCK:
                 _STATUS = _STATUS.model_copy(
@@ -210,7 +302,6 @@ def run_queued_local_linkedin_capture() -> None:
                     }
                 )
             return
-        metrics = _capture_metrics(output_zip)
 
         with _STATUS_LOCK:
             _STATUS = _STATUS.model_copy(

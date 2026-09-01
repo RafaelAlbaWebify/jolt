@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 
+type CaptureExportFormat = "json" | "zip" | "both";
+type PrimaryExportFormat = "json" | "zip";
+
 type CaptureStatus = {
   status: "idle" | "queued" | "running" | "completed" | "failed";
   search_url: string;
   max_jobs: number;
   max_pages: number;
+  export_format: CaptureExportFormat;
+  output_json: string;
   output_zip: string;
   started_at: string;
   completed_at: string;
@@ -28,10 +33,28 @@ type Props = {
 const DEFAULT_URL = "https://www.linkedin.com/jobs/search/";
 const MIN_JOBS = 1;
 const MAX_JOBS = 100;
+const EXPORT_FORMAT_STORAGE_KEY = "jolt.linkedin.capture.primaryExportFormat";
+const EXPORT_OTHER_STORAGE_KEY = "jolt.linkedin.capture.includeOtherFormat";
 
 function clampJobs(value: number) {
   if (!Number.isFinite(value)) return MIN_JOBS;
   return Math.min(MAX_JOBS, Math.max(MIN_JOBS, Math.trunc(value)));
+}
+
+function initialPrimaryExportFormat(): PrimaryExportFormat {
+  try {
+    return window.localStorage.getItem(EXPORT_FORMAT_STORAGE_KEY) === "zip" ? "zip" : "json";
+  } catch {
+    return "json";
+  }
+}
+
+function initialIncludeOtherFormat(): boolean {
+  try {
+    return window.localStorage.getItem(EXPORT_OTHER_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 function validationDetail(detail: unknown): string {
@@ -84,15 +107,36 @@ function isBusy(status: CaptureStatus["status"]) {
   return status === "queued" || status === "running";
 }
 
+function selectedExportFormat(primary: PrimaryExportFormat, includeOther: boolean): CaptureExportFormat {
+  if (includeOther) return "both";
+  return primary;
+}
+
+function completedExportMessage(status: CaptureStatus) {
+  if (status.export_format === "both") {
+    return "Capture completed. JSON working export and ZIP full archive were saved to Downloads.";
+  }
+  if (status.export_format === "zip") {
+    return "Capture completed. The full evidence ZIP was saved to Downloads.";
+  }
+  return "Capture completed. The structured JSON working export was saved to Downloads.";
+}
+
 export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
   const [searchUrl, setSearchUrl] = useState(DEFAULT_URL);
   const [maxJobs, setMaxJobs] = useState(100);
   const [maxPages, setMaxPages] = useState(10);
+  const [primaryExportFormat, setPrimaryExportFormat] = useState<PrimaryExportFormat>(
+    initialPrimaryExportFormat,
+  );
+  const [includeOtherFormat, setIncludeOtherFormat] = useState(initialIncludeOtherFormat);
   const [status, setStatus] = useState<CaptureStatus>({
     status: "idle",
     search_url: "",
     max_jobs: 0,
     max_pages: 0,
+    export_format: "json",
+    output_json: "",
     output_zip: "",
     started_at: "",
     completed_at: "",
@@ -132,6 +176,24 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
     return () => window.clearInterval(interval);
   }, [active, loadStatus, status.status]);
 
+  function choosePrimaryExportFormat(format: PrimaryExportFormat) {
+    setPrimaryExportFormat(format);
+    try {
+      window.localStorage.setItem(EXPORT_FORMAT_STORAGE_KEY, format);
+    } catch {
+      // Browser storage is optional; capture remains fully functional without it.
+    }
+  }
+
+  function chooseIncludeOtherFormat(value: boolean) {
+    setIncludeOtherFormat(value);
+    try {
+      window.localStorage.setItem(EXPORT_OTHER_STORAGE_KEY, String(value));
+    } catch {
+      // Browser storage is optional; capture remains fully functional without it.
+    }
+  }
+
   async function startCapture() {
     setError("");
     try {
@@ -145,6 +207,7 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
           search_url: searchUrl,
           max_jobs: boundedMaxJobs,
           max_pages: maxPages,
+          export_format: selectedExportFormat(primaryExportFormat, includeOtherFormat),
         }),
       });
       if (!response.ok) {
@@ -205,6 +268,45 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
             />
           </label>
         </div>
+
+        <fieldset className="capture-export-format">
+          <legend>Export format</legend>
+          <label>
+            <input
+              type="radio"
+              name="capture-export-format"
+              value="json"
+              checked={primaryExportFormat === "json"}
+              onChange={() => choosePrimaryExportFormat("json")}
+            />
+            <span>
+              <strong>JSON — Recommended</strong>
+              <small>Structured text for AI review and troubleshooting. Includes all textual capture evidence.</small>
+            </span>
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="capture-export-format"
+              value="zip"
+              checked={primaryExportFormat === "zip"}
+              onChange={() => choosePrimaryExportFormat("zip")}
+            />
+            <span>
+              <strong>ZIP — Full archive</strong>
+              <small>Preserves the complete evidence package, including screenshots and other binary artifacts.</small>
+            </span>
+          </label>
+          <label className="capture-export-other">
+            <input
+              type="checkbox"
+              checked={includeOtherFormat}
+              onChange={(event) => chooseIncludeOtherFormat(event.target.checked)}
+            />
+            Also create the other format
+          </label>
+        </fieldset>
+
         <button
           type="button"
           disabled={!active || isBusy(status.status) || !searchUrl.trim()}
@@ -222,7 +324,9 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
           <p>{status.max_jobs} jobs maximum across {status.max_pages} page(s).</p>
           {status.status === "completed" && (
             <>
-              <p>Capture completed and the evidence ZIP was saved to Downloads.</p>
+              <p>{completedExportMessage(status)}</p>
+              {status.output_json && <p>JSON: {status.output_json}</p>}
+              {status.output_zip && <p>ZIP: {status.output_zip}</p>}
               <p>
                 <strong>Capture health: {status.health || "unknown"}</strong>
               </p>
