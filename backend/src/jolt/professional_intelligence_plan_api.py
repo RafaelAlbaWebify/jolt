@@ -75,6 +75,7 @@ from jolt.professional_intelligence_structured_extraction import (
 from jolt.professional_intelligence_supervised_runtime import (
     start_bounded_professional_capture,
 )
+from jolt.review_inbox_exchange_api import build_review_inbox_exchange_router
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -126,6 +127,7 @@ def _queued_capture_response(
 def build_professional_intelligence_plan_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["professional-intelligence"])
     router.include_router(build_global_context_router())
+    router.include_router(build_review_inbox_exchange_router(get_session))
     session_dependency = Depends(get_session)
 
     @router.post(
