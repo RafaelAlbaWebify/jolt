@@ -44,7 +44,9 @@ class MarketIntelligenceExchangeImportResponse(BaseModel):
 
 
 def _posting_evidence(session: Session) -> list[dict[str, Any]]:
-    postings = session.scalars(select(Posting).order_by(Posting.created_at.desc(), Posting.id)).all()
+    postings = session.scalars(
+        select(Posting).order_by(Posting.created_at.desc(), Posting.id)
+    ).all()
     jobs: list[dict[str, Any]] = []
     for posting in postings:
         cleaned = sanitize_capture_text(posting.description)
