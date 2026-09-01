@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import cast
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from jolt.ai_exchange_contract import (
 )
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord
 from jolt.database import LinkedInPresenceCapture, create_session_factory
+from jolt.errors import JoltNotFoundError
 from jolt.global_context import GlobalAIContextOverlay
 from jolt.linkedin_command_center import LinkedInRecommendationImportResponse
 from jolt.linkedin_profile_exchange import (
@@ -123,7 +125,9 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
         ],
         context_patch={"profile_strategy": {"headline_focus": "Application Support"}},
     )
-    mock_session = cast(Session, object())
+    session_mock = MagicMock(spec=Session)
+    session_mock.get.return_value = object()
+    mock_session = cast(Session, session_mock)
 
     response = import_linkedin_profile_exchange(mock_session, output)
 
@@ -134,6 +138,46 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
     assert recommendation.recommendation_type == "profile_update"
     assert recommendation.status == "pending"
     assert recommendation.priority == "high"
+
+
+def test_linkedin_exchange_import_rejects_unknown_capture_before_side_effects(monkeypatch) -> None:
+    saved_context: list[GlobalAIContextOverlay] = []
+    saved_feedback: list[AIExchangeOutput] = []
+    monkeypatch.setattr(
+        "jolt.linkedin_profile_exchange.save_global_ai_context",
+        lambda context: saved_context.append(context) or context,
+    )
+    monkeypatch.setattr(
+        "jolt.linkedin_profile_exchange.save_ai_exchange_feedback",
+        lambda output: saved_feedback.append(output),
+    )
+    output = AIExchangeOutput(
+        exchange_id="linkedin-stale-capture",
+        reviewed_at=datetime.now(UTC),
+        review_version="linkedin-v1",
+        scope=AIExchangeScope(section="linkedin_profile", analysis_types=["recommendation"]),
+        feedback=[
+            AIExchangeFeedbackItem(
+                feedback_type="recommendation",
+                entity_type="linkedin_profile",
+                entity_id="headline",
+                payload={
+                    "capture_id": "missing-capture",
+                    "recommendation_type": "profile_update",
+                    "title": "Update headline",
+                },
+            )
+        ],
+    )
+    session_mock = MagicMock(spec=Session)
+    session_mock.get.return_value = None
+    mock_session = cast(Session, session_mock)
+
+    with pytest.raises(JoltNotFoundError, match="missing-capture"):
+        import_linkedin_profile_exchange(mock_session, output)
+
+    assert saved_context == []
+    assert saved_feedback == []
 
 
 def test_linkedin_exchange_import_rejects_protected_patch(monkeypatch) -> None:
