@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -154,12 +154,13 @@ def _feedback_action(payload: dict[str, Any], feedback_type: str) -> MarketPrepa
     priority = payload.get("priority", "medium")
     if priority not in {"high", "medium", "low"}:
         priority = "medium"
+    priority_value = cast(Literal["high", "medium", "low"], priority)
     return MarketPreparationAction(
         action_type=feedback_type,
         title=str(payload.get("title", ""))[:240],
         rationale=str(payload.get("rationale", "")),
         proposed_action=str(payload.get("proposed_action", "")),
-        priority=priority,
+        priority=priority_value,
         source="chatgpt_market_intelligence_exchange",
     )
 
