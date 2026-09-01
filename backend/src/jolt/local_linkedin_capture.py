@@ -264,7 +264,12 @@ def run_queued_local_linkedin_capture() -> None:
             # The capture engine's certified evidence package remains ZIP-based. For
             # JSON-only export, create that package temporarily and remove it after
             # the portable JSON has been generated and metrics have been calculated.
-            working_zip = output_zip or output_json.with_suffix(".zip")  # type: ignore[union-attr]
+            if output_zip is not None:
+                working_zip = output_zip
+            elif output_json is not None:
+                working_zip = output_json.with_suffix(".zip")
+            else:
+                raise RuntimeError("No LinkedIn capture export path was selected.")
             _STATUS = _STATUS.model_copy(
                 update={
                     "status": "running",
