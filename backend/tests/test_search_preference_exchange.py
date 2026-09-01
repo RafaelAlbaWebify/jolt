@@ -23,9 +23,7 @@ from jolt.search_preference_exchange import (
 )
 
 
-def test_search_exchange_exports_preferences_as_protected_evidence(
-    tmp_path, monkeypatch
-) -> None:
+def test_search_exchange_exports_preferences_as_protected_evidence(tmp_path, monkeypatch) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     now = datetime.now(UTC)
     source = SourceDocument(
@@ -120,13 +118,9 @@ def test_search_exchange_import_creates_pending_search_improvement_without_savin
             actions=actions,
             raw_payload=request.raw_payload,
         )
-        return MarketPreparationImportResponse(
-            imported_count=len(actions), latest_import=record
-        )
+        return MarketPreparationImportResponse(imported_count=len(actions), latest_import=record)
 
-    monkeypatch.setattr(
-        "jolt.search_preference_exchange.import_market_preparation", fake_import
-    )
+    monkeypatch.setattr("jolt.search_preference_exchange.import_market_preparation", fake_import)
     output = AIExchangeOutput(
         exchange_id="search-exchange-1",
         reviewed_at=datetime.now(UTC),
@@ -180,9 +174,7 @@ def test_search_exchange_rejects_direct_job_preference_patch(monkeypatch) -> Non
         exchange_id="search-invalid",
         reviewed_at=datetime.now(UTC),
         review_version="search-v1",
-        scope=AIExchangeScope(
-            section="search_preferences", analysis_types=["context_update"]
-        ),
+        scope=AIExchangeScope(section="search_preferences", analysis_types=["context_update"]),
         context_patch={"job_search_preferences": {"languages": ["German"]}},
     )
 
