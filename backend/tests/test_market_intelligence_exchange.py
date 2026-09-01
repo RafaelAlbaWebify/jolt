@@ -5,8 +5,17 @@ from datetime import UTC, datetime
 
 import pytest
 
-from jolt.ai_exchange_contract import AIExchangeOutput, AIExchangeScope, AIExchangeFeedbackItem
-from jolt.database import CaptureRun, Posting, SourceDocument, create_session_factory
+from jolt.ai_exchange_contract import (
+    AIExchangeFeedbackItem,
+    AIExchangeOutput,
+    AIExchangeScope,
+)
+from jolt.database import (
+    CaptureRun,
+    Posting,
+    SourceDocument,
+    create_session_factory,
+)
 from jolt.global_context import GlobalAIContextOverlay
 from jolt.market_intelligence_exchange import (
     build_market_intelligence_exchange,
