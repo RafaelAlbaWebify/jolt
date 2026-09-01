@@ -132,7 +132,9 @@ def test_data_quality_exchange_surfaces_structural_mismatch_without_semantic_dec
     assert "does not decide whether" in exchange.evidence["authority_notes"]["semantic_authority"]
 
 
-def test_data_quality_import_updates_audit_context_and_creates_pending_follow_up(monkeypatch) -> None:
+def test_data_quality_import_updates_audit_context_and_creates_pending_follow_up(
+    monkeypatch,
+) -> None:
     saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported = []
