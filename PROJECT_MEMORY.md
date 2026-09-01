@@ -3,7 +3,7 @@
 This file records durable product contracts, project boundaries, and development rules.
 Review it before changing existing JOLT behavior.
 
-Last reviewed: 2026-08-25
+Last reviewed: 2026-09-01
 
 ## Product purpose
 
@@ -30,6 +30,43 @@ Its major workflows are separate:
    - configuration, preferences, exports, and data-management tools.
 
 Do not merge these lifecycle boundaries merely because records share source evidence.
+
+## ChatGPT reasoning-layer contract
+
+JOLT is the local capture, storage, provenance, workflow and presentation layer.
+ChatGPT is the reasoning layer for judgment-heavy analysis.
+
+The normal feedback loop is:
+
+1. JOLT exports current context plus relevant evidence.
+2. ChatGPT performs classification, extraction, market analysis, gap analysis,
+   prioritization, recommendations, corrections or other requested reasoning.
+3. ChatGPT returns compact structured feedback and context updates.
+4. JOLT validates, imports, stores and presents those results.
+5. Human review decisions and durable application state remain authoritative.
+
+This feedback workflow must be available across all major JOLT sections rather than
+being limited to Review Inbox.
+
+Local deterministic code should handle schema validation, IDs, provenance, hashing,
+basic cleaning, persistence and UI calculations. Do not build separate local Python
+reasoning engines for tasks better performed by ChatGPT.
+
+Reusable ChatGPT feedback categories are:
+
+- classification;
+- extraction;
+- recommendation;
+- correction;
+- context_update;
+- market_signal;
+- gap_signal;
+- priority_update;
+- duplicate_link;
+- audit_result.
+
+Preserve existing workflow boundaries and durable ownership rules when implementing
+this exchange architecture.
 
 ## Critical data invariants
 
