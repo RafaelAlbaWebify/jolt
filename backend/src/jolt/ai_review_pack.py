@@ -285,9 +285,7 @@ def build_ai_review_pack(session: Session) -> bytes:
         "capture/run.json": _json_bytes(payloads["capture"]),
         "capture/pages.json": _json_bytes(pages),
         "jobs/ai_review_jobs.json": _json_bytes(jobs),
-        "contract/ai_review_response_template.json": _json_bytes(
-            payloads["response_template"]
-        ),
+        "contract/ai_review_response_template.json": _json_bytes(payloads["response_template"]),
     }
 
     manifest = {
