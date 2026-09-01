@@ -40,6 +40,7 @@ def test_unified_update_rejects_user_owned_context_patch(tmp_path) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     update = UnifiedAIUpdate(
         package_id="package-1",
+        source_context_version="stale-but-patch-validation-runs-first",
         reviewed_at=datetime.now(UTC),
         review_version="unified-v1",
         context_patch={"job_search_preferences": {"languages": ["German"]}},
@@ -51,8 +52,24 @@ def test_unified_update_rejects_user_owned_context_patch(tmp_path) -> None:
         session.close()
 
 
+def test_unified_update_rejects_stale_context_version(tmp_path) -> None:
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
+    update = UnifiedAIUpdate(
+        package_id="package-1",
+        source_context_version="stale-context-version",
+        reviewed_at=datetime.now(UTC),
+        review_version="unified-v1",
+    )
+    try:
+        with pytest.raises(ValueError, match="stale"):
+            import_unified_ai_update(session, update)
+    finally:
+        session.close()
+
+
 def test_unified_update_requires_section_context_patch_at_top_level(tmp_path) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
+    package = build_unified_ai_work_package(session)
     output = AIExchangeOutput(
         exchange_id="market-1",
         reviewed_at=datetime.now(UTC),
@@ -62,6 +79,7 @@ def test_unified_update_requires_section_context_patch_at_top_level(tmp_path) ->
     )
     update = UnifiedAIUpdate(
         package_id="package-1",
+        source_context_version=package.context_version,
         reviewed_at=datetime.now(UTC),
         review_version="unified-v1",
         exchanges=[output],
