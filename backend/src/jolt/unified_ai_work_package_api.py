@@ -26,9 +26,7 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
         return StreamingResponse(
             BytesIO(content),
             media_type="application/json",
-            headers={
-                "Content-Disposition": "attachment; filename=JOLT_AI_WORK_PACKAGE.json"
-            },
+            headers={"Content-Disposition": "attachment; filename=JOLT_AI_WORK_PACKAGE.json"},
         )
 
     @router.post("/api/ai-work-package/import")
