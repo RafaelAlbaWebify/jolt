@@ -62,7 +62,9 @@ def test_linkedin_exchange_exports_capture_evidence_and_guardrails(tmp_path, mon
     assert "linkedin_recommendation_statuses" in exchange.protected_state["non_patchable"]
 
 
-def test_linkedin_exchange_import_updates_context_and_creates_pending_recommendation(monkeypatch) -> None:
+def test_linkedin_exchange_import_updates_context_and_creates_pending_recommendation(
+    monkeypatch,
+) -> None:
     saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported_requests = []
@@ -76,16 +78,18 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
     )
     monkeypatch.setattr(
         "jolt.linkedin_profile_exchange.save_ai_exchange_feedback",
-        lambda output: saved_feedback.append(output)
-        or AIExchangeFeedbackRecord(
-            id="feedback-1",
-            exchange_id=output.exchange_id,
-            section=output.scope.section,
-            review_version=output.review_version,
-            reviewed_at=output.reviewed_at,
-            imported_at=datetime.now(UTC),
-            feedback=output.feedback,
-            summary=output.summary,
+        lambda output: (
+            saved_feedback.append(output)
+            or AIExchangeFeedbackRecord(
+                id="feedback-1",
+                exchange_id=output.exchange_id,
+                section=output.scope.section,
+                review_version=output.review_version,
+                reviewed_at=output.reviewed_at,
+                imported_at=datetime.now(UTC),
+                feedback=output.feedback,
+                summary=output.summary,
+            )
         ),
     )
 
@@ -96,7 +100,9 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
             recommendations=[],
         )
 
-    monkeypatch.setattr("jolt.linkedin_profile_exchange.import_linkedin_recommendations", fake_import)
+    monkeypatch.setattr(
+        "jolt.linkedin_profile_exchange.import_linkedin_recommendations", fake_import
+    )
 
     output = AIExchangeOutput(
         exchange_id="linkedin-exchange-1",
