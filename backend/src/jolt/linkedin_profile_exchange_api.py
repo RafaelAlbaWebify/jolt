@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackIndex, list_ai_exchange_feedback
+from jolt.errors import JoltNotFoundError
 from jolt.linkedin_profile_exchange import (
     LinkedInProfileExchangeImportResponse,
     build_linkedin_profile_exchange,
@@ -33,6 +34,8 @@ def build_linkedin_profile_exchange_router(get_session: SessionProvider) -> APIR
     ) -> LinkedInProfileExchangeImportResponse:
         try:
             return import_linkedin_profile_exchange(session, output)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
