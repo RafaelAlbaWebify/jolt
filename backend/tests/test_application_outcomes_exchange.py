@@ -124,7 +124,8 @@ def test_application_exchange_exports_lifecycle_and_outcome_without_local_scores
     item = exchange.evidence["applications"][0]
     assert item["human_review_decision"] == "pursue"
     assert item["outcome"]["reason_code"] == "experience_gap"
-    assert item["events"][0]["stage_reached"] if False else True
+    assert item["events"][0]["from_status"] == "recruiter_screen"
+    assert item["events"][0]["to_status"] == "rejected"
     assert "SQL and API support" in item["posting"]["evidence_text"]
     serialized = json.dumps(exchange.evidence).casefold()
     assert '"recommendation"' not in serialized
