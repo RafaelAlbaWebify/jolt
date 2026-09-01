@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from jolt.database import utc_now
 from jolt.errors import JoltNotFoundError
+from jolt.global_context_api import build_global_context_router
 from jolt.local_linkedin_capture import (
     LocalLinkedInCaptureRequest,
     LocalLinkedInCaptureStatus,
@@ -124,6 +125,7 @@ def _queued_capture_response(
 
 def build_professional_intelligence_plan_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["professional-intelligence"])
+    router.include_router(build_global_context_router())
     session_dependency = Depends(get_session)
 
     @router.post(
