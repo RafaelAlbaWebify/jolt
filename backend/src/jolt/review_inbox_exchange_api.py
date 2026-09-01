@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.application_outcomes_exchange_api import build_application_outcomes_exchange_router
+from jolt.data_quality_exchange_api import build_data_quality_exchange_router
 from jolt.errors import JoltNotFoundError
 from jolt.linkedin_profile_exchange_api import build_linkedin_profile_exchange_router
 from jolt.market_intelligence_exchange_api import build_market_intelligence_exchange_router
@@ -27,6 +28,7 @@ def build_review_inbox_exchange_router(get_session: SessionProvider) -> APIRoute
     router.include_router(build_skills_preparation_exchange_router(get_session))
     router.include_router(build_professional_evidence_exchange_router(get_session))
     router.include_router(build_search_preference_exchange_router(get_session))
+    router.include_router(build_data_quality_exchange_router(get_session))
     session_dependency = Depends(get_session)
 
     @router.get("/api/exports/review-inbox-ai-exchange")
