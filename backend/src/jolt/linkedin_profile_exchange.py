@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput, AIExchangeScope
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord, save_ai_exchange_feedback
+from jolt.database import LinkedInPresenceCapture
+from jolt.errors import JoltNotFoundError
 from jolt.global_context import (
     GlobalAIContextOverlay,
     build_global_context_snapshot,
@@ -161,6 +163,16 @@ def _recommendation_items(output: AIExchangeOutput) -> list[LinkedInRecommendati
     return items
 
 
+def _validate_capture_references(
+    session: Session,
+    recommendations: list[LinkedInRecommendationImportItem],
+) -> None:
+    for recommendation in recommendations:
+        capture_id = recommendation.capture_id
+        if capture_id and session.get(LinkedInPresenceCapture, capture_id) is None:
+            raise JoltNotFoundError(f"LinkedIn capture {capture_id} was not found")
+
+
 def import_linkedin_profile_exchange(
     session: Session,
     output: AIExchangeOutput,
@@ -168,13 +180,15 @@ def import_linkedin_profile_exchange(
     if output.scope.section != "linkedin_profile":
         raise ValueError("LinkedIn profile import requires scope.section=linkedin_profile")
 
+    recommendation_items = _recommendation_items(output)
+    _validate_capture_references(session, recommendation_items)
     context = _apply_linkedin_context_patch(output)
     feedback_record = save_ai_exchange_feedback(output)
     recommendations = import_linkedin_recommendations(
         session,
         LinkedInRecommendationImportRequest(
             source="chatgpt_linkedin_profile_exchange",
-            recommendations=_recommendation_items(output),
+            recommendations=recommendation_items,
         ),
     )
     return LinkedInProfileExchangeImportResponse(
