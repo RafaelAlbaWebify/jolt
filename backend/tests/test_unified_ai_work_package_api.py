@@ -21,6 +21,7 @@ def test_main_app_exposes_unified_ai_work_package(tmp_path: Path) -> None:
             "contract_type": "jolt_ai_work_package_update",
             "contract_version": "1.0",
             "package_id": payload["package_id"],
+            "source_context_version": payload["context_version"],
             "reviewed_at": "2026-09-01T16:00:00+00:00",
             "review_source": "chatgpt",
             "review_version": "unified-v1",
