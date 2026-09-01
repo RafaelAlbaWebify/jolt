@@ -14,6 +14,7 @@ AIExchangeSection = Literal[
     "skills_gaps",
     "linkedin_profile",
     "professional_evidence",
+    "search_preferences",
     "outcomes_strategy",
     "data_quality",
     "global_context",

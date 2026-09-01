@@ -13,6 +13,7 @@ from jolt.linkedin_profile_exchange_api import build_linkedin_profile_exchange_r
 from jolt.market_intelligence_exchange_api import build_market_intelligence_exchange_router
 from jolt.professional_evidence_exchange_api import build_professional_evidence_exchange_router
 from jolt.review_inbox_exchange import build_review_inbox_exchange_json
+from jolt.search_preference_exchange_api import build_search_preference_exchange_router
 from jolt.skills_preparation_exchange_api import build_skills_preparation_exchange_router
 
 SessionProvider = Callable[[], Iterator[Session]]
@@ -25,6 +26,7 @@ def build_review_inbox_exchange_router(get_session: SessionProvider) -> APIRoute
     router.include_router(build_linkedin_profile_exchange_router(get_session))
     router.include_router(build_skills_preparation_exchange_router(get_session))
     router.include_router(build_professional_evidence_exchange_router(get_session))
+    router.include_router(build_search_preference_exchange_router(get_session))
     session_dependency = Depends(get_session)
 
     @router.get("/api/exports/review-inbox-ai-exchange")
