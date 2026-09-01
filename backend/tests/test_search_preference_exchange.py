@@ -4,19 +4,28 @@ from datetime import UTC, datetime
 
 import pytest
 
-from jolt.ai_exchange_contract import AIExchangeFeedbackItem, AIExchangeOutput, AIExchangeScope
+from jolt.ai_exchange_contract import (
+    AIExchangeFeedbackItem,
+    AIExchangeOutput,
+    AIExchangeScope,
+)
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord
 from jolt.database import Posting, SourceDocument, create_session_factory
 from jolt.global_context import GlobalAIContextOverlay
 from jolt.job_search_preferences import JobSearchPreferences
-from jolt.market_preparation_import import MarketPreparationImportRecord, MarketPreparationImportResponse
+from jolt.market_preparation_import import (
+    MarketPreparationImportRecord,
+    MarketPreparationImportResponse,
+)
 from jolt.search_preference_exchange import (
     build_search_preference_exchange,
     import_search_preference_exchange,
 )
 
 
-def test_search_exchange_exports_preferences_as_protected_evidence(tmp_path, monkeypatch) -> None:
+def test_search_exchange_exports_preferences_as_protected_evidence(
+    tmp_path, monkeypatch
+) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     now = datetime.now(UTC)
     source = SourceDocument(
@@ -111,9 +120,13 @@ def test_search_exchange_import_creates_pending_search_improvement_without_savin
             actions=actions,
             raw_payload=request.raw_payload,
         )
-        return MarketPreparationImportResponse(imported_count=len(actions), latest_import=record)
+        return MarketPreparationImportResponse(
+            imported_count=len(actions), latest_import=record
+        )
 
-    monkeypatch.setattr("jolt.search_preference_exchange.import_market_preparation", fake_import)
+    monkeypatch.setattr(
+        "jolt.search_preference_exchange.import_market_preparation", fake_import
+    )
     output = AIExchangeOutput(
         exchange_id="search-exchange-1",
         reviewed_at=datetime.now(UTC),
@@ -137,13 +150,19 @@ def test_search_exchange_import_creates_pending_search_improvement_without_savin
                 evidence_refs=["posting:1", "posting:2"],
             )
         ],
-        context_patch={"capture_strategy": {"title_expansion_candidate": "Application Support Analyst"}},
-        summary={"executive_summary": "Broaden title coverage without changing preferences automatically."},
+        context_patch={
+            "capture_strategy": {"title_expansion_candidate": "Application Support Analyst"}
+        },
+        summary={
+            "executive_summary": "Broaden title coverage without changing preferences automatically."
+        },
     )
 
     response = import_search_preference_exchange(output)
 
-    assert saved_context[0].capture_strategy["title_expansion_candidate"] == "Application Support Analyst"
+    assert saved_context[0].capture_strategy["title_expansion_candidate"] == (
+        "Application Support Analyst"
+    )
     assert saved_feedback == [output]
     assert response.preparation.imported_count == 1
     action = imported[0].search_filter_improvements[0]
@@ -161,7 +180,9 @@ def test_search_exchange_rejects_direct_job_preference_patch(monkeypatch) -> Non
         exchange_id="search-invalid",
         reviewed_at=datetime.now(UTC),
         review_version="search-v1",
-        scope=AIExchangeScope(section="search_preferences", analysis_types=["context_update"]),
+        scope=AIExchangeScope(
+            section="search_preferences", analysis_types=["context_update"]
+        ),
         context_patch={"job_search_preferences": {"languages": ["German"]}},
     )
 
