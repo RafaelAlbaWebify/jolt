@@ -16,6 +16,7 @@ from jolt.professional_evidence_exchange_api import build_professional_evidence_
 from jolt.review_inbox_exchange import build_review_inbox_exchange_json
 from jolt.search_preference_exchange_api import build_search_preference_exchange_router
 from jolt.skills_preparation_exchange_api import build_skills_preparation_exchange_router
+from jolt.unified_ai_work_package_api import build_unified_ai_work_package_router
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -29,6 +30,7 @@ def build_review_inbox_exchange_router(get_session: SessionProvider) -> APIRoute
     router.include_router(build_professional_evidence_exchange_router(get_session))
     router.include_router(build_search_preference_exchange_router(get_session))
     router.include_router(build_data_quality_exchange_router(get_session))
+    router.include_router(build_unified_ai_work_package_router(get_session))
     session_dependency = Depends(get_session)
 
     @router.get("/api/exports/review-inbox-ai-exchange")
