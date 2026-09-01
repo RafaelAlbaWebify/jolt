@@ -44,7 +44,9 @@ class SkillsPreparationExchangeImportResponse(BaseModel):
 
 
 def _vacancy_evidence(session: Session) -> list[dict[str, Any]]:
-    postings = session.scalars(select(Posting).order_by(Posting.created_at.desc(), Posting.id)).all()
+    postings = session.scalars(
+        select(Posting).order_by(Posting.created_at.desc(), Posting.id)
+    ).all()
     evidence: list[dict[str, Any]] = []
     for posting in postings:
         text = sanitize_capture_text(posting.description)
@@ -146,9 +148,7 @@ def build_skills_preparation_exchange(session: Session) -> AIExchangeInput:
 def _apply_skills_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
     unknown = sorted(set(output.context_patch) - _SKILLS_PATCH_KEYS)
     if unknown:
-        raise ValueError(
-            f"Skills context patch contains non-patchable keys: {', '.join(unknown)}"
-        )
+        raise ValueError(f"Skills context patch contains non-patchable keys: {', '.join(unknown)}")
     current = load_global_ai_context()
     update = current.model_dump()
     for key, value in output.context_patch.items():
