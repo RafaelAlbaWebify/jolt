@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from jolt.ai_exchange_feedback_store import AIExchangeFeedbackIndex
 from jolt.application_outcomes_exchange_api import build_application_outcomes_exchange_router
 from jolt.database import create_session_factory
 
@@ -12,9 +13,7 @@ def _client(tmp_path, monkeypatch) -> TestClient:
     factory = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")
     monkeypatch.setattr(
         "jolt.application_outcomes_exchange_api.list_ai_exchange_feedback",
-        lambda section=None: __import__(
-            "jolt.ai_exchange_feedback_store", fromlist=["AIExchangeFeedbackIndex"]
-        ).AIExchangeFeedbackIndex(total_import_count=0),
+        lambda section=None: AIExchangeFeedbackIndex(total_import_count=0),
     )
 
     def get_session() -> Iterator[Session]:
