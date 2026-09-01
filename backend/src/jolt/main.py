@@ -16,7 +16,7 @@ from jolt.ai_review_opportunity_index import (
     AIReviewOpportunityIndexItem,
     list_ai_review_opportunity_index,
 )
-from jolt.ai_review_pack import build_ai_review_pack
+from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
 from jolt.application_archival import (
     ApplicationArchiveRequest,
     ApplicationArchiveResponse,
@@ -652,6 +652,20 @@ def create_app(database_url: str | None = None) -> FastAPI:
             BytesIO(content),
             media_type="application/zip",
             headers={"Content-Disposition": ("attachment; filename=JOLT_AI_REVIEW_INPUT.zip")},
+        )
+
+    @app.get("/api/exports/ai-review-json", tags=["exports"])
+    def ai_review_json(
+        session: Annotated[Session, Depends(get_session)],
+    ) -> StreamingResponse:
+        try:
+            content = build_ai_review_json(session)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=JOLT_AI_REVIEW_INPUT.json"},
         )
 
     @app.get("/api/exports/review-pack", tags=["exports"])
