@@ -4,6 +4,7 @@ from jolt.ai_exchange_contract import (
     AIExchangeFeedbackItem,
     AIExchangeOutput,
     AIExchangeScope,
+    AIExchangeSection,
 )
 from jolt.ai_exchange_feedback_store import (
     list_ai_exchange_feedback,
@@ -11,7 +12,7 @@ from jolt.ai_exchange_feedback_store import (
 )
 
 
-def _output(exchange_id: str, section: str) -> AIExchangeOutput:
+def _output(exchange_id: str, section: AIExchangeSection) -> AIExchangeOutput:
     return AIExchangeOutput(
         exchange_id=exchange_id,
         reviewed_at=datetime.now(UTC),
