@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.application_outcomes_exchange_api import build_application_outcomes_exchange_router
 from jolt.errors import JoltNotFoundError
 from jolt.market_intelligence_exchange_api import build_market_intelligence_exchange_router
 from jolt.review_inbox_exchange import build_review_inbox_exchange_json
@@ -17,6 +18,7 @@ SessionProvider = Callable[[], Iterator[Session]]
 def build_review_inbox_exchange_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["ai-review", "exports"])
     router.include_router(build_market_intelligence_exchange_router(get_session))
+    router.include_router(build_application_outcomes_exchange_router(get_session))
     session_dependency = Depends(get_session)
 
     @router.get("/api/exports/review-inbox-ai-exchange")
