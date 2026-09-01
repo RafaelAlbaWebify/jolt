@@ -55,7 +55,9 @@ def _sha256(text: str) -> str:
 
 def _capture_facts(session: Session) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     runs = session.scalars(
-        select(CaptureRun).order_by(CaptureRun.started_at.desc(), CaptureRun.id).limit(_MAX_CAPTURE_RUNS)
+        select(CaptureRun)
+        .order_by(CaptureRun.started_at.desc(), CaptureRun.id)
+        .limit(_MAX_CAPTURE_RUNS)
     ).all()
     run_rows: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
