@@ -17,7 +17,10 @@ SessionProvider = Callable[[], Iterator[Session]]
 
 
 def build_professional_evidence_exchange_router(get_session: SessionProvider) -> APIRouter:
-    router = APIRouter(prefix="/api/ai-professional-evidence", tags=["professional-intelligence", "ai-exchange"])
+    router = APIRouter(
+        prefix="/api/ai-professional-evidence",
+        tags=["professional-intelligence", "ai-exchange"],
+    )
     session_dependency = Depends(get_session)
 
     @router.get("/export", response_model=AIExchangeInput)
