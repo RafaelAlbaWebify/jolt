@@ -13,11 +13,11 @@ function readTextFile(file: File): Promise<string> {
         return;
       }
 
-      reject(new Error("The AI review file could not be read."));
+      reject(new Error("The AI update file could not be read."));
     };
 
     reader.onerror = () => {
-      reject(new Error("The AI review file could not be read."));
+      reject(new Error("The AI update file could not be read."));
     };
 
     reader.readAsText(file);
@@ -29,27 +29,6 @@ type Props = {
   onImported?: () => void | Promise<void>;
 };
 
-type AIExportFormat = "json" | "zip";
-
-const AI_EXPORT_FORMAT_KEY = "jolt.aiReview.primaryExportFormat";
-const AI_EXPORT_OTHER_KEY = "jolt.aiReview.includeOtherFormat";
-
-function initialAIExportFormat(): AIExportFormat {
-  try {
-    return window.localStorage.getItem(AI_EXPORT_FORMAT_KEY) === "zip" ? "zip" : "json";
-  } catch {
-    return "json";
-  }
-}
-
-function initialIncludeOtherFormat(): boolean {
-  try {
-    return window.localStorage.getItem(AI_EXPORT_OTHER_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
 export function DataTools({
   apiBase,
   onImported,
@@ -57,46 +36,8 @@ export function DataTools({
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState("");
-  const [aiExportFormat, setAIExportFormat] = useState<AIExportFormat>(initialAIExportFormat);
-  const [includeOtherFormat, setIncludeOtherFormat] = useState(initialIncludeOtherFormat);
 
-  function chooseAIExportFormat(format: AIExportFormat) {
-    setAIExportFormat(format);
-    try {
-      window.localStorage.setItem(AI_EXPORT_FORMAT_KEY, format);
-    } catch {
-      // Browser storage is optional.
-    }
-  }
-
-  function chooseIncludeOtherFormat(value: boolean) {
-    setIncludeOtherFormat(value);
-    try {
-      window.localStorage.setItem(AI_EXPORT_OTHER_KEY, String(value));
-    } catch {
-      // Browser storage is optional.
-    }
-  }
-
-  const jsonDownload = (
-    <a
-      href={`${apiBase}/api/exports/ai-review-json`}
-      download="JOLT_AI_REVIEW_INPUT.json"
-    >
-      Download AI review JSON
-    </a>
-  );
-
-  const zipDownload = (
-    <a
-      href={`${apiBase}/api/exports/ai-review-pack`}
-      download="JOLT_AI_REVIEW_INPUT.zip"
-    >
-      Download AI review ZIP
-    </a>
-  );
-
-  async function importAIReview(file: File) {
+  async function importAIUpdate(file: File) {
     setImporting(true);
     setError("");
     setImportNotice("");
@@ -109,10 +50,10 @@ export function DataTools({
       try {
         payload = JSON.parse(text);
       } catch {
-        throw new Error("The AI review file is not valid JSON.");
+        throw new Error("The AI update file is not valid JSON.");
       }
 
-      const response = await fetch(`${apiBase}/api/ai-review/import`, {
+      const response = await fetch(`${apiBase}/api/ai-work-package/import`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,25 +66,24 @@ export function DataTools({
           detail?: string;
         } | null;
 
-        throw new Error(problem?.detail || "The AI review could not be imported.");
+        throw new Error(problem?.detail || "The AI update could not be imported.");
       }
 
       const result = (await response.json()) as {
-        received_count: number;
-        created_count: number;
-        updated_count: number;
+        imported_sections: string[];
+        review_inbox_imported: boolean;
       };
 
+      const sectionCount = result.imported_sections.length;
+      const reviewText = result.review_inbox_imported ? "Review Inbox updated. " : "";
       setImportNotice(
-        `${result.received_count} AI-reviewed job${
-          result.received_count === 1 ? "" : "s"
-        } imported: ${result.created_count} new, ${result.updated_count} updated.`,
+        `${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
       );
 
       await onImported?.();
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "The AI review could not be imported.",
+        caught instanceof Error ? caught.message : "The AI update could not be imported.",
       );
     } finally {
       setImporting(false);
@@ -152,7 +92,7 @@ export function DataTools({
 
   return (
     <details className="panel operations-tools workspace-sidebar-operations">
-      <summary>Data tools: capture batches, decisions, and exports</summary>
+      <summary>Data tools: AI exchange, capture history, and decisions</summary>
 
       {error && (
         <p className="error" role="alert">
@@ -163,86 +103,71 @@ export function DataTools({
       {importNotice && <p role="status">{importNotice}</p>}
 
       <div className="operations-grid">
-        <section aria-labelledby="export-heading">
-          <h2 id="export-heading">AI review</h2>
+        <section aria-labelledby="ai-exchange-heading">
+          <h2 id="ai-exchange-heading">AI exchange</h2>
 
           <p>
-            Export the latest capture as clean source evidence for deep AI analysis. JOLT does not
-            include its own recommendation, score, or eligibility decision.
+            Export one JOLT work package, analyze it in ChatGPT, then import the single returned
+            update. The package includes current JOLT context and evidence while keeping human-owned
+            decisions and preferences protected.
           </p>
 
-          <fieldset className="capture-export-format">
-            <legend>AI review export</legend>
-            <label>
-              <input
-                type="radio"
-                name="ai-review-export-format"
-                value="json"
-                checked={aiExportFormat === "json"}
-                onChange={() => chooseAIExportFormat("json")}
-              />
-              <span>
-                <strong>JSON — Recommended</strong>
-                <small>One structured file for ChatGPT and other AI tools.</small>
-              </span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="ai-review-export-format"
-                value="zip"
-                checked={aiExportFormat === "zip"}
-                onChange={() => chooseAIExportFormat("zip")}
-              />
-              <span>
-                <strong>ZIP — Full package</strong>
-                <small>Preserves the existing multi-file AI review package.</small>
-              </span>
-            </label>
-            <label className="capture-export-other">
-              <input
-                type="checkbox"
-                checked={includeOtherFormat}
-                onChange={(event) => chooseIncludeOtherFormat(event.target.checked)}
-              />
-              Also show the other format
-            </label>
-          </fieldset>
+          <ol>
+            <li>
+              <a
+                href={`${apiBase}/api/ai-work-package/export`}
+                download="JOLT_AI_WORK_PACKAGE.json"
+              >
+                <strong>Export AI work package</strong>
+              </a>
+            </li>
+            <li>
+              <label>
+                <strong>Import AI update</strong>
+                <input
+                  aria-label="Import AI update"
+                  type="file"
+                  accept=".json,application/json"
+                  disabled={importing}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
 
-          <p>
-            {aiExportFormat === "json" ? jsonDownload : zipDownload}
-            {includeOtherFormat && (
-              <>
-                {" · "}
-                {aiExportFormat === "json" ? zipDownload : jsonDownload}
-              </>
-            )}
-          </p>
+                    if (file) {
+                      void importAIUpdate(file);
+                    }
 
-          <label>
-            Import reviewed JSON
-            <input
-              aria-label="Import AI review"
-              type="file"
-              accept=".json,application/json"
-              disabled={importing}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-
-                if (file) {
-                  void importAIReview(file);
-                }
-
-                event.currentTarget.value = "";
-              }}
-            />
-          </label>
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </li>
+          </ol>
 
           <p>
             {importing
-              ? "Importing AI review…"
-              : "The imported AI decision becomes the Review Inbox classification authority."}
+              ? "Importing AI update…"
+              : "JOLT validates the returned file before applying AI-derived intelligence."}
           </p>
+
+          <details>
+            <summary>Advanced / compatibility exports</summary>
+            <p>
+              These older Review-Inbox-only formats remain available for troubleshooting or archive
+              compatibility. The unified AI work package above is the normal workflow.
+            </p>
+            <ul>
+              <li>
+                <a href={`${apiBase}/api/exports/ai-review-json`} download="JOLT_AI_REVIEW_INPUT.json">
+                  Legacy AI review JSON
+                </a>
+              </li>
+              <li>
+                <a href={`${apiBase}/api/exports/ai-review-pack`} download="JOLT_AI_REVIEW_INPUT.zip">
+                  Legacy full review ZIP
+                </a>
+              </li>
+            </ul>
+          </details>
         </section>
       </div>
 
