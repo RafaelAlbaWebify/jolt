@@ -133,13 +133,9 @@ def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
             actions=actions,
             raw_payload=request.raw_payload,
         )
-        return MarketPreparationImportResponse(
-            imported_count=len(actions), latest_import=record
-        )
+        return MarketPreparationImportResponse(imported_count=len(actions), latest_import=record)
 
-    monkeypatch.setattr(
-        "jolt.skills_preparation_exchange.import_market_preparation", fake_import
-    )
+    monkeypatch.setattr("jolt.skills_preparation_exchange.import_market_preparation", fake_import)
     output = AIExchangeOutput(
         exchange_id="skills-exchange-1",
         reviewed_at=datetime.now(UTC),
