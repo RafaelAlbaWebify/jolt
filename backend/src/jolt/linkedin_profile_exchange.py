@@ -1,0 +1,184 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any, Literal, cast
+from uuid import uuid4
+
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput, AIExchangeScope
+from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord, save_ai_exchange_feedback
+from jolt.global_context import (
+    GlobalAIContextOverlay,
+    build_global_context_snapshot,
+    global_context_version,
+    load_global_ai_context,
+    save_global_ai_context,
+)
+from jolt.linkedin_command_center import (
+    LinkedInRecommendationImportItem,
+    LinkedInRecommendationImportRequest,
+    LinkedInRecommendationImportResponse,
+    import_linkedin_recommendations,
+    list_linkedin_command_center,
+)
+
+_LINKEDIN_PATCH_KEYS = frozenset({"profile_strategy", "capture_strategy", "audit_summary"})
+_LINKEDIN_RECOMMENDATION_TYPES = {
+    "profile_update",
+    "network_decision",
+    "content_action",
+    "outreach",
+    "lead_research",
+    "cleanup",
+}
+
+
+class LinkedInProfileExchangeImportResponse(BaseModel):
+    context: GlobalAIContextOverlay
+    feedback_record: AIExchangeFeedbackRecord
+    recommendations: LinkedInRecommendationImportResponse
+
+
+def _command_center_evidence(session: Session) -> dict[str, Any]:
+    command_center = list_linkedin_command_center(session)
+    payload = command_center.model_dump(mode="json")
+    return {
+        "captures": payload.get("captures", []),
+        "existing_recommendations": payload.get("recommendations", []),
+        "counts": {
+            "captures": command_center.capture_count,
+            "recommendations": command_center.recommendation_count,
+            "open_recommendations": command_center.open_recommendation_count,
+        },
+        "categories": command_center.categories,
+        "recommendation_statuses": command_center.recommendation_statuses,
+        "recommendation_types": command_center.recommendation_types,
+        "authority_notes": {
+            "captures": "User-supervised LinkedIn evidence only; missing profile data must not be treated as negative evidence.",
+            "recommendations": "Existing recommendation status is JOLT/user-owned workflow state and must not be overwritten.",
+            "automation": "Do not automate LinkedIn actions, messaging, connections, follows, or profile edits.",
+        },
+    }
+
+
+def build_linkedin_profile_exchange(session: Session) -> AIExchangeInput:
+    context = build_global_context_snapshot()
+    return AIExchangeInput(
+        generated_at=datetime.now(UTC),
+        exchange_id=str(uuid4()),
+        context_version=global_context_version(context),
+        scope=AIExchangeScope(
+            section="linkedin_profile",
+            analysis_types=["recommendation", "context_update", "audit_result", "extraction"],
+            scope_label="JOLT LinkedIn profile, activity, and network evidence",
+        ),
+        context=context,
+        evidence=_command_center_evidence(session),
+        protected_state={
+            "patchable_context_namespaces": sorted(_LINKEDIN_PATCH_KEYS),
+            "non_patchable": [
+                "linkedin_captures",
+                "linkedin_recommendation_statuses",
+                "job_search_preferences",
+                "human_review_decisions",
+                "applications",
+            ],
+        },
+        requested_output={
+            "feedback": {
+                "audit_result": "Evidence-backed profile, activity, network, or capture-quality findings.",
+                "recommendation": (
+                    "Manual LinkedIn action. For importable recommendations include recommendation_type, "
+                    "target_area, title, rationale, proposed_action, optional proposed_text, and priority."
+                ),
+            },
+            "context_patch": (
+                "Return only changed profile_strategy, capture_strategy, or audit_summary namespaces."
+            ),
+            "summary": "Include executive_summary, high_confidence_findings, and evidence_gaps.",
+        },
+    )
+
+
+def _apply_linkedin_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
+    unknown = sorted(set(output.context_patch) - _LINKEDIN_PATCH_KEYS)
+    if unknown:
+        raise ValueError(f"LinkedIn context patch contains non-patchable keys: {', '.join(unknown)}")
+
+    current = load_global_ai_context()
+    update = current.model_dump()
+    for key, value in output.context_patch.items():
+        if not isinstance(value, dict):
+            raise ValueError(f"LinkedIn context namespace '{key}' must be an object")
+        update[key] = value
+    update["updated_at"] = output.reviewed_at
+    update["updated_by"] = f"chatgpt:{output.review_version}"
+    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
+
+
+def _recommendation_items(output: AIExchangeOutput) -> list[LinkedInRecommendationImportItem]:
+    items: list[LinkedInRecommendationImportItem] = []
+    for feedback in output.feedback:
+        if feedback.feedback_type != "recommendation":
+            continue
+        payload = feedback.payload
+        raw_type = payload.get("recommendation_type")
+        if raw_type not in _LINKEDIN_RECOMMENDATION_TYPES:
+            continue
+        raw_priority = payload.get("priority", "medium")
+        if raw_priority not in {"high", "medium", "low"}:
+            raw_priority = "medium"
+        recommendation_type = cast(
+            Literal[
+                "profile_update",
+                "network_decision",
+                "content_action",
+                "outreach",
+                "lead_research",
+                "cleanup",
+            ],
+            raw_type,
+        )
+        priority = cast(Literal["high", "medium", "low"], raw_priority)
+        capture_id = payload.get("capture_id")
+        if capture_id is not None and not isinstance(capture_id, str):
+            capture_id = None
+        items.append(
+            LinkedInRecommendationImportItem(
+                capture_id=capture_id,
+                recommendation_type=recommendation_type,
+                target_area=str(payload.get("target_area", "")),
+                title=str(payload.get("title", ""))[:240] or "Review LinkedIn evidence",
+                rationale=str(payload.get("rationale", "")),
+                proposed_action=str(payload.get("proposed_action", "")),
+                proposed_text=str(payload.get("proposed_text", "")),
+                priority=priority,
+                status="pending",
+            )
+        )
+    return items
+
+
+def import_linkedin_profile_exchange(
+    session: Session,
+    output: AIExchangeOutput,
+) -> LinkedInProfileExchangeImportResponse:
+    if output.scope.section != "linkedin_profile":
+        raise ValueError("LinkedIn profile import requires scope.section=linkedin_profile")
+
+    context = _apply_linkedin_context_patch(output)
+    feedback_record = save_ai_exchange_feedback(output)
+    recommendations = import_linkedin_recommendations(
+        session,
+        LinkedInRecommendationImportRequest(
+            source="chatgpt_linkedin_profile_exchange",
+            recommendations=_recommendation_items(output),
+        ),
+    )
+    return LinkedInProfileExchangeImportResponse(
+        context=context,
+        feedback_record=feedback_record,
+        recommendations=recommendations,
+    )
