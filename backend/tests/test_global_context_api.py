@@ -43,9 +43,7 @@ def test_global_context_import_rejects_non_patchable_namespace() -> None:
                 "analysis_types": ["context_update"],
             },
             "feedback": [],
-            "context_patch": {
-                "job_search_preferences": {"languages": ["German"]}
-            },
+            "context_patch": {"job_search_preferences": {"languages": ["German"]}},
             "summary": {},
         },
     )
