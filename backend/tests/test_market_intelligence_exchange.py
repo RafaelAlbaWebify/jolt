@@ -118,7 +118,9 @@ def test_market_exchange_import_updates_ai_context_and_reviewable_actions(monkey
             actions=request.market_recommendations,
             raw_payload=request.raw_payload,
         )
-        return MarketPreparationImportResponse(imported_count=record.action_count, latest_import=record)
+        return MarketPreparationImportResponse(
+            imported_count=record.action_count, latest_import=record
+        )
 
     monkeypatch.setattr("jolt.market_intelligence_exchange.import_market_preparation", fake_import)
 
