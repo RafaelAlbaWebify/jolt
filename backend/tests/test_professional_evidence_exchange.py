@@ -74,7 +74,9 @@ def test_professional_exchange_exports_only_integrity_verified_reviewable_eviden
                         exists=True,
                         integrity_valid=True,
                         reviewable=True,
-                        content={"text": "IT Support Engineer experience with Windows and PowerShell."},
+                        content={
+                            "text": "IT Support Engineer experience with Windows and PowerShell."
+                        },
                     ),
                     ProfessionalEvidenceArtifactReview(
                         id="artifact-bad",
@@ -115,9 +117,10 @@ def test_professional_exchange_exports_only_integrity_verified_reviewable_eviden
     artifacts = exchange.evidence["verified_reviews"][0]["sources"][0]["artifacts"]
     assert [item["artifact_id"] for item in artifacts] == ["artifact-good"]
     assert "Windows and PowerShell" in artifacts[0]["content"]["text"]
-    assert "deterministic term extraction is intentionally excluded" in exchange.evidence[
-        "authority_notes"
-    ]["reasoning"].casefold()
+    assert (
+        "deterministic term extraction is intentionally excluded"
+        in exchange.evidence["authority_notes"]["reasoning"].casefold()
+    )
 
 
 def test_professional_exchange_import_updates_evidence_context_and_feedback(monkeypatch) -> None:
@@ -133,16 +136,18 @@ def test_professional_exchange_import_updates_evidence_context_and_feedback(monk
     )
     monkeypatch.setattr(
         "jolt.professional_evidence_exchange.save_ai_exchange_feedback",
-        lambda output: saved_feedback.append(output)
-        or AIExchangeFeedbackRecord(
-            id="feedback-1",
-            exchange_id=output.exchange_id,
-            section=output.scope.section,
-            review_version=output.review_version,
-            reviewed_at=output.reviewed_at,
-            imported_at=datetime.now(UTC),
-            feedback=output.feedback,
-            summary=output.summary,
+        lambda output: (
+            saved_feedback.append(output)
+            or AIExchangeFeedbackRecord(
+                id="feedback-1",
+                exchange_id=output.exchange_id,
+                section=output.scope.section,
+                review_version=output.review_version,
+                reviewed_at=output.reviewed_at,
+                imported_at=datetime.now(UTC),
+                feedback=output.feedback,
+                summary=output.summary,
+            )
         ),
     )
     output = AIExchangeOutput(
