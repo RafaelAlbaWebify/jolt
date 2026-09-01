@@ -5,18 +5,32 @@ from datetime import UTC, datetime
 
 import pytest
 
-from jolt.ai_exchange_contract import AIExchangeFeedbackItem, AIExchangeOutput, AIExchangeScope
+from jolt.ai_exchange_contract import (
+    AIExchangeFeedbackItem,
+    AIExchangeOutput,
+    AIExchangeScope,
+)
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord
-from jolt.database import LinkedInPresenceCapture, Posting, SourceDocument, create_session_factory
+from jolt.database import (
+    LinkedInPresenceCapture,
+    Posting,
+    SourceDocument,
+    create_session_factory,
+)
 from jolt.global_context import GlobalAIContextOverlay
-from jolt.market_preparation_import import MarketPreparationImportRecord, MarketPreparationImportResponse
+from jolt.market_preparation_import import (
+    MarketPreparationImportRecord,
+    MarketPreparationImportResponse,
+)
 from jolt.skills_preparation_exchange import (
     build_skills_preparation_exchange,
     import_skills_preparation_exchange,
 )
 
 
-def test_skills_exchange_exports_raw_evidence_without_local_gap_judgments(tmp_path, monkeypatch) -> None:
+def test_skills_exchange_exports_raw_evidence_without_local_gap_judgments(
+    tmp_path, monkeypatch
+) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     now = datetime.now(UTC)
     source = SourceDocument(
@@ -76,7 +90,9 @@ def test_skills_exchange_exports_raw_evidence_without_local_gap_judgments(tmp_pa
     assert '"gap_count"' not in serialized
 
 
-def test_skills_exchange_import_updates_context_and_creates_preparation_actions(monkeypatch) -> None:
+def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
+    monkeypatch,
+) -> None:
     saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported = []
@@ -90,16 +106,18 @@ def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
     )
     monkeypatch.setattr(
         "jolt.skills_preparation_exchange.save_ai_exchange_feedback",
-        lambda output: saved_feedback.append(output)
-        or AIExchangeFeedbackRecord(
-            id="feedback-1",
-            exchange_id=output.exchange_id,
-            section=output.scope.section,
-            review_version=output.review_version,
-            reviewed_at=output.reviewed_at,
-            imported_at=datetime.now(UTC),
-            feedback=output.feedback,
-            summary=output.summary,
+        lambda output: (
+            saved_feedback.append(output)
+            or AIExchangeFeedbackRecord(
+                id="feedback-1",
+                exchange_id=output.exchange_id,
+                section=output.scope.section,
+                review_version=output.review_version,
+                reviewed_at=output.reviewed_at,
+                imported_at=datetime.now(UTC),
+                feedback=output.feedback,
+                summary=output.summary,
+            )
         ),
     )
 
@@ -115,9 +133,13 @@ def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
             actions=actions,
             raw_payload=request.raw_payload,
         )
-        return MarketPreparationImportResponse(imported_count=len(actions), latest_import=record)
+        return MarketPreparationImportResponse(
+            imported_count=len(actions), latest_import=record
+        )
 
-    monkeypatch.setattr("jolt.skills_preparation_exchange.import_market_preparation", fake_import)
+    monkeypatch.setattr(
+        "jolt.skills_preparation_exchange.import_market_preparation", fake_import
+    )
     output = AIExchangeOutput(
         exchange_id="skills-exchange-1",
         reviewed_at=datetime.now(UTC),
