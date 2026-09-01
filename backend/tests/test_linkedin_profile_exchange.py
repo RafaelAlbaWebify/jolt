@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
+from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import (
     AIExchangeFeedbackItem,
@@ -87,7 +89,10 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
 
     def fake_import(_session, request):
         imported_requests.append(request)
-        return LinkedInRecommendationImportResponse(imported_count=len(request.recommendations), recommendations=[])
+        return LinkedInRecommendationImportResponse(
+            imported_count=len(request.recommendations),
+            recommendations=[],
+        )
 
     monkeypatch.setattr("jolt.linkedin_profile_exchange.import_linkedin_recommendations", fake_import)
 
@@ -118,8 +123,9 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
         ],
         context_patch={"profile_strategy": {"headline_focus": "Application Support"}},
     )
+    mock_session = cast(Session, object())
 
-    response = import_linkedin_profile_exchange(object(), output)
+    response = import_linkedin_profile_exchange(mock_session, output)
 
     assert saved_context[0].profile_strategy["headline_focus"] == "Application Support"
     assert saved_feedback == [output]
@@ -142,6 +148,7 @@ def test_linkedin_exchange_import_rejects_protected_patch(monkeypatch) -> None:
         scope=AIExchangeScope(section="linkedin_profile", analysis_types=["context_update"]),
         context_patch={"job_search_preferences": {"languages": ["German"]}},
     )
+    mock_session = cast(Session, object())
 
     with pytest.raises(ValueError, match="non-patchable"):
-        import_linkedin_profile_exchange(object(), output)
+        import_linkedin_profile_exchange(mock_session, output)
