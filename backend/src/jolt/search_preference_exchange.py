@@ -76,7 +76,9 @@ def _posting_evidence(session: Session) -> list[dict[str, Any]]:
 
 def _capture_evidence(session: Session) -> list[dict[str, Any]]:
     captures = session.scalars(
-        select(CaptureRun).order_by(CaptureRun.started_at.desc(), CaptureRun.id).limit(_MAX_CAPTURES)
+        select(CaptureRun)
+        .order_by(CaptureRun.started_at.desc(), CaptureRun.id)
+        .limit(_MAX_CAPTURES)
     ).all()
     return [
         {
