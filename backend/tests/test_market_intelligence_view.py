@@ -57,8 +57,8 @@ def test_market_view_uses_ai_context_and_marks_newer_capture_stale(tmp_path, mon
     session.commit()
 
     context = GlobalAIContextOverlay(
-        updated_at=now - timedelta(hours=1),
-        updated_by="chatgpt:test",
+        updated_at=now + timedelta(hours=1),
+        updated_by="chatgpt:unrelated-profile-update",
         market_summary={"executive_summary": "Application support demand is strong."},
         skills_gap_summary={"priority": ["SQL", "API"]},
     )
@@ -110,12 +110,13 @@ def test_market_view_uses_ai_context_and_marks_newer_capture_stale(tmp_path, mon
     assert view.evidence_provenance.duplicate_observation_count == 1
     assert view.freshness.status == "stale"
     assert view.freshness.needs_analysis is True
+    assert view.freshness.ai_updated_at == feedback_record.reviewed_at
     assert len(view.latest_feedback) == 2
     assert len(view.recommendations) == 1
     assert view.recommendations[0].entity_id == "recommendation"
 
 
-def test_market_view_is_current_when_ai_analysis_is_newer_than_capture(
+def test_market_view_is_current_when_market_analysis_is_newer_than_capture(
     tmp_path, monkeypatch
 ) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
@@ -139,9 +140,9 @@ def test_market_view_is_current_when_ai_analysis_is_newer_than_capture(
     monkeypatch.setattr(
         "jolt.market_intelligence_view.load_global_ai_context",
         lambda: GlobalAIContextOverlay(
-            updated_at=now,
-            updated_by="chatgpt:test",
-            market_summary={"status": "analyzed"},
+            updated_at=now + timedelta(hours=1),
+            updated_by="chatgpt:unrelated-update",
+            market_summary={"status": "analyzed", "analyzed_at": now.isoformat()},
         ),
     )
     monkeypatch.setattr(
@@ -160,3 +161,4 @@ def test_market_view_is_current_when_ai_analysis_is_newer_than_capture(
 
     assert view.freshness.status == "current"
     assert view.freshness.needs_analysis is False
+    assert view.freshness.ai_updated_at == now
