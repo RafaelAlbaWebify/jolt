@@ -1,0 +1,37 @@
+name: Temporary frontend lock refresh
+
+on:
+  push:
+    branches:
+      - feature/market-intelligence-authority-cleanup-20260902
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/market-intelligence-authority-cleanup-20260902
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Regenerate locked dependency graph
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts --no-fund
+      - name: Commit lockfile only when changed
+        run: |
+          if git diff --quiet -- frontend/package-lock.json; then
+            echo "Lockfile already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json
+          git commit -m "Refresh frontend browserslist lock graph"
+          git push origin HEAD:feature/market-intelligence-authority-cleanup-20260902
