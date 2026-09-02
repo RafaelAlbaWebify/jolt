@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeFeedbackItem
-from jolt.ai_exchange_feedback_store import list_ai_exchange_feedback
+from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord, list_ai_exchange_feedback
 from jolt.database import CaptureRun, MarketIntelligenceObservation
 from jolt.global_context import global_context_version, load_global_ai_context
 
@@ -87,6 +87,36 @@ def _provenance(session: Session) -> MarketEvidenceProvenance:
     )
 
 
+def _parse_market_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed_date = date.fromisoformat(text)
+        except ValueError:
+            return None
+        return datetime.combine(parsed_date, time.min, tzinfo=UTC)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _market_analysis_at(
+    market_summary: dict[str, Any],
+    latest_record: AIExchangeFeedbackRecord | None,
+) -> datetime | None:
+    if latest_record is not None:
+        return latest_record.reviewed_at.astimezone(UTC)
+    for key in ("analyzed_at", "reviewed_at", "generated_at", "as_of"):
+        parsed = _parse_market_timestamp(market_summary.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
 def _freshness(
     *,
     ai_updated_at: datetime | None,
@@ -109,7 +139,7 @@ def _freshness(
             ai_updated_at=ai_updated_at,
             latest_capture_at=latest_capture_at,
             needs_analysis=True,
-            reason="New captured market evidence is newer than the latest ChatGPT analysis.",
+            reason="New captured market evidence is newer than the latest ChatGPT market analysis.",
         )
     return MarketFreshness(
         status="current",
@@ -127,6 +157,7 @@ def build_market_intelligence_view(session: Session) -> MarketIntelligenceView:
     latest_record = feedback_index.records[0] if feedback_index.records else None
     latest_feedback = latest_record.feedback if latest_record else []
     recommendations = [item for item in latest_feedback if item.feedback_type == "recommendation"]
+    market_analysis_at = _market_analysis_at(context.market_summary, latest_record)
     return MarketIntelligenceView(
         context_version=global_context_version(),
         market_summary=context.market_summary,
@@ -136,7 +167,7 @@ def build_market_intelligence_view(session: Session) -> MarketIntelligenceView:
         profile_strategy=context.profile_strategy,
         evidence_provenance=provenance,
         freshness=_freshness(
-            ai_updated_at=context.updated_at,
+            ai_updated_at=market_analysis_at,
             latest_capture_at=provenance.latest_capture_at,
             has_market_summary=bool(context.market_summary),
         ),
