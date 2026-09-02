@@ -1,0 +1,56 @@
+name: Temporary Phase 1 count compatibility v2
+on:
+  push:
+    branches: [feature/reasoning-queue-hardening-20260902]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/reasoning-queue-hardening-20260902
+      - name: Preserve exact top-level count contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/src/jolt/ai_review_pack.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''        "response_template": response_template,\n        "verified_items": len(items),\n    }\n'''
+          new = '''        "response_template": response_template,\n        "capture_items": len(all_items),\n        "verified_items": sum(item.detail_status == "verified" for item in all_items),\n    }\n'''
+          if old not in s:
+              raise SystemExit('payload count anchor missing')
+          s = s.replace(old, new, 1)
+          old = '''        "counts": {\n            "capture_pages": len(pages),\n            "capture_items": len(jobs),\n            "verified_items": payloads["verified_items"],\n        },\n'''
+          new = '''        "counts": {\n            "capture_pages": len(pages),\n            "capture_items": payloads["capture_items"],\n            "verified_items": payloads["verified_items"],\n        },\n'''
+          if s.count(old) != 2:
+              raise SystemExit(f'expected two count blocks, found {s.count(old)}')
+          s = s.replace(old, new, 2)
+          p.write_text(s, encoding='utf-8')
+
+          t = Path('backend/tests/test_ai_review_pack.py')
+          q = t.read_text(encoding='utf-8')
+          old = '''        assert document["counts"]["capture_items"] == 1\n        assert document["counts"]["verified_items"] == 1\n        assert document["capture"]["item_count"] == 2\n'''
+          new = '''        assert document["counts"]["capture_items"] == 2\n        assert document["counts"]["verified_items"] == 1\n        assert document["capture"]["item_count"] == 2\n'''
+          if old not in q:
+              raise SystemExit('count regression anchor missing')
+          q = q.replace(old, new, 1)
+          t.write_text(q, encoding='utf-8')
+          PY
+      - name: Format and focused tests
+        run: |
+          python -m pip install ruff pytest pytest-cov >/dev/null
+          ruff format backend/src/jolt/ai_review_pack.py backend/tests/test_ai_review_pack.py
+          ruff check backend/src/jolt/ai_review_pack.py backend/tests/test_ai_review_pack.py
+          cd backend
+          python -m pip install -e . >/dev/null
+          python -m pytest -q tests/test_ai_review_pack.py tests/test_manual_reasoning_queue.py
+      - name: Commit production/test changes only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/jolt/ai_review_pack.py backend/tests/test_ai_review_pack.py
+          git commit -m "Preserve AI review capture count contract"
+          git push origin HEAD:feature/reasoning-queue-hardening-20260902
