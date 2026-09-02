@@ -385,7 +385,7 @@ def test_repeated_capture_occurrences_are_filtered_before_deduplication(
         postings, evaluations = _durable_capture_market_records(session)
 
         assert len(postings) == 2
-        assert len(evaluations) == 2
+        assert evaluations == {}
 
         recent = _filter_by_timeframe(
             postings,
@@ -449,7 +449,7 @@ def test_historical_market_observation_backfill_is_idempotent(
         assert second_result["total_observation_count"] == 2
 
 
-def test_observation_extraction_prefers_current_engine_evaluation(
+def test_observation_extraction_ignores_local_engine_evaluations(
     tmp_path,
 ) -> None:
     from datetime import timedelta
@@ -545,11 +545,11 @@ def test_observation_extraction_prefers_current_engine_evaluation(
         )
 
         assert rebuilt is not None
-        assert rebuilt.engine_version == ENGINE_VERSION
-        assert rebuilt.recommendation == "pursue"
-        assert rebuilt.confidence == "medium"
-        assert rebuilt.ranking_score == 73
-        assert rebuilt.reasons_json == '["current-engine-test"]'
+        assert rebuilt.engine_version == ""
+        assert rebuilt.recommendation == ""
+        assert rebuilt.confidence == ""
+        assert rebuilt.ranking_score is None
+        assert rebuilt.reasons_json == "[]"
 
 
 def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
