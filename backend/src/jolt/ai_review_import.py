@@ -76,7 +76,7 @@ class AIReviewJob(BaseModel):
 
     # Compatibility-facing final decision. New 1.1 payloads must also send
     # final_decision and both values must agree.
-    decision: AIReviewDecision
+    decision: AIReviewDecision | None = None
     priority_score: int = Field(ge=0, le=100)
     geography_status: GeographyStatus
     clearance_status: ClearanceStatus
@@ -100,10 +100,13 @@ class AIReviewJob(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def enforce_hardline_precedence(self) -> "AIReviewJob":
+    def enforce_hardline_precedence(self) -> AIReviewJob:
         final_decision = self.final_decision or self.decision
-        if final_decision != self.decision:
+        if final_decision is None:
+            raise ValueError("A final decision is required")
+        if self.decision is not None and final_decision != self.decision:
             raise ValueError("final_decision must match decision")
+        self.decision = final_decision
 
         fit = self.technical_fit_percent
         if fit is None:
@@ -154,7 +157,7 @@ class AIReviewImportRequest(BaseModel):
     jobs: list[AIReviewJob]
 
     @model_validator(mode="after")
-    def require_v11_hardline_fields(self) -> "AIReviewImportRequest":
+    def require_v11_hardline_fields(self) -> AIReviewImportRequest:
         if self.contract_version != "1.1":
             return self
 

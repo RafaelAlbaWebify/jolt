@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from jolt.ai_review_import import AIReviewImportRequest
 from jolt.hardline_evidence import analyze_location_evidence
 
-
 US_ONLY_CASES = [
     (
         "LucidLink Technical Support Engineer L2",
@@ -62,7 +61,9 @@ def test_zone_and_co_country_of_residence_evidence_is_not_us_only() -> None:
 
     assert result.location_eligibility in {"eligible", "conditional"}
     assert result.hardline_reject is False
-    assert any("country of residence" in evidence.casefold() for evidence in result.positive_evidence)
+    assert any(
+        "country of residence" in evidence.casefold() for evidence in result.positive_evidence
+    )
 
 
 def _base_job() -> dict[str, object]:
@@ -176,7 +177,10 @@ def test_nebius_unmet_material_mandatory_experience_is_hardline_reject() -> None
     job.update(
         {
             "hardline_status": "REJECT",
-            "hardline_reasons": ["US-only remote requisition.", "Material mandatory experience is unmet."],
+            "hardline_reasons": [
+                "US-only remote requisition.",
+                "Material mandatory experience is unmet.",
+            ],
             "location_eligibility": "ineligible",
             "location_evidence": ["United States · Remote"],
             "mandatory_requirements": [requirement],

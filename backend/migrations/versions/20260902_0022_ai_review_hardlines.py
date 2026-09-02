@@ -21,13 +21,20 @@ def upgrade() -> None:
             nullable=True,
         )
         batch_op.add_column(
-            sa.Column("hardline_status", sa.String(length=20), nullable=False, server_default="PASS")
+            sa.Column(
+                "hardline_status", sa.String(length=20), nullable=False, server_default="PASS"
+            )
         )
         batch_op.add_column(
             sa.Column("hardline_reasons_json", sa.Text(), nullable=False, server_default="[]")
         )
         batch_op.add_column(
-            sa.Column("location_eligibility", sa.String(length=20), nullable=False, server_default="unknown")
+            sa.Column(
+                "location_eligibility",
+                sa.String(length=20),
+                nullable=False,
+                server_default="unknown",
+            )
         )
         batch_op.add_column(
             sa.Column("location_evidence_json", sa.Text(), nullable=False, server_default="[]")
@@ -47,7 +54,9 @@ def upgrade() -> None:
             sa.Column("employment_constraints_json", sa.Text(), nullable=False, server_default="[]")
         )
         batch_op.add_column(
-            sa.Column("fit_analysis_allowed", sa.Boolean(), nullable=False, server_default=sa.true())
+            sa.Column(
+                "fit_analysis_allowed", sa.Boolean(), nullable=False, server_default=sa.true()
+            )
         )
         batch_op.add_column(
             sa.Column("decision_reason", sa.Text(), nullable=False, server_default="")

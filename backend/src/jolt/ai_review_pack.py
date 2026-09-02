@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
 from jolt.errors import JoltNotFoundError
+from jolt.hardline_evidence import analyze_location_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
 
 PACK_VERSION = "1.0"
-REVIEW_CONTRACT_VERSION = "1.0"
+REVIEW_CONTRACT_VERSION = "1.1"
 
 
 def _json_bytes(value: object) -> bytes:
@@ -165,6 +166,10 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         location = posting.location if posting is not None else item.location
         description = posting.description if posting is not None else ""
         source_raw_text = source.raw_text if source is not None else ""
+        location_signals = analyze_location_evidence(
+            location=location,
+            source_text=source_raw_text or description,
+        )
 
         jobs_payload.append(
             {
@@ -177,6 +182,12 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                 "title": title,
                 "company": company,
                 "location": location,
+                "location_hardline_evidence": {
+                    "location_eligibility": location_signals.location_eligibility,
+                    "hardline_reject": location_signals.hardline_reject,
+                    "positive_evidence": list(location_signals.positive_evidence),
+                    "negative_evidence": list(location_signals.negative_evidence),
+                },
                 "identity_status": posting.identity_status if posting is not None else "",
                 "detail_status": item.detail_status,
                 "verification_reasons": _json_list(item.verification_reasons_json),
@@ -210,12 +221,32 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             {
                 "posting_id": "<posting_id from jobs>",
                 "source_job_id": "<source_job_id>",
+                "hardline_status": "PASS|REJECT|MANUAL_REVIEW",
+                "hardline_reasons": [],
+                "location_eligibility": "eligible|conditional|ineligible|unknown",
+                "location_evidence": [],
+                "mandatory_requirements": [],
+                "mandatory_requirement_results": [
+                    {
+                        "requirement": "",
+                        "source_text": "",
+                        "classification": "required|preferred|nice_to_have",
+                        "candidate_evidence": "",
+                        "result": "met|partial|unmet|unknown",
+                        "hardline": False,
+                    }
+                ],
+                "employment_constraints": [],
+                "fit_analysis_allowed": True,
+                "technical_fit_percent": None,
+                "final_decision": "strong_pursue|pursue|conditional|reject",
+                "decision_reason": "",
                 "decision": "strong_pursue|pursue|conditional|reject",
                 "priority_score": 0,
                 "geography_status": "eligible|conditional|ineligible|unknown",
                 "clearance_status": "clear|conditional|blocked|unknown",
                 "language_status": "clear|conditional|blocked|unknown",
-                "technical_fit": 0,
+                "technical_fit": None,
                 "duplicate_of_posting_id": None,
                 "summary": "",
                 "reasons": [],

@@ -23,7 +23,10 @@ _NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.I,
         ),
     ),
-    ("anywhere in the US", re.compile(r"\banywhere\s+in\s+the\s+(?:u\.?s\.?|united states)\b", re.I)),
+    (
+        "anywhere in the US",
+        re.compile(r"\banywhere\s+in\s+the\s+(?:u\.?s\.?|united states)\b", re.I),
+    ),
     (
         "US work authorization",
         re.compile(
@@ -62,7 +65,9 @@ _POSITIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 
-_US_LOCATION_PATTERN = re.compile(r"\b(?:united states(?: of america)?|usa|u\.s\.|u\.s\.a\.)\b", re.I)
+_US_LOCATION_PATTERN = re.compile(
+    r"\b(?:united states(?: of america)?|usa|u\.s\.|u\.s\.a\.)\b", re.I
+)
 
 
 def _unique(values: list[str]) -> tuple[str, ...]:
