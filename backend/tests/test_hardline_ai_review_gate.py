@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from jolt.ai_review_import import AIReviewImportRequest
+from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
+from jolt.database import CaptureItem, CaptureRun, Posting, SourceDocument, create_session_factory
 from jolt.hardline_evidence import analyze_location_evidence
 
 US_ONLY_CASES = [
@@ -48,6 +49,54 @@ def test_real_us_only_jobs_are_location_hardline_rejects(
     assert result.location_eligibility == "ineligible", title
     assert result.hardline_reject is True, title
     assert result.negative_evidence, title
+
+
+def test_plain_us_location_line_is_a_hardline_reject() -> None:
+    result = analyze_location_evidence(
+        location="Remote",
+        source_text="Location: United States",
+    )
+
+    assert result.location_eligibility == "ineligible"
+    assert result.hardline_reject is True
+
+
+def test_specific_us_state_residency_is_a_hardline_reject() -> None:
+    result = analyze_location_evidence(
+        location="Remote",
+        source_text="Candidates must reside in Texas for this remote role.",
+    )
+
+    assert result.location_eligibility == "ineligible"
+    assert result.hardline_reject is True
+    assert any("Texas" in evidence for evidence in result.negative_evidence)
+
+
+def test_explicit_emea_or_spain_hiring_is_positive_geography_evidence() -> None:
+    emea = analyze_location_evidence(
+        location="Remote",
+        source_text="We are hiring this role across EMEA.",
+    )
+    spain = analyze_location_evidence(
+        location="Remote",
+        source_text="This position can be hired in Spain.",
+    )
+
+    assert emea.location_eligibility == "eligible"
+    assert emea.hardline_reject is False
+    assert spain.location_eligibility == "eligible"
+    assert spain.hardline_reject is False
+
+
+def test_generic_global_company_language_is_not_hiring_eligibility() -> None:
+    result = analyze_location_evidence(
+        location="Remote",
+        source_text="We are a global company with an international team and employees across Europe.",
+    )
+
+    assert result.location_eligibility == "conditional"
+    assert result.hardline_reject is False
+    assert result.positive_evidence == ()
 
 
 def test_zone_and_co_country_of_residence_evidence_is_not_us_only() -> None:
@@ -200,3 +249,81 @@ def test_nebius_unmet_material_mandatory_experience_is_hardline_reject() -> None
     assert reviewed.final_decision == "reject"
     assert reviewed.mandatory_requirement_results[0].result == "unmet"
     assert reviewed.mandatory_requirement_results[0].hardline is True
+
+
+def test_import_rejects_ai_pass_when_source_evidence_is_deterministically_us_only(tmp_path) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
+    factory = create_session_factory(database_url)
+    now = datetime.now(UTC)
+    raw_text = (
+        "Technical Support Engineer L2\nLucidLink\nUnited States · Remote\n"
+        "Applicants can be from anywhere in the US."
+    )
+
+    with factory() as session:
+        source = SourceDocument(
+            id="source-us-only",
+            source_type="linkedin",
+            source_url="https://example.com/us-only",
+            raw_text=raw_text,
+            content_hash="a" * 64,
+            captured_at=now,
+        )
+        posting = Posting(
+            id="posting-1",
+            source_document_id=source.id,
+            canonical_url=source.source_url,
+            identity_key="test:us-only",
+            title="Technical Support Engineer L2",
+            company="LucidLink",
+            location="United States · Remote",
+            description=raw_text,
+            identity_status="verified",
+            created_at=now,
+        )
+        capture = CaptureRun(
+            id="capture-1",
+            source="linkedin",
+            mode="supervised_live",
+            status="completed",
+            search_url="https://example.com/search",
+            warnings_json="[]",
+            requested_item_limit=1,
+            observed_item_count=1,
+            stop_reason="completed",
+            started_at=now,
+            completed_at=now,
+        )
+        session.add_all([source, capture])
+        session.flush()
+        session.add(posting)
+        session.flush()
+        session.add(
+            CaptureItem(
+                id="capture-item-1",
+                capture_run_id=capture.id,
+                source_job_id="job-1",
+                source_url=source.source_url,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                detail_status="verified",
+                verification_reasons_json="[]",
+                source_document_id=source.id,
+                posting_id=posting.id,
+            )
+        )
+        session.commit()
+
+        misleading_pass = _base_job()
+        misleading_pass.update(
+            {
+                "technical_fit_percent": 95,
+                "priority_score": 95,
+                "decision_reason": "High technical similarity.",
+            }
+        )
+        request = AIReviewImportRequest.model_validate(_request(misleading_pass))
+
+        with pytest.raises(ValueError, match="deterministic source evidence"):
+            import_ai_review(session, request)
