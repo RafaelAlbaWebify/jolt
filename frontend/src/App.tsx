@@ -23,6 +23,16 @@ type OpportunityIndex = {
   decision: AIReviewDecision | null;
   priority_score: number | null;
 
+  hardline_status: "PASS" | "REJECT" | "MANUAL_REVIEW" | null;
+  hardline_reasons: string[];
+  location_eligibility: string | null;
+  location_evidence: string[];
+  mandatory_requirements: Array<Record<string, unknown>>;
+  mandatory_requirement_results: Array<Record<string, unknown>>;
+  employment_constraints: string[];
+  fit_analysis_allowed: boolean | null;
+  decision_reason: string;
+
   geography_status: string | null;
   clearance_status: string | null;
   language_status: string | null;
@@ -92,6 +102,28 @@ function aiDecisionLabel(opportunity: OpportunityIndex) {
   }
 
   return opportunity.decision.replaceAll("_", " ");
+}
+
+function hardlineStopped(opportunity: OpportunityIndex) {
+  return (
+    opportunity.hardline_status === "REJECT" ||
+    opportunity.hardline_status === "MANUAL_REVIEW" ||
+    opportunity.fit_analysis_allowed === false
+  );
+}
+
+function hardlineLabel(opportunity: OpportunityIndex) {
+  if (opportunity.hardline_status === "REJECT") return "REJECT — HARDLINE";
+  if (opportunity.hardline_status === "MANUAL_REVIEW") return "MANUAL REVIEW — HARDLINE";
+  return "";
+}
+
+function hardlineIcon(opportunity: OpportunityIndex) {
+  return opportunity.hardline_status === "REJECT" ? "🔴" : "🟠";
+}
+
+function hardlineReason(opportunity: OpportunityIndex) {
+  return opportunity.hardline_reasons[0] || opportunity.decision_reason || "Hardline review required.";
 }
 
 function aiPriorityGroup(opportunity: OpportunityIndex) {
@@ -572,22 +604,37 @@ export function App({
                   </div>
                   <div className={`score score-${opportunity.decision ?? "awaiting"}`}>
                     <strong>
-                      {opportunity.priority_score ?? "—"}
+                      {hardlineStopped(opportunity)
+                        ? hardlineIcon(opportunity)
+                        : opportunity.priority_score ?? "—"}
                     </strong>
-                    <span>{aiDecisionLabel(opportunity)}</span>
+                    <span>
+                      {hardlineStopped(opportunity)
+                        ? hardlineLabel(opportunity)
+                        : aiDecisionLabel(opportunity)}
+                    </span>
                   </div>
                   <div className="opportunity-state">
                     <strong>
-                      {opportunity.ai_review_status === "reviewed"
-                        ? "AI reviewed"
-                        : "Awaiting AI review"}
+                      {opportunity.ai_review_status !== "reviewed"
+                        ? "Awaiting AI review"
+                        : hardlineStopped(opportunity)
+                          ? hardlineLabel(opportunity)
+                          : "AI reviewed"}
                     </strong>
                     <span>
-                      {opportunity.ai_review_status === "reviewed"
-                        ? `Technical fit ${opportunity.technical_fit ?? "—"}`
-                        : "Export capture → AI analysis → import review"}
+                      {opportunity.ai_review_status !== "reviewed"
+                        ? "Export capture → AI analysis → import review"
+                        : hardlineStopped(opportunity)
+                          ? "Technical similarity: not evaluated because a hardline failed."
+                          : `Technical fit ${opportunity.technical_fit ?? "—"}`}
                     </span>
                   </div>
+                  {hardlineStopped(opportunity) && (
+                    <p className="hardline-reason">
+                      <strong>Reason:</strong> {hardlineReason(opportunity)}
+                    </p>
+                  )}
                   <label className="decision-control">
                     <span>Decision</span>
                     <select
@@ -689,10 +736,14 @@ export function App({
                 }`}
               >
                 <strong>
-                  {selectedOpportunity.priority_score ?? "—"}
+                  {hardlineStopped(selectedOpportunity)
+                    ? hardlineIcon(selectedOpportunity)
+                    : selectedOpportunity.priority_score ?? "—"}
                 </strong>
                 <span>
-                  {aiDecisionLabel(selectedOpportunity)}
+                  {hardlineStopped(selectedOpportunity)
+                    ? hardlineLabel(selectedOpportunity)
+                    : aiDecisionLabel(selectedOpportunity)}
                 </span>
               </div>
 
@@ -773,7 +824,9 @@ export function App({
                       External AI decision
                     </span>
                     <strong>
-                      {aiDecisionLabel(selectedOpportunity)}
+                      {hardlineStopped(selectedOpportunity)
+                        ? hardlineLabel(selectedOpportunity)
+                        : aiDecisionLabel(selectedOpportunity)}
                     </strong>
                   </div>
                   <span>
@@ -781,23 +834,35 @@ export function App({
                   </span>
                 </div>
 
+                {hardlineStopped(selectedOpportunity) && (
+                  <div className="review-evidence-group">
+                    <strong>{hardlineLabel(selectedOpportunity)}</strong>
+                    <p>Reason: {hardlineReason(selectedOpportunity)}</p>
+                    <p>Technical similarity: not evaluated because a hardline failed.</p>
+                  </div>
+                )}
+
                 {selectedOpportunity.summary && (
                   <p>{selectedOpportunity.summary}</p>
                 )}
 
                 <div className="dimension-grid">
-                  <div>
-                    <span>AI priority</span>
-                    <strong>
-                      {selectedOpportunity.priority_score ?? "—"}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Technical fit</span>
-                    <strong>
-                      {selectedOpportunity.technical_fit ?? "—"}
-                    </strong>
-                  </div>
+                  {!hardlineStopped(selectedOpportunity) && (
+                    <div>
+                      <span>AI priority</span>
+                      <strong>
+                        {selectedOpportunity.priority_score ?? "—"}
+                      </strong>
+                    </div>
+                  )}
+                  {!hardlineStopped(selectedOpportunity) && (
+                    <div>
+                      <span>Technical fit</span>
+                      <strong>
+                        {selectedOpportunity.technical_fit ?? "—"}
+                      </strong>
+                    </div>
+                  )}
                   <div>
                     <span>Geography</span>
                     <strong>
