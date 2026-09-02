@@ -127,7 +127,9 @@ def import_market_preparation(
     )
     with _WRITE_LOCK:
         payload = _read_payload()
-        records = [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
+        records = [
+            MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]
+        ]
         records.append(record)
         _write_records(
             records,
