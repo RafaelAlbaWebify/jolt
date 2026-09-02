@@ -9,7 +9,9 @@ from jolt.global_context import GlobalAIContextOverlay
 from jolt.market_intelligence_view import build_market_intelligence_view
 
 
-def _observation(*, suffix: str, captured_at: datetime, identity_key: str) -> MarketIntelligenceObservation:
+def _observation(
+    *, suffix: str, captured_at: datetime, identity_key: str
+) -> MarketIntelligenceObservation:
     return MarketIntelligenceObservation(
         id=f"observation-{suffix}",
         source_capture_run_id=f"capture-{suffix}",
@@ -113,7 +115,9 @@ def test_market_view_uses_ai_context_and_marks_newer_capture_stale(tmp_path, mon
     assert view.recommendations[0].entity_id == "recommendation"
 
 
-def test_market_view_is_current_when_ai_analysis_is_newer_than_capture(tmp_path, monkeypatch) -> None:
+def test_market_view_is_current_when_ai_analysis_is_newer_than_capture(
+    tmp_path, monkeypatch
+) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     now = datetime.now(UTC)
     session.add(
