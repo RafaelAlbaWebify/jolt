@@ -204,20 +204,37 @@ def _stage_manual_reasoning_batch(
         return
     captured_at = source.captured_at
     run = CaptureRun(
-        id=str(uuid4()), source="manual", mode="manual_intake", status="completed",
-        search_url=request.source_url, warnings_json="[]", requested_item_limit=1,
-        observed_item_count=1, stop_reason="manual_intake_completed",
-        started_at=captured_at, completed_at=captured_at,
+        id=str(uuid4()),
+        source="manual",
+        mode="manual_intake",
+        status="completed",
+        search_url=request.source_url,
+        warnings_json="[]",
+        requested_item_limit=1,
+        observed_item_count=1,
+        stop_reason="manual_intake_completed",
+        started_at=captured_at,
+        completed_at=captured_at,
     )
     session.add(run)
     session.flush()
-    session.add(CaptureItem(
-        id=str(uuid4()), capture_run_id=run.id, source_job_id=f"manual:{posting.id}",
-        source_url=request.source_url, title=posting.title, company=posting.company,
-        location=posting.location, detail_status="verified",
-        verification_reasons_json=json.dumps(["User-provided manual evidence accepted for AI review."]),
-        source_document_id=source.id, posting_id=posting.id,
-    ))
+    session.add(
+        CaptureItem(
+            id=str(uuid4()),
+            capture_run_id=run.id,
+            source_job_id=f"manual:{posting.id}",
+            source_url=request.source_url,
+            title=posting.title,
+            company=posting.company,
+            location=posting.location,
+            detail_status="verified",
+            verification_reasons_json=json.dumps(
+                ["User-provided manual evidence accepted for AI review."]
+            ),
+            source_document_id=source.id,
+            posting_id=posting.id,
+        )
+    )
 
 
 def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeResponse:

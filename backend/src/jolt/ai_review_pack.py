@@ -39,12 +39,33 @@ def _iso(value: datetime | None) -> str | None:
 
 
 def _next_pending_capture(session: Session) -> CaptureRun:
-    captures = list(session.scalars(select(CaptureRun).where(CaptureRun.status != "archived").order_by(CaptureRun.started_at.asc(), CaptureRun.id.asc())).all())
+    captures = list(
+        session.scalars(
+            select(CaptureRun)
+            .where(CaptureRun.status.in_(("completed", "completed_with_warnings")))
+            .order_by(CaptureRun.started_at.asc(), CaptureRun.id.asc())
+        ).all()
+    )
     for capture in captures:
-        verified_posting_ids = set(session.scalars(select(CaptureItem.posting_id).where(CaptureItem.capture_run_id == capture.id, CaptureItem.detail_status == "verified", CaptureItem.posting_id.is_not(None))).all())
+        verified_posting_ids = set(
+            session.scalars(
+                select(CaptureItem.posting_id).where(
+                    CaptureItem.capture_run_id == capture.id,
+                    CaptureItem.detail_status == "verified",
+                    CaptureItem.posting_id.is_not(None),
+                )
+            ).all()
+        )
         if not verified_posting_ids:
             continue
-        reviewed_posting_ids = set(session.scalars(select(AIReview.posting_id).where(AIReview.capture_run_id == capture.id, AIReview.review_source == "chatgpt_source_first")).all())
+        reviewed_posting_ids = set(
+            session.scalars(
+                select(AIReview.posting_id).where(
+                    AIReview.capture_run_id == capture.id,
+                    AIReview.review_source == "chatgpt_source_first",
+                )
+            ).all()
+        )
         if verified_posting_ids - reviewed_posting_ids:
             return capture
     raise JoltNotFoundError("No capture run has verified jobs awaiting AI review.")
@@ -90,8 +111,21 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             .order_by(CaptureItem.id)
         ).all()
     )
-    reviewed_posting_ids = set(session.scalars(select(AIReview.posting_id).where(AIReview.capture_run_id == capture.id, AIReview.review_source == "chatgpt_source_first")).all())
-    items = [item for item in all_items if item.detail_status == "verified" and item.posting_id is not None and item.posting_id not in reviewed_posting_ids]
+    reviewed_posting_ids = set(
+        session.scalars(
+            select(AIReview.posting_id).where(
+                AIReview.capture_run_id == capture.id,
+                AIReview.review_source == "chatgpt_source_first",
+            )
+        ).all()
+    )
+    items = [
+        item
+        for item in all_items
+        if item.detail_status == "verified"
+        and item.posting_id is not None
+        and item.posting_id not in reviewed_posting_ids
+    ]
 
     posting_ids = {item.posting_id for item in items if item.posting_id is not None}
     postings = (

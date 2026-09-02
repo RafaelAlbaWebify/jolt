@@ -11,18 +11,24 @@ from jolt.workflow import ingest_manual
 
 
 def test_manual_intake_enters_existing_ai_review_contract(tmp_path) -> None:
-    database_url=f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
-    factory=create_session_factory(database_url)
+    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
+    factory = create_session_factory(database_url)
     with factory() as session:
-        intake=ingest_manual(session, ManualIntakeRequest(source_url="https://example.com/jobs/42", raw_text="Application Support Engineer\nExample Systems\nLocation: Remote\nTroubleshoot SQL, logs and APIs."))
-        run=session.scalar(select(CaptureRun).where(CaptureRun.source == "manual"))
+        intake = ingest_manual(
+            session,
+            ManualIntakeRequest(
+                source_url="https://example.com/jobs/42",
+                raw_text="Application Support Engineer\nExample Systems\nLocation: Remote\nTroubleshoot SQL, logs and APIs.",
+            ),
+        )
+        run = session.scalar(select(CaptureRun).where(CaptureRun.source == "manual"))
         assert run is not None
         assert run.mode == "manual_intake"
-        item=session.scalar(select(CaptureItem).where(CaptureItem.capture_run_id == run.id))
+        item = session.scalar(select(CaptureItem).where(CaptureItem.capture_run_id == run.id))
         assert item is not None
         assert item.detail_status == "verified"
         assert item.posting_id == intake.posting_id
-        review_input=json.loads(build_ai_review_json(session))
+        review_input = json.loads(build_ai_review_json(session))
         assert review_input["capture_run_id"] == run.id
         assert review_input["capture"]["source"] == "manual"
         assert review_input["capture"]["mode"] == "manual_intake"
@@ -32,15 +38,22 @@ def test_manual_intake_enters_existing_ai_review_contract(tmp_path) -> None:
 
 
 def test_duplicate_manual_intake_does_not_create_duplicate_reasoning_batch(tmp_path) -> None:
-    database_url=f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
-    factory=create_session_factory(database_url)
-    payload=ManualIntakeRequest(source_url="https://example.com/jobs/duplicate", raw_text="Support Engineer\nExample Systems\nLocation: Remote\nSupport APIs.")
+    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
+    factory = create_session_factory(database_url)
+    payload = ManualIntakeRequest(
+        source_url="https://example.com/jobs/duplicate",
+        raw_text="Support Engineer\nExample Systems\nLocation: Remote\nSupport APIs.",
+    )
     with factory() as session:
-        first=ingest_manual(session,payload)
-        second=ingest_manual(session,payload)
+        first = ingest_manual(session, payload)
+        second = ingest_manual(session, payload)
         assert first.identity_status == "new"
         assert second.identity_status == "confirmed_duplicate"
-        runs=list(session.scalars(select(CaptureRun).where(CaptureRun.source == "manual")).all())
+        runs = list(session.scalars(select(CaptureRun).where(CaptureRun.source == "manual")).all())
         assert len(runs) == 1
-        items=list(session.scalars(select(CaptureItem).where(CaptureItem.capture_run_id == runs[0].id)).all())
+        items = list(
+            session.scalars(
+                select(CaptureItem).where(CaptureItem.capture_run_id == runs[0].id)
+            ).all()
+        )
         assert len(items) == 1
