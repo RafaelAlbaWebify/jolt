@@ -33,6 +33,16 @@ class AIReviewOpportunityIndexItem(BaseModel):
     decision: str | None = None
     priority_score: int | None = None
 
+    hardline_status: str | None = None
+    hardline_reasons: list[str] = Field(default_factory=list)
+    location_eligibility: str | None = None
+    location_evidence: list[str] = Field(default_factory=list)
+    mandatory_requirements: list[dict[str, object]] = Field(default_factory=list)
+    mandatory_requirement_results: list[dict[str, object]] = Field(default_factory=list)
+    employment_constraints: list[str] = Field(default_factory=list)
+    fit_analysis_allowed: bool | None = None
+    decision_reason: str = ""
+
     geography_status: str | None = None
     clearance_status: str | None = None
     language_status: str | None = None
@@ -135,6 +145,22 @@ def _latest_ai_reviews(
     return latest
 
 
+def _json_list(value: str) -> list[object]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _string_list(value: str) -> list[str]:
+    return [str(item) for item in _json_list(value)]
+
+
+def _object_list(value: str) -> list[dict[str, object]]:
+    return [item for item in _json_list(value) if isinstance(item, dict)]
+
+
 def _sort_key(
     item: AIReviewOpportunityIndexItem,
 ) -> tuple[int, int, str]:
@@ -235,14 +261,6 @@ def list_ai_review_opportunity_index(
             )
             continue
 
-        try:
-            reasons = json.loads(ai_review.reasons_json)
-        except json.JSONDecodeError:
-            reasons = []
-
-        if not isinstance(reasons, list):
-            reasons = []
-
         results.append(
             AIReviewOpportunityIndexItem(
                 posting_id=posting.id,
@@ -257,13 +275,24 @@ def list_ai_review_opportunity_index(
                 ai_review_status="reviewed",
                 decision=ai_review.decision,
                 priority_score=ai_review.priority_score,
+                hardline_status=ai_review.hardline_status,
+                hardline_reasons=_string_list(ai_review.hardline_reasons_json),
+                location_eligibility=ai_review.location_eligibility,
+                location_evidence=_string_list(ai_review.location_evidence_json),
+                mandatory_requirements=_object_list(ai_review.mandatory_requirements_json),
+                mandatory_requirement_results=_object_list(
+                    ai_review.mandatory_requirement_results_json
+                ),
+                employment_constraints=_string_list(ai_review.employment_constraints_json),
+                fit_analysis_allowed=ai_review.fit_analysis_allowed,
+                decision_reason=ai_review.decision_reason,
                 geography_status=ai_review.geography_status,
                 clearance_status=ai_review.clearance_status,
                 language_status=ai_review.language_status,
                 technical_fit=ai_review.technical_fit,
-                duplicate_of_posting_id=(ai_review.duplicate_of_posting_id),
+                duplicate_of_posting_id=ai_review.duplicate_of_posting_id,
                 summary=ai_review.summary,
-                reasons=[str(reason) for reason in reasons],
+                reasons=_string_list(ai_review.reasons_json),
                 reviewed_at=ai_review.reviewed_at.isoformat(),
                 imported_at=ai_review.imported_at.isoformat(),
             )
