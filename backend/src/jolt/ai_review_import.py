@@ -16,9 +16,11 @@ from jolt.database import (
     CaptureRun,
     Posting,
     ReviewDecision,
+    SourceDocument,
     utc_now,
 )
 from jolt.errors import JoltNotFoundError
+from jolt.hardline_evidence import analyze_location_evidence
 
 AIReviewDecision = Literal[
     "strong_pursue",
@@ -230,8 +232,31 @@ def _validate_capture_membership(
                 f"AI review source_job_id does not match capture evidence for {job.posting_id}"
             )
 
-        if session.get(Posting, job.posting_id) is None:
+        posting = session.get(Posting, job.posting_id)
+        if posting is None:
             raise ValueError(f"AI review references unknown posting: {job.posting_id}")
+
+        if request.contract_version == "1.1":
+            source_document = session.get(SourceDocument, posting.source_document_id)
+            source_text = (
+                source_document.raw_text if source_document is not None else posting.description
+            )
+            deterministic_location = analyze_location_evidence(
+                location=posting.location,
+                source_text=source_text,
+            )
+            if deterministic_location.hardline_reject and (
+                job.hardline_status != "REJECT"
+                or job.location_eligibility != "ineligible"
+                or job.final_decision != "reject"
+                or job.fit_analysis_allowed
+                or job.technical_fit_percent is not None
+            ):
+                evidence = "; ".join(deterministic_location.negative_evidence)
+                raise ValueError(
+                    "AI review conflicts with deterministic source evidence for "
+                    f"{job.posting_id}: {evidence}"
+                )
 
         if job.duplicate_of_posting_id is not None:
             if job.duplicate_of_posting_id == job.posting_id:
