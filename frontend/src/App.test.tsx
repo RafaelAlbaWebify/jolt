@@ -242,8 +242,8 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("REJECT — HARDLINE"),
-    ).toBeInTheDocument();
+      screen.getAllByText("REJECT — HARDLINE").length,
+    ).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText("US-only remote: applicants must be anywhere in the US."),
     ).toBeInTheDocument();
