@@ -1,0 +1,94 @@
+name: Temporary reasoning queue patch
+
+on:
+  push:
+    branches:
+      - feature/reasoning-queue-hardening-20260902
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/reasoning-queue-hardening-20260902
+      - name: Patch verified pending review queue
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/src/jolt/ai_review_pack.py')
+          text = path.read_text(encoding='utf-8')
+
+          old = 'from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument\n'
+          new = 'from jolt.database import AIReview, CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument\n'
+          if old not in text:
+              raise SystemExit('database import anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''def _latest_capture(session: Session) -> CaptureRun:\n    capture = session.scalar(\n        select(CaptureRun)\n        .order_by(\n            CaptureRun.started_at.desc(),\n            CaptureRun.id.desc(),\n        )\n        .limit(1)\n    )\n    if capture is None:\n        raise JoltNotFoundError("No capture run exists to export for AI review.")\n    return capture\n'''
+          new = '''def _next_pending_capture(session: Session) -> CaptureRun:\n    captures = list(\n        session.scalars(\n            select(CaptureRun)\n            .where(CaptureRun.status != "archived")\n            .order_by(\n                CaptureRun.started_at.asc(),\n                CaptureRun.id.asc(),\n            )\n        ).all()\n    )\n\n    for capture in captures:\n        verified_posting_ids = set(\n            session.scalars(\n                select(CaptureItem.posting_id).where(\n                    CaptureItem.capture_run_id == capture.id,\n                    CaptureItem.detail_status == "verified",\n                    CaptureItem.posting_id.is_not(None),\n                )\n            ).all()\n        )\n        if not verified_posting_ids:\n            continue\n\n        reviewed_posting_ids = set(\n            session.scalars(\n                select(AIReview.posting_id).where(\n                    AIReview.capture_run_id == capture.id,\n                    AIReview.review_source == "chatgpt_source_first",\n                )\n            ).all()\n        )\n        if verified_posting_ids - reviewed_posting_ids:\n            return capture\n\n    raise JoltNotFoundError("No capture run has verified jobs awaiting AI review.")\n'''
+          if old not in text:
+              raise SystemExit('latest capture function anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''    capture = _latest_capture(session)\n\n    pages = list(\n'''
+          new = '''    capture = _next_pending_capture(session)\n\n    pages = list(\n'''
+          if old not in text:
+              raise SystemExit('capture selection call anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''    items = list(\n        session.scalars(\n            select(CaptureItem)\n            .where(CaptureItem.capture_run_id == capture.id)\n            .order_by(CaptureItem.id)\n        ).all()\n    )\n\n    posting_ids = {item.posting_id for item in items if item.posting_id is not None}\n'''
+          new = '''    all_items = list(\n        session.scalars(\n            select(CaptureItem)\n            .where(CaptureItem.capture_run_id == capture.id)\n            .order_by(CaptureItem.id)\n        ).all()\n    )\n    reviewed_posting_ids = set(\n        session.scalars(\n            select(AIReview.posting_id).where(\n                AIReview.capture_run_id == capture.id,\n                AIReview.review_source == "chatgpt_source_first",\n            )\n        ).all()\n    )\n    items = [\n        item\n        for item in all_items\n        if item.detail_status == "verified"\n        and item.posting_id is not None\n        and item.posting_id not in reviewed_posting_ids\n    ]\n\n    posting_ids = {item.posting_id for item in items if item.posting_id is not None}\n'''
+          if old not in text:
+              raise SystemExit('capture items block anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''        "item_count": len(items),\n        "verified_item_count": sum(item.detail_status == "verified" for item in items),\n    }\n'''
+          new = '''        "item_count": len(all_items),\n        "verified_item_count": sum(item.detail_status == "verified" for item in all_items),\n        "pending_review_item_count": len(items),\n    }\n'''
+          if old not in text:
+              raise SystemExit('capture count block anchor not found')
+          text = text.replace(old, new, 1)
+
+          old = '''        "verified_items": sum(item.detail_status == "verified" for item in items),\n    }\n'''
+          new = '''        "verified_items": len(items),\n    }\n'''
+          if old not in text:
+              raise SystemExit('top-level verified count anchor not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+          test_path = Path('backend/tests/test_ai_review_pack.py')
+          tests = test_path.read_text(encoding='utf-8')
+          tests = tests.replace(
+              'from datetime import UTC, datetime\n',
+              'from datetime import UTC, datetime, timedelta\n',
+              1,
+          )
+          tests = tests.replace(
+              '    CaptureItem,\n',
+              '    AIReview,\n    CaptureItem,\n',
+              1,
+          )
+
+          addition = r'''\n\ndef _seed_additional_capture(\n    session,\n    *,\n    suffix: str,\n    started_at: datetime,\n    detail_status: str = "verified",\n):\n    source = SourceDocument(\n        id=f"source-{suffix}",\n        source_type="linkedin",\n        source_url=f"https://www.linkedin.com/jobs/view/{suffix}/",\n        raw_text=f"Support Engineer {suffix}\\nExample Co\\nTroubleshoot Windows and APIs.",\n        content_hash=(suffix[0] if suffix else "b") * 64,\n        captured_at=started_at,\n    )\n    posting = Posting(\n        id=f"posting-{suffix}",\n        source_document_id=source.id,\n        canonical_url=source.source_url,\n        identity_key=f"linkedin:{suffix}",\n        title=f"Support Engineer {suffix}",\n        company="Example Co",\n        location="Remote",\n        description=source.raw_text,\n        identity_status="verified",\n        created_at=started_at,\n    )\n    capture = CaptureRun(\n        id=f"capture-{suffix}",\n        source="linkedin",\n        mode="supervised_live",\n        status="completed",\n        search_url="https://www.linkedin.com/jobs/search/",\n        warnings_json="[]",\n        requested_item_limit=1,\n        observed_item_count=1,\n        stop_reason="submitted_batch_completed",\n        started_at=started_at,\n        completed_at=started_at,\n    )\n    item = CaptureItem(\n        id=f"item-{suffix}",\n        capture_run_id=capture.id,\n        source_job_id=suffix,\n        source_url=source.source_url,\n        title=posting.title,\n        company=posting.company,\n        location=posting.location,\n        detail_status=detail_status,\n        verification_reasons_json="[]",\n        source_document_id=source.id if detail_status == "verified" else None,\n        posting_id=posting.id if detail_status == "verified" else None,\n    )\n    session.add_all([source, capture])\n    session.flush()\n    session.add(posting)\n    session.flush()\n    session.add(item)\n    session.commit()\n    return capture, posting\n\n\ndef test_ai_review_export_excludes_rejected_unverified_items(tmp_path) -> None:\n    session, capture, posting, raw_text = _seed_ai_review_capture(tmp_path)\n    try:\n        rejected = CaptureItem(\n            id="item-rejected",\n            capture_run_id=capture.id,\n            source_job_id="bad-source",\n            source_url="https://www.linkedin.com/jobs/view/bad-source/",\n            title="Broken",\n            company="",\n            location="",\n            detail_status="rejected_unverified",\n            verification_reasons_json='["missing company"]',\n            source_document_id=None,\n            posting_id=None,\n        )\n        session.add(rejected)\n        capture.observed_item_count = 2\n        session.commit()\n\n        document = json.loads(build_ai_review_json(session))\n\n        assert document["capture_run_id"] == capture.id\n        assert document["counts"]["capture_items"] == 1\n        assert document["counts"]["verified_items"] == 1\n        assert document["capture"]["item_count"] == 2\n        assert document["capture"]["verified_item_count"] == 1\n        assert document["capture"]["pending_review_item_count"] == 1\n        assert [job["source_job_id"] for job in document["jobs"]] == ["123"]\n    finally:\n        session.close()\n\n\ndef test_ai_review_export_advances_oldest_pending_capture(tmp_path) -> None:\n    session, first_capture, first_posting, _ = _seed_ai_review_capture(tmp_path)\n    try:\n        second_capture, _ = _seed_additional_capture(\n            session,\n            suffix="newer",\n            started_at=first_capture.started_at + timedelta(minutes=1),\n        )\n\n        first_document = json.loads(build_ai_review_json(session))\n        assert first_document["capture_run_id"] == first_capture.id\n\n        session.add(\n            AIReview(\n                id="ai-reviewed-first",\n                capture_run_id=first_capture.id,\n                posting_id=first_posting.id,\n                source_job_id="123",\n                review_source="chatgpt_source_first",\n                review_version="test",\n                contract_version="1.0",\n                decision="pursue",\n                priority_score=80,\n                geography_status="eligible",\n                clearance_status="clear",\n                language_status="clear",\n                technical_fit=80,\n                duplicate_of_posting_id=None,\n                summary="",\n                reasons_json="[]",\n                reviewed_at=first_capture.started_at,\n                imported_at=first_capture.started_at,\n            )\n        )\n        session.commit()\n\n        second_document = json.loads(build_ai_review_json(session))\n        assert second_document["capture_run_id"] == second_capture.id\n        assert [job["source_job_id"] for job in second_document["jobs"]] == ["newer"]\n    finally:\n        session.close()\n'''
+          if 'test_ai_review_export_excludes_rejected_unverified_items' not in tests:
+              tests += addition
+          test_path.write_text(tests, encoding='utf-8')
+          PY
+      - name: Run focused tests
+        run: |
+          cd backend
+          python -m pip install -e . >/dev/null
+          pytest -q tests/test_ai_review_pack.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/jolt/ai_review_pack.py backend/tests/test_ai_review_pack.py
+          git commit -m "Harden pending AI review capture selection"
+          git push origin HEAD:feature/reasoning-queue-hardening-20260902
