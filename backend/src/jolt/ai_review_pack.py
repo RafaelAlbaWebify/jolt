@@ -265,7 +265,8 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         "pages": page_payload,
         "jobs": jobs_payload,
         "response_template": response_template,
-        "verified_items": len(items),
+        "capture_items": len(all_items),
+        "verified_items": sum(item.detail_status == "verified" for item in all_items),
     }
 
 
@@ -288,7 +289,7 @@ def build_ai_review_json(session: Session) -> bytes:
         "jolt_scores_included": False,
         "counts": {
             "capture_pages": len(pages),
-            "capture_items": len(jobs),
+            "capture_items": payloads["capture_items"],
             "verified_items": payloads["verified_items"],
         },
         "capture": payloads["capture"],
@@ -334,7 +335,7 @@ def build_ai_review_pack(session: Session) -> bytes:
         "jolt_scores_included": False,
         "counts": {
             "capture_pages": len(pages),
-            "capture_items": len(jobs),
+            "capture_items": payloads["capture_items"],
             "verified_items": payloads["verified_items"],
         },
         "files": {

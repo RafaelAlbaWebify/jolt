@@ -195,7 +195,7 @@ def test_ai_review_export_excludes_rejected_unverified_items(tmp_path) -> None:
         capture.observed_item_count = 2
         session.commit()
         document = json.loads(build_ai_review_json(session))
-        assert document["counts"]["capture_items"] == 1
+        assert document["counts"]["capture_items"] == 2
         assert document["counts"]["verified_items"] == 1
         assert document["capture"]["item_count"] == 2
         assert document["capture"]["verified_item_count"] == 1
