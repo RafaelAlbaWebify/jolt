@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
 from typing import Any
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from jolt.ai_exchange_contract import AIExchangeFeedbackItem, AIExchangeOutput
 
 _FEEDBACK_FILE = "ai_exchange_feedback.json"
 _MAX_RECORDS = 100
+_WRITE_LOCK = Lock()
 
 
 class AIExchangeFeedbackRecord(BaseModel):
@@ -60,7 +62,6 @@ def _write_index(index: AIExchangeFeedbackIndex) -> None:
 
 
 def save_ai_exchange_feedback(output: AIExchangeOutput) -> AIExchangeFeedbackRecord:
-    index = _read_index()
     record = AIExchangeFeedbackRecord(
         id=str(uuid4()),
         exchange_id=output.exchange_id,
@@ -71,13 +72,15 @@ def save_ai_exchange_feedback(output: AIExchangeOutput) -> AIExchangeFeedbackRec
         feedback=output.feedback,
         summary=output.summary,
     )
-    records = [*index.records, record][-_MAX_RECORDS:]
-    _write_index(
-        AIExchangeFeedbackIndex(
-            total_import_count=index.total_import_count + 1,
-            records=records,
+    with _WRITE_LOCK:
+        index = _read_index()
+        records = [*index.records, record][-_MAX_RECORDS:]
+        _write_index(
+            AIExchangeFeedbackIndex(
+                total_import_count=index.total_import_count + 1,
+                records=records,
+            )
         )
-    )
     return record
 
 

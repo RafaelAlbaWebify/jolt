@@ -11,6 +11,7 @@ from jolt.market_intelligence_exchange import (
     build_market_intelligence_exchange,
     import_market_intelligence_exchange,
 )
+from jolt.market_intelligence_view import MarketIntelligenceView, build_market_intelligence_view
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -18,6 +19,12 @@ SessionProvider = Callable[[], Iterator[Session]]
 def build_market_intelligence_exchange_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(prefix="/api/ai-market", tags=["market-intelligence", "ai-exchange"])
     session_dependency = Depends(get_session)
+
+    @router.get("/view", response_model=MarketIntelligenceView)
+    def market_intelligence_view(
+        session: Session = session_dependency,
+    ) -> MarketIntelligenceView:
+        return build_market_intelligence_view(session)
 
     @router.get("/export", response_model=AIExchangeInput)
     def export_market_intelligence(

@@ -4,9 +4,12 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Lock
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+_WRITE_LOCK = Lock()
 
 
 class MarketPreparationAction(BaseModel):
@@ -62,20 +65,16 @@ def _read_payload() -> dict[str, Any]:
     path = _data_path()
     if not path.exists():
         return {"total_import_count": 0, "imports": []}
-
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {"total_import_count": 0, "imports": []}
     imports = payload.get("imports", [])
     total_import_count = payload.get("total_import_count", len(imports))
-
     return {
         "total_import_count": max(int(total_import_count), len(imports)),
         "imports": imports,
     }
-
-
-def _read_records() -> list[MarketPreparationImportRecord]:
-    payload = _read_payload()
-    return [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
 
 
 def _write_records(
@@ -88,10 +87,16 @@ def _write_records(
         "total_import_count": total_import_count,
         "imports": [record.model_dump(mode="json") for record in records[-25:]],
     }
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
-        encoding="utf-8",
-    )
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        temporary_path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True),
+            encoding="utf-8",
+        )
+        temporary_path.replace(path)
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
 
 
 def _actions_from_request(request: MarketPreparationImportRequest) -> list[MarketPreparationAction]:
@@ -110,8 +115,6 @@ def _actions_from_request(request: MarketPreparationImportRequest) -> list[Marke
 def import_market_preparation(
     request: MarketPreparationImportRequest,
 ) -> MarketPreparationImportResponse:
-    payload = _read_payload()
-    records = [MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]]
     actions = _actions_from_request(request)
     record = MarketPreparationImportRecord(
         id=str(uuid.uuid4()),
@@ -122,11 +125,16 @@ def import_market_preparation(
         actions=actions,
         raw_payload=request.raw_payload,
     )
-    records.append(record)
-    _write_records(
-        records,
-        total_import_count=payload["total_import_count"] + 1,
-    )
+    with _WRITE_LOCK:
+        payload = _read_payload()
+        records = [
+            MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]
+        ]
+        records.append(record)
+        _write_records(
+            records,
+            total_import_count=payload["total_import_count"] + 1,
+        )
     return MarketPreparationImportResponse(
         imported_count=len(actions),
         latest_import=record,
