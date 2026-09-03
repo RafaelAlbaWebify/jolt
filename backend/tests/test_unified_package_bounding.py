@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeScope
 from jolt import skills_preparation_exchange
+from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeScope
 from jolt.skills_preparation_exchange import build_skills_preparation_exchange
 from jolt.unified_ai_work_package import (
     _compact_exchange_for_unified,
