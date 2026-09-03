@@ -135,9 +135,7 @@ def _compact_review_inbox_payload(payload: dict[str, Any]) -> dict[str, Any]:
         audit = job.get("audit")
         if isinstance(audit, dict):
             raw_hash = audit.get("source_raw_text_sha256")
-            job["audit"] = (
-                {"source_raw_text_sha256": raw_hash} if isinstance(raw_hash, str) else {}
-            )
+            job["audit"] = {"source_raw_text_sha256": raw_hash} if isinstance(raw_hash, str) else {}
         compact_jobs.append(job)
         compacted_count += 1
 
@@ -182,7 +180,10 @@ def _compact_exchange_for_unified(exchange: AIExchangeInput) -> AIExchangeInput:
             retained: list[Any] = []
             omitted_profile = 0
             for capture in captures:
-                if isinstance(capture, dict) and str(capture.get("category", "")) in _PROFILE_CATEGORIES:
+                if (
+                    isinstance(capture, dict)
+                    and str(capture.get("category", "")) in _PROFILE_CATEGORIES
+                ):
                     omitted_profile += 1
                     continue
                 retained.append(capture)
