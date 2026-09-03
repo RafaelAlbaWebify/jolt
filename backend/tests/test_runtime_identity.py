@@ -21,7 +21,7 @@ def test_runtime_identity_exposes_local_truth_without_mutating_evidence_root(tmp
     assert payload["loaded_git"]["repository_root"]
     assert payload["loaded_git"]["commit_sha"]
     assert payload["database"]["database_path"] == database_path.as_posix()
-    assert payload["database"]["alembic_revision"] == "20260827_0021"
+    assert payload["database"]["alembic_revision"] == "20260902_0022"
     assert payload["database"]["record_counts"]["postings"] == 0
     assert payload["database"]["record_counts"]["applications"] == 0
     assert payload["database"]["record_counts"]["professional_capture_runs"] == 0
