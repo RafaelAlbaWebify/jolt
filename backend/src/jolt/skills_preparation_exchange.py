@@ -7,7 +7,7 @@ from typing import Any, Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput, AIExchangeScope
@@ -35,6 +35,7 @@ _ACTION_TYPES = {
     "proof_of_work",
     "interview_prep",
 }
+_MAX_VACANCIES = 300
 
 
 class SkillsPreparationExchangeImportResponse(BaseModel):
@@ -43,9 +44,12 @@ class SkillsPreparationExchangeImportResponse(BaseModel):
     preparation: MarketPreparationImportResponse
 
 
-def _vacancy_evidence(session: Session) -> list[dict[str, Any]]:
+def _vacancy_evidence(session: Session) -> tuple[list[dict[str, Any]], int]:
+    total = int(session.scalar(select(func.count(Posting.id))) or 0)
     postings = session.scalars(
-        select(Posting).order_by(Posting.created_at.desc(), Posting.id)
+        select(Posting)
+        .order_by(Posting.created_at.desc(), Posting.id)
+        .limit(_MAX_VACANCIES)
     ).all()
     evidence: list[dict[str, Any]] = []
     for posting in postings:
@@ -62,7 +66,7 @@ def _vacancy_evidence(session: Session) -> list[dict[str, Any]]:
                 "evidence_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
             }
         )
-    return evidence
+    return evidence, total
 
 
 def _profile_evidence(session: Session) -> list[dict[str, Any]]:
@@ -89,8 +93,9 @@ def _profile_evidence(session: Session) -> list[dict[str, Any]]:
 
 def build_skills_preparation_exchange(session: Session) -> AIExchangeInput:
     context = build_global_context_snapshot()
-    vacancies = _vacancy_evidence(session)
+    vacancies, available_vacancies = _vacancy_evidence(session)
     profile = _profile_evidence(session)
+    omitted_vacancies = max(0, available_vacancies - len(vacancies))
     return AIExchangeInput(
         generated_at=datetime.now(UTC),
         exchange_id=str(uuid4()),
@@ -107,6 +112,19 @@ def build_skills_preparation_exchange(session: Session) -> AIExchangeInput:
             "counts": {
                 "vacancies": len(vacancies),
                 "profile_captures": len(profile),
+                "available_vacancies": available_vacancies,
+                "omitted_vacancies": omitted_vacancies,
+            },
+            "corpus_policy": {
+                "max_recent_vacancies": _MAX_VACANCIES,
+                "available_vacancies": available_vacancies,
+                "exported_vacancies": len(vacancies),
+                "omitted_vacancies": omitted_vacancies,
+                "ordering": "newest_postings_first",
+                "omission_meaning": (
+                    "Older historical postings beyond the deterministic cap are omitted from this "
+                    "supporting skills corpus only. Current Review Inbox vacancies are not affected."
+                ),
             },
             "authority_notes": {
                 "vacancies": "Raw captured vacancy evidence is authoritative for stated requirements.",
