@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from jolt.ai_review_import import (
     AIReviewImportRequest,
+    AIReviewJob,
     import_ai_review,
 )
 from jolt.database import (
@@ -180,6 +181,92 @@ def _request(capture_id: str) -> AIReviewImportRequest:
             },
         ],
     )
+
+
+def _positive_job(**overrides) -> dict:
+    payload = {
+        "posting_id": "posting-positive",
+        "source_job_id": "positive-1",
+        "decision": "pursue",
+        "priority_score": 88,
+        "geography_status": "eligible",
+        "clearance_status": "clear",
+        "language_status": "clear",
+        "technical_fit": 86,
+        "duplicate_of_posting_id": None,
+        "summary": "Eligible and strong fit.",
+        "reasons": ["Explicit compatible employment territory."],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_positive_decision_requires_resolved_geography() -> None:
+    with pytest.raises(ValueError, match="geography_status=eligible"):
+        AIReviewJob.model_validate(
+            _positive_job(geography_status="conditional")
+        )
+
+
+def test_positive_decision_requires_resolved_clearance_and_language() -> None:
+    with pytest.raises(ValueError, match="clearance_status=clear"):
+        AIReviewJob.model_validate(
+            _positive_job(clearance_status="unknown")
+        )
+
+    with pytest.raises(ValueError, match="language_status=clear"):
+        AIReviewJob.model_validate(
+            _positive_job(language_status="conditional")
+        )
+
+
+def test_explicit_blockers_force_reject() -> None:
+    with pytest.raises(ValueError, match="Ineligible geography"):
+        AIReviewJob.model_validate(
+            _positive_job(decision="conditional", geography_status="ineligible")
+        )
+
+    with pytest.raises(ValueError, match="Blocked language"):
+        AIReviewJob.model_validate(
+            _positive_job(decision="conditional", language_status="blocked")
+        )
+
+
+def test_duplicate_posting_cannot_be_positive_or_conditional() -> None:
+    with pytest.raises(ValueError, match="Duplicate postings must use final_decision=reject"):
+        AIReviewJob.model_validate(
+            _positive_job(decision="conditional", duplicate_of_posting_id="canonical-posting")
+        )
+
+
+def test_v11_positive_decision_requires_resolved_location_eligibility() -> None:
+    with pytest.raises(ValueError, match="location_eligibility=eligible"):
+        AIReviewImportRequest.model_validate(
+            {
+                "contract_type": "jolt_ai_review",
+                "contract_version": "1.1",
+                "capture_run_id": "capture-1",
+                "review_source": "chatgpt_source_first",
+                "review_version": "eligibility-regression-1",
+                "reviewed_at": datetime.now(UTC),
+                "jobs": [
+                    {
+                        **_positive_job(),
+                        "hardline_status": "PASS",
+                        "hardline_reasons": [],
+                        "location_eligibility": "conditional",
+                        "location_evidence": ["CET +/-2 only; cross-border employment not explicit"],
+                        "mandatory_requirements": [],
+                        "mandatory_requirement_results": [],
+                        "employment_constraints": ["employment territory unresolved"],
+                        "fit_analysis_allowed": True,
+                        "technical_fit_percent": 86,
+                        "final_decision": "pursue",
+                        "decision_reason": "Good fit but territory unresolved.",
+                    }
+                ],
+            }
+        )
 
 
 def test_ai_review_import_is_durable_and_preserves_application_state(
