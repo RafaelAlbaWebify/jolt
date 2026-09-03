@@ -47,9 +47,7 @@ class SkillsPreparationExchangeImportResponse(BaseModel):
 def _vacancy_evidence(session: Session) -> tuple[list[dict[str, Any]], int]:
     total = int(session.scalar(select(func.count(Posting.id))) or 0)
     postings = session.scalars(
-        select(Posting)
-        .order_by(Posting.created_at.desc(), Posting.id)
-        .limit(_MAX_VACANCIES)
+        select(Posting).order_by(Posting.created_at.desc(), Posting.id).limit(_MAX_VACANCIES)
     ).all()
     evidence: list[dict[str, Any]] = []
     for posting in postings:
