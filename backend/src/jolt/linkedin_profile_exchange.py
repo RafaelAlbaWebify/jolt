@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput, AIExchangeScope
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord, save_ai_exchange_feedback
+from jolt.candidate_evidence import profile_capture_quality_issue
 from jolt.database import LinkedInPresenceCapture
 from jolt.errors import JoltNotFoundError
 from jolt.global_context import (
@@ -35,6 +36,7 @@ _LINKEDIN_RECOMMENDATION_TYPES = {
     "lead_research",
     "cleanup",
 }
+_PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 
 
 class LinkedInProfileExchangeImportResponse(BaseModel):
@@ -46,11 +48,44 @@ class LinkedInProfileExchangeImportResponse(BaseModel):
 def _command_center_evidence(session: Session) -> dict[str, Any]:
     command_center = list_linkedin_command_center(session)
     payload = command_center.model_dump(mode="json")
+    raw_captures = payload.get("captures", [])
+    usable_captures: list[dict[str, Any]] = []
+    excluded_captures: list[dict[str, Any]] = []
+
+    if isinstance(raw_captures, list):
+        for raw_capture in raw_captures:
+            if not isinstance(raw_capture, dict):
+                continue
+            category = str(raw_capture.get("category", ""))
+            if category not in _PROFILE_CATEGORIES:
+                usable_captures.append(raw_capture)
+                continue
+
+            capture_id = str(raw_capture.get("id", ""))
+            capture = session.get(LinkedInPresenceCapture, capture_id) if capture_id else None
+            quality_issue = profile_capture_quality_issue(capture) if capture is not None else None
+            if quality_issue is None:
+                usable_captures.append(raw_capture)
+                continue
+
+            excluded_captures.append(
+                {
+                    "capture_id": capture_id,
+                    "title": str(raw_capture.get("title", "")),
+                    "category": category,
+                    "captured_at": str(raw_capture.get("captured_at", "")),
+                    "reason": quality_issue,
+                }
+            )
+
     return {
-        "captures": payload.get("captures", []),
+        "captures": usable_captures,
+        "excluded_profile_captures": excluded_captures,
         "existing_recommendations": payload.get("recommendations", []),
         "counts": {
             "captures": command_center.capture_count,
+            "usable_exported_captures": len(usable_captures),
+            "invalid_profile_captures": len(excluded_captures),
             "recommendations": command_center.recommendation_count,
             "open_recommendations": command_center.open_recommendation_count,
         },
@@ -58,8 +93,17 @@ def _command_center_evidence(session: Session) -> dict[str, Any]:
         "recommendation_statuses": command_center.recommendation_statuses,
         "recommendation_types": command_center.recommendation_types,
         "authority_notes": {
-            "captures": "User-supervised LinkedIn evidence only; missing profile data must not be treated as negative evidence.",
-            "recommendations": "Existing recommendation status is JOLT/user-owned workflow state and must not be overwritten.",
+            "captures": (
+                "User-supervised LinkedIn evidence only. LinkedIn login/authwall/checkpoint captures "
+                "are excluded from AI evidence; missing profile data must not be treated as negative evidence."
+            ),
+            "excluded_profile_captures": (
+                "Retained for audit only. These captures must not support profile, candidate-fit, or "
+                "professional-evidence conclusions."
+            ),
+            "recommendations": (
+                "Existing recommendation status is JOLT/user-owned workflow state and must not be overwritten."
+            ),
             "automation": "Do not automate LinkedIn actions, messaging, connections, follows, or profile edits.",
         },
     }
