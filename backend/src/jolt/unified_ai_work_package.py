@@ -14,6 +14,11 @@ from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
 )
+from jolt.candidate_evidence import (
+    build_candidate_evidence_ledger,
+    validate_candidate_evidence_refs,
+    validate_candidate_evidence_summary,
+)
 from jolt.data_quality_exchange import build_data_quality_exchange, import_data_quality_exchange
 from jolt.errors import JoltNotFoundError
 from jolt.global_context import (
@@ -49,6 +54,7 @@ _UNIFIED_CONTEXT_PATCH_KEYS = frozenset(
     {
         "market_summary",
         "skills_gap_summary",
+        "candidate_evidence_summary",
         "application_strategy",
         "outcome_strategy",
         "profile_strategy",
@@ -77,6 +83,7 @@ class UnifiedAIWorkPackage(BaseModel):
     generated_at: datetime
     context_version: str
     global_context: dict[str, Any]
+    candidate_evidence: dict[str, Any]
     review_inbox: dict[str, Any] | None = None
     exchanges: list[AIExchangeInput]
     instructions: dict[str, Any]
@@ -115,11 +122,13 @@ def _review_inbox_payload(session: Session) -> dict[str, Any] | None:
         return None
     payload.pop("reasoning_context", None)
     payload["context_location"] = "global_context"
+    payload["candidate_evidence_location"] = "candidate_evidence"
     return payload
 
 
 def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
     context = build_global_context_snapshot()
+    candidate_evidence = build_candidate_evidence_ledger(session)
     exchanges = [
         build_market_intelligence_exchange(session),
         build_application_outcomes_exchange(session),
@@ -134,6 +143,7 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
         generated_at=datetime.now(UTC),
         context_version=global_context_version(context),
         global_context=context,
+        candidate_evidence=candidate_evidence,
         review_inbox=_review_inbox_payload(session),
         exchanges=[_without_duplicate_context(exchange) for exchange in exchanges],
         instructions={
@@ -145,16 +155,26 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
                 "validation, storage, and workflow state."
             ),
             "context": (
-                "Use global_context for all sections. Do not invent unsupported experience or "
-                "silently change user-owned preferences."
+                "Use global_context for user preferences and current AI-owned strategy. Use "
+                "candidate_evidence as the canonical candidate-evidence surface for eligibility "
+                "and fit. Do not invent unsupported experience or silently change user-owned preferences."
+            ),
+            "candidate_evidence": (
+                "Treat candidate_evidence.source_evidence as raw provenance, not as pre-classified "
+                "experience. If updating candidate_evidence_summary, return schema_version=1.0 and "
+                "claims whose evidence_level is one of professional, project_lab, certification, "
+                "education, language, explicit_non_claim, or unknown. Every claim must cite at least "
+                "one evidence_ref from candidate_evidence.source_evidence. Never upgrade a mention, "
+                "course, certification, lab, project, or adjacent exposure into unsupported "
+                "professional production experience."
             ),
             "freshness": (
                 "Copy context_version exactly into source_context_version in the returned update. "
                 "JOLT rejects stale updates if its context changed after export."
             ),
             "review_inbox": (
-                "If review_inbox is present, return its jolt_ai_review payload in review_inbox "
-                "using its response_template exactly."
+                "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
+                "its jolt_ai_review payload in review_inbox using its response_template exactly."
             ),
             "section_outputs": (
                 "Return at most one AIExchangeOutput per supplied exchange section. Set each "
@@ -163,12 +183,12 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
             "context_patch": (
                 "Put all durable AI-derived context changes only in the update's top-level "
                 "context_patch. Allowed namespaces: market_summary, skills_gap_summary, "
-                "application_strategy, outcome_strategy, profile_strategy, capture_strategy, "
-                "audit_summary, professional_evidence_summary."
+                "candidate_evidence_summary, application_strategy, outcome_strategy, profile_strategy, "
+                "capture_strategy, audit_summary, professional_evidence_summary."
             ),
             "protected": (
                 "Never patch job_search_preferences, human review decisions, applications, "
-                "outcomes, raw captures, source documents, or postings."
+                "outcomes, raw captures, source documents, postings, or candidate_evidence.source_evidence."
             ),
         },
     )
@@ -184,6 +204,14 @@ def _validate_unified_update(update: UnifiedAIUpdate) -> None:
     if unknown_context:
         raise ValueError(
             "Unified AI context patch contains non-patchable keys: " + ", ".join(unknown_context)
+        )
+
+    candidate_summary = update.context_patch.get("candidate_evidence_summary")
+    if candidate_summary is not None:
+        if not isinstance(candidate_summary, dict):
+            raise ValueError("candidate_evidence_summary must be an object")
+        update.context_patch["candidate_evidence_summary"] = validate_candidate_evidence_summary(
+            candidate_summary
         )
 
     current_context = build_global_context_snapshot()
@@ -243,6 +271,10 @@ def import_unified_ai_update(
     update: UnifiedAIUpdate,
 ) -> UnifiedAIImportResponse:
     _validate_unified_update(update)
+
+    candidate_summary = update.context_patch.get("candidate_evidence_summary")
+    if candidate_summary is not None:
+        validate_candidate_evidence_refs(session, candidate_summary)
 
     section_results: dict[str, Any] = {}
     imported_sections: list[str] = []

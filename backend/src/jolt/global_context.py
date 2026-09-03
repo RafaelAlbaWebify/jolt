@@ -18,6 +18,7 @@ _ALLOWED_PATCH_KEYS = frozenset(
         "market_summary",
         "skills_gap_summary",
         "professional_evidence_summary",
+        "candidate_evidence_summary",
         "application_strategy",
         "profile_strategy",
         "capture_strategy",
@@ -34,6 +35,7 @@ class GlobalAIContextOverlay(BaseModel):
     market_summary: dict[str, Any] = Field(default_factory=dict)
     skills_gap_summary: dict[str, Any] = Field(default_factory=dict)
     professional_evidence_summary: dict[str, Any] = Field(default_factory=dict)
+    candidate_evidence_summary: dict[str, Any] = Field(default_factory=dict)
     application_strategy: dict[str, Any] = Field(default_factory=dict)
     profile_strategy: dict[str, Any] = Field(default_factory=dict)
     capture_strategy: dict[str, Any] = Field(default_factory=dict)
