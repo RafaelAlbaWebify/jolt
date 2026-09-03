@@ -108,7 +108,9 @@ def _update(context_patch: dict) -> UnifiedAIUpdate:
     )
 
 
-def test_unified_update_validates_candidate_claim_provenance_before_persistence(monkeypatch) -> None:
+def test_unified_update_validates_candidate_claim_provenance_before_persistence(
+    monkeypatch,
+) -> None:
     from jolt import unified_ai_work_package as module
 
     monkeypatch.setattr(module, "build_global_context_snapshot", lambda: {})
@@ -131,9 +133,10 @@ def test_unified_update_validates_candidate_claim_provenance_before_persistence(
         }
     )
     _validate_unified_update(valid)
-    assert valid.context_patch["candidate_evidence_summary"]["claims"][0][
-        "evidence_level"
-    ] == "project_lab"
+    assert (
+        valid.context_patch["candidate_evidence_summary"]["claims"][0]["evidence_level"]
+        == "project_lab"
+    )
 
     invalid = _update(
         {
