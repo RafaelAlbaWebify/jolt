@@ -84,8 +84,12 @@ def test_candidate_evidence_is_provenance_only_deduplicated_and_bounded(
     assert ledger["counts"]["exported_profile_sources"] == 20
     assert ledger["counts"]["source_limit"] == 20
     assert len(ledger["source_evidence"]) == 20
-    assert all(item["category"] in {"profile", "public_profile"} for item in ledger["source_evidence"])
-    assert all(item["evidence_ref"].startswith("linkedin_capture:") for item in ledger["source_evidence"])
+    assert all(
+        item["category"] in {"profile", "public_profile"} for item in ledger["source_evidence"]
+    )
+    assert all(
+        item["evidence_ref"].startswith("linkedin_capture:") for item in ledger["source_evidence"]
+    )
 
     exported_keys = {
         (item["category"].casefold(), item["source_url"], item["content_hash"])
