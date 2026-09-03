@@ -12,6 +12,7 @@ from jolt.global_context import load_global_ai_context
 
 _MAX_PROFILE_SOURCES = 20
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
+_EVIDENCE_REF_PREFIX = "linkedin_capture:"
 
 CandidateEvidenceLevel = Literal[
     "professional",
@@ -44,8 +45,26 @@ def validate_candidate_evidence_summary(value: dict[str, Any]) -> dict[str, Any]
     return CandidateEvidenceSummary.model_validate(value).model_dump(mode="json")
 
 
+def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) -> None:
+    """Require candidate-claim references to resolve to profile evidence in JOLT."""
+
+    summary = CandidateEvidenceSummary.model_validate(value)
+    refs = {evidence_ref for claim in summary.claims for evidence_ref in claim.evidence_refs}
+    for evidence_ref in refs:
+        if not evidence_ref.startswith(_EVIDENCE_REF_PREFIX):
+            raise ValueError(f"Unsupported candidate evidence reference: {evidence_ref}")
+        capture_id = evidence_ref.removeprefix(_EVIDENCE_REF_PREFIX)
+        capture = session.get(LinkedInPresenceCapture, capture_id)
+        if capture is None:
+            raise ValueError(f"Candidate evidence reference was not found: {evidence_ref}")
+        if capture.category not in _PROFILE_CATEGORIES:
+            raise ValueError(
+                "Candidate evidence reference is not profile evidence: " + evidence_ref
+            )
+
+
 def _source_ref(capture: LinkedInPresenceCapture) -> str:
-    return f"linkedin_capture:{capture.id}"
+    return f"{_EVIDENCE_REF_PREFIX}{capture.id}"
 
 
 def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
