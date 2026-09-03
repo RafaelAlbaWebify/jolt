@@ -91,9 +91,7 @@ def test_hardline_reject_reaches_review_inbox_without_fit_score(tmp_path) -> Non
                 hardline_status="REJECT",
                 hardline_reasons_json=json.dumps(["US-only remote requisition."]),
                 location_eligibility="ineligible",
-                location_evidence_json=json.dumps(
-                    ["United States · Remote", "anywhere in the US"]
-                ),
+                location_evidence_json=json.dumps(["United States · Remote", "anywhere in the US"]),
                 mandatory_requirements_json="[]",
                 mandatory_requirement_results_json="[]",
                 employment_constraints_json="[]",
