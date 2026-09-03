@@ -10,6 +10,7 @@ from jolt import candidate_evidence
 from jolt.candidate_evidence import (
     CandidateEvidenceSummary,
     build_candidate_evidence_ledger,
+    validate_candidate_evidence_refs,
 )
 from jolt.database import LinkedInPresenceCapture, create_session_factory
 
@@ -92,7 +93,6 @@ def test_candidate_evidence_is_provenance_only_deduplicated_and_bounded(
     }
     assert len(exported_keys) == len(ledger["source_evidence"])
 
-    # JOLT must not add semantic skill/depth judgments to deterministic source evidence.
     forbidden = {
         "professional_experience",
         "experience_level",
@@ -164,3 +164,57 @@ def test_reviewed_candidate_claims_require_controlled_level_and_evidence_refs() 
                 ],
             }
         )
+
+
+def test_candidate_evidence_refs_must_resolve_to_profile_captures(tmp_path) -> None:
+    factory = create_session_factory(f"sqlite:///{(tmp_path / 'refs.db').as_posix()}")
+    now = datetime.now(UTC)
+
+    with factory() as session:
+        profile_capture = _capture(suffix="experience", captured_at=now)
+        activity_capture = _capture(
+            suffix="activity",
+            captured_at=now,
+            category="activity",
+            title="Activity",
+        )
+        session.add_all([profile_capture, activity_capture])
+        session.commit()
+
+        valid = {
+            "schema_version": "1.0",
+            "claims": [
+                {
+                    "claim": "Microsoft 365 support",
+                    "evidence_level": "professional",
+                    "evidence_refs": [f"linkedin_capture:{profile_capture.id}"],
+                }
+            ],
+        }
+        validate_candidate_evidence_refs(session, valid)
+
+        invalid_category = {
+            "schema_version": "1.0",
+            "claims": [
+                {
+                    "claim": "Professional experience",
+                    "evidence_level": "professional",
+                    "evidence_refs": [f"linkedin_capture:{activity_capture.id}"],
+                }
+            ],
+        }
+        with pytest.raises(ValueError, match="not profile evidence"):
+            validate_candidate_evidence_refs(session, invalid_category)
+
+        missing = {
+            "schema_version": "1.0",
+            "claims": [
+                {
+                    "claim": "Fabricated provenance",
+                    "evidence_level": "professional",
+                    "evidence_refs": ["linkedin_capture:missing"],
+                }
+            ],
+        }
+        with pytest.raises(ValueError, match="was not found"):
+            validate_candidate_evidence_refs(session, missing)
