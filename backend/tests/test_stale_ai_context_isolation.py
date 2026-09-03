@@ -113,7 +113,7 @@ def test_current_policy_save_archives_superseded_overlay_before_replacement(
     historical = json.loads(archives[0].read_text(encoding="utf-8"))
     assert historical["application_strategy"] == {"priority_jobs": ["Superseded job"]}
     assert historical["market_summary"] == {"top_roles": ["Old role priority"]}
-    assert "reasoning_policy_version" not in historical
+    assert historical["reasoning_policy_version"] is None
 
 
 def test_partial_new_patch_does_not_carry_stale_namespaces_forward(tmp_path, monkeypatch) -> None:
