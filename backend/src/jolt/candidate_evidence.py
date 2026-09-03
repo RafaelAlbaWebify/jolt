@@ -13,6 +13,21 @@ from jolt.global_context import load_global_ai_context
 _MAX_PROFILE_SOURCES = 20
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 _EVIDENCE_REF_PREFIX = "linkedin_capture:"
+_LOGIN_URL_MARKERS = (
+    "/login",
+    "/checkpoint",
+    "/uas/login",
+    "authwall",
+    "sessionredirect=",
+)
+_LOGIN_TEXT_MARKERS = (
+    "join linkedin",
+    "already on linkedin? sign in",
+    "email or phone",
+    "security verification",
+    "verify your identity",
+    "let's do a quick security check",
+)
 
 CandidateEvidenceLevel = Literal[
     "professional",
@@ -45,8 +60,28 @@ def validate_candidate_evidence_summary(value: dict[str, Any]) -> dict[str, Any]
     return CandidateEvidenceSummary.model_validate(value).model_dump(mode="json")
 
 
+def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | None:
+    """Return a deterministic reason when a profile capture is not usable evidence.
+
+    LinkedIn login/authwall/checkpoint pages are retained in the database for audit, but
+    must never be promoted into candidate evidence or AI profile analysis as if they were
+    actual profile content.
+    """
+
+    source_url = capture.source_url.strip().casefold()
+    visible_text = capture.visible_text.strip().casefold()
+
+    if any(marker in source_url for marker in _LOGIN_URL_MARKERS):
+        return "linkedin_login_or_authwall_url"
+    if any(marker in visible_text for marker in _LOGIN_TEXT_MARKERS):
+        return "linkedin_login_or_authwall_text"
+    if not visible_text:
+        return "empty_profile_capture"
+    return None
+
+
 def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) -> None:
-    """Require candidate-claim references to resolve to profile evidence in JOLT."""
+    """Require candidate-claim references to resolve to usable profile evidence in JOLT."""
 
     summary = CandidateEvidenceSummary.model_validate(value)
     refs = {evidence_ref for claim in summary.claims for evidence_ref in claim.evidence_refs}
@@ -61,6 +96,12 @@ def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) ->
             raise ValueError(
                 "Candidate evidence reference is not profile evidence: " + evidence_ref
             )
+        quality_issue = profile_capture_quality_issue(capture)
+        if quality_issue is not None:
+            raise ValueError(
+                "Candidate evidence reference points to unusable profile evidence: "
+                f"{evidence_ref} ({quality_issue})"
+            )
 
 
 def _source_ref(capture: LinkedInPresenceCapture) -> str:
@@ -70,9 +111,9 @@ def _source_ref(capture: LinkedInPresenceCapture) -> str:
 def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
     """Build deterministic candidate evidence without inferring experience level.
 
-    Captures are selected newest-first and deduplicated by source/category/content so the
-    unified package can carry enough raw evidence for ChatGPT to reason about claims
-    without asking local Python to classify skills or upgrade mentions into experience.
+    Captures are selected newest-first and deduplicated by source/category/content. Invalid
+    LinkedIn login/authwall/checkpoint captures remain stored for audit but are excluded from
+    the canonical candidate-evidence surface.
     """
 
     captures = session.scalars(
@@ -82,8 +123,22 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
     ).all()
 
     selected: list[LinkedInPresenceCapture] = []
+    rejected: list[dict[str, str]] = []
     seen: set[tuple[str, str, str]] = set()
     for capture in captures:
+        quality_issue = profile_capture_quality_issue(capture)
+        if quality_issue is not None:
+            rejected.append(
+                {
+                    "capture_id": capture.id,
+                    "title": capture.title,
+                    "category": capture.category,
+                    "captured_at": capture.captured_at.isoformat(),
+                    "reason": quality_issue,
+                }
+            )
+            continue
+
         key = (
             capture.category.strip().casefold(),
             capture.source_url.strip(),
@@ -119,13 +174,20 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
         "reviewed_summary": reviewed_summary,
         "counts": {
             "available_profile_captures": len(captures),
+            "usable_profile_captures": len(captures) - len(rejected),
+            "invalid_profile_captures": len(rejected),
             "exported_profile_sources": len(source_evidence),
             "source_limit": _MAX_PROFILE_SOURCES,
         },
+        "excluded_profile_captures": rejected,
         "authority_notes": {
             "source_evidence": (
-                "Deterministically selected raw LinkedIn/profile captures with provenance. "
+                "Deterministically selected usable raw LinkedIn/profile captures with provenance. "
                 "Presence of a term does not prove professional depth or duration."
+            ),
+            "excluded_profile_captures": (
+                "LinkedIn login/authwall/checkpoint or empty captures are retained for audit but "
+                "are not candidate evidence and must not support profile or fit conclusions."
             ),
             "reviewed_summary": (
                 "ChatGPT-derived, user-reviewable claim classification. It may classify evidence "
