@@ -71,7 +71,9 @@ def test_review_inbox_compaction_preserves_every_current_job_and_authoritative_t
     assert metadata["authoritative_vacancy_text_field"] == "jobs[].analysis_text"
 
 
-def test_unified_skills_exchange_uses_canonical_candidate_evidence_without_losing_vacancies() -> None:
+def test_unified_skills_exchange_uses_canonical_candidate_evidence_without_losing_vacancies() -> (
+    None
+):
     exchange = _exchange(
         "skills_gaps",
         {
