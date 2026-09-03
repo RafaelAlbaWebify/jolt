@@ -150,9 +150,7 @@ def test_skills_exchange_declares_historical_corpus_bounds(monkeypatch) -> None:
 
     exchange = build_skills_preparation_exchange(object())
 
-    assert exchange.evidence["counts"]["vacancies"] == 2
-    assert exchange.evidence["counts"]["available_vacancies"] == 5
-    assert exchange.evidence["counts"]["omitted_vacancies"] == 3
+    assert exchange.evidence["counts"] == {"vacancies": 2, "profile_captures": 1}
     policy = exchange.evidence["corpus_policy"]
     assert policy["max_recent_vacancies"] == 300
     assert policy["available_vacancies"] == 5
