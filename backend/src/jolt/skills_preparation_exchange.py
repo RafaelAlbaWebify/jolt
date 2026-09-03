@@ -110,8 +110,6 @@ def build_skills_preparation_exchange(session: Session) -> AIExchangeInput:
             "counts": {
                 "vacancies": len(vacancies),
                 "profile_captures": len(profile),
-                "available_vacancies": available_vacancies,
-                "omitted_vacancies": omitted_vacancies,
             },
             "corpus_policy": {
                 "max_recent_vacancies": _MAX_VACANCIES,
