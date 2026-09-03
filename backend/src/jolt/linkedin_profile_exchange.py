@@ -84,10 +84,12 @@ def _command_center_evidence(session: Session) -> dict[str, Any]:
         "existing_recommendations": payload.get("recommendations", []),
         "counts": {
             "captures": command_center.capture_count,
-            "usable_exported_captures": len(usable_captures),
-            "invalid_profile_captures": len(excluded_captures),
             "recommendations": command_center.recommendation_count,
             "open_recommendations": command_center.open_recommendation_count,
+        },
+        "profile_capture_quality": {
+            "usable_exported_captures": len(usable_captures),
+            "invalid_profile_captures": len(excluded_captures),
         },
         "categories": command_center.categories,
         "recommendation_statuses": command_center.recommendation_statuses,
