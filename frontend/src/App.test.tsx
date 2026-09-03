@@ -43,6 +43,16 @@ const reviewedOpportunity = {
   decision: "strong_pursue",
   priority_score: 94,
 
+  hardline_status: "PASS",
+  hardline_reasons: [],
+  location_eligibility: "eligible",
+  location_evidence: ["Remote Spain"],
+  mandatory_requirements: [],
+  mandatory_requirement_results: [],
+  employment_constraints: [],
+  fit_analysis_allowed: true,
+  decision_reason: "Eligible and strongly aligned.",
+
   geography_status: "eligible",
   clearance_status: "clear",
   language_status: "conditional",
@@ -76,6 +86,16 @@ const awaitingOpportunity = {
   decision: null,
   priority_score: null,
 
+  hardline_status: null,
+  hardline_reasons: [],
+  location_eligibility: null,
+  location_evidence: [],
+  mandatory_requirements: [],
+  mandatory_requirement_results: [],
+  employment_constraints: [],
+  fit_analysis_allowed: null,
+  decision_reason: "",
+
   geography_status: null,
   clearance_status: null,
   language_status: null,
@@ -83,6 +103,28 @@ const awaitingOpportunity = {
 
   summary: "",
   reasons: [],
+};
+
+const hardlineRejectedOpportunity = {
+  ...reviewedOpportunity,
+  posting_id: "posting-us-only",
+  source_url: "https://example.com/job-us-only",
+  title: "Technical Support Engineer L2",
+  company: "LucidLink",
+  location: "United States · Remote",
+  ai_review_id: "ai-review-us-only",
+  decision: "reject",
+  priority_score: 0,
+  hardline_status: "REJECT",
+  hardline_reasons: ["US-only remote: applicants must be anywhere in the US."],
+  location_eligibility: "ineligible",
+  location_evidence: ["United States · Remote", "anywhere in the US"],
+  fit_analysis_allowed: false,
+  decision_reason: "US-only remote hardline.",
+  geography_status: "ineligible",
+  technical_fit: null,
+  summary: "Rejected at Stage 1 before technical fit analysis.",
+  reasons: ["US-only remote requisition."],
 };
 
 describe("App AI review workflow", () => {
@@ -186,6 +228,42 @@ describe("App AI review workflow", () => {
     expect(
       fetchMock,
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a hardline rejection before fit and suppresses misleading fit scores", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([hardlineRejectedOpportunity]),
+    );
+
+    render(<App />);
+
+    expect(
+      await screen.findByText("Technical Support Engineer L2"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText("REJECT — HARDLINE").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText("US-only remote: applicants must be anywhere in the US."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Technical similarity: not evaluated because a hardline failed."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Technical fit 95/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Technical fit 91/i)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Inspect" }),
+    );
+
+    expect(
+      screen.getAllByText("REJECT — HARDLINE").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Technical similarity: not evaluated because a hardline failed.").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Technical fit")).not.toBeInTheDocument();
   });
 
   it("sends ai_review_id when the human chooses pursue", async () => {

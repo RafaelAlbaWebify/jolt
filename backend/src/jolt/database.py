@@ -164,7 +164,18 @@ class AIReview(Base):
     geography_status: Mapped[str] = mapped_column(String(20), nullable=False)
     clearance_status: Mapped[str] = mapped_column(String(20), nullable=False)
     language_status: Mapped[str] = mapped_column(String(20), nullable=False)
-    technical_fit: Mapped[int] = mapped_column(nullable=False)
+    technical_fit: Mapped[int | None] = mapped_column(nullable=True)
+    hardline_status: Mapped[str] = mapped_column(String(20), default="PASS", nullable=False)
+    hardline_reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    location_eligibility: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    location_evidence_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    mandatory_requirements_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    mandatory_requirement_results_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
+    employment_constraints_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    fit_analysis_allowed: Mapped[bool] = mapped_column(default=True, nullable=False)
+    decision_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
     duplicate_of_posting_id: Mapped[str | None] = mapped_column(
         ForeignKey("postings.id"),
         nullable=True,

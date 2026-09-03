@@ -1,0 +1,287 @@
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from jolt.employment_geography import normalized_location_scope
+
+
+@dataclass(frozen=True)
+class LocationEvidenceResult:
+    location_eligibility: str
+    hardline_reject: bool
+    positive_evidence: tuple[str, ...]
+    negative_evidence: tuple[str, ...]
+
+
+_US_STATE_NAMES = (
+    "Alabama",
+    "Alaska",
+    "Arizona",
+    "Arkansas",
+    "California",
+    "Colorado",
+    "Connecticut",
+    "Delaware",
+    "Florida",
+    "Georgia",
+    "Hawaii",
+    "Idaho",
+    "Illinois",
+    "Indiana",
+    "Iowa",
+    "Kansas",
+    "Kentucky",
+    "Louisiana",
+    "Maine",
+    "Maryland",
+    "Massachusetts",
+    "Michigan",
+    "Minnesota",
+    "Mississippi",
+    "Missouri",
+    "Montana",
+    "Nebraska",
+    "Nevada",
+    "New Hampshire",
+    "New Jersey",
+    "New Mexico",
+    "New York",
+    "North Carolina",
+    "North Dakota",
+    "Ohio",
+    "Oklahoma",
+    "Oregon",
+    "Pennsylvania",
+    "Rhode Island",
+    "South Carolina",
+    "South Dakota",
+    "Tennessee",
+    "Texas",
+    "Utah",
+    "Vermont",
+    "Virginia",
+    "Washington",
+    "West Virginia",
+    "Wisconsin",
+    "Wyoming",
+    "District of Columbia",
+)
+_US_STATE_ABBREVIATIONS = (
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
+)
+_US_STATE_PATTERN = "|".join(
+    [re.escape(value) for value in _US_STATE_NAMES]
+    + [rf"{re.escape(value)}\b" for value in _US_STATE_ABBREVIATIONS]
+)
+
+_NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("US-only", re.compile(r"\b(?:u\.?s\.?|united states)\s+only\b", re.I)),
+    (
+        "US remote",
+        re.compile(
+            r"\b(?:u\.?s\.?|usa|united states)\s*(?:[-·|/]\s*)?remote\b|"
+            r"\bremote\s*(?:[-·|/]\s*)?(?:usa|u\.?s\.?)\b",
+            re.I,
+        ),
+    ),
+    (
+        "anywhere in the US",
+        re.compile(r"\banywhere\s+in\s+the\s+(?:u\.?s\.?|united states)\b", re.I),
+    ),
+    (
+        "US work authorization",
+        re.compile(
+            r"\bauthori[sz]ed\s+to\s+work\s+in\s+(?:the\s+)?(?:u\.?s\.?|united states)\b",
+            re.I,
+        ),
+    ),
+    ("E-Verify", re.compile(r"\be[- ]?verify\b", re.I)),
+    (
+        "US residency",
+        re.compile(
+            r"\bmust\s+(?:reside|live|be located|be based)\s+in\s+"
+            r"(?:the\s+)?(?:u\.?s\.?|usa|united states)\b",
+            re.I,
+        ),
+    ),
+    (
+        "US state residency",
+        re.compile(
+            rf"\bmust\s+(?:reside|live|be located|be based)\s+in\s+(?:the\s+)?(?:{_US_STATE_PATTERN})\b",
+            re.I,
+        ),
+    ),
+    (
+        "US requisition",
+        re.compile(
+            r"\b(?:requisition|position|role)\b[^.\n]{0,80}\b(?:within|in)\s+"
+            r"(?:the\s+)?(?:u\.?s\.?|united states)\b",
+            re.I,
+        ),
+    ),
+    (
+        "US location",
+        re.compile(
+            r"\b(?:location|work location|based|located)\s*[:\-–—]?\s*"
+            r"(?:the\s+)?(?:united states(?: of america)?|usa|u\.s\.)\b",
+            re.I,
+        ),
+    ),
+)
+
+_POSITIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("work from anywhere", re.compile(r"\bwork\s+from\s+anywhere\b", re.I)),
+    ("global remote", re.compile(r"\bglobal\s+remote\b", re.I)),
+    (
+        "remote worldwide",
+        re.compile(r"\bremote\s+worldwide\b|\bworldwide\s+remote\b", re.I),
+    ),
+    ("international contractor", re.compile(r"\binternational\s+contractor\b", re.I)),
+    (
+        "country of residence",
+        re.compile(
+            r"\b(?:contract|contracts|employment|engagement|engaged|hire|hiring)"
+            r"[^.\n]{0,100}\bcountry\s+of\s+residence\b|"
+            r"\bcountry\s+of\s+residence\b[^.\n]{0,100}"
+            r"\b(?:contract|employment|engagement|hire|hiring)\b",
+            re.I,
+        ),
+    ),
+    (
+        "EMEA/Europe/Spain hiring",
+        re.compile(
+            r"\b(?:hire|hired|hiring|open|available|candidates?|position|role)\b"
+            r"[^.\n]{0,100}\b(?:emea|europe|spain)\b|"
+            r"\b(?:emea|europe|spain)\b[^.\n]{0,100}"
+            r"\b(?:hire|hired|hiring|open|available|candidates?|position|role)\b",
+            re.I,
+        ),
+    ),
+)
+
+_US_LOCATION_PATTERN = re.compile(
+    r"\b(?:united states(?: of america)?|usa|u\.s\.|u\.s\.a\.)\b", re.I
+)
+
+
+def _unique(values: list[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+
+def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvidenceResult:
+    """Extract explicit hiring-geography evidence without performing fit analysis.
+
+    Explicit restrictive evidence wins over generic Remote labels. Positive evidence is
+    intentionally limited to hiring/employment language; phrases such as "global company",
+    "international team", or "employees across Europe" are not eligibility evidence.
+    """
+
+    combined = "\n".join(part for part in (location, source_text) if part)
+    negative: list[str] = []
+    positive: list[str] = []
+
+    for label, pattern in _NEGATIVE_PATTERNS:
+        match = pattern.search(combined)
+        if match:
+            negative.append(match.group(0) or label)
+
+    location_scope = normalized_location_scope(location)
+    if location_scope == "foreign_country" and _US_LOCATION_PATTERN.search(location):
+        negative.append(location)
+
+    # A US state named as the location itself is a US-only hiring signal even without
+    # a nearby "must reside" phrase. normalized_location_scope already classifies
+    # common US state abbreviations/names as foreign geography; do not generalize this
+    # to other foreign countries here because this module is only an explicit blocker
+    # extractor, not a complete eligibility reasoning engine.
+    if location_scope == "foreign_country" and not negative:
+        state_match = re.search(rf"\b(?:{_US_STATE_PATTERN})\b", location, re.I)
+        if state_match:
+            negative.append(state_match.group(0))
+
+    for label, pattern in _POSITIVE_PATTERNS:
+        match = pattern.search(combined)
+        if match:
+            positive.append(match.group(0) or label)
+
+    # Location metadata itself is authoritative evidence when it explicitly names a
+    # Spain-compatible hiring scope. Generic "Remote" remains ambiguous.
+    if location_scope in {"spain", "broad"}:
+        positive.append(location)
+
+    negative_evidence = _unique(negative)
+    positive_evidence = _unique(positive)
+
+    if negative_evidence:
+        return LocationEvidenceResult(
+            location_eligibility="ineligible",
+            hardline_reject=True,
+            positive_evidence=positive_evidence,
+            negative_evidence=negative_evidence,
+        )
+
+    if positive_evidence:
+        return LocationEvidenceResult(
+            location_eligibility="eligible",
+            hardline_reject=False,
+            positive_evidence=positive_evidence,
+            negative_evidence=(),
+        )
+
+    return LocationEvidenceResult(
+        location_eligibility="conditional",
+        hardline_reject=False,
+        positive_evidence=(),
+        negative_evidence=(),
+    )
