@@ -14,7 +14,10 @@ from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
 )
-from jolt.candidate_evidence import build_candidate_evidence_ledger
+from jolt.candidate_evidence import (
+    build_candidate_evidence_ledger,
+    validate_candidate_evidence_summary,
+)
 from jolt.data_quality_exchange import build_data_quality_exchange, import_data_quality_exchange
 from jolt.errors import JoltNotFoundError
 from jolt.global_context import (
@@ -157,10 +160,12 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
             ),
             "candidate_evidence": (
                 "Treat candidate_evidence.source_evidence as raw provenance, not as pre-classified "
-                "experience. If updating candidate_evidence_summary, classify supported claims only "
-                "as professional, project_lab, certification, education, language, explicit_non_claim, "
-                "or unknown and cite evidence_ref values. Never upgrade a mention, course, certification, "
-                "lab, project, or adjacent exposure into unsupported professional production experience."
+                "experience. If updating candidate_evidence_summary, return schema_version=1.0 and "
+                "claims whose evidence_level is one of professional, project_lab, certification, "
+                "education, language, explicit_non_claim, or unknown. Every claim must cite at least "
+                "one evidence_ref from candidate_evidence.source_evidence. Never upgrade a mention, "
+                "course, certification, lab, project, or adjacent exposure into unsupported "
+                "professional production experience."
             ),
             "freshness": (
                 "Copy context_version exactly into source_context_version in the returned update. "
@@ -198,6 +203,14 @@ def _validate_unified_update(update: UnifiedAIUpdate) -> None:
     if unknown_context:
         raise ValueError(
             "Unified AI context patch contains non-patchable keys: " + ", ".join(unknown_context)
+        )
+
+    candidate_summary = update.context_patch.get("candidate_evidence_summary")
+    if candidate_summary is not None:
+        if not isinstance(candidate_summary, dict):
+            raise ValueError("candidate_evidence_summary must be an object")
+        update.context_patch["candidate_evidence_summary"] = validate_candidate_evidence_summary(
+            candidate_summary
         )
 
     current_context = build_global_context_snapshot()
