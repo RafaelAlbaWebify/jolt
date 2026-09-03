@@ -16,6 +16,7 @@ from jolt.application_outcomes_exchange import (
 )
 from jolt.candidate_evidence import (
     build_candidate_evidence_ledger,
+    validate_candidate_evidence_refs,
     validate_candidate_evidence_summary,
 )
 from jolt.data_quality_exchange import build_data_quality_exchange, import_data_quality_exchange
@@ -270,6 +271,10 @@ def import_unified_ai_update(
     update: UnifiedAIUpdate,
 ) -> UnifiedAIImportResponse:
     _validate_unified_update(update)
+
+    candidate_summary = update.context_patch.get("candidate_evidence_summary")
+    if candidate_summary is not None:
+        validate_candidate_evidence_refs(session, candidate_summary)
 
     section_results: dict[str, Any] = {}
     imported_sections: list[str] = []
