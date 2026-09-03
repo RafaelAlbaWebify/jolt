@@ -74,6 +74,7 @@ _SUPPORTED_SECTIONS = frozenset(
         "data_quality",
     }
 )
+_PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 
 
 class UnifiedAIWorkPackage(BaseModel):
@@ -115,6 +116,89 @@ def _without_duplicate_context(exchange: AIExchangeInput) -> AIExchangeInput:
     return exchange.model_copy(update={"context": {}})
 
 
+def _compact_review_inbox_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Remove repeated vacancy-body copies without omitting any current review job."""
+
+    jobs = payload.get("jobs")
+    if not isinstance(jobs, list):
+        return payload
+
+    compact_jobs: list[Any] = []
+    compacted_count = 0
+    for raw_job in jobs:
+        if not isinstance(raw_job, dict):
+            compact_jobs.append(raw_job)
+            continue
+        job = dict(raw_job)
+        job.pop("description_clean", None)
+        job.pop("source_text_clean", None)
+        audit = job.get("audit")
+        if isinstance(audit, dict):
+            raw_hash = audit.get("source_raw_text_sha256")
+            job["audit"] = {"source_raw_text_sha256": raw_hash} if isinstance(raw_hash, str) else {}
+        compact_jobs.append(job)
+        compacted_count += 1
+
+    payload["jobs"] = compact_jobs
+    payload["evidence_compaction"] = {
+        "current_jobs_available": len(jobs),
+        "current_jobs_exported": len(compact_jobs),
+        "current_jobs_omitted": 0,
+        "jobs_compacted": compacted_count,
+        "authoritative_vacancy_text_field": "jobs[].analysis_text",
+        "removed_redundant_fields": [
+            "jobs[].description_clean",
+            "jobs[].source_text_clean",
+            "jobs[].audit.source_raw_text",
+        ],
+        "integrity_hash_preserved": "jobs[].audit.source_raw_text_sha256",
+        "policy": (
+            "Every current Review Inbox job is preserved. Only duplicate representations of the same "
+            "vacancy body are omitted from the unified package."
+        ),
+    }
+    return payload
+
+
+def _compact_exchange_for_unified(exchange: AIExchangeInput) -> AIExchangeInput:
+    compact = _without_duplicate_context(exchange)
+    evidence = dict(compact.evidence)
+
+    if compact.scope.section == "skills_gaps":
+        profile = evidence.pop("profile_evidence", [])
+        profile_count = len(profile) if isinstance(profile, list) else 0
+        evidence["candidate_evidence_location"] = "candidate_evidence"
+        evidence["unified_compaction"] = {
+            "profile_evidence_omitted_as_duplicate": profile_count,
+            "canonical_profile_evidence": "candidate_evidence",
+            "vacancy_corpus": "bounded by evidence.corpus_policy; current Review Inbox is unaffected",
+        }
+
+    if compact.scope.section == "linkedin_profile":
+        captures = evidence.get("captures")
+        if isinstance(captures, list):
+            retained: list[Any] = []
+            omitted_profile = 0
+            for capture in captures:
+                if (
+                    isinstance(capture, dict)
+                    and str(capture.get("category", "")) in _PROFILE_CATEGORIES
+                ):
+                    omitted_profile += 1
+                    continue
+                retained.append(capture)
+            evidence["captures"] = retained
+            evidence["candidate_evidence_location"] = "candidate_evidence"
+            evidence["unified_compaction"] = {
+                "profile_captures_omitted_as_duplicate": omitted_profile,
+                "non_profile_captures_exported": len(retained),
+                "canonical_profile_evidence": "candidate_evidence",
+                "recommendation_workflow_state_preserved": True,
+            }
+
+    return compact.model_copy(update={"evidence": evidence})
+
+
 def _review_inbox_payload(session: Session) -> dict[str, Any] | None:
     try:
         payload = json.loads(build_review_inbox_exchange_json(session))
@@ -123,7 +207,7 @@ def _review_inbox_payload(session: Session) -> dict[str, Any] | None:
     payload.pop("reasoning_context", None)
     payload["context_location"] = "global_context"
     payload["candidate_evidence_location"] = "candidate_evidence"
-    return payload
+    return _compact_review_inbox_payload(payload)
 
 
 def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
@@ -145,7 +229,7 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
         global_context=context,
         candidate_evidence=candidate_evidence,
         review_inbox=_review_inbox_payload(session),
-        exchanges=[_without_duplicate_context(exchange) for exchange in exchanges],
+        exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
             "workflow": (
                 "Analyze this one file and return one jolt_ai_work_package_update JSON file."
@@ -174,7 +258,13 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
             ),
             "review_inbox": (
                 "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
-                "its jolt_ai_review payload in review_inbox using its response_template exactly."
+                "its jolt_ai_review payload in review_inbox using its response_template exactly. "
+                "Every current job is present; use jobs[].analysis_text as the authoritative vacancy body."
+            ),
+            "package_bounds": (
+                "Read each section's corpus_policy, evidence_compaction, or unified_compaction metadata. "
+                "A bounded historical/supporting corpus is not evidence that omitted older data does not "
+                "exist. Current Review Inbox jobs are never omitted for package-size reduction."
             ),
             "section_outputs": (
                 "Return at most one AIExchangeOutput per supplied exchange section. Set each "
