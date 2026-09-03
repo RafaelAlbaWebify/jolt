@@ -99,8 +99,13 @@ def test_linkedin_ai_exchange_excludes_invalid_profile_capture(tmp_path) -> None
 
         evidence = _command_center_evidence(session)
 
-        assert evidence["counts"]["invalid_profile_captures"] == 1
-        assert evidence["counts"]["usable_exported_captures"] == 1
+        assert evidence["counts"] == {
+            "captures": 2,
+            "recommendations": 0,
+            "open_recommendations": 0,
+        }
+        assert evidence["profile_capture_quality"]["invalid_profile_captures"] == 1
+        assert evidence["profile_capture_quality"]["usable_exported_captures"] == 1
         assert [item["id"] for item in evidence["captures"]] == ["b"]
         assert evidence["excluded_profile_captures"][0]["capture_id"] == "a"
     finally:
