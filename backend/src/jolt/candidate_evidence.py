@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,36 @@ from jolt.global_context import load_global_ai_context
 
 _MAX_PROFILE_SOURCES = 20
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
+
+CandidateEvidenceLevel = Literal[
+    "professional",
+    "project_lab",
+    "certification",
+    "education",
+    "language",
+    "explicit_non_claim",
+    "unknown",
+]
+
+
+class CandidateEvidenceClaim(BaseModel):
+    claim: str = Field(min_length=1, max_length=240)
+    evidence_level: CandidateEvidenceLevel
+    evidence_summary: str = Field(default="", max_length=2000)
+    evidence_refs: list[str] = Field(min_length=1, max_length=20)
+
+
+class CandidateEvidenceSummary(BaseModel):
+    schema_version: Literal["1.0"] = "1.0"
+    as_of: str = ""
+    claims: list[CandidateEvidenceClaim] = Field(default_factory=list, max_length=250)
+    notes: list[str] = Field(default_factory=list, max_length=50)
+
+
+def validate_candidate_evidence_summary(value: dict[str, Any]) -> dict[str, Any]:
+    """Validate the AI-owned claim ledger without deciding claim semantics locally."""
+
+    return CandidateEvidenceSummary.model_validate(value).model_dump(mode="json")
 
 
 def _source_ref(capture: LinkedInPresenceCapture) -> str:
