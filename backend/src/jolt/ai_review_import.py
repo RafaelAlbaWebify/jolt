@@ -76,8 +76,6 @@ class AIReviewJob(BaseModel):
     posting_id: str = Field(min_length=1)
     source_job_id: str = Field(min_length=1)
 
-    # Compatibility-facing final decision. New 1.1 payloads must also send
-    # final_decision and both values must agree.
     decision: AIReviewDecision | None = None
     priority_score: int = Field(ge=0, le=100)
     geography_status: GeographyStatus
@@ -143,6 +141,31 @@ class AIReviewJob(BaseModel):
         if self.fit_analysis_allowed and fit is None:
             raise ValueError("Stage 2 requires technical_fit_percent")
 
+        positive_decision = final_decision in {"strong_pursue", "pursue"}
+        if positive_decision:
+            if self.geography_status != "eligible":
+                raise ValueError(
+                    "Positive decisions require geography_status=eligible; unresolved geography caps the decision at conditional"
+                )
+            if self.clearance_status != "clear":
+                raise ValueError(
+                    "Positive decisions require clearance_status=clear; unresolved clearance caps the decision at conditional"
+                )
+            if self.language_status != "clear":
+                raise ValueError(
+                    "Positive decisions require language_status=clear; unresolved language caps the decision at conditional"
+                )
+
+        if self.geography_status == "ineligible" and final_decision != "reject":
+            raise ValueError("Ineligible geography requires final_decision=reject")
+        if self.clearance_status == "blocked" and final_decision != "reject":
+            raise ValueError("Blocked clearance requires final_decision=reject")
+        if self.language_status == "blocked" and final_decision != "reject":
+            raise ValueError("Blocked language requires final_decision=reject")
+
+        if self.duplicate_of_posting_id is not None and final_decision != "reject":
+            raise ValueError("Duplicate postings must use final_decision=reject")
+
         self.final_decision = final_decision
         self.technical_fit_percent = fit
         self.technical_fit = fit
@@ -183,6 +206,15 @@ class AIReviewImportRequest(BaseModel):
                     "AI review contract 1.1 is missing hardline fields: "
                     + ", ".join(sorted(missing))
                 )
+
+            if job.final_decision in {"strong_pursue", "pursue"}:
+                if job.hardline_status != "PASS":
+                    raise ValueError("Positive decisions require hardline_status=PASS")
+                if job.location_eligibility != "eligible":
+                    raise ValueError(
+                        "Positive decisions require location_eligibility=eligible; unresolved employment territory caps the decision at conditional"
+                    )
+
         return self
 
 
