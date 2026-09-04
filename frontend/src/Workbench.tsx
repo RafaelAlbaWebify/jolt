@@ -4,6 +4,7 @@ import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
 import { DataTools } from "./DataTools";
 import { JobPreferences } from "./JobPreferences";
+import { LinkedInAIAnalysisStatus } from "./LinkedInAIAnalysisStatus";
 import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
@@ -18,7 +19,7 @@ const PRIMARY_VIEWS: Array<{ id: PrimaryView; label: string; description: string
   { id: "professional", label: "Capture Jobs", description: "Capture LinkedIn job searches and send verified opportunities into JOLT." },
   { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added jobs and decide what moves forward." },
   { id: "applications", label: "Applications", description: "Track preparation, submissions, interviews, offers, outcomes, and archived records." },
-  { id: "linkedin", label: "LinkedIn Profile", description: "Refresh profile evidence and manage concrete profile improvements." },
+  { id: "linkedin", label: "LinkedIn Profile", description: "Refresh profile evidence, see whether ChatGPT analysis is current, and manage concrete profile improvements." },
   { id: "market", label: "Market Insights", description: "Use retained job evidence to improve search strategy and preparation priorities." },
 ];
 
@@ -27,6 +28,7 @@ const WORKFLOW_STEPS = ["Capture jobs", "Review opportunities", "Prepare and app
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("professional");
   const [evaluationRevision, setEvaluationRevision] = useState(0);
+  const [aiImportRevision, setAIImportRevision] = useState(0);
   const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
   const description = primary?.description ?? "Manage capture history, reviewed decisions, exports, and developer diagnostics.";
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
@@ -87,6 +89,11 @@ export function Workbench() {
           </div>
           <div className="workspace-view workspace-view-linkedin" hidden={activeView !== "linkedin"}>
             <LinkedInCommandCenter apiBase={API_BASE} active={activeView === "linkedin"} />
+            <LinkedInAIAnalysisStatus
+              apiBase={API_BASE}
+              active={activeView === "linkedin"}
+              importRevision={aiImportRevision}
+            />
           </div>
           <div className="workspace-view workspace-view-market" hidden={activeView !== "market"}>
             <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
@@ -125,7 +132,10 @@ export function Workbench() {
                   </p>
                 </div>
               </div>
-              <DataTools apiBase={API_BASE} />
+              <DataTools
+                apiBase={API_BASE}
+                onImported={() => setAIImportRevision((value) => value + 1)}
+              />
               <RuntimeIdentityPanel apiBase={API_BASE} />
             </section>
           </div>
