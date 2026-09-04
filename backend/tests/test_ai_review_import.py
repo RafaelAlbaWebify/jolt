@@ -203,21 +203,15 @@ def _positive_job(**overrides) -> dict:
 
 def test_positive_decision_requires_resolved_geography() -> None:
     with pytest.raises(ValueError, match="geography_status=eligible"):
-        AIReviewJob.model_validate(
-            _positive_job(geography_status="conditional")
-        )
+        AIReviewJob.model_validate(_positive_job(geography_status="conditional"))
 
 
 def test_positive_decision_requires_resolved_clearance_and_language() -> None:
     with pytest.raises(ValueError, match="clearance_status=clear"):
-        AIReviewJob.model_validate(
-            _positive_job(clearance_status="unknown")
-        )
+        AIReviewJob.model_validate(_positive_job(clearance_status="unknown"))
 
     with pytest.raises(ValueError, match="language_status=clear"):
-        AIReviewJob.model_validate(
-            _positive_job(language_status="conditional")
-        )
+        AIReviewJob.model_validate(_positive_job(language_status="conditional"))
 
 
 def test_explicit_blockers_force_reject() -> None:
@@ -227,9 +221,7 @@ def test_explicit_blockers_force_reject() -> None:
         )
 
     with pytest.raises(ValueError, match="Blocked language"):
-        AIReviewJob.model_validate(
-            _positive_job(decision="conditional", language_status="blocked")
-        )
+        AIReviewJob.model_validate(_positive_job(decision="conditional", language_status="blocked"))
 
 
 def test_duplicate_posting_cannot_be_positive_or_conditional() -> None:
@@ -255,7 +247,9 @@ def test_v11_positive_decision_requires_resolved_location_eligibility() -> None:
                         "hardline_status": "PASS",
                         "hardline_reasons": [],
                         "location_eligibility": "conditional",
-                        "location_evidence": ["CET +/-2 only; cross-border employment not explicit"],
+                        "location_evidence": [
+                            "CET +/-2 only; cross-border employment not explicit"
+                        ],
                         "mandatory_requirements": [],
                         "mandatory_requirement_results": [],
                         "employment_constraints": ["employment territory unresolved"],
