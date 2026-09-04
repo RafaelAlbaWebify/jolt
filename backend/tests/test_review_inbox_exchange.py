@@ -93,3 +93,19 @@ def test_review_inbox_exchange_adds_reasoning_context_without_local_decisions(
     assert payload["jolt_scores_included"] is False
     assert payload["response_template"]["review_source"] == "chatgpt_source_first"
     assert payload["context_ownership"]["human_review_decisions"] == "protected"
+
+    instructions = payload["reasoning_instructions"]
+    assert instructions["processing_mode"] == "strict_sequential_per_job"
+    assert instructions["sequential_review_protocol"][0] == (
+        "Process jobs in jobs[] order, one vacancy at a time."
+    )
+    assert any(
+        "Do not compare, rank, shortlist, or aggregate" in step
+        for step in instructions["sequential_review_protocol"]
+    )
+    assert "hardline_reject is true" in instructions["deterministic_location_authority"]
+    assert any(
+        "every current jobs[] posting_id appears exactly once" in step
+        for step in instructions["post_review_self_audit"]
+    )
+    assert "after all per-job reviews" in instructions["aggregation_rule"]
