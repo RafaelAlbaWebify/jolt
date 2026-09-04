@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 from uuid import uuid4
@@ -37,12 +38,92 @@ _LINKEDIN_RECOMMENDATION_TYPES = {
     "cleanup",
 }
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
+_CONNECTION_SCHEMA = "jolt_linkedin_connections_v1"
 
 
 class LinkedInProfileExchangeImportResponse(BaseModel):
     context: GlobalAIContextOverlay
     feedback_record: AIExchangeFeedbackRecord
     recommendations: LinkedInRecommendationImportResponse
+
+
+def _latest_network_capture_quality(captures: list[dict[str, Any]]) -> dict[str, Any]:
+    network_captures = [
+        capture for capture in captures if str(capture.get("category", "")) == "network_contact"
+    ]
+    if not network_captures:
+        return {
+            "available": False,
+            "status": "not_captured",
+            "bounded_sample": True,
+            "complete_for_requested_limit": False,
+            "coverage_warning": (
+                "No structured Connections capture is available. Do not infer anything about the user's "
+                "network from missing contact evidence."
+            ),
+        }
+
+    latest = max(network_captures, key=lambda item: str(item.get("captured_at", "")))
+    try:
+        structured = json.loads(str(latest.get("visible_text", "")))
+    except json.JSONDecodeError:
+        structured = None
+
+    if not isinstance(structured, dict) or structured.get("schema") != _CONNECTION_SCHEMA:
+        return {
+            "available": True,
+            "capture_id": str(latest.get("id", "")),
+            "captured_at": str(latest.get("captured_at", "")),
+            "status": "unstructured",
+            "bounded_sample": True,
+            "complete_for_requested_limit": False,
+            "coverage_warning": (
+                "The latest network-contact capture is not structured Connections evidence. Treat network "
+                "coverage as unknown and do not infer that uncaptured people are absent."
+            ),
+        }
+
+    run = structured.get("capture_run")
+    if not isinstance(run, dict):
+        run = {}
+    connections = structured.get("connections")
+    if not isinstance(connections, list):
+        connections = []
+
+    status = str(run.get("status", "partial"))
+    stop_reason = str(run.get("stop_reason", "unknown"))
+    requested_limit = int(run.get("requested_limit", 0) or 0)
+    unique_count = int(run.get("unique_count", len(connections)) or 0)
+    complete_for_requested_limit = (
+        status == "complete"
+        and stop_reason == "requested_limit_reached"
+        and requested_limit > 0
+        and unique_count >= requested_limit
+    )
+
+    return {
+        "available": True,
+        "capture_id": str(latest.get("id", "")),
+        "captured_at": str(latest.get("captured_at", "")),
+        "status": status,
+        "stop_reason": stop_reason,
+        "requested_limit": requested_limit,
+        "observed_count": int(run.get("observed_count", 0) or 0),
+        "unique_count": unique_count,
+        "duplicate_count": int(run.get("duplicate_count", 0) or 0),
+        "scroll_count": int(run.get("scroll_count", 0) or 0),
+        "scroll_strategies": run.get("scroll_strategies", []),
+        "failures": run.get("failures", []),
+        "bounded_sample": True,
+        "complete_for_requested_limit": complete_for_requested_limit,
+        "coverage_warning": (
+            "This is a bounded Connections sample, not proof of the full LinkedIn network. Missing people "
+            "must never be treated as absent."
+            if complete_for_requested_limit
+            else "The latest Connections capture is partial. Use captured contacts as positive evidence only; "
+            "missing people must never be treated as absent."
+        ),
+    }
 
 
 def _command_center_evidence(session: Session) -> dict[str, Any]:
@@ -91,6 +172,7 @@ def _command_center_evidence(session: Session) -> dict[str, Any]:
             "usable_exported_captures": len(usable_captures),
             "invalid_profile_captures": len(excluded_captures),
         },
+        "network_capture_quality": _latest_network_capture_quality(usable_captures),
         "categories": command_center.categories,
         "recommendation_statuses": command_center.recommendation_statuses,
         "recommendation_types": command_center.recommendation_types,
@@ -102,6 +184,10 @@ def _command_center_evidence(session: Session) -> dict[str, Any]:
             "excluded_profile_captures": (
                 "Retained for audit only. These captures must not support profile, candidate-fit, or "
                 "professional-evidence conclusions."
+            ),
+            "network_contacts": (
+                "Connections capture is bounded and may be partial. Captured contacts are positive evidence only; "
+                "never infer that an uncaptured person is not in the user's network."
             ),
             "recommendations": (
                 "Existing recommendation status is JOLT/user-owned workflow state and must not be overwritten."
