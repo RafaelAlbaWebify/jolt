@@ -6,6 +6,7 @@ import { DataTools } from "./DataTools";
 describe("DataTools", () => {
   afterEach(() => {
     cleanup();
+    window.localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -27,9 +28,10 @@ describe("DataTools", () => {
     expect(
       screen.getByText(/one JOLT work package, analyze it in ChatGPT/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("No import yet")).toBeInTheDocument();
   });
 
-  it("imports the returned unified update and refreshes the inbox", async () => {
+  it("imports the returned unified update and shows a persistent receipt", async () => {
     const onImported = vi.fn();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
@@ -44,7 +46,7 @@ describe("DataTools", () => {
       ),
     );
 
-    render(
+    const { unmount } = render(
       <DataTools
         apiBase="http://127.0.0.1:8000"
         onImported={onImported}
@@ -85,8 +87,17 @@ describe("DataTools", () => {
     );
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Review Inbox updated. 2 intelligence sections imported.",
+      "AI update imported successfully. Review Inbox updated. 2 intelligence sections imported.",
     );
+    expect(screen.getByText("Imported")).toBeInTheDocument();
+    expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
+    expect(screen.getByText("market_insights, skills_gaps")).toBeInTheDocument();
+    expect(screen.getByText("Updated", { selector: "strong" })).toBeInTheDocument();
     expect(onImported).toHaveBeenCalledTimes(1);
+
+    unmount();
+    render(<DataTools apiBase="http://127.0.0.1:8000" />);
+    expect(screen.getByText("Imported")).toBeInTheDocument();
+    expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
   });
 });
