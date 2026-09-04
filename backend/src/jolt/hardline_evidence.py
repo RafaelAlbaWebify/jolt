@@ -67,6 +67,9 @@ _US_STATE_NAMES = (
     "Wyoming",
     "District of Columbia",
 )
+
+# Keep abbreviations uppercase. Matching them case-insensitively creates dangerous
+# collisions with ordinary words and non-English text: DE/de, IN/in, OR/or, ME/me, etc.
 _US_STATE_ABBREVIATIONS = (
     "AL",
     "AK",
@@ -120,10 +123,9 @@ _US_STATE_ABBREVIATIONS = (
     "WY",
     "DC",
 )
-_US_STATE_PATTERN = "|".join(
-    [re.escape(value) for value in _US_STATE_NAMES]
-    + [rf"{re.escape(value)}\b" for value in _US_STATE_ABBREVIATIONS]
-)
+
+_US_STATE_NAME_PATTERN = "|".join(re.escape(value) for value in _US_STATE_NAMES)
+_US_STATE_ABBREVIATION_PATTERN = "|".join(re.escape(value) for value in _US_STATE_ABBREVIATIONS)
 
 _NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("US-only", re.compile(r"\b(?:u\.?s\.?|united states)\s+only\b", re.I)),
@@ -156,9 +158,9 @@ _NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         ),
     ),
     (
-        "US state residency",
+        "US state-name residency",
         re.compile(
-            rf"\bmust\s+(?:reside|live|be located|be based)\s+in\s+(?:the\s+)?(?:{_US_STATE_PATTERN})\b",
+            rf"\bmust\s+(?:reside|live|be located|be based)\s+in\s+(?:the\s+)?(?:{_US_STATE_NAME_PATTERN})\b",
             re.I,
         ),
     ),
@@ -219,6 +221,29 @@ def _unique(values: list[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
 
 
+def _uppercase_state_abbreviation_after_comma(location: str) -> str | None:
+    """Return a US state abbreviation only in canonical location syntax such as Austin, TX.
+
+    Matching abbreviations with re.I is unsafe because several are common words in English
+    or other languages. Requiring the original uppercase token after a comma keeps real US
+    city/state locations detectable without treating `de`, `in`, `or`, `me`, etc. as states.
+    """
+
+    match = re.search(rf",\s*({_US_STATE_ABBREVIATION_PATTERN})(?:\b|$)", location)
+    return match.group(1) if match else None
+
+
+def _uppercase_state_abbreviation_in_residency(source_text: str) -> str | None:
+    """Detect explicit residency wording such as 'must reside in TX' case-sensitively."""
+
+    match = re.search(
+        rf"\bmust\s+(?:reside|live|be located|be based)\s+in\s+(?:the\s+)?({_US_STATE_ABBREVIATION_PATTERN})\b",
+        source_text,
+        flags=0,
+    )
+    return match.group(0) if match else None
+
+
 def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvidenceResult:
     """Extract explicit hiring-geography evidence without performing fit analysis.
 
@@ -236,19 +261,23 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
         if match:
             negative.append(match.group(0) or label)
 
+    residency_abbreviation = _uppercase_state_abbreviation_in_residency(source_text)
+    if residency_abbreviation:
+        negative.append(residency_abbreviation)
+
     location_scope = normalized_location_scope(location)
     if location_scope == "foreign_country" and _US_LOCATION_PATTERN.search(location):
         negative.append(location)
 
-    # A US state named as the location itself is a US-only hiring signal even without
-    # a nearby "must reside" phrase. normalized_location_scope already classifies
-    # common US state abbreviations/names as foreign geography; do not generalize this
-    # to other foreign countries here because this module is only an explicit blocker
-    # extractor, not a complete eligibility reasoning engine.
+    # A real US city/state location is still a hardline signal, but state abbreviations
+    # must be uppercase and appear in canonical comma-separated location syntax.
     if location_scope == "foreign_country" and not negative:
-        state_match = re.search(rf"\b(?:{_US_STATE_PATTERN})\b", location, re.I)
-        if state_match:
-            negative.append(state_match.group(0))
+        state_name_match = re.search(rf"\b(?:{_US_STATE_NAME_PATTERN})\b", location, re.I)
+        state_abbreviation = _uppercase_state_abbreviation_after_comma(location)
+        if state_name_match:
+            negative.append(state_name_match.group(0))
+        elif state_abbreviation:
+            negative.append(state_abbreviation)
 
     for label, pattern in _POSITIVE_PATTERNS:
         match = pattern.search(combined)
