@@ -54,9 +54,8 @@ def build_review_inbox_exchange_json(session: Session) -> bytes:
         "deterministic_location_authority": (
             "If jobs[].location_hardline_evidence.hardline_reject is true, Stage 1 MUST return REJECT, "
             "location_eligibility=ineligible, geography_status=ineligible, final_decision=reject, "
-            "fit_analysis_allowed=false, and technical_fit_percent/technical_fit=null. The only exception "
-            "is explicit contradictory Spain-compatible hiring evidence already present in the same vacancy; "
-            "if such a contradiction exists, return MANUAL_REVIEW and cite both sides instead of overriding it silently."
+            "fit_analysis_allowed=false, and technical_fit_percent/technical_fit=null. Do not reinterpret "
+            "or soften deterministic hardline evidence in the AI review; JOLT will reject a contradictory return payload."
         ),
         "stage_1_hardline_gate": (
             "Evaluate location/hiring geography, mandatory experience, employment/legal constraints, "
@@ -88,7 +87,7 @@ def build_review_inbox_exchange_json(session: Session) -> bytes:
         "post_review_self_audit": [
             "Confirm every current jobs[] posting_id appears exactly once in the returned review payload.",
             "Confirm no returned posting_id falls outside this capture.",
-            "Confirm every deterministic hardline_reject=true vacancy is REJECT unless explicitly marked MANUAL_REVIEW for contradictory same-vacancy evidence.",
+            "Confirm every deterministic hardline_reject=true vacancy is REJECT.",
             "Confirm every REJECT or MANUAL_REVIEW has fit_analysis_allowed=false and no technical-fit score.",
             "Confirm every pursue or strong_pursue passed Stage 1 and has location_eligibility=eligible.",
             "Confirm duplicates are not recommended for pursuit.",
