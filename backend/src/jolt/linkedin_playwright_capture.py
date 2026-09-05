@@ -55,10 +55,10 @@ _CONNECTION_SCHEMA = "jolt_linkedin_connections_v1"
 _PROFILE_DETAILS_PATH = "/details/"
 _MAX_CONNECTION_SCROLLS = 50
 _MAX_STAGNANT_SCROLLS = 3
-_MAX_PROFILE_SECTION_SCROLLS = 40
+_MAX_PROFILE_SECTION_SCROLLS = 80
 _MAX_PROFILE_SECTION_STAGNANT_SCROLLS = 3
 _SCROLL_WAIT_MILLISECONDS = 1_200
-_PROFILE_SCROLL_WAIT_MILLISECONDS = 900
+_PROFILE_SCROLL_WAIT_MILLISECONDS = 700
 _MAX_CAPTURE_TEXT_CHARACTERS = 199_000
 
 
@@ -300,19 +300,25 @@ def _linkedin_safety_warning(page: Any) -> str | None:
 
 
 def _collect_profile_section_text(page: Any) -> dict[str, object]:
-    """Load a LinkedIn profile detail section until the document stabilizes at its bottom.
+    """Traverse a LinkedIn profile detail section until lazy content is truly exhausted.
 
-    Dedicated profile sections such as Certifications are lazy-loaded. Capturing body text once
-    silently records only the first viewport/chunk. A section is complete only after both its text
-    length and document height remain unchanged at the bottom for several scrolls. Safety/login or
-    scroll-budget exits are explicitly partial so candidate evidence can fail closed.
+    LinkedIn can load long profile sections only when intermediate portions of the document enter
+    the viewport. Jumping directly to ``scrollHeight`` can therefore skip lazy-load triggers and
+    produce a false ``complete`` capture. JOLT starts at the top, advances by a bounded fraction of
+    the viewport, and only declares completion after the document is stable at its real end for
+    several observations. Safety/login or scroll-budget exits remain explicitly partial.
     """
 
     previous_signature: tuple[int, int] | None = None
     stagnant_scrolls = 0
     scroll_count = 0
+    furthest_scroll_y = 0
+    final_scroll_height = 0
     stop_reason = "maximum_scrolls_reached"
     status = "partial"
+
+    page.evaluate("() => window.scrollTo({ top: 0, behavior: 'instant' })")
+    page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
 
     while scroll_count <= _MAX_PROFILE_SECTION_SCROLLS:
         if _page_needs_linkedin_login(page):
@@ -340,6 +346,8 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
         scroll_height = int(geometry.get("scroll_height", 0) or 0)
         y = int(geometry.get("y", 0) or 0)
         inner_height = int(geometry.get("inner_height", 0) or 0)
+        furthest_scroll_y = max(furthest_scroll_y, y)
+        final_scroll_height = max(final_scroll_height, scroll_height)
         at_bottom = y + inner_height >= scroll_height - 4
         signature = (len(text), scroll_height)
 
@@ -356,10 +364,17 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
 
         page.evaluate(
             """
-            () => window.scrollTo({
-              top: Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0),
-              behavior: "instant"
-            })
+            () => {
+              const scrollHeight = Math.max(
+                document.body?.scrollHeight || 0,
+                document.documentElement?.scrollHeight || 0
+              );
+              const viewport = Math.max(window.innerHeight || 0, 1);
+              const maxTop = Math.max(scrollHeight - viewport, 0);
+              const step = Math.max(Math.floor(viewport * 0.75), 300);
+              const target = Math.min(window.scrollY + step, maxTop);
+              window.scrollTo({ top: target, behavior: "instant" });
+            }
             """
         )
         page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
@@ -372,6 +387,8 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
         "stop_reason": stop_reason,
         "scroll_count": scroll_count,
         "character_count": len(visible_text),
+        "furthest_scroll_y": furthest_scroll_y,
+        "final_scroll_height": final_scroll_height,
     }
 
 
@@ -642,6 +659,8 @@ def _capture_with_context(
                 f"JOLT profile section stop reason: {profile_section_run['stop_reason']}",
                 f"JOLT profile section scroll count: {profile_section_run['scroll_count']}",
                 f"JOLT profile section character count: {profile_section_run['character_count']}",
+                f"JOLT profile section furthest scroll y: {profile_section_run['furthest_scroll_y']}",
+                f"JOLT profile section final scroll height: {profile_section_run['final_scroll_height']}",
             ]
         )
     notes = "\n".join(note_lines)

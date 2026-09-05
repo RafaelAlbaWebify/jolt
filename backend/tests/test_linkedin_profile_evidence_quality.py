@@ -30,6 +30,19 @@ def _capture(
     )
 
 
+def _complete_progressive_notes(*, scroll_count: int = 12, character_count: int = 4000) -> str:
+    return "\n".join(
+        [
+            "JOLT profile section completeness: complete",
+            "JOLT profile section stop reason: stable_at_document_end",
+            f"JOLT profile section scroll count: {scroll_count}",
+            f"JOLT profile section character count: {character_count}",
+            "JOLT profile section furthest scroll y: 6400",
+            "JOLT profile section final scroll height: 7100",
+        ]
+    )
+
+
 def test_profile_capture_quality_rejects_linkedin_authwall() -> None:
     capture = _capture(
         capture_id="a",
@@ -57,6 +70,22 @@ def test_profile_capture_quality_rejects_explicitly_partial_profile_section() ->
     )
 
     assert profile_capture_quality_issue(capture) == "partial_linkedin_profile_section"
+
+
+def test_profile_capture_quality_rejects_legacy_false_complete_detail_section() -> None:
+    capture = _capture(
+        capture_id="legacy",
+        source_url="https://www.linkedin.com/in/example/details/certifications/",
+        visible_text="Licenses & certifications\nCredential 1\nCredential 2",
+        title="Licenses & certifications",
+        notes=(
+            "JOLT profile section completeness: complete\n"
+            "JOLT profile section stop reason: stable_at_document_end\n"
+            "JOLT profile section scroll count: 4"
+        ),
+    )
+
+    assert profile_capture_quality_issue(capture) == "legacy_non_progressive_profile_section"
 
 
 def test_candidate_ledger_excludes_authwall_but_preserves_usable_profile(tmp_path) -> None:
@@ -103,8 +132,9 @@ def test_candidate_ledger_exports_only_latest_usable_capture_per_profile_section
                 _capture(
                     capture_id="old-cert",
                     source_url="https://www.linkedin.com/in/example/details/certifications/?foo=old",
-                    visible_text="Licenses & certifications\nOld truncated-looking snapshot",
+                    visible_text="Licenses & certifications\nCredential old",
                     title="Licenses & certifications",
+                    notes=_complete_progressive_notes(scroll_count=9, character_count=2800),
                     captured_at=now - timedelta(days=10),
                 ),
                 _capture(
@@ -112,7 +142,7 @@ def test_candidate_ledger_exports_only_latest_usable_capture_per_profile_section
                     source_url="https://www.linkedin.com/in/example/details/certifications/?foo=new",
                     visible_text="Licenses & certifications\nCredential 1\nCredential 2\nCredential 3",
                     title="Licenses & certifications",
-                    notes="JOLT profile section completeness: complete",
+                    notes=_complete_progressive_notes(),
                     captured_at=now,
                 ),
                 _capture(
@@ -120,7 +150,7 @@ def test_candidate_ledger_exports_only_latest_usable_capture_per_profile_section
                     source_url="https://www.linkedin.com/in/example/details/experience/",
                     visible_text="Experience\nIT Operations Engineer",
                     title="Experience",
-                    notes="JOLT profile section completeness: complete",
+                    notes=_complete_progressive_notes(scroll_count=6, character_count=1700),
                     captured_at=now - timedelta(minutes=1),
                 ),
             ]
@@ -138,6 +168,16 @@ def test_candidate_ledger_exports_only_latest_usable_capture_per_profile_section
         assert ledger["historical_profile_captures"][0]["reason"] == (
             "superseded_profile_section_snapshot"
         )
+        certification = ledger["source_evidence"][0]
+        assert certification["capture_metadata"] == {
+            "completeness": "complete",
+            "stop_reason": "stable_at_document_end",
+            "scroll_count": 12,
+            "character_count": 4000,
+            "furthest_scroll_y": 6400,
+            "final_scroll_height": 7100,
+            "progressive_traversal_verified": True,
+        }
     finally:
         session.close()
 
@@ -153,7 +193,7 @@ def test_newer_partial_section_does_not_hide_older_complete_section(tmp_path) ->
                     source_url="https://www.linkedin.com/in/example/details/certifications/",
                     visible_text="Licenses & certifications\nCredential A\nCredential B",
                     title="Licenses & certifications",
-                    notes="JOLT profile section completeness: complete",
+                    notes=_complete_progressive_notes(),
                     captured_at=now - timedelta(hours=1),
                 ),
                 _capture(
@@ -174,6 +214,33 @@ def test_newer_partial_section_does_not_hide_older_complete_section(tmp_path) ->
         assert ledger["excluded_profile_captures"][0]["capture_id"] == "partial-cert"
         assert ledger["excluded_profile_captures"][0]["reason"] == (
             "partial_linkedin_profile_section"
+        )
+    finally:
+        session.close()
+
+
+def test_legacy_complete_section_is_excluded_until_progressive_recapture(tmp_path) -> None:
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
+    try:
+        session.add(
+            _capture(
+                capture_id="legacy-cert",
+                source_url="https://www.linkedin.com/in/example/details/certifications/",
+                visible_text="Licenses & certifications\nOnly first visible batch",
+                title="Licenses & certifications",
+                notes=(
+                    "JOLT profile section completeness: complete\n"
+                    "JOLT profile section stop reason: stable_at_document_end"
+                ),
+            )
+        )
+        session.commit()
+
+        ledger = build_candidate_evidence_ledger(session)
+
+        assert ledger["source_evidence"] == []
+        assert ledger["excluded_profile_captures"][0]["reason"] == (
+            "legacy_non_progressive_profile_section"
         )
     finally:
         session.close()

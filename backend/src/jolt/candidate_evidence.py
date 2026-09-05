@@ -14,7 +14,17 @@ from jolt.global_context import load_global_ai_context
 _MAX_PROFILE_SOURCES = 20
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 _EVIDENCE_REF_PREFIX = "linkedin_capture:"
+_PROFILE_COMPLETENESS_COMPLETE_MARKER = "jolt profile section completeness: complete"
 _PROFILE_COMPLETENESS_PARTIAL_MARKER = "jolt profile section completeness: partial"
+_PROFILE_PROGRESSIVE_TRAVERSAL_MARKER = "jolt profile section furthest scroll y:"
+_PROFILE_NOTE_PREFIXES = {
+    "completeness": "JOLT profile section completeness:",
+    "stop_reason": "JOLT profile section stop reason:",
+    "scroll_count": "JOLT profile section scroll count:",
+    "character_count": "JOLT profile section character count:",
+    "furthest_scroll_y": "JOLT profile section furthest scroll y:",
+    "final_scroll_height": "JOLT profile section final scroll height:",
+}
 _LOGIN_URL_MARKERS = (
     "/login",
     "/checkpoint",
@@ -81,12 +91,56 @@ def _canonical_profile_section_key(capture: LinkedInPresenceCapture) -> tuple[st
     return capture.category.strip().casefold(), canonical_url.casefold()
 
 
+def _is_linkedin_profile_detail_capture(capture: LinkedInPresenceCapture) -> bool:
+    source_url = capture.source_url.strip().casefold()
+    return "linkedin.com/in/" in source_url and "/details/" in source_url
+
+
+def _profile_section_capture_metadata(capture: LinkedInPresenceCapture) -> dict[str, Any]:
+    """Expose recorder-owned completeness evidence without inferring semantic content."""
+
+    metadata: dict[str, Any] = {
+        "completeness": "unknown",
+        "stop_reason": "unknown",
+        "scroll_count": None,
+        "character_count": None,
+        "furthest_scroll_y": None,
+        "final_scroll_height": None,
+        "progressive_traversal_verified": False,
+    }
+    lines = [line.strip() for line in capture.notes.splitlines() if line.strip()]
+    for key, prefix in _PROFILE_NOTE_PREFIXES.items():
+        prefix_folded = prefix.casefold()
+        value = next(
+            (
+                line[len(prefix) :].strip()
+                for line in lines
+                if line.casefold().startswith(prefix_folded)
+            ),
+            None,
+        )
+        if value is None:
+            continue
+        if key in {"scroll_count", "character_count", "furthest_scroll_y", "final_scroll_height"}:
+            try:
+                metadata[key] = int(value)
+            except ValueError:
+                metadata[key] = None
+        else:
+            metadata[key] = value
+
+    metadata["progressive_traversal_verified"] = any(
+        line.casefold().startswith(_PROFILE_PROGRESSIVE_TRAVERSAL_MARKER) for line in lines
+    )
+    return metadata
+
+
 def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | None:
     """Return a deterministic reason when a profile capture is not usable evidence.
 
-    LinkedIn login/authwall/checkpoint and explicitly partial profile-section captures are retained
-    for audit, but must never be promoted into candidate evidence or AI profile analysis as if they
-    were complete profile content.
+    LinkedIn login/authwall/checkpoint, explicitly partial profile sections, and profile-detail
+    captures whose traversal/completeness cannot be verified are retained for audit but must never
+    be promoted into candidate evidence or AI profile analysis as if they were complete content.
     """
 
     source_url = capture.source_url.strip().casefold()
@@ -101,6 +155,11 @@ def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | Non
         return "empty_profile_capture"
     if _PROFILE_COMPLETENESS_PARTIAL_MARKER in notes:
         return "partial_linkedin_profile_section"
+    if _is_linkedin_profile_detail_capture(capture):
+        if _PROFILE_COMPLETENESS_COMPLETE_MARKER not in notes:
+            return "unverified_linkedin_profile_section_completeness"
+        if _PROFILE_PROGRESSIVE_TRAVERSAL_MARKER not in notes:
+            return "legacy_non_progressive_profile_section"
     return None
 
 
@@ -138,7 +197,7 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
     The newest usable capture for each canonical LinkedIn profile section is authoritative for the
     bounded AI surface. Older snapshots remain stored for provenance/history but no longer crowd
     current Profile, Experience, Skills, Certifications, Recommendations, etc. out of the package.
-    Invalid authwall/checkpoint/empty/explicitly-partial captures are excluded.
+    Invalid authwall/checkpoint/empty/partial/unverifiable captures are excluded.
     """
 
     captures = session.scalars(
@@ -194,6 +253,7 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
             "content_hash": capture.content_hash,
             "captured_at": capture.captured_at.isoformat(),
             "changed_since_previous": capture.changed_since_previous,
+            "capture_metadata": _profile_section_capture_metadata(capture),
             "visible_text": capture.visible_text,
         }
         for capture in selected
@@ -218,12 +278,13 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
         "historical_profile_captures": historical,
         "authority_notes": {
             "source_evidence": (
-                "Newest usable capture per canonical LinkedIn profile section, with provenance. "
-                "Presence of a term does not prove professional depth or duration."
+                "Newest usable capture per canonical LinkedIn profile section, with provenance and "
+                "recorder-owned completeness metadata. Presence of a term does not prove "
+                "professional depth or duration."
             ),
             "excluded_profile_captures": (
-                "LinkedIn login/authwall/checkpoint, empty, or explicitly partial section captures "
-                "are retained for audit but are not candidate evidence."
+                "LinkedIn login/authwall/checkpoint, empty, explicitly partial, or unverifiable "
+                "profile-detail captures are retained for audit but are not candidate evidence."
             ),
             "historical_profile_captures": (
                 "Older usable snapshots of a currently exported section remain audit history and "
