@@ -1,61 +1,85 @@
 {
   "last_updated": "2026-09-05",
-  "baseline_commit": "07ac4ec8dd9384d202bb9970d17ec0c2d9e5c0e4",
-  "status_note": "This migration did not execute the full repository test suite locally. It records verified recent CI/acceptance evidence and explicitly marks areas requiring fresh validation.",
+  "baseline_commit": "09b78e194afe8cff219a6305b2a1df8cc3ea5101",
+  "status_note": "Recent operability hardening PRs were merged only after their exact-head CI, Playwright acceptance and full-cycle certification gates passed. Real-world corrected AI import acceptance is still pending and is tracked separately from code-level verification.",
+  "testing_percentage": 92,
   "test_suites": [
     {
       "name": "backend pytest",
       "command": "cd backend && uv run pytest",
-      "latest_state": "recently used as required PR gate; exact current-main pass count not re-collected by this migration",
-      "verified": false
+      "latest_state": "verified green as part of PR #385 CI run 1353 after exact-set import regression tests were added",
+      "verified": true
     },
     {
       "name": "backend ruff lint",
       "command": "cd backend && uv run ruff check .",
-      "latest_state": "required CI gate",
-      "verified": false
+      "latest_state": "verified green in PR #385 CI run 1353",
+      "verified": true
     },
     {
       "name": "backend ruff format",
-      "command": "cd backend && uv run ruff format --check .",
-      "latest_state": "PR #379 specifically corrected a format failure and was merged",
+      "command": "cd backend && uv run ruff format --check --diff .",
+      "latest_state": "verified green in PR #385 CI run 1353",
       "verified": true
     },
     {
       "name": "backend pyright",
       "command": "cd backend && uv run pyright",
-      "latest_state": "required CI gate",
-      "verified": false
+      "latest_state": "verified green in PR #385 CI run 1353",
+      "verified": true
     },
     {
       "name": "frontend unit/component tests",
       "command": "cd frontend && npm test",
-      "latest_state": "required CI gate; extensive component tests present",
-      "verified": false
+      "latest_state": "verified green in PR #385 CI run 1353",
+      "verified": true
     },
     {
       "name": "frontend build",
       "command": "cd frontend && npm run build",
-      "latest_state": "required CI gate",
-      "verified": false
+      "latest_state": "verified green in PR #385 CI run 1353",
+      "verified": true
     },
     {
       "name": "Playwright acceptance",
       "workflow": ".github/workflows/playwright-acceptance.yml",
-      "latest_state": "required merge gate used on recent PRs",
+      "latest_state": "PR #385 run 627 success; PR #384 run 626 success; PR #377 run 625 success; PR #382 run 623 success",
       "verified": true
     },
     {
       "name": "Full-cycle Playwright certification",
       "workflow": ".github/workflows/full-cycle-playwright-certification.yml",
-      "latest_state": "required merge gate including supported desktop layout behavior",
+      "latest_state": "PR #385 run 550 success; PR #384 run 549 success; PR #377 run 548 success; PR #382 run 546 success",
       "verified": true
     },
     {
       "name": "Windows launcher contract",
-      "workflow": ".github/workflows/windows-launcher-contract.yml",
-      "latest_state": "permanent launcher parser/contract coverage exists",
+      "latest_state": "windows-scripts job passed in PR #385 CI run 1353",
       "verified": true
+    }
+  ],
+  "recent_exact_head_gates": [
+    {
+      "pull_request": 382,
+      "purpose": "durable AI round-trip status/import receipt UX",
+      "result": "CI + Playwright acceptance + full-cycle certification passed before merge"
+    },
+    {
+      "pull_request": 377,
+      "purpose": "LinkedIn Connections nested scrolling and capture-quality semantics",
+      "result": "CI run 1349 + Playwright acceptance 625 + full-cycle 548 passed before merge"
+    },
+    {
+      "pull_request": 384,
+      "purpose": "loaded-runtime versus checkout staleness guard",
+      "result": "CI run 1351 + Playwright acceptance 626 + full-cycle 549 passed before merge"
+    },
+    {
+      "pull_request": 385,
+      "head_sha": "528c921eeefe86ccaaaf38987cc5e9c6ad7f2d9d",
+      "merge_sha": "09b78e194afe8cff219a6305b2a1df8cc3ea5101",
+      "purpose": "exact capture-set completeness enforcement for AI review contract 1.1",
+      "result": "CI run 1353 + Playwright acceptance 627 + full-cycle 550 passed before merge"
     }
   ],
   "latest_real_world_external_validation": {
@@ -63,26 +87,29 @@
     "capture_run_id": "7a105d99-a81a-4486-a435-7db9a07eb0ab",
     "result": "79 captured / 79 verified / 4 pages / no warnings / no_next_page",
     "ai_package_id": "b2c2d6f1-2378-48ea-8ccc-e239443fce7b",
-    "sequential_review": "all 79 reviewed exactly once; self-audit passed; import deferred after deterministic parser bug discovery"
+    "sequential_review": "all 79 reviewed exactly once; self-audit passed; old returned update intentionally not imported after deterministic parser bug discovery",
+    "next_required_result": "fresh post-fix package from restarted current runtime must be reviewed and imported successfully"
   },
   "known_flaky_tests": [],
   "untested_or_not_freshly_verified_areas": [
-    "Exact full-suite result on current main after 07ac4ec8.",
-    "PR #380 exact CI/Playwright/full-cycle status and corrected real-package output.",
-    "Successful import of the corrected 79-job sequential review update.",
-    "PR #376 frontend behavior after fixing its prior failure.",
-    "PR #377 real nested/virtualized Connections capture coverage.",
-    "Clean install/restore rehearsal on a second or clean environment."
+    "Successful import of the corrected 79-job sequential review update from the post-fix local runtime.",
+    "Real live-site confirmation of improved LinkedIn Connections nested-scroll coverage after PR #377.",
+    "Persistence of corrected AI decisions/transitions through a real application restart after import.",
+    "Dated backup/restore rehearsal on the active local schema.",
+    "Second consecutive real capture/review/import cycle without repair.",
+    "Clean install/restore rehearsal on a second or clean environment.",
+    "Unified release/version authority and exact release-commit certification."
   ],
   "manual_acceptance_tests": [
-    "Start JOLT through controlled Windows launcher and confirm backend/frontend reachability.",
-    "Capture a real supervised LinkedIn job-search batch.",
-    "Export unified AI work package and inspect protocol/version markers.",
-    "Review jobs sequentially, import returned update, verify top survivors against source text.",
-    "Restart JOLT and confirm decisions/applications/import receipts persist.",
-    "Archive/clear pending capture data and confirm pursued applications remain visible."
+    "Pull current main and start JOLT through controlled Windows launcher.",
+    "Confirm no runtime-staleness warning and loaded backend SHA equals repository checkout SHA.",
+    "Re-export unified AI work package from stored capture 7a105d99-a81a-4486-a435-7db9a07eb0ab.",
+    "Inspect strict sequential protocol and corrected deterministic geography evidence.",
+    "Review all 79 jobs sequentially, import returned update, verify durable import receipt and top survivors against source text.",
+    "Restart JOLT and confirm decisions/applications/import receipt persist.",
+    "Exercise backup create/verify/restore on the active schema and record dated evidence."
   ],
-  "e2e_status": "implemented and routinely used as a merge gate; full current-release certification remains pending",
-  "browser_ui_status": "Playwright acceptance/full-cycle infrastructure exists; open PRs #376/#377 still require their own exact green evidence",
+  "e2e_status": "merge-gate E2E is fresh and green through PR #385; real corrected AI round-trip acceptance remains pending",
+  "browser_ui_status": "durable AI status, Connections quality semantics and runtime-staleness guard are all merged with exact green browser gates",
   "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when the relevant test/runtime evidence passes on the applicable commit."
 }
