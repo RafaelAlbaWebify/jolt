@@ -1,115 +1,119 @@
 {
-  "last_updated": "2026-09-05",
-  "baseline_commit": "09b78e194afe8cff219a6305b2a1df8cc3ea5101",
-  "status_note": "Recent operability hardening PRs were merged only after their exact-head CI, Playwright acceptance and full-cycle certification gates passed. Real-world corrected AI import acceptance is still pending and is tracked separately from code-level verification.",
-  "testing_percentage": 92,
+  "last_updated": "2026-09-06",
+  "baseline_commit": "e12f1befe0c1ff0d56d151b66215863a9595e60a",
+  "status_note": "Merge-gate verification is fresh through PR #390. One corrected real 79-job AI round trip and restart persistence are verified. The current open runtime acceptance is live LinkedIn profile-detail completeness after the progressive-scroll fix; code-level green gates do not substitute for that external-site proof.",
+  "testing_percentage": 97,
   "test_suites": [
     {
       "name": "backend pytest",
       "command": "cd backend && uv run pytest",
-      "latest_state": "verified green as part of PR #385 CI run 1353 after exact-set import regression tests were added",
+      "latest_state": "verified green in PR #390 CI run 1367, including progressive profile-section and fail-closed legacy-detail regressions",
       "verified": true
     },
     {
       "name": "backend ruff lint",
       "command": "cd backend && uv run ruff check .",
-      "latest_state": "verified green in PR #385 CI run 1353",
+      "latest_state": "verified green in PR #390 CI run 1367",
       "verified": true
     },
     {
       "name": "backend ruff format",
       "command": "cd backend && uv run ruff format --check --diff .",
-      "latest_state": "verified green in PR #385 CI run 1353",
+      "latest_state": "verified green in PR #390 CI run 1367",
       "verified": true
     },
     {
       "name": "backend pyright",
       "command": "cd backend && uv run pyright",
-      "latest_state": "verified green in PR #385 CI run 1353",
+      "latest_state": "verified green in PR #390 CI run 1367",
       "verified": true
     },
     {
       "name": "frontend unit/component tests",
       "command": "cd frontend && npm test",
-      "latest_state": "verified green in PR #385 CI run 1353",
+      "latest_state": "verified green in PR #390 CI run 1367",
       "verified": true
     },
     {
       "name": "frontend build",
       "command": "cd frontend && npm run build",
-      "latest_state": "verified green in PR #385 CI run 1353",
+      "latest_state": "verified green in PR #390 CI run 1367",
       "verified": true
     },
     {
       "name": "Playwright acceptance",
       "workflow": ".github/workflows/playwright-acceptance.yml",
-      "latest_state": "PR #385 run 627 success; PR #384 run 626 success; PR #377 run 625 success; PR #382 run 623 success",
+      "latest_state": "PR #390 run 636 success",
       "verified": true
     },
     {
       "name": "Full-cycle Playwright certification",
       "workflow": ".github/workflows/full-cycle-playwright-certification.yml",
-      "latest_state": "PR #385 run 550 success; PR #384 run 549 success; PR #377 run 548 success; PR #382 run 546 success",
+      "latest_state": "PR #390 run 559 success",
       "verified": true
     },
     {
       "name": "Windows launcher contract",
-      "latest_state": "windows-scripts job passed in PR #385 CI run 1353",
+      "latest_state": "windows-scripts job passed in PR #390 CI run 1367",
       "verified": true
     }
   ],
   "recent_exact_head_gates": [
     {
-      "pull_request": 382,
-      "purpose": "durable AI round-trip status/import receipt UX",
+      "pull_request": 387,
+      "purpose": "structured AI import validation rendering",
       "result": "CI + Playwright acceptance + full-cycle certification passed before merge"
     },
     {
-      "pull_request": 377,
-      "purpose": "LinkedIn Connections nested scrolling and capture-quality semantics",
-      "result": "CI run 1349 + Playwright acceptance 625 + full-cycle 548 passed before merge"
+      "pull_request": 388,
+      "purpose": "backend package/API/runtime version parity at 0.8.0",
+      "result": "CI + Playwright acceptance + full-cycle certification passed before merge"
     },
     {
-      "pull_request": 384,
-      "purpose": "loaded-runtime versus checkout staleness guard",
-      "result": "CI run 1351 + Playwright acceptance 626 + full-cycle 549 passed before merge"
+      "pull_request": 389,
+      "purpose": "newest-per-profile-section candidate evidence and explicit profile-section completeness semantics",
+      "result": "CI + Playwright acceptance + full-cycle certification passed before merge; subsequent live Certifications acceptance exposed an absolute-footer false-complete edge case"
     },
     {
-      "pull_request": 385,
-      "head_sha": "528c921eeefe86ccaaaf38987cc5e9c6ad7f2d9d",
-      "merge_sha": "09b78e194afe8cff219a6305b2a1df8cc3ea5101",
-      "purpose": "exact capture-set completeness enforcement for AI review contract 1.1",
-      "result": "CI run 1353 + Playwright acceptance 627 + full-cycle 550 passed before merge"
+      "pull_request": 390,
+      "head_sha": "6db3e53cb0929e2ce70aa6ce865f0dbac424d7f0",
+      "merge_sha": "e12f1befe0c1ff0d56d151b66215863a9595e60a",
+      "purpose": "progressive LinkedIn profile-detail traversal, recorder-owned completeness metadata and fail-closed legacy detail evidence",
+      "result": "CI run 1367 + Playwright acceptance 636 + full-cycle certification 559 passed before squash merge"
     }
   ],
   "latest_real_world_external_validation": {
-    "date": "2026-09-04",
+    "first_corrected_cycle_date": "2026-09-05",
     "capture_run_id": "7a105d99-a81a-4486-a435-7db9a07eb0ab",
-    "result": "79 captured / 79 verified / 4 pages / no warnings / no_next_page",
-    "ai_package_id": "b2c2d6f1-2378-48ea-8ccc-e239443fce7b",
-    "sequential_review": "all 79 reviewed exactly once; self-audit passed; old returned update intentionally not imported after deterministic parser bug discovery",
-    "next_required_result": "fresh post-fix package from restarted current runtime must be reviewed and imported successfully"
+    "capture_result": "79 captured / 79 verified / 4 pages / no warnings / no_next_page",
+    "ai_package_id": "2ebeeeca-42bb-473f-a220-7d3b1bc0e860",
+    "sequential_review": "79 jobs reviewed exactly once under contract 1.1 strict_sequential_per_job; 76 reject / 1 strong_pursue / 1 pursue / 1 conditional",
+    "import_result": "corrected V2 update imported successfully; Settings & Data showed Imported, seven intelligence sections updated and Review Inbox updated",
+    "restart_persistence": "full local restart preserved import receipt, Market Insights and Review Inbox decisions with no stale-runtime warning",
+    "second_cycle_profile_preparation": "fresh newest-per-section profile capture worked, but real Licenses & certifications capture 4d99d167-b6d9-4e88-aa05-9c7d84d860d3 stopped around the first ten credentials while being marked complete; this exposed the profile false-complete bug fixed in PR #390",
+    "next_required_result": "fresh live post-PR #390 LinkedIn profile-detail recapture must show later certifications and progressive_traversal_verified=true before the second AI cycle is trusted"
   },
   "known_flaky_tests": [],
   "untested_or_not_freshly_verified_areas": [
-    "Successful import of the corrected 79-job sequential review update from the post-fix local runtime.",
-    "Real live-site confirmation of improved LinkedIn Connections nested-scroll coverage after PR #377.",
-    "Persistence of corrected AI decisions/transitions through a real application restart after import.",
+    "Live LinkedIn profile-detail completeness after PR #390 progressive traversal.",
+    "Second consecutive real capture/review/import cycle without internal repair.",
     "Dated backup/restore rehearsal on the active local schema.",
-    "Second consecutive real capture/review/import cycle without repair.",
+    "Real capture cleanup/archive rehearsal proving pursued applications survive.",
     "Clean install/restore rehearsal on a second or clean environment.",
-    "Unified release/version authority and exact release-commit certification."
+    "Real LinkedIn login/checkpoint/network failure and recovery behavior.",
+    "Final privacy/security review and reproducible release/deployment procedure.",
+    "Exact final release-commit certification after all remaining gates close."
   ],
   "manual_acceptance_tests": [
-    "Pull current main and start JOLT through controlled Windows launcher.",
-    "Confirm no runtime-staleness warning and loaded backend SHA equals repository checkout SHA.",
-    "Re-export unified AI work package from stored capture 7a105d99-a81a-4486-a435-7db9a07eb0ab.",
-    "Inspect strict sequential protocol and corrected deterministic geography evidence.",
-    "Review all 79 jobs sequentially, import returned update, verify durable import receipt and top survivors against source text.",
-    "Restart JOLT and confirm decisions/applications/import receipt persist.",
+    "Pull current main and fully restart JOLT; confirm loaded backend SHA equals repository checkout and no runtime-staleness guard is shown.",
+    "Recapture LinkedIn Licenses & certifications through the normal JOLT profile flow.",
+    "Verify known later credentials are present rather than relying only on stable_at_document_end.",
+    "Export/generate the candidate evidence surface and confirm capture_metadata.progressive_traversal_verified=true with completeness=complete.",
+    "Only then run the second real job capture -> strict sequential review -> validated import cycle and source-audit the top survivors.",
+    "Restart JOLT and confirm second-cycle decisions/applications/import receipt persist.",
     "Exercise backup create/verify/restore on the active schema and record dated evidence."
   ],
-  "e2e_status": "merge-gate E2E is fresh and green through PR #385; real corrected AI round-trip acceptance remains pending",
-  "browser_ui_status": "durable AI status, Connections quality semantics and runtime-staleness guard are all merged with exact green browser gates",
-  "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when the relevant test/runtime evidence passes on the applicable commit."
+  "e2e_status": "merge-gate E2E is fresh and green through PR #390; live post-fix LinkedIn profile-detail acceptance remains pending",
+  "browser_ui_status": "latest Playwright acceptance and full-cycle certification are green through PR #390; real external-site lazy-load behavior must still be reverified",
+  "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when the relevant exact-head test and, where applicable, real runtime/external-site evidence passes."
 }
