@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -13,6 +14,7 @@ from jolt.global_context import load_global_ai_context
 _MAX_PROFILE_SOURCES = 20
 _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 _EVIDENCE_REF_PREFIX = "linkedin_capture:"
+_PROFILE_COMPLETENESS_PARTIAL_MARKER = "jolt profile section completeness: partial"
 _LOGIN_URL_MARKERS = (
     "/login",
     "/checkpoint",
@@ -60,16 +62,36 @@ def validate_candidate_evidence_summary(value: dict[str, Any]) -> dict[str, Any]
     return CandidateEvidenceSummary.model_validate(value).model_dump(mode="json")
 
 
+def _canonical_profile_section_key(capture: LinkedInPresenceCapture) -> tuple[str, str]:
+    """Return the stable current-section identity used for candidate evidence selection.
+
+    Historical captures remain in JOLT for provenance, but the AI candidate surface should not
+    spend its bounded source budget on repeated old snapshots of the same LinkedIn section.
+    Query strings and fragments are deliberately ignored because LinkedIn can vary them without
+    changing the underlying Profile / Experience / Skills / Certifications section.
+    """
+
+    candidate = capture.source_url.strip()
+    if candidate:
+        parts = urlsplit(candidate)
+        path = parts.path.rstrip("/") + "/"
+        canonical_url = urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, "", ""))
+    else:
+        canonical_url = ""
+    return capture.category.strip().casefold(), canonical_url.casefold()
+
+
 def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | None:
     """Return a deterministic reason when a profile capture is not usable evidence.
 
-    LinkedIn login/authwall/checkpoint pages are retained in the database for audit, but
-    must never be promoted into candidate evidence or AI profile analysis as if they were
-    actual profile content.
+    LinkedIn login/authwall/checkpoint and explicitly partial profile-section captures are retained
+    for audit, but must never be promoted into candidate evidence or AI profile analysis as if they
+    were complete profile content.
     """
 
     source_url = capture.source_url.strip().casefold()
     visible_text = capture.visible_text.strip().casefold()
+    notes = capture.notes.strip().casefold()
 
     if any(marker in source_url for marker in _LOGIN_URL_MARKERS):
         return "linkedin_login_or_authwall_url"
@@ -77,6 +99,8 @@ def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | Non
         return "linkedin_login_or_authwall_text"
     if not visible_text:
         return "empty_profile_capture"
+    if _PROFILE_COMPLETENESS_PARTIAL_MARKER in notes:
+        return "partial_linkedin_profile_section"
     return None
 
 
@@ -111,9 +135,10 @@ def _source_ref(capture: LinkedInPresenceCapture) -> str:
 def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
     """Build deterministic candidate evidence without inferring experience level.
 
-    Captures are selected newest-first and deduplicated by source/category/content. Invalid
-    LinkedIn login/authwall/checkpoint captures remain stored for audit but are excluded from
-    the canonical candidate-evidence surface.
+    The newest usable capture for each canonical LinkedIn profile section is authoritative for the
+    bounded AI surface. Older snapshots remain stored for provenance/history but no longer crowd
+    current Profile, Experience, Skills, Certifications, Recommendations, etc. out of the package.
+    Invalid authwall/checkpoint/empty/explicitly-partial captures are excluded.
     """
 
     captures = session.scalars(
@@ -124,7 +149,9 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
 
     selected: list[LinkedInPresenceCapture] = []
     rejected: list[dict[str, str]] = []
-    seen: set[tuple[str, str, str]] = set()
+    historical: list[dict[str, str]] = []
+    seen_sections: set[tuple[str, str]] = set()
+
     for capture in captures:
         quality_issue = profile_capture_quality_issue(capture)
         if quality_issue is not None:
@@ -139,14 +166,20 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
             )
             continue
 
-        key = (
-            capture.category.strip().casefold(),
-            capture.source_url.strip(),
-            capture.content_hash,
-        )
-        if key in seen:
+        section_key = _canonical_profile_section_key(capture)
+        if section_key in seen_sections:
+            historical.append(
+                {
+                    "capture_id": capture.id,
+                    "title": capture.title,
+                    "category": capture.category,
+                    "captured_at": capture.captured_at.isoformat(),
+                    "reason": "superseded_profile_section_snapshot",
+                }
+            )
             continue
-        seen.add(key)
+
+        seen_sections.add(section_key)
         selected.append(capture)
         if len(selected) >= _MAX_PROFILE_SOURCES:
             break
@@ -167,6 +200,7 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
     ]
 
     reviewed_summary = load_global_ai_context().candidate_evidence_summary
+    usable_count = len(captures) - len(rejected)
     return {
         "schema_version": "1.0",
         "generated_at": datetime.now(UTC).isoformat(),
@@ -174,20 +208,26 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
         "reviewed_summary": reviewed_summary,
         "counts": {
             "available_profile_captures": len(captures),
-            "usable_profile_captures": len(captures) - len(rejected),
+            "usable_profile_captures": usable_count,
             "invalid_profile_captures": len(rejected),
+            "historical_profile_captures_not_exported": len(historical),
             "exported_profile_sources": len(source_evidence),
             "source_limit": _MAX_PROFILE_SOURCES,
         },
         "excluded_profile_captures": rejected,
+        "historical_profile_captures": historical,
         "authority_notes": {
             "source_evidence": (
-                "Deterministically selected usable raw LinkedIn/profile captures with provenance. "
+                "Newest usable capture per canonical LinkedIn profile section, with provenance. "
                 "Presence of a term does not prove professional depth or duration."
             ),
             "excluded_profile_captures": (
-                "LinkedIn login/authwall/checkpoint or empty captures are retained for audit but "
-                "are not candidate evidence and must not support profile or fit conclusions."
+                "LinkedIn login/authwall/checkpoint, empty, or explicitly partial section captures "
+                "are retained for audit but are not candidate evidence."
+            ),
+            "historical_profile_captures": (
+                "Older usable snapshots of a currently exported section remain audit history and "
+                "do not consume the bounded current candidate-evidence budget."
             ),
             "reviewed_summary": (
                 "ChatGPT-derived, user-reviewable claim classification. It may classify evidence "
