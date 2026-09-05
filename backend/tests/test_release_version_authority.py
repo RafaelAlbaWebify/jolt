@@ -14,9 +14,10 @@ def _declared_package_version() -> str:
     return str(data["project"]["version"])
 
 
-def test_api_and_package_versions_stay_in_sync() -> None:
+def test_api_and_package_versions_stay_in_sync(tmp_path: Path) -> None:
     package_version = _declared_package_version()
-    app = create_app("sqlite:///:memory:")
+    database_path = tmp_path / "version-authority.sqlite3"
+    app = create_app(f"sqlite:///{database_path.as_posix()}")
 
     assert package_version == "0.8.0"
     assert app.version == package_version
