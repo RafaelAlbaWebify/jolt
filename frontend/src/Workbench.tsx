@@ -8,7 +8,7 @@ import { LinkedInAIAnalysisStatus } from "./LinkedInAIAnalysisStatus";
 import { LinkedInCommandCenter } from "./LinkedInCommandCenter";
 import { MarketIntelligence } from "./MarketIntelligence";
 import { ProfessionalIntelligence } from "./ProfessionalIntelligence";
-import { RuntimeIdentityPanel } from "./RuntimeIdentity";
+import { RuntimeIdentityPanel, RuntimeStalenessGuard } from "./RuntimeIdentity";
 import "./Workbench.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -74,6 +74,7 @@ export function Workbench() {
       </aside>
 
       <main className="workspace-content">
+        <RuntimeStalenessGuard apiBase={API_BASE} />
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-professional" hidden={activeView !== "professional"}>
             <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />

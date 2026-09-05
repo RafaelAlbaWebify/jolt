@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 
+type GitIdentity = {
+  repository_root: string;
+  branch: string;
+  commit_sha: string;
+  dirty: boolean | null;
+  source: string;
+};
+
 type RuntimeIdentity = {
   service: string;
   version: string;
-  git: {
-    repository_root: string;
-    branch: string;
-    commit_sha: string;
-    dirty: boolean | null;
-    source: string;
-  };
+  git: GitIdentity;
+  loaded_git: GitIdentity;
   database: {
     database_url: string;
     database_path: string | null;
@@ -45,6 +48,51 @@ function statusLabel(value: boolean | null) {
   return value ? "dirty" : "clean";
 }
 
+function runtimeIsStale(identity: RuntimeIdentity | null) {
+  if (!identity) return false;
+  const loaded = identity.loaded_git?.commit_sha;
+  const checkout = identity.git?.commit_sha;
+  if (!loaded || !checkout || loaded === "unknown" || checkout === "unknown") return false;
+  return loaded !== checkout;
+}
+
+async function fetchRuntimeIdentity(apiBase: string): Promise<RuntimeIdentity> {
+  const response = await fetch(`${apiBase}/api/runtime-identity`);
+  if (!response.ok) throw new Error("Unable to load runtime identity.");
+  return await response.json() as RuntimeIdentity;
+}
+
+export function RuntimeStalenessGuard({ apiBase }: Props) {
+  const [identity, setIdentity] = useState<RuntimeIdentity | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRuntimeIdentity(apiBase)
+      .then((value) => {
+        if (!cancelled) setIdentity(value);
+      })
+      .catch(() => {
+        // Developer diagnostics retains the detailed fetch error. This guard stays silent
+        // unless it has positive evidence that the loaded backend is stale.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase]);
+
+  if (!runtimeIsStale(identity)) return null;
+
+  return (
+    <section className="panel error" role="alert" aria-label="JOLT restart required">
+      <strong>JOLT restart required — the backend is running old code.</strong>
+      <p>
+        Loaded backend {shortSha(identity!.loaded_git.commit_sha)} while the repository checkout is{" "}
+        {shortSha(identity!.git.commit_sha)}. Stop and restart JOLT before capture, export, review, or import.
+      </p>
+    </section>
+  );
+}
+
 export function RuntimeIdentityPanel({ apiBase }: Props) {
   const [identity, setIdentity] = useState<RuntimeIdentity | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,9 +102,7 @@ export function RuntimeIdentityPanel({ apiBase }: Props) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${apiBase}/api/runtime-identity`);
-      if (!response.ok) throw new Error("Unable to load runtime identity.");
-      setIdentity((await response.json()) as RuntimeIdentity);
+      setIdentity(await fetchRuntimeIdentity(apiBase));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Runtime identity failed.");
     } finally {
@@ -68,8 +114,11 @@ export function RuntimeIdentityPanel({ apiBase }: Props) {
     void loadIdentity();
   }, [apiBase]);
 
+  const stale = runtimeIsStale(identity);
   const healthySummary = identity
-    ? `${identity.git.branch} · ${shortSha(identity.git.commit_sha)} · ${statusLabel(identity.git.dirty)}`
+    ? stale
+      ? `STALE · loaded ${shortSha(identity.loaded_git.commit_sha)} · checkout ${shortSha(identity.git.commit_sha)}`
+      : `${identity.git.branch} · ${shortSha(identity.git.commit_sha)} · ${statusLabel(identity.git.dirty)}`
     : loading
       ? "checking runtime"
       : "runtime details";
@@ -84,10 +133,21 @@ export function RuntimeIdentityPanel({ apiBase }: Props) {
           Retry runtime identity
         </button>
       )}
+      {stale && identity && (
+        <p className="error" role="alert">
+          Backend restart required: loaded {shortSha(identity.loaded_git.commit_sha)} but checkout is{" "}
+          {shortSha(identity.git.commit_sha)}.
+        </p>
+      )}
       {identity && (
         <div className="runtime-identity-grid">
           <div>
-            <span>Code</span>
+            <span>Loaded backend</span>
+            <strong>{identity.loaded_git.branch} · {shortSha(identity.loaded_git.commit_sha)}</strong>
+            <small>{statusLabel(identity.loaded_git.dirty)} · {identity.loaded_git.source}</small>
+          </div>
+          <div>
+            <span>Repository checkout</span>
             <strong>{identity.git.branch} · {shortSha(identity.git.commit_sha)}</strong>
             <small>{statusLabel(identity.git.dirty)} · {identity.git.source}</small>
           </div>
