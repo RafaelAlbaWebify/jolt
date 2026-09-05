@@ -31,7 +31,10 @@ vi.mock("./LinkedInAIAnalysisStatus", () => ({ LinkedInAIAnalysisStatus: () => <
 vi.mock("./LinkedInCommandCenter", () => ({ LinkedInCommandCenter: () => <section>LinkedIn profile content</section> }));
 vi.mock("./MarketIntelligence", () => ({ MarketIntelligence: () => <section>Market intelligence content</section> }));
 vi.mock("./ProfessionalIntelligence", () => ({ ProfessionalIntelligence: () => <section>Job capture content</section> }));
-vi.mock("./RuntimeIdentity", () => ({ RuntimeIdentityPanel: () => <section>Developer diagnostics</section> }));
+vi.mock("./RuntimeIdentity", () => ({
+  RuntimeIdentityPanel: () => <section>Developer diagnostics</section>,
+  RuntimeStalenessGuard: () => <section>Runtime freshness guard</section>,
+}));
 
 import { Workbench } from "./Workbench";
 
@@ -49,6 +52,7 @@ describe("Workbench", () => {
     expect(screen.getByRole("button", { name: "LinkedIn Profile" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Market Insights" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings & Data" })).toBeInTheDocument();
+    expect(screen.getByText("Runtime freshness guard")).toBeVisible();
     expect(screen.queryByText("Capture history, reviewed decisions, and exports")).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
