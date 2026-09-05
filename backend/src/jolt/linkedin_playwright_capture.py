@@ -205,6 +205,69 @@ def _visible_connection_cards(page: Any, connection_limit: int) -> list[dict[str
     return normalized
 
 
+def _advance_connections_view(page: Any) -> dict[str, object]:
+    """Advance the visible Connections list without assuming the page window owns scrolling.
+
+    LinkedIn commonly renders the Connections list inside a scrollable/virtualized container.
+    Scrolling only ``window`` can therefore keep returning the same visible cards forever.  Prefer
+    the closest scrollable ancestor of the last visible profile anchor, then fall back to the page.
+    """
+
+    result = page.evaluate(
+        """
+        () => {
+          const anchors = Array.from(document.querySelectorAll('a[href*="/in/"]'))
+            .filter((anchor) => {
+              const rect = anchor.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0;
+            });
+
+          const last = anchors.length ? anchors[anchors.length - 1] : null;
+          const isScrollable = (element) => {
+            if (!(element instanceof HTMLElement)) return false;
+            const style = window.getComputedStyle(element);
+            const overflowY = style.overflowY;
+            return (
+              (overflowY === "auto" || overflowY === "scroll") &&
+              element.scrollHeight > element.clientHeight + 2
+            );
+          };
+
+          let container = last?.parentElement || null;
+          while (container && container !== document.body && !isScrollable(container)) {
+            container = container.parentElement;
+          }
+
+          if (container && container !== document.body && isScrollable(container)) {
+            const before = container.scrollTop;
+            const step = Math.max(Math.floor(container.clientHeight * 0.8), 400);
+            container.scrollBy({ top: step, behavior: "instant" });
+            last?.scrollIntoView({ block: "end", inline: "nearest", behavior: "instant" });
+            return {
+              strategy: "scrollable_container",
+              before,
+              after: container.scrollTop,
+              scroll_height: container.scrollHeight,
+              client_height: container.clientHeight,
+            };
+          }
+
+          const before = window.scrollY;
+          last?.scrollIntoView({ block: "end", inline: "nearest", behavior: "instant" });
+          window.scrollBy({ top: Math.max(Math.floor(window.innerHeight * 0.8), 500), behavior: "instant" });
+          return {
+            strategy: "window",
+            before,
+            after: window.scrollY,
+            scroll_height: document.documentElement.scrollHeight,
+            client_height: window.innerHeight,
+          };
+        }
+        """
+    )
+    return result if isinstance(result, dict) else {"strategy": "unknown"}
+
+
 def _linkedin_safety_warning(page: Any) -> str | None:
     current_url = str(getattr(page, "url", "")).lower()
     if any(marker in current_url for marker in ("/checkpoint/challenge", "/challenge/")):
@@ -240,6 +303,7 @@ def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
     scroll_count = 0
     stop_reason = "maximum_scrolls_reached"
     failures: list[str] = []
+    scroll_strategies: list[str] = []
     run_started_at = utc_now().isoformat()
 
     while scroll_count <= _MAX_CONNECTION_SCROLLS:
@@ -281,18 +345,20 @@ def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
 
         if len(records_by_identity) == previous_unique_count:
             stagnant_scrolls += 1
-        if len(records_by_identity) > previous_unique_count:
+        else:
             stagnant_scrolls = 0
 
         if stagnant_scrolls >= _MAX_STAGNANT_SCROLLS:
             stop_reason = "no_new_connections_after_scroll"
             break
 
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        advance = _advance_connections_view(page)
+        scroll_strategies.append(str(advance.get("strategy", "unknown")))
         page.wait_for_timeout(_SCROLL_WAIT_MILLISECONDS)
         scroll_count += 1
 
     connections = list(records_by_identity.values())
+    status = "complete" if stop_reason == "requested_limit_reached" else "partial"
 
     return {
         "schema": _CONNECTION_SCHEMA,
@@ -302,8 +368,9 @@ def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
             "unique_count": len(connections),
             "duplicate_count": duplicate_count,
             "scroll_count": scroll_count,
+            "scroll_strategies": scroll_strategies,
             "stop_reason": stop_reason,
-            "status": "partial",
+            "status": status,
             "started_at": run_started_at,
             "completed_at": utc_now().isoformat(),
             "failures": failures,

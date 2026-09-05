@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import MagicMock
@@ -58,8 +59,74 @@ def test_linkedin_exchange_exports_capture_evidence_and_guardrails(tmp_path, mon
     assert exchange.scope.section == "linkedin_profile"
     assert exchange.evidence["counts"]["captures"] == 1
     assert exchange.evidence["captures"][0]["title"] == "Profile snapshot"
+    assert exchange.evidence["network_capture_quality"]["status"] == "not_captured"
     assert "Do not automate LinkedIn actions" in exchange.evidence["authority_notes"]["automation"]
     assert "linkedin_recommendation_statuses" in exchange.protected_state["non_patchable"]
+
+
+def test_linkedin_exchange_exposes_partial_network_capture_quality(tmp_path, monkeypatch) -> None:
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt-network.db').as_posix()}")()
+    now = datetime.now(UTC)
+    structured = {
+        "schema": "jolt_linkedin_connections_v1",
+        "capture_run": {
+            "requested_limit": 100,
+            "observed_count": 76,
+            "unique_count": 19,
+            "duplicate_count": 57,
+            "scroll_count": 3,
+            "stop_reason": "no_new_connections_after_scroll",
+            "status": "partial",
+            "failures": [],
+        },
+        "connections": [
+            {
+                "name": "Example Recruiter",
+                "profile_url": "https://www.linkedin.com/in/example-recruiter/",
+                "headline": "Technical Recruiter",
+                "connection_context": "1st degree connection",
+                "capture_order": 1,
+            }
+        ],
+    }
+    session.add(
+        LinkedInPresenceCapture(
+            id="connections-capture-1",
+            category="network_contact",
+            title="Connections",
+            source_url="https://www.linkedin.com/mynetwork/invite-connect/connections/",
+            visible_text=json.dumps(structured),
+            notes="User-supervised network capture.",
+            content_hash="b" * 64,
+            previous_capture_id=None,
+            changed_since_previous=False,
+            captured_at=now,
+        )
+    )
+    session.commit()
+    monkeypatch.setattr(
+        "jolt.linkedin_profile_exchange.build_global_context_snapshot",
+        lambda: {
+            "job_search_preferences": {"languages": ["English", "Spanish"]},
+            "ai_context": {},
+            "ownership": {},
+        },
+    )
+
+    try:
+        exchange = build_linkedin_profile_exchange(session)
+    finally:
+        session.close()
+
+    quality = exchange.evidence["network_capture_quality"]
+    assert quality["available"] is True
+    assert quality["status"] == "partial"
+    assert quality["requested_limit"] == 100
+    assert quality["unique_count"] == 19
+    assert quality["complete_for_requested_limit"] is False
+    assert quality["bounded_sample"] is True
+    assert "partial" in quality["coverage_warning"].lower()
+    assert "never infer" in exchange.evidence["authority_notes"]["network_contacts"].lower()
 
 
 def test_linkedin_exchange_import_updates_context_and_creates_pending_recommendation(
