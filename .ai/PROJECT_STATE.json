@@ -1,0 +1,68 @@
+{
+  "project_name": "JOLT",
+  "product_description": "Local-first job-search evidence, application tracking, LinkedIn profile and market-intelligence workbench with validated ChatGPT reasoning round trips.",
+  "application_api_version": "0.8.0",
+  "backend_package_version": "0.1.0",
+  "version_discrepancy": "FastAPI reports 0.8.0 while backend pyproject reports 0.1.0; version authority is not yet unified.",
+  "last_update_date": "2026-09-05",
+  "baseline_branch": "main",
+  "baseline_commit": "07ac4ec8dd9384d202bb9970d17ec0c2d9e5c0e4",
+  "control_layer_branch": "feat/persistent-ai-project-control-20260905",
+  "current_phase": "stabilization_and_operability",
+  "current_milestone": "Verify the real capture -> sequential AI review -> validated import loop after deterministic geography correction, then finish LinkedIn AI round-trip reliability.",
+  "overall_completion_percentage": 82,
+  "operability_percentage": 72,
+  "testing_percentage": 86,
+  "readiness": {
+    "development_ready": true,
+    "internal_testing_ready": true,
+    "external_testing_ready": false,
+    "real_prospect_ready": false,
+    "production_ready": false
+  },
+  "current_blockers": [
+    "PR #380 deterministic geography parser fix is not yet merged to main.",
+    "Fresh 79-job acceptance package must be regenerated and re-reviewed after PR #380 before the AI review loop is considered verified.",
+    "PR #376 AI round-trip UX remains open with prior frontend failure requiring exact re-verification.",
+    "PR #377 LinkedIn Connections coverage remains open and not yet proven merged/green."
+  ],
+  "known_critical_failures": [
+    "Deterministic geography extraction on main can falsely classify lowercase ordinary words such as 'de' as US state abbreviations.",
+    "Running local JOLT can be stale relative to repository main unless explicitly updated/restarted; this previously produced an obsolete AI work-package protocol."
+  ],
+  "active_workstreams": [
+    "AI review and hardline validation",
+    "LinkedIn profile/connections intelligence",
+    "Applications and durable workflow state",
+    "Market intelligence and AI exchange",
+    "Runtime/operability and project-control system"
+  ],
+  "completed_milestones": [
+    "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
+    "Manual intake and supervised LinkedIn capture with source evidence/provenance.",
+    "Pending Review Inbox and durable Applications lifecycle.",
+    "Unified AI work package and multi-section AI feedback import/export.",
+    "Sequential one-job-at-a-time review protocol merged via PR #378.",
+    "Positive eligibility import gate merged via PR #375 and formatting follow-up #379.",
+    "Invalid LinkedIn authwall captures excluded from candidate evidence via PR #374."
+  ],
+  "pending_milestones": [
+    "Merge and verify PR #380.",
+    "Repeat real 79-job AI round-trip acceptance from fresh exported package and successfully import it.",
+    "Resolve/merge PR #376 and PR #377 after exact green gates.",
+    "Add runtime version/staleness visibility sufficient to prevent stale-backend ambiguity.",
+    "Complete external-beta and real-prospect operability gates."
+  ],
+  "next_recommended_actions": [
+    "Check exact CI/Playwright/full-cycle status for PR #380 and merge only if all required gates are green.",
+    "Update/restart local JOLT, re-export the same 79-job capture package, verify corrected deterministic evidence, rerun sequential review and import it.",
+    "Then inspect and finish PR #376 and #377 one at a time.",
+    "After the acceptance loop passes, update OPERABILITY and readiness flags from evidence rather than expectation."
+  ],
+  "last_verified_runtime_test_evidence": {
+    "real_capture": "2026-09-04 capture 7a105d99-a81a-4486-a435-7db9a07eb0ab: 79 captured, 79 verified, 4 pages, no warnings, stop_reason=no_next_page.",
+    "ai_package": "2026-09-04 package b2c2d6f1-2378-48ea-8ccc-e239443fce7b contained strict_sequential_per_job protocol and excluded invalid authwall captures.",
+    "sequential_review": "79 jobs reviewed sequentially in chat; cross-job self-audit passed, but import is intentionally deferred until geography-parser false positives are fixed.",
+    "merge_gate_baseline": "Recent review-pipeline PRs #378/#375/#379 were merged after their required gates were checked; exact current-main full-suite execution is not re-run by this migration."
+  }
+}
