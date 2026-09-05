@@ -155,7 +155,7 @@ def _visible_connection_cards(page: Any, connection_limit: int) -> list[dict[str
 
             const rawText = card?.innerText || anchor.innerText || "";
             const lines = rawText
-              .split("\n")
+              .split("\\n")
               .map((line) => line.trim())
               .filter((line) => line && !ignored.has(line));
 
