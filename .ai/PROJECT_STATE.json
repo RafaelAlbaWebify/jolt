@@ -3,16 +3,15 @@
   "product_description": "Local-first job-search evidence, application tracking, LinkedIn profile and market-intelligence workbench with validated ChatGPT reasoning round trips.",
   "application_api_version": "0.8.0",
   "backend_package_version": "0.1.0",
-  "version_discrepancy": "FastAPI reports 0.8.0 while backend pyproject reports 0.1.0; version authority is not yet unified.",
+  "version_discrepancy": "FastAPI/runtime reports 0.8.0 while backend pyproject reports 0.1.0; release/version authority is not yet unified.",
   "last_update_date": "2026-09-05",
   "baseline_branch": "main",
-  "baseline_commit": "07ac4ec8dd9384d202bb9970d17ec0c2d9e5c0e4",
-  "control_layer_branch": "feat/persistent-ai-project-control-20260905",
+  "baseline_commit": "09b78e194afe8cff219a6305b2a1df8cc3ea5101",
   "current_phase": "stabilization_and_operability",
-  "current_milestone": "Verify the real capture -> sequential AI review -> validated import loop after deterministic geography correction, then finish LinkedIn AI round-trip reliability.",
-  "overall_completion_percentage": 82,
-  "operability_percentage": 72,
-  "testing_percentage": 86,
+  "current_milestone": "Complete the corrected stored 79-job capture -> strict sequential AI review -> validated import loop on the current runtime, then prove persistence/recovery gates.",
+  "overall_completion_percentage": 87,
+  "operability_percentage": 86,
+  "testing_percentage": 92,
   "readiness": {
     "development_ready": true,
     "internal_testing_ready": true,
@@ -21,48 +20,58 @@
     "production_ready": false
   },
   "current_blockers": [
-    "PR #380 deterministic geography parser fix is not yet merged to main.",
-    "Fresh 79-job acceptance package must be regenerated and re-reviewed after PR #380 before the AI review loop is considered verified.",
-    "PR #376 AI round-trip UX remains open with prior frontend failure requiring exact re-verification.",
-    "PR #377 LinkedIn Connections coverage remains open and not yet proven merged/green."
+    "The corrected real 79-job acceptance capture must be re-exported from the current restarted runtime, reviewed sequentially and imported successfully.",
+    "A second consecutive real capture/review/import cycle is required for real-prospect readiness.",
+    "Backup/export and restore still need a dated successful rehearsal on the active schema.",
+    "Release/version authority remains split between FastAPI/runtime 0.8.0 and backend package metadata 0.1.0.",
+    "Production readiness still requires second-environment clean install, recovery policy, privacy/security review and reproducible release validation."
   ],
   "known_critical_failures": [
-    "Deterministic geography extraction on main can falsely classify lowercase ordinary words such as 'de' as US state abbreviations.",
-    "Running local JOLT can be stale relative to repository main unless explicitly updated/restarted; this previously produced an obsolete AI work-package protocol."
+    "No unresolved P0 is currently known.",
+    "P1 KI-005 remains: the post-fix real 79-job AI round trip has not yet completed a successful import on the active runtime."
   ],
   "active_workstreams": [
-    "AI review and hardline validation",
-    "LinkedIn profile/connections intelligence",
+    "Real AI review/import acceptance",
     "Applications and durable workflow state",
-    "Market intelligence and AI exchange",
-    "Runtime/operability and project-control system"
+    "Backup/recovery rehearsal",
+    "Release/version authority",
+    "Production operability and project-control maintenance"
   ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
     "Manual intake and supervised LinkedIn capture with source evidence/provenance.",
     "Pending Review Inbox and durable Applications lifecycle.",
     "Unified AI work package and multi-section AI feedback import/export.",
-    "Sequential one-job-at-a-time review protocol merged via PR #378.",
+    "Invalid LinkedIn authwall captures excluded from candidate evidence via PR #374.",
     "Positive eligibility import gate merged via PR #375 and formatting follow-up #379.",
-    "Invalid LinkedIn authwall captures excluded from candidate evidence via PR #374."
+    "Strict sequential one-job-at-a-time AI review protocol merged via PR #378.",
+    "Deterministic US-state/geography parsing corrected via PR #380.",
+    "Persistent repository-authoritative .ai project-control layer merged via PR #381.",
+    "Durable AI import receipt and LinkedIn AI freshness UX merged via PR #382; stale PR #376 closed as superseded.",
+    "LinkedIn Connections nested-scroll capture plus partial/complete quality semantics merged via PR #377.",
+    "Loaded-backend versus repository-checkout staleness guard merged via PR #384.",
+    "AI review contract 1.1 exact capture-set completeness enforcement merged via PR #385."
   ],
   "pending_milestones": [
-    "Merge and verify PR #380.",
-    "Repeat real 79-job AI round-trip acceptance from fresh exported package and successfully import it.",
-    "Resolve/merge PR #376 and PR #377 after exact green gates.",
-    "Add runtime version/staleness visibility sufficient to prevent stale-backend ambiguity.",
-    "Complete external-beta and real-prospect operability gates."
+    "Update/restart local JOLT at current main and re-export the same stored 79-job capture package.",
+    "Verify corrected deterministic evidence, rerun all 79 jobs sequentially and successfully import the returned update.",
+    "Source-audit top survivors and verify review/application state persists through restart.",
+    "Complete a second consecutive real round trip without internal repair.",
+    "Perform and record a backup/restore rehearsal on the active schema.",
+    "Unify release/version authority and complete remaining production-readiness gates."
   ],
   "next_recommended_actions": [
-    "Check exact CI/Playwright/full-cycle status for PR #380 and merge only if all required gates are green.",
-    "Update/restart local JOLT, re-export the same 79-job capture package, verify corrected deterministic evidence, rerun sequential review and import it.",
-    "Then inspect and finish PR #376 and #377 one at a time.",
-    "After the acceptance loop passes, update OPERABILITY and readiness flags from evidence rather than expectation."
+    "Pull current main locally, fully restart JOLT and confirm the runtime staleness guard is clear.",
+    "Export a fresh unified AI work package from stored capture 7a105d99-a81a-4486-a435-7db9a07eb0ab; do not recapture LinkedIn just for this acceptance test.",
+    "Review/import that package and verify the durable import receipt plus top-job source audit.",
+    "Then exercise persistence, backup/restore and a second real capture/review/import cycle.",
+    "Continue production hardening without weakening evidence-based readiness gates."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-04 capture 7a105d99-a81a-4486-a435-7db9a07eb0ab: 79 captured, 79 verified, 4 pages, no warnings, stop_reason=no_next_page.",
-    "ai_package": "2026-09-04 package b2c2d6f1-2378-48ea-8ccc-e239443fce7b contained strict_sequential_per_job protocol and excluded invalid authwall captures.",
-    "sequential_review": "79 jobs reviewed sequentially in chat; cross-job self-audit passed, but import is intentionally deferred until geography-parser false positives are fixed.",
-    "merge_gate_baseline": "Recent review-pipeline PRs #378/#375/#379 were merged after their required gates were checked; exact current-main full-suite execution is not re-run by this migration."
+    "ai_package": "2026-09-04 package b2c2d6f1-2378-48ea-8ccc-e239443fce7b contained strict_sequential_per_job protocol and excluded invalid authwall captures; its old reviewed update must not be imported because it predates the final deterministic geography correction.",
+    "review_pipeline": "PR #380, #382, #377, #384 and #385 each passed their required exact-head CI/Playwright/full-cycle gates before merge.",
+    "latest_contract_gate": "PR #385 head 528c921eeefe86ccaaaf38987cc5e9c6ad7f2d9d passed CI run 1353, Playwright acceptance 627 and full-cycle certification 550, then merged as 09b78e194afe8cff219a6305b2a1df8cc3ea5101.",
+    "remaining_runtime_acceptance": "The corrected real 79-job package has not yet been exported/reviewed/imported from the active post-fix local runtime."
   }
 }
