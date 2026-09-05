@@ -6,6 +6,12 @@ Its purpose is to capture, preserve, structure, and expose trustworthy job-searc
 
 This repository is a clean rebuild. The legacy `jolt-job-tracker` repository is reference material only and will not be used as the implementation foundation.
 
+## AI project control
+
+Repository state is the authoritative project memory. Future AI/development sessions must start with `.ai/CONTEXT.md`, `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md`, and `.ai/OPERABILITY.md`, then inspect the relevant source/tests for the active workstream. `PROJECT_MEMORY.md` remains the durable historical invariant ledger. Chat history is not a required bootstrap dependency.
+
+Use `python tools/build_ai_context.py` to generate a deterministic current-head snapshot without overwriting manually maintained decisions/history.
+
 ## Current capability
 
 JOLT now supports:

@@ -1,0 +1,88 @@
+{
+  "last_updated": "2026-09-05",
+  "baseline_commit": "07ac4ec8dd9384d202bb9970d17ec0c2d9e5c0e4",
+  "status_note": "This migration did not execute the full repository test suite locally. It records verified recent CI/acceptance evidence and explicitly marks areas requiring fresh validation.",
+  "test_suites": [
+    {
+      "name": "backend pytest",
+      "command": "cd backend && uv run pytest",
+      "latest_state": "recently used as required PR gate; exact current-main pass count not re-collected by this migration",
+      "verified": false
+    },
+    {
+      "name": "backend ruff lint",
+      "command": "cd backend && uv run ruff check .",
+      "latest_state": "required CI gate",
+      "verified": false
+    },
+    {
+      "name": "backend ruff format",
+      "command": "cd backend && uv run ruff format --check .",
+      "latest_state": "PR #379 specifically corrected a format failure and was merged",
+      "verified": true
+    },
+    {
+      "name": "backend pyright",
+      "command": "cd backend && uv run pyright",
+      "latest_state": "required CI gate",
+      "verified": false
+    },
+    {
+      "name": "frontend unit/component tests",
+      "command": "cd frontend && npm test",
+      "latest_state": "required CI gate; extensive component tests present",
+      "verified": false
+    },
+    {
+      "name": "frontend build",
+      "command": "cd frontend && npm run build",
+      "latest_state": "required CI gate",
+      "verified": false
+    },
+    {
+      "name": "Playwright acceptance",
+      "workflow": ".github/workflows/playwright-acceptance.yml",
+      "latest_state": "required merge gate used on recent PRs",
+      "verified": true
+    },
+    {
+      "name": "Full-cycle Playwright certification",
+      "workflow": ".github/workflows/full-cycle-playwright-certification.yml",
+      "latest_state": "required merge gate including supported desktop layout behavior",
+      "verified": true
+    },
+    {
+      "name": "Windows launcher contract",
+      "workflow": ".github/workflows/windows-launcher-contract.yml",
+      "latest_state": "permanent launcher parser/contract coverage exists",
+      "verified": true
+    }
+  ],
+  "latest_real_world_external_validation": {
+    "date": "2026-09-04",
+    "capture_run_id": "7a105d99-a81a-4486-a435-7db9a07eb0ab",
+    "result": "79 captured / 79 verified / 4 pages / no warnings / no_next_page",
+    "ai_package_id": "b2c2d6f1-2378-48ea-8ccc-e239443fce7b",
+    "sequential_review": "all 79 reviewed exactly once; self-audit passed; import deferred after deterministic parser bug discovery"
+  },
+  "known_flaky_tests": [],
+  "untested_or_not_freshly_verified_areas": [
+    "Exact full-suite result on current main after 07ac4ec8.",
+    "PR #380 exact CI/Playwright/full-cycle status and corrected real-package output.",
+    "Successful import of the corrected 79-job sequential review update.",
+    "PR #376 frontend behavior after fixing its prior failure.",
+    "PR #377 real nested/virtualized Connections capture coverage.",
+    "Clean install/restore rehearsal on a second or clean environment."
+  ],
+  "manual_acceptance_tests": [
+    "Start JOLT through controlled Windows launcher and confirm backend/frontend reachability.",
+    "Capture a real supervised LinkedIn job-search batch.",
+    "Export unified AI work package and inspect protocol/version markers.",
+    "Review jobs sequentially, import returned update, verify top survivors against source text.",
+    "Restart JOLT and confirm decisions/applications/import receipts persist.",
+    "Archive/clear pending capture data and confirm pursued applications remain visible."
+  ],
+  "e2e_status": "implemented and routinely used as a merge gate; full current-release certification remains pending",
+  "browser_ui_status": "Playwright acceptance/full-cycle infrastructure exists; open PRs #376/#377 still require their own exact green evidence",
+  "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when the relevant test/runtime evidence passes on the applicable commit."
+}
