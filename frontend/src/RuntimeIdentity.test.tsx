@@ -1,14 +1,21 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RuntimeIdentityPanel } from "./RuntimeIdentity";
+import { RuntimeIdentityPanel, RuntimeStalenessGuard } from "./RuntimeIdentity";
 
 const runtimeIdentity = {
   service: "jolt-backend",
   version: "0.8.0",
   git: {
     repository_root: "C:/Users/ralba/Documents/GitHub/jolt",
-    branch: "agent/runtime-identity-baseline",
+    branch: "main",
+    commit_sha: "1234567890abcdef",
+    dirty: false,
+    source: "git",
+  },
+  loaded_git: {
+    repository_root: "C:/Users/ralba/Documents/GitHub/jolt",
+    branch: "main",
     commit_sha: "1234567890abcdef",
     dirty: false,
     source: "git",
@@ -39,13 +46,13 @@ const runtimeIdentity = {
   },
 };
 
-describe("RuntimeIdentityPanel", () => {
+describe("Runtime identity", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("surfaces the active checkout, database, evidence root, and process", async () => {
+  it("surfaces loaded code, checkout, database, evidence root, and process", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(runtimeIdentity), { status: 200 }),
     );
@@ -53,8 +60,10 @@ describe("RuntimeIdentityPanel", () => {
     render(<RuntimeIdentityPanel apiBase="http://127.0.0.1:8000" />);
 
     expect(await screen.findByText("Developer diagnostics")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getAllByText(/agent\/runtime-identity-baseline/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText(/main/).length).toBeGreaterThan(0));
     expect(screen.getAllByText(/1234567890ab/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Loaded backend")).toBeInTheDocument();
+    expect(screen.getByText("Repository checkout")).toBeInTheDocument();
     expect(screen.getByText("C:/Users/ralba/Documents/GitHub/jolt/backend/data/jolt.db")).toBeInTheDocument();
     expect(screen.getByText("Alembic 20260728_0017")).toBeInTheDocument();
     expect(screen.getByText(/12 opportunities/)).toBeInTheDocument();
@@ -62,5 +71,34 @@ describe("RuntimeIdentityPanel", () => {
     expect(screen.getByText(/1 professional captures/)).toBeInTheDocument();
     expect(screen.getByText(/professional-evidence/)).toBeInTheDocument();
     expect(screen.getByText("PID 4242")).toBeInTheDocument();
+  });
+
+  it("stays silent when loaded backend and checkout match", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(runtimeIdentity), { status: 200 }),
+    );
+
+    render(<RuntimeStalenessGuard apiBase="http://127.0.0.1:8000" />);
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows a global restart warning when checkout moved after backend load", async () => {
+    const stale = {
+      ...runtimeIdentity,
+      git: { ...runtimeIdentity.git, commit_sha: "fedcba0987654321" },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(stale), { status: 200 }),
+    );
+
+    render(<RuntimeStalenessGuard apiBase="http://127.0.0.1:8000" />);
+
+    const alert = await screen.findByRole("alert", { name: "JOLT restart required" });
+    expect(alert).toHaveTextContent("backend is running old code");
+    expect(alert).toHaveTextContent("1234567890ab");
+    expect(alert).toHaveTextContent("fedcba098765");
+    expect(alert).toHaveTextContent("Stop and restart JOLT before capture, export, review, or import");
   });
 });
