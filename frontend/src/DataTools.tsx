@@ -45,6 +45,28 @@ function loadImportReceipt(): AIImportReceipt | null {
   }
 }
 
+function formatImportProblem(problem: unknown): string {
+  if (!problem || typeof problem !== "object") return "The AI update could not be imported.";
+
+  const detail = (problem as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const record = item as { msg?: unknown; loc?: unknown };
+      if (typeof record.msg !== "string" || !record.msg.trim()) return [];
+      const location = Array.isArray(record.loc)
+        ? record.loc.map(String).filter(Boolean).join(" → ")
+        : "";
+      return [location ? `${location}: ${record.msg}` : record.msg];
+    });
+    if (messages.length) return messages.join("\n");
+  }
+
+  return "The AI update could not be imported.";
+}
+
 type Props = {
   apiBase: string;
   onImported?: () => void | Promise<void>;
@@ -77,8 +99,8 @@ export function DataTools({ apiBase, onImported }: Props) {
       });
 
       if (!response.ok) {
-        const problem = (await response.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(problem?.detail || "The AI update could not be imported.");
+        const problem = await response.json().catch(() => null);
+        throw new Error(formatImportProblem(problem));
       }
 
       const result = (await response.json()) as {
@@ -139,7 +161,7 @@ export function DataTools({ apiBase, onImported }: Props) {
 
       <details className="panel operations-tools workspace-sidebar-operations">
         <summary>Data tools: AI exchange, capture history, and decisions</summary>
-        {error && <p className="error" role="alert">{error}</p>}
+        {error && <p className="error" role="alert" style={{ whiteSpace: "pre-line" }}>{error}</p>}
         {importNotice && <p role="status">{importNotice}</p>}
 
         <div className="operations-grid">
