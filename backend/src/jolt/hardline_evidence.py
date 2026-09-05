@@ -233,6 +233,13 @@ def _uppercase_state_abbreviation_after_comma(location: str) -> str | None:
     return match.group(1) if match else None
 
 
+def _state_name_after_comma(location: str) -> str | None:
+    """Return a full US state name only in canonical city/state location syntax."""
+
+    match = re.search(rf",\s*({_US_STATE_NAME_PATTERN})(?:\b|$)", location, re.I)
+    return match.group(1) if match else None
+
+
 def _uppercase_state_abbreviation_in_residency(source_text: str) -> str | None:
     """Detect explicit residency wording such as 'must reside in TX' case-sensitively."""
 
@@ -269,13 +276,14 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
     if location_scope == "foreign_country" and _US_LOCATION_PATTERN.search(location):
         negative.append(location)
 
-    # A real US city/state location is still a hardline signal, but state abbreviations
-    # must be uppercase and appear in canonical comma-separated location syntax.
-    if location_scope == "foreign_country" and not negative:
-        state_name_match = re.search(rf"\b(?:{_US_STATE_NAME_PATTERN})\b", location, re.I)
+    # A canonical US city/state location is a hardline signal. Abbreviations remain
+    # case-sensitive to avoid ordinary-word collisions; full state names are safe to
+    # match case-insensitively when they follow the city/state comma boundary.
+    if not negative:
+        state_name = _state_name_after_comma(location)
         state_abbreviation = _uppercase_state_abbreviation_after_comma(location)
-        if state_name_match:
-            negative.append(state_name_match.group(0))
+        if state_name:
+            negative.append(state_name)
         elif state_abbreviation:
             negative.append(state_abbreviation)
 
