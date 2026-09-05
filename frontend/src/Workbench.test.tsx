@@ -27,6 +27,7 @@ vi.mock("./JobPreferences", () => ({
     </section>
   ),
 }));
+vi.mock("./LinkedInAIAnalysisStatus", () => ({ LinkedInAIAnalysisStatus: () => <section>LinkedIn AI status</section> }));
 vi.mock("./LinkedInCommandCenter", () => ({ LinkedInCommandCenter: () => <section>LinkedIn profile content</section> }));
 vi.mock("./MarketIntelligence", () => ({ MarketIntelligence: () => <section>Market intelligence content</section> }));
 vi.mock("./ProfessionalIntelligence", () => ({ ProfessionalIntelligence: () => <section>Job capture content</section> }));
@@ -65,25 +66,12 @@ describe("Workbench", () => {
   it("propagates preference re-evaluation to the mounted Review Inbox", () => {
     render(<Workbench />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Settings & Data" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
+    fireEvent.click(screen.getByText("Job Search Preferences"));
+    fireEvent.click(screen.getByRole("button", { name: "Apply preference refresh" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review Inbox" }));
 
-    fireEvent.click(
-      screen.getByText("Job Search Preferences"),
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Apply preference refresh" }),
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Review Inbox" }),
-    );
-
-    expect(
-      screen.getByText("Opportunity review content revision 1"),
-    ).toBeVisible();
+    expect(screen.getByText("Opportunity review content revision 1")).toBeVisible();
   });
 
   it("keeps workspaces mounted while showing one active view", () => {
@@ -107,6 +95,7 @@ describe("Workbench", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "LinkedIn Profile" }));
     expect(linkedin).not.toHaveAttribute("hidden");
+    expect(screen.getByText("LinkedIn AI status")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Market Insights" }));
     expect(market).not.toHaveAttribute("hidden");
@@ -120,6 +109,8 @@ describe("Workbench", () => {
     expect(sidebar).toHaveTextContent("Prepare and apply");
 
     fireEvent.click(screen.getByRole("button", { name: "LinkedIn Profile" }));
-    expect(sidebar).toHaveTextContent("Refresh profile evidence and manage concrete profile improvements.");
+    expect(sidebar).toHaveTextContent(
+      "Refresh profile evidence, see whether ChatGPT analysis is current, and manage concrete profile improvements.",
+    );
   });
 });
