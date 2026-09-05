@@ -226,6 +226,27 @@ class AIReviewImportResponse(BaseModel):
     protected_human_state_count: int
 
 
+def _validate_exact_v11_capture_set(
+    *,
+    expected_posting_ids: set[str],
+    returned_posting_ids: set[str],
+) -> None:
+    if returned_posting_ids == expected_posting_ids:
+        return
+
+    missing = sorted(expected_posting_ids - returned_posting_ids)
+    unexpected = sorted(returned_posting_ids - expected_posting_ids)
+    details: list[str] = []
+    if missing:
+        details.append("missing posting_id(s): " + ", ".join(missing))
+    if unexpected:
+        details.append("unexpected posting_id(s): " + ", ".join(unexpected))
+    raise ValueError(
+        "AI review contract 1.1 must return exactly one result for every posting in the capture; "
+        + "; ".join(details)
+    )
+
+
 def _validate_capture_membership(
     session: Session,
     request: AIReviewImportRequest,
@@ -299,6 +320,12 @@ def _validate_capture_membership(
                     "duplicate_of_posting_id references unknown posting: "
                     f"{job.duplicate_of_posting_id}"
                 )
+
+    if request.contract_version == "1.1":
+        _validate_exact_v11_capture_set(
+            expected_posting_ids=set(source_job_by_posting),
+            returned_posting_ids=seen_postings,
+        )
 
 
 def _requirement_json(items: list[MandatoryRequirementResult]) -> str:
