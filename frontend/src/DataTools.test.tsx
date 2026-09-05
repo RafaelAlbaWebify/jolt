@@ -100,4 +100,47 @@ describe("DataTools", () => {
     expect(screen.getByText("Imported")).toBeInTheDocument();
     expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
   });
+
+  it("renders FastAPI validation details instead of object placeholders", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          detail: [
+            {
+              type: "model_attributes_type",
+              loc: ["body", "review_inbox", "jobs", 7, "mandatory_requirements", 0],
+              msg: "Input should be a valid dictionary or object to extract fields from",
+            },
+            {
+              type: "model_attributes_type",
+              loc: ["body", "review_inbox", "jobs", 24, "mandatory_requirements", 0],
+              msg: "Input should be a valid dictionary or object to extract fields from",
+            },
+          ],
+        }),
+        {
+          status: 422,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<DataTools apiBase="http://127.0.0.1:8000" />);
+
+    const file = new File([JSON.stringify({ contract_type: "bad" })], "BAD.json", {
+      type: "application/json",
+    });
+    fireEvent.change(screen.getByLabelText("Import AI update"), {
+      target: { files: [file] },
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "body → review_inbox → jobs → 7 → mandatory_requirements → 0: Input should be a valid dictionary or object to extract fields from",
+    );
+    expect(alert).toHaveTextContent(
+      "body → review_inbox → jobs → 24 → mandatory_requirements → 0: Input should be a valid dictionary or object to extract fields from",
+    );
+    expect(alert).not.toHaveTextContent("[object Object]");
+  });
 });
