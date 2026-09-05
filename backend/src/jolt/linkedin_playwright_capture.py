@@ -52,9 +52,13 @@ LOGIN_REQUIRED_MESSAGE = (
 
 _CONNECTIONS_PATH = "/mynetwork/invite-connect/connections"
 _CONNECTION_SCHEMA = "jolt_linkedin_connections_v1"
+_PROFILE_DETAILS_PATH = "/details/"
 _MAX_CONNECTION_SCROLLS = 50
 _MAX_STAGNANT_SCROLLS = 3
+_MAX_PROFILE_SECTION_SCROLLS = 40
+_MAX_PROFILE_SECTION_STAGNANT_SCROLLS = 3
 _SCROLL_WAIT_MILLISECONDS = 1_200
+_PROFILE_SCROLL_WAIT_MILLISECONDS = 900
 _MAX_CAPTURE_TEXT_CHARACTERS = 199_000
 
 
@@ -83,6 +87,11 @@ def _browser_profile_dir() -> Path:
 
 def _is_connections_url(url: str) -> bool:
     return _CONNECTIONS_PATH in url.lower()
+
+
+def _is_profile_section_url(url: str) -> bool:
+    candidate = url.strip().lower()
+    return "linkedin.com/in/" in candidate and _PROFILE_DETAILS_PATH in candidate
 
 
 def _canonical_profile_url(url: str) -> str:
@@ -206,12 +215,7 @@ def _visible_connection_cards(page: Any, connection_limit: int) -> list[dict[str
 
 
 def _advance_connections_view(page: Any) -> dict[str, object]:
-    """Advance the visible Connections list without assuming the page window owns scrolling.
-
-    LinkedIn commonly renders the Connections list inside a scrollable/virtualized container.
-    Scrolling only ``window`` can therefore keep returning the same visible cards forever.  Prefer
-    the closest scrollable ancestor of the last visible profile anchor, then fall back to the page.
-    """
+    """Advance the visible Connections list without assuming the page window owns scrolling."""
 
     result = page.evaluate(
         """
@@ -271,7 +275,7 @@ def _advance_connections_view(page: Any) -> dict[str, object]:
 def _linkedin_safety_warning(page: Any) -> str | None:
     current_url = str(getattr(page, "url", "")).lower()
     if any(marker in current_url for marker in ("/checkpoint/challenge", "/challenge/")):
-        return "LinkedIn presented a checkpoint or challenge while Connections capture was running."
+        return "LinkedIn presented a checkpoint or challenge while capture was running."
 
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
@@ -293,6 +297,82 @@ def _linkedin_safety_warning(page: Any) -> str | None:
         if marker in body_text:
             return f"LinkedIn safety warning detected: {marker}."
     return None
+
+
+def _collect_profile_section_text(page: Any) -> dict[str, object]:
+    """Load a LinkedIn profile detail section until the document stabilizes at its bottom.
+
+    Dedicated profile sections such as Certifications are lazy-loaded. Capturing body text once
+    silently records only the first viewport/chunk. A section is complete only after both its text
+    length and document height remain unchanged at the bottom for several scrolls. Safety/login or
+    scroll-budget exits are explicitly partial so candidate evidence can fail closed.
+    """
+
+    previous_signature: tuple[int, int] | None = None
+    stagnant_scrolls = 0
+    scroll_count = 0
+    stop_reason = "maximum_scrolls_reached"
+    status = "partial"
+
+    while scroll_count <= _MAX_PROFILE_SECTION_SCROLLS:
+        if _page_needs_linkedin_login(page):
+            stop_reason = "linkedin_login_or_checkpoint"
+            break
+        if _linkedin_safety_warning(page) is not None:
+            stop_reason = "linkedin_safety_warning"
+            break
+
+        text = page.locator("body").inner_text(timeout=10_000).strip()
+        geometry = page.evaluate(
+            """
+            () => ({
+              y: window.scrollY,
+              inner_height: window.innerHeight,
+              scroll_height: Math.max(
+                document.body?.scrollHeight || 0,
+                document.documentElement?.scrollHeight || 0
+              )
+            })
+            """
+        )
+        if not isinstance(geometry, dict):
+            geometry = {}
+        scroll_height = int(geometry.get("scroll_height", 0) or 0)
+        y = int(geometry.get("y", 0) or 0)
+        inner_height = int(geometry.get("inner_height", 0) or 0)
+        at_bottom = y + inner_height >= scroll_height - 4
+        signature = (len(text), scroll_height)
+
+        if previous_signature == signature and at_bottom:
+            stagnant_scrolls += 1
+        else:
+            stagnant_scrolls = 0
+        previous_signature = signature
+
+        if stagnant_scrolls >= _MAX_PROFILE_SECTION_STAGNANT_SCROLLS:
+            stop_reason = "stable_at_document_end"
+            status = "complete"
+            break
+
+        page.evaluate(
+            """
+            () => window.scrollTo({
+              top: Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0),
+              behavior: "instant"
+            })
+            """
+        )
+        page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
+        scroll_count += 1
+
+    visible_text = page.locator("body").inner_text(timeout=10_000).strip()
+    return {
+        "visible_text": visible_text,
+        "status": status,
+        "stop_reason": stop_reason,
+        "scroll_count": scroll_count,
+        "character_count": len(visible_text),
+    }
 
 
 def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
@@ -530,6 +610,7 @@ def _capture_with_context(
 
     final_url = page.url
     page_title = page.title() or title
+    profile_section_run: dict[str, object] | None = None
 
     if _is_connections_url(final_url) or _is_connections_url(request.url):
         payload = _collect_connections(page, request.connection_limit)
@@ -539,20 +620,31 @@ def _capture_with_context(
             page.locator("body").inner_text(timeout=10_000).strip()[:30_000]
         )
         visible_text = _serialize_connections_payload(payload)
+    elif _is_profile_section_url(final_url) or _is_profile_section_url(request.url):
+        profile_section_run = _collect_profile_section_text(page)
+        visible_text = str(profile_section_run["visible_text"])
     else:
         visible_text = page.locator("body").inner_text(timeout=10_000).strip()
 
     page.screenshot(path=str(screenshot_path), full_page=request.full_page_screenshot)
 
-    notes = "\n".join(
-        [
-            "Captured by JOLT LinkedIn Command Center Playwright flow.",
-            "Browser session is backend-owned for multi-section captures.",
-            f"Page title: {page_title}",
-            f"Final URL: {final_url}",
-            f"Screenshot: {screenshot_path}",
-        ]
-    )
+    note_lines = [
+        "Captured by JOLT LinkedIn Command Center Playwright flow.",
+        "Browser session is backend-owned for multi-section captures.",
+        f"Page title: {page_title}",
+        f"Final URL: {final_url}",
+        f"Screenshot: {screenshot_path}",
+    ]
+    if profile_section_run is not None:
+        note_lines.extend(
+            [
+                f"JOLT profile section completeness: {profile_section_run['status']}",
+                f"JOLT profile section stop reason: {profile_section_run['stop_reason']}",
+                f"JOLT profile section scroll count: {profile_section_run['scroll_count']}",
+                f"JOLT profile section character count: {profile_section_run['character_count']}",
+            ]
+        )
+    notes = "\n".join(note_lines)
 
     return create_linkedin_capture(
         session,
