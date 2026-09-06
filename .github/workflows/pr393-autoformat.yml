@@ -1,0 +1,43 @@
+name: PR 393 autoformat
+
+on:
+  push:
+    branches:
+      - fix/linkedin-profile-scroll-owner-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  autoformat:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/linkedin-profile-scroll-owner-20260906
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.5.14'
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --all-groups
+      - name: Apply Ruff fixes only to PR 393 Python files
+        working-directory: backend
+        run: |
+          uv run ruff check src/jolt/linkedin_playwright_capture.py src/jolt/linkedin_profile_scroll.py --fix
+          uv run ruff format src/jolt/linkedin_playwright_capture.py src/jolt/linkedin_profile_scroll.py
+      - name: Commit formatter result
+        run: |
+          if git diff --quiet -- backend/src/jolt/linkedin_playwright_capture.py backend/src/jolt/linkedin_profile_scroll.py; then
+            echo "No formatter changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/jolt/linkedin_playwright_capture.py backend/src/jolt/linkedin_profile_scroll.py
+          git commit -m "Format LinkedIn scroll-owner fix"
+          git push origin HEAD:fix/linkedin-profile-scroll-owner-20260906
