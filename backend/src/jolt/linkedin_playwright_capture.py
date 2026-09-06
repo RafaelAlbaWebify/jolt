@@ -294,7 +294,9 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
             strategies.append(strategy)
         before = _metadata_int(advance.get("before", 0))
         after = _metadata_int(advance.get("after", before), before)
-        viewport_extent = _metadata_int(advance.get("viewport_extent", viewport_extent), viewport_extent)
+        viewport_extent = _metadata_int(
+            advance.get("viewport_extent", viewport_extent), viewport_extent
+        )
         final_scroll_extent = max(
             final_scroll_extent,
             _metadata_int(advance.get("scroll_extent", 0)),
