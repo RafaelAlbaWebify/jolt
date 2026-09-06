@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 type FeedbackItem = {
   feedback_type: string;
@@ -43,10 +44,46 @@ function readable(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function displayValue(value: unknown): string {
+function primitiveValue(value: unknown): string {
   if (value == null) return "—";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
+  return "—";
+}
+
+function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number }): ReactNode {
+  if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return <span className="market-ai-primitive">{primitiveValue(value)}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="market-ai-empty">None</span>;
+    return (
+      <ul className={`market-ai-list market-ai-list-depth-${Math.min(depth, 2)}`}>
+        {value.map((item, index) => (
+          <li key={index} className={typeof item === "object" && item !== null ? "market-ai-record-item" : undefined}>
+            <StructuredValue value={item} depth={depth + 1} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return <span className="market-ai-empty">None</span>;
+    return (
+      <dl className={`market-ai-object market-ai-object-depth-${Math.min(depth, 2)}`}>
+        {entries.map(([key, item]) => (
+          <div key={key} className="market-ai-object-row">
+            <dt>{readable(key)}</dt>
+            <dd><StructuredValue value={item} depth={depth + 1} /></dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return <span className="market-ai-primitive">{String(value)}</span>;
 }
 
 function InsightSection({ title, data, empty }: { title: string; data: Record<string, unknown>; empty: string }) {
@@ -57,11 +94,9 @@ function InsightSection({ title, data, empty }: { title: string; data: Record<st
       {entries.length === 0 ? <p>{empty}</p> : (
         <dl className="market-ai-insights">
           {entries.map(([key, value]) => (
-            <div key={key}>
+            <div key={key} className="market-ai-insight-row">
               <dt>{readable(key)}</dt>
-              <dd>{Array.isArray(value) ? (
-                <ul>{value.map((item, index) => <li key={`${key}-${index}`}>{displayValue(item)}</li>)}</ul>
-              ) : displayValue(value)}</dd>
+              <dd><StructuredValue value={value} /></dd>
             </div>
           ))}
         </dl>
@@ -158,9 +193,9 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               <div className="market-recommendations">
                 {data.recommendations.map((item) => (
                   <article className="market-card" key={`${item.entity_type}-${item.entity_id}`}>
-                    <strong>{displayValue(item.payload.title ?? readable(item.feedback_type))}</strong>
-                    {item.payload.rationale != null && <p>{displayValue(item.payload.rationale)}</p>}
-                    {item.payload.proposed_action != null && <p><strong>Action:</strong> {displayValue(item.payload.proposed_action)}</p>}
+                    <strong>{primitiveValue(item.payload.title ?? readable(item.feedback_type))}</strong>
+                    {item.payload.rationale != null && <p>{primitiveValue(item.payload.rationale)}</p>}
+                    {item.payload.proposed_action != null && <p><strong>Action:</strong> {primitiveValue(item.payload.proposed_action)}</p>}
                     {item.confidence != null && <span>Confidence {item.confidence}%</span>}
                   </article>
                 ))}
