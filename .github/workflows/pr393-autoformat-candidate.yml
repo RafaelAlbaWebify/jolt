@@ -1,0 +1,41 @@
+name: PR 393 candidate autoformat
+
+on:
+  push:
+    branches:
+      - fix/linkedin-profile-scroll-owner-20260906
+
+permissions:
+  contents: write
+
+jobs:
+  autoformat:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/linkedin-profile-scroll-owner-20260906
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.5.14'
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --all-groups
+      - name: Format candidate evidence
+        working-directory: backend
+        run: uv run ruff format src/jolt/candidate_evidence.py
+      - name: Commit formatter result
+        run: |
+          if git diff --quiet -- backend/src/jolt/candidate_evidence.py; then
+            echo "No formatter changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/jolt/candidate_evidence.py
+          git commit -m "Format candidate evidence traversal validation"
+          git push origin HEAD:fix/linkedin-profile-scroll-owner-20260906
