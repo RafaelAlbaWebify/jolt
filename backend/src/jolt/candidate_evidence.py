@@ -16,14 +16,18 @@ _PROFILE_CATEGORIES = frozenset({"profile", "public_profile"})
 _EVIDENCE_REF_PREFIX = "linkedin_capture:"
 _PROFILE_COMPLETENESS_COMPLETE_MARKER = "jolt profile section completeness: complete"
 _PROFILE_COMPLETENESS_PARTIAL_MARKER = "jolt profile section completeness: partial"
-_PROFILE_PROGRESSIVE_TRAVERSAL_MARKER = "jolt profile section furthest scroll y:"
+_PROFILE_SCROLL_STRATEGY_MARKER = "jolt profile section scroll strategy:"
 _PROFILE_NOTE_PREFIXES = {
     "completeness": "JOLT profile section completeness:",
     "stop_reason": "JOLT profile section stop reason:",
     "scroll_count": "JOLT profile section scroll count:",
     "character_count": "JOLT profile section character count:",
-    "furthest_scroll_y": "JOLT profile section furthest scroll y:",
-    "final_scroll_height": "JOLT profile section final scroll height:",
+    "scroll_strategy": "JOLT profile section scroll strategy:",
+    "furthest_scroll_position": "JOLT profile section furthest scroll position:",
+    "viewport_extent": "JOLT profile section viewport extent:",
+    "final_scroll_extent": "JOLT profile section final scroll extent:",
+    "observed_movement": "JOLT profile section observed movement:",
+    "scroll_required": "JOLT profile section scroll required:",
 }
 _LOGIN_URL_MARKERS = (
     "/login",
@@ -67,20 +71,10 @@ class CandidateEvidenceSummary(BaseModel):
 
 
 def validate_candidate_evidence_summary(value: dict[str, Any]) -> dict[str, Any]:
-    """Validate the AI-owned claim ledger without deciding claim semantics locally."""
-
     return CandidateEvidenceSummary.model_validate(value).model_dump(mode="json")
 
 
 def _canonical_profile_section_key(capture: LinkedInPresenceCapture) -> tuple[str, str]:
-    """Return the stable current-section identity used for candidate evidence selection.
-
-    Historical captures remain in JOLT for provenance, but the AI candidate surface should not
-    spend its bounded source budget on repeated old snapshots of the same LinkedIn section.
-    Query strings and fragments are deliberately ignored because LinkedIn can vary them without
-    changing the underlying Profile / Experience / Skills / Certifications section.
-    """
-
     candidate = capture.source_url.strip()
     if candidate:
         parts = urlsplit(candidate)
@@ -96,16 +90,27 @@ def _is_linkedin_profile_detail_capture(capture: LinkedInPresenceCapture) -> boo
     return "linkedin.com/in/" in source_url and "/details/" in source_url
 
 
-def _profile_section_capture_metadata(capture: LinkedInPresenceCapture) -> dict[str, Any]:
-    """Expose recorder-owned completeness evidence without inferring semantic content."""
+def _parse_bool(value: str) -> bool | None:
+    folded = value.strip().casefold()
+    if folded == "true":
+        return True
+    if folded == "false":
+        return False
+    return None
 
+
+def _profile_section_capture_metadata(capture: LinkedInPresenceCapture) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "completeness": "unknown",
         "stop_reason": "unknown",
         "scroll_count": None,
         "character_count": None,
-        "furthest_scroll_y": None,
-        "final_scroll_height": None,
+        "scroll_strategy": "unknown",
+        "furthest_scroll_position": None,
+        "viewport_extent": None,
+        "final_scroll_extent": None,
+        "observed_movement": None,
+        "scroll_required": None,
         "progressive_traversal_verified": False,
     }
     lines = [line.strip() for line in capture.notes.splitlines() if line.strip()]
@@ -121,28 +126,58 @@ def _profile_section_capture_metadata(capture: LinkedInPresenceCapture) -> dict[
         )
         if value is None:
             continue
-        if key in {"scroll_count", "character_count", "furthest_scroll_y", "final_scroll_height"}:
+        if key in {
+            "scroll_count",
+            "character_count",
+            "furthest_scroll_position",
+            "viewport_extent",
+            "final_scroll_extent",
+        }:
             try:
                 metadata[key] = int(value)
             except ValueError:
                 metadata[key] = None
+        elif key in {"observed_movement", "scroll_required"}:
+            metadata[key] = _parse_bool(value)
         else:
             metadata[key] = value
 
-    metadata["progressive_traversal_verified"] = any(
-        line.casefold().startswith(_PROFILE_PROGRESSIVE_TRAVERSAL_MARKER) for line in lines
+    strategy = str(metadata["scroll_strategy"])
+    furthest = metadata["furthest_scroll_position"]
+    viewport = metadata["viewport_extent"]
+    extent = metadata["final_scroll_extent"]
+    movement = metadata["observed_movement"]
+    required = metadata["scroll_required"]
+    stop_reason = metadata["stop_reason"]
+    completeness = metadata["completeness"]
+
+    recognized_strategy = strategy in {"window", "scrollable_container"}
+    moved_when_required = (
+        required is True
+        and movement is True
+        and isinstance(furthest, int)
+        and furthest > 0
+        and isinstance(extent, int)
+        and isinstance(viewport, int)
+        and extent > viewport + 2
+    )
+    defensible_no_scroll = (
+        required is False
+        and movement is False
+        and isinstance(extent, int)
+        and isinstance(viewport, int)
+        and extent <= viewport + 2
+    )
+    metadata["progressive_traversal_verified"] = bool(
+        completeness == "complete"
+        and stop_reason == "stable_at_scroll_surface_end"
+        and recognized_strategy
+        and (moved_when_required or defensible_no_scroll)
     )
     return metadata
 
 
 def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | None:
-    """Return a deterministic reason when a profile capture is not usable evidence.
-
-    LinkedIn login/authwall/checkpoint, explicitly partial profile sections, and profile-detail
-    captures whose traversal/completeness cannot be verified are retained for audit but must never
-    be promoted into candidate evidence or AI profile analysis as if they were complete content.
-    """
-
     source_url = capture.source_url.strip().casefold()
     visible_text = capture.visible_text.strip().casefold()
     notes = capture.notes.strip().casefold()
@@ -158,14 +193,15 @@ def profile_capture_quality_issue(capture: LinkedInPresenceCapture) -> str | Non
     if _is_linkedin_profile_detail_capture(capture):
         if _PROFILE_COMPLETENESS_COMPLETE_MARKER not in notes:
             return "unverified_linkedin_profile_section_completeness"
-        if _PROFILE_PROGRESSIVE_TRAVERSAL_MARKER not in notes:
-            return "legacy_non_progressive_profile_section"
+        if _PROFILE_SCROLL_STRATEGY_MARKER not in notes:
+            return "legacy_non_scroll_surface_profile_section"
+        metadata = _profile_section_capture_metadata(capture)
+        if not metadata["progressive_traversal_verified"]:
+            return "unverified_linkedin_profile_section_traversal"
     return None
 
 
 def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) -> None:
-    """Require candidate-claim references to resolve to usable profile evidence in JOLT."""
-
     summary = CandidateEvidenceSummary.model_validate(value)
     refs = {evidence_ref for claim in summary.claims for evidence_ref in claim.evidence_refs}
     for evidence_ref in refs:
@@ -176,9 +212,7 @@ def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) ->
         if capture is None:
             raise ValueError(f"Candidate evidence reference was not found: {evidence_ref}")
         if capture.category not in _PROFILE_CATEGORIES:
-            raise ValueError(
-                "Candidate evidence reference is not profile evidence: " + evidence_ref
-            )
+            raise ValueError("Candidate evidence reference is not profile evidence: " + evidence_ref)
         quality_issue = profile_capture_quality_issue(capture)
         if quality_issue is not None:
             raise ValueError(
@@ -192,14 +226,6 @@ def _source_ref(capture: LinkedInPresenceCapture) -> str:
 
 
 def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
-    """Build deterministic candidate evidence without inferring experience level.
-
-    The newest usable capture for each canonical LinkedIn profile section is authoritative for the
-    bounded AI surface. Older snapshots remain stored for provenance/history but no longer crowd
-    current Profile, Experience, Skills, Certifications, Recommendations, etc. out of the package.
-    Invalid authwall/checkpoint/empty/partial/unverifiable captures are excluded.
-    """
-
     captures = session.scalars(
         select(LinkedInPresenceCapture)
         .where(LinkedInPresenceCapture.category.in_(sorted(_PROFILE_CATEGORIES)))
@@ -279,12 +305,12 @@ def build_candidate_evidence_ledger(session: Session) -> dict[str, Any]:
         "authority_notes": {
             "source_evidence": (
                 "Newest usable capture per canonical LinkedIn profile section, with provenance and "
-                "recorder-owned completeness metadata. Presence of a term does not prove "
+                "recorder-owned completeness/traversal metadata. Presence of a term does not prove "
                 "professional depth or duration."
             ),
             "excluded_profile_captures": (
-                "LinkedIn login/authwall/checkpoint, empty, explicitly partial, or unverifiable "
-                "profile-detail captures are retained for audit but are not candidate evidence."
+                "LinkedIn login/authwall/checkpoint, empty, explicitly partial, or traversal-"
+                "unverifiable profile-detail captures are retained for audit but are not candidate evidence."
             ),
             "historical_profile_captures": (
                 "Older usable snapshots of a currently exported section remain audit history and "
