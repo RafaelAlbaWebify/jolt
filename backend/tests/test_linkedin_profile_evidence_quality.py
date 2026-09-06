@@ -34,11 +34,15 @@ def _complete_progressive_notes(*, scroll_count: int = 12, character_count: int 
     return "\n".join(
         [
             "JOLT profile section completeness: complete",
-            "JOLT profile section stop reason: stable_at_document_end",
+            "JOLT profile section stop reason: stable_at_scroll_surface_end",
             f"JOLT profile section scroll count: {scroll_count}",
             f"JOLT profile section character count: {character_count}",
-            "JOLT profile section furthest scroll y: 6400",
-            "JOLT profile section final scroll height: 7100",
+            "JOLT profile section scroll strategy: scrollable_container",
+            "JOLT profile section furthest scroll position: 6400",
+            "JOLT profile section viewport extent: 700",
+            "JOLT profile section final scroll extent: 7100",
+            "JOLT profile section observed movement: true",
+            "JOLT profile section scroll required: true",
         ]
     )
 
@@ -85,7 +89,7 @@ def test_profile_capture_quality_rejects_legacy_false_complete_detail_section() 
         ),
     )
 
-    assert profile_capture_quality_issue(capture) == "legacy_non_progressive_profile_section"
+    assert profile_capture_quality_issue(capture) == "legacy_non_scroll_surface_profile_section"
 
 
 def test_candidate_ledger_excludes_authwall_but_preserves_usable_profile(tmp_path) -> None:
@@ -171,11 +175,15 @@ def test_candidate_ledger_exports_only_latest_usable_capture_per_profile_section
         certification = ledger["source_evidence"][0]
         assert certification["capture_metadata"] == {
             "completeness": "complete",
-            "stop_reason": "stable_at_document_end",
+            "stop_reason": "stable_at_scroll_surface_end",
             "scroll_count": 12,
             "character_count": 4000,
-            "furthest_scroll_y": 6400,
-            "final_scroll_height": 7100,
+            "scroll_strategy": "scrollable_container",
+            "furthest_scroll_position": 6400,
+            "viewport_extent": 700,
+            "final_scroll_extent": 7100,
+            "observed_movement": True,
+            "scroll_required": True,
             "progressive_traversal_verified": True,
         }
     finally:
@@ -240,7 +248,7 @@ def test_legacy_complete_section_is_excluded_until_progressive_recapture(tmp_pat
 
         assert ledger["source_evidence"] == []
         assert ledger["excluded_profile_captures"][0]["reason"] == (
-            "legacy_non_progressive_profile_section"
+            "legacy_non_scroll_surface_profile_section"
         )
     finally:
         session.close()

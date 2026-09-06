@@ -21,6 +21,10 @@ from jolt.linkedin_command_center import (
     LinkedInCaptureResponse,
     create_linkedin_capture,
 )
+from jolt.linkedin_profile_scroll import (
+    advance_profile_scroll_surface,
+    reset_profile_scroll_surface,
+)
 
 
 class LinkedInPlaywrightCaptureRequest(BaseModel):
@@ -65,6 +69,17 @@ _MAX_CAPTURE_TEXT_CHARACTERS = 199_000
 def _safe_slug(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip()).strip("-._")
     return slug[:80] or "linkedin-capture"
+
+
+def _metadata_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float, str)):
+        try:
+            return int(value)
+        except (TypeError, ValueError, OverflowError):
+            return default
+    return default
 
 
 def _downloads_dir() -> Path:
@@ -145,9 +160,7 @@ def _visible_connection_cards(page: Any, connection_limit: int) -> list[dict[str
             let profileKey = href.toLowerCase();
             try {
               const parsed = new URL(href, window.location.href);
-              profileKey =
-                `${parsed.origin}${parsed.pathname.replace(new RegExp("/+$"), "")}/`
-                  .toLowerCase();
+              profileKey = `${parsed.origin}${parsed.pathname.replace(new RegExp("/+$"), "")}/`.toLowerCase();
             } catch {
               // Keep the href fallback for malformed but visible links.
             }
@@ -155,49 +168,18 @@ def _visible_connection_cards(page: Any, connection_limit: int) -> list[dict[str
             if (seenProfiles.has(profileKey)) continue;
             seenProfiles.add(profileKey);
 
-            const card =
-              anchor.closest("li") ||
-              anchor.closest('[data-view-name*="connection"]') ||
-              anchor.closest("article") ||
-              anchor.parentElement?.parentElement ||
-              anchor.parentElement;
-
+            const card = anchor.closest("li") || anchor.closest('[data-view-name*="connection"]') || anchor.closest("article") || anchor.parentElement?.parentElement || anchor.parentElement;
             const rawText = card?.innerText || anchor.innerText || "";
-            const lines = rawText
-              .split("\\n")
-              .map((line) => line.trim())
-              .filter((line) => line && !ignored.has(line));
-
+            const lines = rawText.split("\\n").map((line) => line.trim()).filter((line) => line && !ignored.has(line));
             const anchorText = (anchor.innerText || "").trim();
             const name = anchorText || lines[0] || "";
             const detailLines = lines.filter((line) => line !== name);
+            const connectionContext = detailLines.filter((line) => /\b(1st|2nd|3rd|degree|connection|connections|mutual)\b/i.test(line)).slice(0, 3).join(" · ");
+            const headline = detailLines.filter((line) => !/\b(1st|2nd|3rd|degree|connection|connections|mutual)\b/i.test(line)).slice(0, 3).join(" · ");
 
-            const connectionContext = detailLines
-              .filter((line) =>
-                /\b(1st|2nd|3rd|degree|connection|connections|mutual)\b/i.test(line)
-              )
-              .slice(0, 3)
-              .join(" · ");
-
-            const headline = detailLines
-              .filter((line) =>
-                !/\b(1st|2nd|3rd|degree|connection|connections|mutual)\b/i.test(line)
-              )
-              .slice(0, 3)
-              .join(" · ");
-
-            if (name) {
-              records.push({
-                name,
-                profile_url: href,
-                headline,
-                connection_context: connectionContext,
-              });
-            }
-
+            if (name) records.push({ name, profile_url: href, headline, connection_context: connectionContext });
             if (records.length >= limit) break;
           }
-
           return records;
         }
         """,
@@ -220,52 +202,29 @@ def _advance_connections_view(page: Any) -> dict[str, object]:
     result = page.evaluate(
         """
         () => {
-          const anchors = Array.from(document.querySelectorAll('a[href*="/in/"]'))
-            .filter((anchor) => {
-              const rect = anchor.getBoundingClientRect();
-              return rect.width > 0 && rect.height > 0;
-            });
-
+          const anchors = Array.from(document.querySelectorAll('a[href*="/in/"]')).filter((anchor) => {
+            const rect = anchor.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          });
           const last = anchors.length ? anchors[anchors.length - 1] : null;
           const isScrollable = (element) => {
             if (!(element instanceof HTMLElement)) return false;
             const style = window.getComputedStyle(element);
-            const overflowY = style.overflowY;
-            return (
-              (overflowY === "auto" || overflowY === "scroll") &&
-              element.scrollHeight > element.clientHeight + 2
-            );
+            return (style.overflowY === "auto" || style.overflowY === "scroll") && element.scrollHeight > element.clientHeight + 2;
           };
-
           let container = last?.parentElement || null;
-          while (container && container !== document.body && !isScrollable(container)) {
-            container = container.parentElement;
-          }
-
+          while (container && container !== document.body && !isScrollable(container)) container = container.parentElement;
           if (container && container !== document.body && isScrollable(container)) {
             const before = container.scrollTop;
             const step = Math.max(Math.floor(container.clientHeight * 0.8), 400);
             container.scrollBy({ top: step, behavior: "instant" });
             last?.scrollIntoView({ block: "end", inline: "nearest", behavior: "instant" });
-            return {
-              strategy: "scrollable_container",
-              before,
-              after: container.scrollTop,
-              scroll_height: container.scrollHeight,
-              client_height: container.clientHeight,
-            };
+            return { strategy: "scrollable_container", before, after: container.scrollTop, scroll_height: container.scrollHeight, client_height: container.clientHeight };
           }
-
           const before = window.scrollY;
           last?.scrollIntoView({ block: "end", inline: "nearest", behavior: "instant" });
           window.scrollBy({ top: Math.max(Math.floor(window.innerHeight * 0.8), 500), behavior: "instant" });
-          return {
-            strategy: "window",
-            before,
-            after: window.scrollY,
-            scroll_height: document.documentElement.scrollHeight,
-            client_height: window.innerHeight,
-          };
+          return { strategy: "window", before, after: window.scrollY, scroll_height: document.documentElement.scrollHeight, client_height: window.innerHeight };
         }
         """
     )
@@ -276,12 +235,10 @@ def _linkedin_safety_warning(page: Any) -> str | None:
     current_url = str(getattr(page, "url", "")).lower()
     if any(marker in current_url for marker in ("/checkpoint/challenge", "/challenge/")):
         return "LinkedIn presented a checkpoint or challenge while capture was running."
-
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
     except Exception as exc:
         raise RuntimeError("Unable to inspect LinkedIn page safety state.") from exc
-
     markers = (
         "your account has been temporarily restricted",
         "account has been restricted",
@@ -300,24 +257,26 @@ def _linkedin_safety_warning(page: Any) -> str | None:
 
 
 def _collect_profile_section_text(page: Any) -> dict[str, object]:
-    """Traverse a LinkedIn profile detail section until lazy content is truly exhausted.
+    """Traverse the actual scroll-owning surface of a LinkedIn profile detail section."""
 
-    LinkedIn can load long profile sections only when intermediate portions of the document enter
-    the viewport. Jumping directly to ``scrollHeight`` can therefore skip lazy-load triggers and
-    produce a false ``complete`` capture. JOLT starts at the top, advances by a bounded fraction of
-    the viewport, and only declares completion after the document is stable at its real end for
-    several observations. Safety/login or scroll-budget exits remain explicitly partial.
-    """
-
-    previous_signature: tuple[int, int] | None = None
+    previous_signature: tuple[int, int, int] | None = None
     stagnant_scrolls = 0
     scroll_count = 0
-    furthest_scroll_y = 0
-    final_scroll_height = 0
+    furthest_position = 0
+    final_scroll_extent = 0
+    viewport_extent = 0
+    observed_movement = False
+    strategies: list[str] = []
     stop_reason = "maximum_scrolls_reached"
     status = "partial"
 
-    page.evaluate("() => window.scrollTo({ top: 0, behavior: 'instant' })")
+    surface = reset_profile_scroll_surface(page)
+    strategy = str(surface.get("strategy", "unknown"))
+    if strategy:
+        strategies.append(strategy)
+    viewport_extent = _metadata_int(surface.get("viewport_extent", 0))
+    final_scroll_extent = _metadata_int(surface.get("scroll_extent", 0))
+    can_scroll = bool(surface.get("can_scroll", False))
     page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
 
     while scroll_count <= _MAX_PROFILE_SECTION_SCROLLS:
@@ -329,54 +288,40 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
             break
 
         text = page.locator("body").inner_text(timeout=10_000).strip()
-        geometry = page.evaluate(
-            """
-            () => ({
-              y: window.scrollY,
-              inner_height: window.innerHeight,
-              scroll_height: Math.max(
-                document.body?.scrollHeight || 0,
-                document.documentElement?.scrollHeight || 0
-              )
-            })
-            """
+        advance = advance_profile_scroll_surface(page)
+        strategy = str(advance.get("strategy", "unknown"))
+        if strategy and (not strategies or strategies[-1] != strategy):
+            strategies.append(strategy)
+        before = _metadata_int(advance.get("before", 0))
+        after = _metadata_int(advance.get("after", before), before)
+        viewport_extent = _metadata_int(
+            advance.get("viewport_extent", viewport_extent), viewport_extent
         )
-        if not isinstance(geometry, dict):
-            geometry = {}
-        scroll_height = int(geometry.get("scroll_height", 0) or 0)
-        y = int(geometry.get("y", 0) or 0)
-        inner_height = int(geometry.get("inner_height", 0) or 0)
-        furthest_scroll_y = max(furthest_scroll_y, y)
-        final_scroll_height = max(final_scroll_height, scroll_height)
-        at_bottom = y + inner_height >= scroll_height - 4
-        signature = (len(text), scroll_height)
+        final_scroll_extent = max(
+            final_scroll_extent,
+            _metadata_int(advance.get("scroll_extent", 0)),
+        )
+        at_end = bool(advance.get("at_end", False))
+        if after > before:
+            observed_movement = True
+        furthest_position = max(furthest_position, before, after)
+        signature = (len(text), after, final_scroll_extent)
 
-        if previous_signature == signature and at_bottom:
+        if previous_signature == signature and at_end:
             stagnant_scrolls += 1
         else:
             stagnant_scrolls = 0
         previous_signature = signature
 
         if stagnant_scrolls >= _MAX_PROFILE_SECTION_STAGNANT_SCROLLS:
-            stop_reason = "stable_at_document_end"
-            status = "complete"
+            if observed_movement or not can_scroll:
+                stop_reason = "stable_at_scroll_surface_end"
+                status = "complete"
+            else:
+                stop_reason = "scroll_surface_never_moved"
+                status = "partial"
             break
 
-        page.evaluate(
-            """
-            () => {
-              const scrollHeight = Math.max(
-                document.body?.scrollHeight || 0,
-                document.documentElement?.scrollHeight || 0
-              );
-              const viewport = Math.max(window.innerHeight || 0, 1);
-              const maxTop = Math.max(scrollHeight - viewport, 0);
-              const step = Math.max(Math.floor(viewport * 0.75), 300);
-              const target = Math.min(window.scrollY + step, maxTop);
-              window.scrollTo({ top: target, behavior: "instant" });
-            }
-            """
-        )
         page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
         scroll_count += 1
 
@@ -387,8 +332,12 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
         "stop_reason": stop_reason,
         "scroll_count": scroll_count,
         "character_count": len(visible_text),
-        "furthest_scroll_y": furthest_scroll_y,
-        "final_scroll_height": final_scroll_height,
+        "scroll_strategy": ",".join(strategies) if strategies else "unknown",
+        "furthest_scroll_position": furthest_position,
+        "viewport_extent": viewport_extent,
+        "final_scroll_extent": final_scroll_extent,
+        "observed_movement": observed_movement,
+        "scroll_required": can_scroll,
     }
 
 
@@ -408,47 +357,37 @@ def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
             stop_reason = "linkedin_login_or_checkpoint"
             failures.append(LOGIN_REQUIRED_MESSAGE)
             break
-
         safety_warning = _linkedin_safety_warning(page)
         if safety_warning is not None:
             stop_reason = "linkedin_safety_warning"
             failures.append(safety_warning)
             break
-
         visible_records = _visible_connection_cards(page, connection_limit)
         observed_count += len(visible_records)
         previous_unique_count = len(records_by_identity)
-
         for record in visible_records:
             profile_url = str(record["profile_url"])
             fallback = f"{record['name']}|{record['headline']}".casefold()
             identity = profile_url.casefold() if profile_url else fallback
-
             if identity in records_by_identity:
                 duplicate_count += 1
                 continue
-
             record["capture_order"] = len(records_by_identity) + 1
             record["captured_at"] = utc_now().isoformat()
             record["source_url"] = str(getattr(page, "url", ""))
             records_by_identity[identity] = record
-
             if len(records_by_identity) >= connection_limit:
                 stop_reason = "requested_limit_reached"
                 break
-
         if len(records_by_identity) >= connection_limit:
             break
-
         if len(records_by_identity) == previous_unique_count:
             stagnant_scrolls += 1
         else:
             stagnant_scrolls = 0
-
         if stagnant_scrolls >= _MAX_STAGNANT_SCROLLS:
             stop_reason = "no_new_connections_after_scroll"
             break
-
         advance = _advance_connections_view(page)
         scroll_strategies.append(str(advance.get("strategy", "unknown")))
         page.wait_for_timeout(_SCROLL_WAIT_MILLISECONDS)
@@ -456,7 +395,6 @@ def _collect_connections(page: Any, connection_limit: int) -> dict[str, object]:
 
     connections = list(records_by_identity.values())
     status = "complete" if stop_reason == "requested_limit_reached" else "partial"
-
     return {
         "schema": _CONNECTION_SCHEMA,
         "capture_run": {
@@ -480,36 +418,29 @@ def _serialize_connections_payload(payload: dict[str, object]) -> str:
     serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     connections = payload.get("connections")
     capture_run = payload.get("capture_run")
-
     if not isinstance(connections, list) or not isinstance(capture_run, dict):
         return serialized
-
     trimmed = False
     while len(serialized) > _MAX_CAPTURE_TEXT_CHARACTERS and connections:
         connections.pop()
         trimmed = True
         capture_run["unique_count"] = len(connections)
         serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-
     if trimmed:
         capture_run["status"] = "partial"
         capture_run["stop_reason"] = "capture_payload_limit_reached"
-
         failures = capture_run.get("failures")
         if not isinstance(failures, list):
             failures = []
             capture_run["failures"] = failures
-
         failures.append(
             "Structured Connections evidence was truncated to fit JOLT's retained capture size limit."
         )
         serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-
         while len(serialized) > _MAX_CAPTURE_TEXT_CHARACTERS and connections:
             connections.pop()
             capture_run["unique_count"] = len(connections)
             serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-
     return serialized
 
 
@@ -546,17 +477,14 @@ def _get_browser_context() -> Any:
         raise RuntimeError(
             "Playwright is not available. Run `uv --project backend sync --dev` and install browsers."
         ) from exc
-
     if _PLAYWRIGHT is None:
         _PLAYWRIGHT = sync_playwright().start()
-
     if _BROWSER_CONTEXT is not None:
         try:
             _ = _BROWSER_CONTEXT.pages
             return _BROWSER_CONTEXT
         except Exception:
             _BROWSER_CONTEXT = None
-
     _BROWSER_CONTEXT = _PLAYWRIGHT.chromium.launch_persistent_context(
         user_data_dir=str(_browser_profile_dir()),
         headless=False,
@@ -591,9 +519,7 @@ def _page_needs_linkedin_login(page: Any) -> bool:
 
 
 def _capture_with_context(
-    session: Session,
-    context: Any,
-    request: LinkedInPlaywrightCaptureRequest,
+    session: Session, context: Any, request: LinkedInPlaywrightCaptureRequest
 ) -> LinkedInCaptureResponse:
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -605,30 +531,23 @@ def _capture_with_context(
     capture_root = _capture_root()
     title = request.title.strip() or "LinkedIn capture"
     screenshot_path = capture_root / f"{_safe_slug(title)}-{uuid.uuid4().hex[:12]}.png"
-
     page = context.pages[0] if context.pages else context.new_page()
     with suppress(Exception):
         page.bring_to_front()
-
     page.goto(request.url.strip(), wait_until="domcontentloaded", timeout=60_000)
     page.wait_for_timeout(1_000)
-
     if _page_needs_linkedin_login(page):
         raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
-
     if request.wait_seconds > 0:
         page.wait_for_timeout(int(request.wait_seconds * 1000))
-
     with suppress(PlaywrightTimeoutError):
         page.wait_for_load_state("networkidle", timeout=8_000)
-
     if _page_needs_linkedin_login(page):
         raise LinkedInLoginRequired(LOGIN_REQUIRED_MESSAGE)
 
     final_url = page.url
     page_title = page.title() or title
     profile_section_run: dict[str, object] | None = None
-
     if _is_connections_url(final_url) or _is_connections_url(request.url):
         payload = _collect_connections(page, request.connection_limit)
         payload["source_url"] = final_url
@@ -644,7 +563,6 @@ def _capture_with_context(
         visible_text = page.locator("body").inner_text(timeout=10_000).strip()
 
     page.screenshot(path=str(screenshot_path), full_page=request.full_page_screenshot)
-
     note_lines = [
         "Captured by JOLT LinkedIn Command Center Playwright flow.",
         "Browser session is backend-owned for multi-section captures.",
@@ -659,8 +577,12 @@ def _capture_with_context(
                 f"JOLT profile section stop reason: {profile_section_run['stop_reason']}",
                 f"JOLT profile section scroll count: {profile_section_run['scroll_count']}",
                 f"JOLT profile section character count: {profile_section_run['character_count']}",
-                f"JOLT profile section furthest scroll y: {profile_section_run['furthest_scroll_y']}",
-                f"JOLT profile section final scroll height: {profile_section_run['final_scroll_height']}",
+                f"JOLT profile section scroll strategy: {profile_section_run['scroll_strategy']}",
+                f"JOLT profile section furthest scroll position: {profile_section_run['furthest_scroll_position']}",
+                f"JOLT profile section viewport extent: {profile_section_run['viewport_extent']}",
+                f"JOLT profile section final scroll extent: {profile_section_run['final_scroll_extent']}",
+                f"JOLT profile section observed movement: {str(profile_section_run['observed_movement']).lower()}",
+                f"JOLT profile section scroll required: {str(profile_section_run['scroll_required']).lower()}",
             ]
         )
     notes = "\n".join(note_lines)
@@ -702,8 +624,7 @@ def run_linkedin_playwright_batch_capture(
             for target in targets:
                 captures.append(_capture_with_context(session, context, target))
             return LinkedInPlaywrightBatchCaptureResponse(
-                captured_count=len(captures),
-                captures=captures,
+                captured_count=len(captures), captures=captures
             )
         except LinkedInLoginRequired as exc:
             raise RuntimeError(LOGIN_REQUIRED_MESSAGE) from exc
