@@ -6,8 +6,6 @@ from jolt.linkedin_playwright_capture import _collect_profile_section_text
 
 
 def test_profile_section_capture_traverses_intermediate_lazy_load_triggers() -> None:
-    """A direct jump to the footer would miss every synthetic lazy-load window below."""
-
     html = """
     <html>
       <body style="margin:0">
@@ -18,7 +16,6 @@ def test_profile_section_capture_traverses_intermediate_lazy_load_triggers() -> 
           const windows = [400, 900, 1400];
           let stage = 0;
           let loaded = 0;
-
           function addBatch() {
             for (let i = 1; i <= 3; i += 1) {
               loaded += 1;
@@ -28,7 +25,6 @@ def test_profile_section_capture_traverses_intermediate_lazy_load_triggers() -> 
               items.appendChild(card);
             }
           }
-
           addBatch();
           window.addEventListener('scroll', () => {
             if (stage >= windows.length) return;
@@ -48,14 +44,14 @@ def test_profile_section_capture_traverses_intermediate_lazy_load_triggers() -> 
         browser = playwright.chromium.launch()
         page = browser.new_page(viewport={"width": 900, "height": 700})
         page.set_content(html)
-
         result = _collect_profile_section_text(page)
         browser.close()
 
     assert result["status"] == "complete"
-    assert result["stop_reason"] == "stable_at_document_end"
-    assert int(result["scroll_count"]) > 3
-    assert int(result["furthest_scroll_y"]) > 1400
+    assert result["stop_reason"] == "stable_at_scroll_surface_end"
+    assert result["scroll_strategy"] == "window"
+    assert result["observed_movement"] is True
+    assert int(result["furthest_scroll_position"]) > 1400
     text = str(result["visible_text"])
     assert "Credential 1" in text
     assert "Credential 12" in text
@@ -94,13 +90,13 @@ def test_profile_section_capture_scrolls_until_bottom_content_stabilizes() -> No
         browser = playwright.chromium.launch()
         page = browser.new_page(viewport={"width": 900, "height": 700})
         page.set_content(html)
-
         result = _collect_profile_section_text(page)
         browser.close()
 
     assert result["status"] == "complete"
-    assert result["stop_reason"] == "stable_at_document_end"
-    assert int(result["scroll_count"]) > 0
+    assert result["stop_reason"] == "stable_at_scroll_surface_end"
+    assert result["scroll_strategy"] == "window"
+    assert result["observed_movement"] is True
     text = str(result["visible_text"])
     assert "Credential 1" in text
     assert "Credential 12" in text
