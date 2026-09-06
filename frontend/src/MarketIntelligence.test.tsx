@@ -65,6 +65,43 @@ describe("MarketIntelligence", () => {
     expect(screen.queryByText(/Adaptive market baseline/i)).not.toBeInTheDocument();
   });
 
+  it("renders nested market records as readable fields instead of raw JSON", async () => {
+    const structured = {
+      ...DATA,
+      market_summary: {
+        ...DATA.market_summary,
+        decision_counts: { reject: 98, strong_pursue: 1, conditional: 1 },
+        actionable_opportunities: [{
+          posting_id: "332ad157-58c2-4c98-894c-c55eef902483",
+          source_job_id: "4463716166",
+          company: "Quik Hire Staffing",
+          title: "Support Engineer (Remote)",
+          decision: "strong_pursue",
+        }],
+        eligibility_verification_queue: [{
+          posting_id: "caff118a-95f3-4bbf-88ea-782878dc88ce",
+          source_job_id: "4461172850",
+          company: "Dash0",
+          title: "Junior IT Administrator, EMEA",
+          reason: "Verify Spain hiring eligibility",
+        }],
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(structured), { status: 200 }));
+    render(<MarketIntelligence apiBase="http://api" active />);
+
+    expect(await screen.findByText("decision counts")).toBeInTheDocument();
+    expect(screen.getByText("reject")).toBeInTheDocument();
+    expect(screen.getByText("98")).toBeInTheDocument();
+    expect(screen.getByText("strong pursue")).toBeInTheDocument();
+    expect(screen.getByText("Quik Hire Staffing")).toBeInTheDocument();
+    expect(screen.getByText("Support Engineer (Remote)")).toBeInTheDocument();
+    expect(screen.getByText("Dash0")).toBeInTheDocument();
+    expect(screen.getByText("Verify Spain hiring eligibility")).toBeInTheDocument();
+    expect(screen.queryByText('{"reject":98,"strong_pursue":1,"conditional":1}')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\{"posting_id":"332ad157/)).not.toBeInTheDocument();
+  });
+
   it("loads only the authoritative AI market view endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
