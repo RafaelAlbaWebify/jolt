@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 _PROFILE_SCROLL_SURFACE_SCRIPT = r"""
 () => {
   const isScrollable = (element) => {

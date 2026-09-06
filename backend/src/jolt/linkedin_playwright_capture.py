@@ -21,7 +21,10 @@ from jolt.linkedin_command_center import (
     LinkedInCaptureResponse,
     create_linkedin_capture,
 )
-from jolt.linkedin_profile_scroll import advance_profile_scroll_surface, reset_profile_scroll_surface
+from jolt.linkedin_profile_scroll import (
+    advance_profile_scroll_surface,
+    reset_profile_scroll_surface,
+)
 
 
 class LinkedInPlaywrightCaptureRequest(BaseModel):
@@ -414,7 +417,9 @@ def _serialize_connections_payload(payload: dict[str, object]) -> str:
         if not isinstance(failures, list):
             failures = []
             capture_run["failures"] = failures
-        failures.append("Structured Connections evidence was truncated to fit JOLT's retained capture size limit.")
+        failures.append(
+            "Structured Connections evidence was truncated to fit JOLT's retained capture size limit."
+        )
         serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         while len(serialized) > _MAX_CAPTURE_TEXT_CHARACTERS and connections:
             connections.pop()
@@ -453,7 +458,9 @@ def _get_browser_context() -> Any:
     try:
         from playwright.sync_api import sync_playwright
     except Exception as exc:
-        raise RuntimeError("Playwright is not available. Run `uv --project backend sync --dev` and install browsers.") from exc
+        raise RuntimeError(
+            "Playwright is not available. Run `uv --project backend sync --dev` and install browsers."
+        ) from exc
     if _PLAYWRIGHT is None:
         _PLAYWRIGHT = sync_playwright().start()
     if _BROWSER_CONTEXT is not None:
@@ -463,14 +470,20 @@ def _get_browser_context() -> Any:
         except Exception:
             _BROWSER_CONTEXT = None
     _BROWSER_CONTEXT = _PLAYWRIGHT.chromium.launch_persistent_context(
-        user_data_dir=str(_browser_profile_dir()), headless=False, no_viewport=True, args=["--start-maximized"]
+        user_data_dir=str(_browser_profile_dir()),
+        headless=False,
+        no_viewport=True,
+        args=["--start-maximized"],
     )
     return _BROWSER_CONTEXT
 
 
 def _page_needs_linkedin_login(page: Any) -> bool:
     current_url = page.url.lower()
-    if any(marker in current_url for marker in ("/login", "/checkpoint", "/uas/login", "authwall", "session_redirect")):
+    if any(
+        marker in current_url
+        for marker in ("/login", "/checkpoint", "/uas/login", "authwall", "session_redirect")
+    ):
         return True
     try:
         body_text = page.locator("body").inner_text(timeout=3_000).lower()
@@ -489,11 +502,15 @@ def _page_needs_linkedin_login(page: Any) -> bool:
     return any(marker in body_text for marker in login_markers)
 
 
-def _capture_with_context(session: Session, context: Any, request: LinkedInPlaywrightCaptureRequest) -> LinkedInCaptureResponse:
+def _capture_with_context(
+    session: Session, context: Any, request: LinkedInPlaywrightCaptureRequest
+) -> LinkedInCaptureResponse:
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     except Exception as exc:
-        raise RuntimeError("Playwright is not available. Run `uv --project backend sync --dev` and install browsers.") from exc
+        raise RuntimeError(
+            "Playwright is not available. Run `uv --project backend sync --dev` and install browsers."
+        ) from exc
 
     capture_root = _capture_root()
     title = request.title.strip() or "LinkedIn capture"
@@ -519,7 +536,9 @@ def _capture_with_context(session: Session, context: Any, request: LinkedInPlayw
         payload = _collect_connections(page, request.connection_limit)
         payload["source_url"] = final_url
         payload["page_title"] = page_title
-        payload["raw_visible_text"] = page.locator("body").inner_text(timeout=10_000).strip()[:30_000]
+        payload["raw_visible_text"] = (
+            page.locator("body").inner_text(timeout=10_000).strip()[:30_000]
+        )
         visible_text = _serialize_connections_payload(payload)
     elif _is_profile_section_url(final_url) or _is_profile_section_url(request.url):
         profile_section_run = _collect_profile_section_text(page)
@@ -554,11 +573,19 @@ def _capture_with_context(session: Session, context: Any, request: LinkedInPlayw
 
     return create_linkedin_capture(
         session,
-        LinkedInCaptureRequest(category=request.category, title=title, source_url=final_url, visible_text=visible_text, notes=notes),
+        LinkedInCaptureRequest(
+            category=request.category,
+            title=title,
+            source_url=final_url,
+            visible_text=visible_text,
+            notes=notes,
+        ),
     )
 
 
-def run_linkedin_playwright_capture(session: Session, request: LinkedInPlaywrightCaptureRequest) -> LinkedInCaptureResponse:
+def run_linkedin_playwright_capture(
+    session: Session, request: LinkedInPlaywrightCaptureRequest
+) -> LinkedInCaptureResponse:
     with _CAPTURE_LOCK:
         try:
             context = _get_browser_context()
@@ -570,7 +597,9 @@ def run_linkedin_playwright_capture(session: Session, request: LinkedInPlaywrigh
             raise
 
 
-def run_linkedin_playwright_batch_capture(session: Session, request: LinkedInPlaywrightBatchCaptureRequest) -> LinkedInPlaywrightBatchCaptureResponse:
+def run_linkedin_playwright_batch_capture(
+    session: Session, request: LinkedInPlaywrightBatchCaptureRequest
+) -> LinkedInPlaywrightBatchCaptureResponse:
     captures: list[LinkedInCaptureResponse] = []
     targets = [target for target in request.targets if target.url.strip()]
     with _CAPTURE_LOCK:
@@ -578,7 +607,9 @@ def run_linkedin_playwright_batch_capture(session: Session, request: LinkedInPla
             context = _get_browser_context()
             for target in targets:
                 captures.append(_capture_with_context(session, context, target))
-            return LinkedInPlaywrightBatchCaptureResponse(captured_count=len(captures), captures=captures)
+            return LinkedInPlaywrightBatchCaptureResponse(
+                captured_count=len(captures), captures=captures
+            )
         except LinkedInLoginRequired as exc:
             raise RuntimeError(LOGIN_REQUIRED_MESSAGE) from exc
         except Exception:
