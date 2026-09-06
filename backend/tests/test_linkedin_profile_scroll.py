@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from playwright.sync_api import sync_playwright
 
+from jolt.linkedin_playwright_capture import _collect_profile_section_text
 from jolt.linkedin_profile_scroll import (
     advance_profile_scroll_surface,
     reset_profile_scroll_surface,
 )
 
 
-def test_profile_scroll_prefers_nested_scroll_owner_when_window_cannot_scroll() -> None:
-    html = """
+def _nested_lazy_profile_html() -> str:
+    return """
     <html style="height:100%">
       <body style="height:100%; margin:0; overflow:hidden">
         <main id="profile" style="height:700px; overflow-y:auto">
@@ -41,10 +42,12 @@ def test_profile_scroll_prefers_nested_scroll_owner_when_window_cannot_scroll() 
     </html>
     """
 
+
+def test_profile_scroll_prefers_nested_scroll_owner_when_window_cannot_scroll() -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page(viewport={"width": 900, "height": 700})
-        page.set_content(html)
+        page.set_content(_nested_lazy_profile_html())
 
         initial = reset_profile_scroll_surface(page)
         assert initial["strategy"] == "scrollable_container"
@@ -62,6 +65,25 @@ def test_profile_scroll_prefers_nested_scroll_owner_when_window_cannot_scroll() 
 
     assert furthest > 1000
     assert "Credential 12" in text
+
+
+def test_profile_section_collector_exhausts_nested_scroll_owner() -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page(viewport={"width": 900, "height": 700})
+        page.set_content(_nested_lazy_profile_html())
+
+        result = _collect_profile_section_text(page)
+        browser.close()
+
+    assert result["status"] == "complete"
+    assert result["stop_reason"] == "stable_at_scroll_surface_end"
+    assert result["scroll_strategy"] == "scrollable_container"
+    assert result["observed_movement"] is True
+    assert result["scroll_required"] is True
+    assert int(result["furthest_scroll_position"]) > 1000
+    assert int(result["final_scroll_extent"]) > int(result["viewport_extent"])
+    assert "Credential 12" in str(result["visible_text"])
 
 
 def test_profile_scroll_uses_window_when_document_is_scroll_owner() -> None:
