@@ -212,7 +212,9 @@ def validate_candidate_evidence_refs(session: Session, value: dict[str, Any]) ->
         if capture is None:
             raise ValueError(f"Candidate evidence reference was not found: {evidence_ref}")
         if capture.category not in _PROFILE_CATEGORIES:
-            raise ValueError("Candidate evidence reference is not profile evidence: " + evidence_ref)
+            raise ValueError(
+                "Candidate evidence reference is not profile evidence: " + evidence_ref
+            )
         quality_issue = profile_capture_quality_issue(capture)
         if quality_issue is not None:
             raise ValueError(
