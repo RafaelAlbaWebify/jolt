@@ -9,7 +9,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
+from jolt.database import AIReview, CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
 from jolt.errors import JoltNotFoundError
 from jolt.hardline_evidence import analyze_location_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
@@ -39,18 +39,37 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def _latest_capture(session: Session) -> CaptureRun:
-    capture = session.scalar(
-        select(CaptureRun)
-        .order_by(
-            CaptureRun.started_at.desc(),
-            CaptureRun.id.desc(),
-        )
-        .limit(1)
+def _next_pending_capture(session: Session) -> CaptureRun:
+    captures = list(
+        session.scalars(
+            select(CaptureRun)
+            .where(CaptureRun.status.in_(("completed", "completed_with_warnings")))
+            .order_by(CaptureRun.started_at.asc(), CaptureRun.id.asc())
+        ).all()
     )
-    if capture is None:
-        raise JoltNotFoundError("No capture run exists to export for AI review.")
-    return capture
+    for capture in captures:
+        verified_posting_ids = set(
+            session.scalars(
+                select(CaptureItem.posting_id).where(
+                    CaptureItem.capture_run_id == capture.id,
+                    CaptureItem.detail_status == "verified",
+                    CaptureItem.posting_id.is_not(None),
+                )
+            ).all()
+        )
+        if not verified_posting_ids:
+            continue
+        reviewed_posting_ids = set(
+            session.scalars(
+                select(AIReview.posting_id).where(
+                    AIReview.capture_run_id == capture.id,
+                    AIReview.review_source == "chatgpt_source_first",
+                )
+            ).all()
+        )
+        if verified_posting_ids - reviewed_posting_ids:
+            return capture
+    raise JoltNotFoundError("No capture run has verified jobs awaiting AI review.")
 
 
 def _analysis_text(
@@ -77,7 +96,7 @@ def _analysis_text(
 
 def _build_ai_review_payloads(session: Session) -> dict[str, object]:
     generated_at = datetime.now().astimezone().isoformat()
-    capture = _latest_capture(session)
+    capture = _next_pending_capture(session)
 
     pages = list(
         session.scalars(
@@ -86,13 +105,28 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             .order_by(CapturePage.page_number, CapturePage.id)
         ).all()
     )
-    items = list(
+    all_items = list(
         session.scalars(
             select(CaptureItem)
             .where(CaptureItem.capture_run_id == capture.id)
             .order_by(CaptureItem.id)
         ).all()
     )
+    reviewed_posting_ids = set(
+        session.scalars(
+            select(AIReview.posting_id).where(
+                AIReview.capture_run_id == capture.id,
+                AIReview.review_source == "chatgpt_source_first",
+            )
+        ).all()
+    )
+    items = [
+        item
+        for item in all_items
+        if item.detail_status == "verified"
+        and item.posting_id is not None
+        and item.posting_id not in reviewed_posting_ids
+    ]
 
     posting_ids = {item.posting_id for item in items if item.posting_id is not None}
     postings = (
@@ -138,8 +172,9 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         "started_at": _iso(capture.started_at),
         "completed_at": _iso(capture.completed_at),
         "page_count": len(pages),
-        "item_count": len(items),
-        "verified_item_count": sum(item.detail_status == "verified" for item in items),
+        "item_count": len(all_items),
+        "verified_item_count": sum(item.detail_status == "verified" for item in all_items),
+        "pending_review_item_count": len(items),
     }
 
     page_payload = [
@@ -261,7 +296,8 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         "pages": page_payload,
         "jobs": jobs_payload,
         "response_template": response_template,
-        "verified_items": sum(item.detail_status == "verified" for item in items),
+        "capture_items": len(all_items),
+        "verified_items": sum(item.detail_status == "verified" for item in all_items),
     }
 
 
@@ -284,7 +320,7 @@ def build_ai_review_json(session: Session) -> bytes:
         "jolt_scores_included": False,
         "counts": {
             "capture_pages": len(pages),
-            "capture_items": len(jobs),
+            "capture_items": payloads["capture_items"],
             "verified_items": payloads["verified_items"],
         },
         "capture": payloads["capture"],
@@ -330,7 +366,7 @@ def build_ai_review_pack(session: Session) -> bytes:
         "jolt_scores_included": False,
         "counts": {
             "capture_pages": len(pages),
-            "capture_items": len(jobs),
+            "capture_items": payloads["capture_items"],
             "verified_items": payloads["verified_items"],
         },
         "files": {

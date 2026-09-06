@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from zipfile import ZipFile
 
 from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
 from jolt.database import (
+    AIReview,
     CaptureItem,
     CapturePage,
     CaptureRun,
@@ -179,5 +180,124 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
         _assert_clean_job(document["jobs"][0], posting, raw_text)
         assert document["response_template"]["capture_run_id"] == capture.id
         assert document["response_template"]["review_source"] == "chatgpt_source_first"
+    finally:
+        session.close()
+
+
+def test_ai_review_export_excludes_rejected_unverified_items(tmp_path) -> None:
+    session, capture, posting, raw_text = _seed_ai_review_capture(tmp_path)
+    try:
+        session.add(
+            CaptureItem(
+                id="item-rejected",
+                capture_run_id=capture.id,
+                source_job_id="bad-source",
+                source_url="https://www.linkedin.com/jobs/view/bad-source/",
+                title="Broken",
+                company="",
+                location="",
+                detail_status="rejected_unverified",
+                verification_reasons_json='["missing company"]',
+                source_document_id=None,
+                posting_id=None,
+            )
+        )
+        capture.observed_item_count = 2
+        session.commit()
+        document = json.loads(build_ai_review_json(session))
+        assert document["counts"]["capture_items"] == 2
+        assert document["counts"]["verified_items"] == 1
+        assert document["capture"]["item_count"] == 2
+        assert document["capture"]["verified_item_count"] == 1
+        assert document["capture"]["pending_review_item_count"] == 1
+        assert [job["source_job_id"] for job in document["jobs"]] == ["123"]
+    finally:
+        session.close()
+
+
+def test_ai_review_export_advances_to_next_pending_capture(tmp_path) -> None:
+    session, first_capture, first_posting, raw_text = _seed_ai_review_capture(tmp_path)
+    try:
+        now = first_capture.started_at + timedelta(minutes=1)
+        source = SourceDocument(
+            id="source-newer",
+            source_type="linkedin",
+            source_url="https://www.linkedin.com/jobs/view/newer/",
+            raw_text=raw_text,
+            content_hash="b" * 64,
+            captured_at=now,
+        )
+        posting = Posting(
+            id="posting-newer",
+            source_document_id=source.id,
+            canonical_url=source.source_url,
+            identity_key="linkedin:newer",
+            title="Support Engineer Newer",
+            company="Example Systems",
+            location="Remote",
+            description=source.raw_text,
+            identity_status="verified",
+            created_at=now,
+        )
+        capture = CaptureRun(
+            id="capture-newer",
+            source="linkedin",
+            mode="supervised_live",
+            status="completed",
+            search_url="https://www.linkedin.com/jobs/search/",
+            warnings_json="[]",
+            requested_item_limit=1,
+            observed_item_count=1,
+            stop_reason="submitted_batch_completed",
+            started_at=now,
+            completed_at=now,
+        )
+        session.add_all([source, capture])
+        session.flush()
+        session.add(posting)
+        session.flush()
+        session.add(
+            CaptureItem(
+                id="item-newer",
+                capture_run_id=capture.id,
+                source_job_id="newer",
+                source_url=source.source_url,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                detail_status="verified",
+                verification_reasons_json="[]",
+                source_document_id=source.id,
+                posting_id=posting.id,
+            )
+        )
+        session.commit()
+        assert json.loads(build_ai_review_json(session))["capture_run_id"] == first_capture.id
+        session.add(
+            AIReview(
+                id="ai-reviewed-first",
+                capture_run_id=first_capture.id,
+                posting_id=first_posting.id,
+                source_job_id="123",
+                review_source="chatgpt_source_first",
+                review_version="test",
+                contract_version="1.0",
+                decision="pursue",
+                priority_score=80,
+                geography_status="eligible",
+                clearance_status="clear",
+                language_status="clear",
+                technical_fit=80,
+                duplicate_of_posting_id=None,
+                summary="",
+                reasons_json="[]",
+                reviewed_at=first_capture.started_at,
+                imported_at=first_capture.started_at,
+            )
+        )
+        session.commit()
+        document = json.loads(build_ai_review_json(session))
+        assert document["capture_run_id"] == capture.id
+        assert [job["source_job_id"] for job in document["jobs"]] == ["newer"]
     finally:
         session.close()
