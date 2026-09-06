@@ -71,6 +71,17 @@ def _safe_slug(value: str) -> str:
     return slug[:80] or "linkedin-capture"
 
 
+def _metadata_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float, str)):
+        try:
+            return int(value)
+        except (TypeError, ValueError, OverflowError):
+            return default
+    return default
+
+
 def _downloads_dir() -> Path:
     profile = Path(os.environ.get("USERPROFILE", str(Path.home())))
     downloads = profile / "Downloads"
@@ -263,8 +274,8 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
     strategy = str(surface.get("strategy", "unknown"))
     if strategy:
         strategies.append(strategy)
-    viewport_extent = int(surface.get("viewport_extent", 0) or 0)
-    final_scroll_extent = int(surface.get("scroll_extent", 0) or 0)
+    viewport_extent = _metadata_int(surface.get("viewport_extent", 0))
+    final_scroll_extent = _metadata_int(surface.get("scroll_extent", 0))
     can_scroll = bool(surface.get("can_scroll", False))
     page.wait_for_timeout(_PROFILE_SCROLL_WAIT_MILLISECONDS)
 
@@ -281,10 +292,13 @@ def _collect_profile_section_text(page: Any) -> dict[str, object]:
         strategy = str(advance.get("strategy", "unknown"))
         if strategy and (not strategies or strategies[-1] != strategy):
             strategies.append(strategy)
-        before = int(advance.get("before", 0) or 0)
-        after = int(advance.get("after", before) or before)
-        viewport_extent = int(advance.get("viewport_extent", viewport_extent) or viewport_extent)
-        final_scroll_extent = max(final_scroll_extent, int(advance.get("scroll_extent", 0) or 0))
+        before = _metadata_int(advance.get("before", 0))
+        after = _metadata_int(advance.get("after", before), before)
+        viewport_extent = _metadata_int(advance.get("viewport_extent", viewport_extent), viewport_extent)
+        final_scroll_extent = max(
+            final_scroll_extent,
+            _metadata_int(advance.get("scroll_extent", 0)),
+        )
         at_end = bool(advance.get("at_end", False))
         if after > before:
             observed_movement = True
