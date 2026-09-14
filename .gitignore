@@ -9,3 +9,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .coverage
+.ai/generated/AI_CONTEXT_BUNDLE.md
+.ai/generated/AI_CONTEXT_MANIFEST.json
