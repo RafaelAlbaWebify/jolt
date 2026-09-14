@@ -11,3 +11,5 @@ __pycache__/
 .coverage
 .ai/generated/AI_CONTEXT_BUNDLE.md
 .ai/generated/AI_CONTEXT_MANIFEST.json
+.ai/generated/SESSION_HANDOFF.md
+.ai/generated/SESSION_HANDOFF.json
