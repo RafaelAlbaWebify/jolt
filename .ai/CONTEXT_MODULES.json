@@ -1,0 +1,66 @@
+{
+  "modules": {
+    "review": {
+      "description": "Job review, opportunity lifecycle, AI review exchange and eligibility logic",
+      "patterns": [
+        "backend/src/jolt/opportunity_*.py",
+        "backend/src/jolt/review_*.py",
+        "backend/src/jolt/ai_review*.py",
+        "backend/src/jolt/workflow.py",
+        "backend/src/jolt/hardline_evidence.py",
+        "backend/src/jolt/employment_geography.py",
+        "backend/tests/*review*",
+        "backend/tests/*opportunity*",
+        "frontend/src/*Application*",
+        "frontend/src/Workbench.tsx"
+      ]
+    },
+    "capture": {
+      "description": "Professional/job capture and evidence ingestion workflows",
+      "patterns": [
+        "backend/src/jolt/capture_*.py",
+        "backend/src/jolt/live_capture_workflow.py",
+        "backend/src/jolt/linkedin_*.py",
+        "backend/tests/*capture*",
+        "frontend/src/ProfessionalIntelligence*"
+      ]
+    },
+    "applications": {
+      "description": "Applications lifecycle, readiness, work items, archive and outcomes",
+      "patterns": [
+        "backend/src/jolt/application_*.py",
+        "backend/tests/*application*",
+        "frontend/src/Application*"
+      ]
+    },
+    "market": {
+      "description": "Market Intelligence and opportunity-market workflows",
+      "patterns": [
+        "backend/src/jolt/market_*.py",
+        "backend/tests/*market*",
+        "frontend/src/MarketIntelligence*"
+      ]
+    },
+    "linkedin": {
+      "description": "LinkedIn profile, connections and activity intelligence",
+      "patterns": [
+        "backend/src/jolt/linkedin_*.py",
+        "backend/src/jolt/linkedin_command_center.py",
+        "backend/tests/*linkedin*",
+        "frontend/src/LinkedInCommandCenter*"
+      ]
+    },
+    "frontend": {
+      "description": "JOLT frontend UI and component tests",
+      "patterns": ["frontend/src/*", "frontend/package.json"]
+    },
+    "runtime": {
+      "description": "Windows launch, runtime lifecycle, diagnostics and environment helpers",
+      "patterns": [
+        "tools/start-jolt.ps1", "tools/stop-jolt.ps1", "tools/validate-jolt.ps1",
+        "START_JOLT.bat", "START_JOLT_BACKEND.cmd", "START_JOLT_FRONTEND.cmd",
+        "JOLT.ps1", "UPDATE_JOLT_ENVIRONMENT.bat"
+      ]
+    }
+  }
+}
