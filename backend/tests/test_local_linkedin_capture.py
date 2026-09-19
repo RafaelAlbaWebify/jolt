@@ -1,4 +1,6 @@
+import asyncio
 import json
+import threading
 import zipfile
 from pathlib import Path
 
@@ -143,6 +145,46 @@ def test_local_capture_can_preserve_zip_or_create_both(
     both_completed = local_linkedin_capture.get_local_linkedin_capture_status()
     assert Path(both_completed.output_json).exists()
     assert Path(both_completed.output_zip).exists()
+
+
+def test_local_capture_runs_playwright_engine_outside_asyncio_loop(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _reset_status()
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    observed: dict[str, object] = {}
+
+    def fake_run_capture(**kwargs: object) -> Path:
+        observed["thread_name"] = threading.current_thread().name
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            observed["running_loop"] = False
+        else:
+            observed["running_loop"] = True
+        output_zip = Path(str(kwargs["output_zip"]))
+        _write_capture_zip(output_zip)
+        return output_zip
+
+    monkeypatch.setattr(local_linkedin_capture, "run_capture", fake_run_capture)
+    local_linkedin_capture.queue_local_linkedin_capture(
+        local_linkedin_capture.LocalLinkedInCaptureRequest(
+            search_url="https://www.linkedin.com/jobs/search/?keywords=Support",
+            max_jobs=5,
+            max_pages=2,
+        )
+    )
+
+    async def invoke_from_running_loop() -> None:
+        local_linkedin_capture.run_queued_local_linkedin_capture()
+
+    asyncio.run(invoke_from_running_loop())
+
+    completed = local_linkedin_capture.get_local_linkedin_capture_status()
+    assert completed.status == "completed"
+    assert observed["running_loop"] is False
+    assert str(observed["thread_name"]).startswith("jolt-local-linkedin-playwright")
 
 
 def test_best_effort_screenshot_never_aborts_capture(tmp_path: Path) -> None:
