@@ -8,9 +8,9 @@
   "baseline_branch": "main",
   "baseline_commit": "c5eeee8aed2d4ca545bc720d591d8c833952c0d2",
   "current_phase": "stabilization_and_operability",
-  "current_milestone": "Complete the second consecutive real capture -> strict sequential AI review -> validated import cycle, then perform backup/restore and remaining production-readiness rehearsals.",
-  "overall_completion_percentage": 97,
-  "operability_percentage": 97,
+  "current_milestone": "Complete dated pursued-application retention and backup/restore rehearsals, then finish production hardening: supported runtime matrix, clean install, privacy/security review, LinkedIn failure recovery, and reproducible release validation.",
+  "overall_completion_percentage": 98,
+  "operability_percentage": 98,
   "testing_percentage": 97,
   "readiness": {
     "development_ready": true,
@@ -20,21 +20,22 @@
     "production_ready": false
   },
   "current_blockers": [
-    "A second consecutive real capture/review/import cycle is required for real-prospect readiness.",
-    "Top recommended jobs from that cycle still need a dated manual source audit confirming no hardline-ineligible promotion.",
     "Capture cleanup/archive protection for pursued applications still needs a dated real acceptance rehearsal.",
     "Backup/export and restore still need a dated successful rehearsal on the active schema.",
-    "Production readiness still requires clean-install/second-environment evidence, recovery policy, privacy/security review and reproducible release validation."
+    "Supported Windows/Python/Node/runtime matrix is not yet explicit enough for production support.",
+    "Clean install on a second environment or clean Windows profile is not yet proven.",
+    "Privacy/security review for local evidence, browser profile and exported packages is not yet recorded.",
+    "Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.",
+    "Final reproducible release procedure and exact-release green regression/E2E evidence remain."
   ],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
-    "No unresolved P1 is currently known in beta-critical capture/review/import paths after the 2026-09-19 live profile-detail and Capture Jobs acceptances."
+    "No unresolved P1 is currently known. GitHub issue #392 was closed as completed on 2026-09-19 after live PR #393 acceptance."
   ],
   "active_workstreams": [
-    "Second real AI review/import acceptance",
-    "Applications and durable workflow state",
-    "Backup/recovery rehearsal",
-    "Production operability and project-control maintenance"
+    "Retention and cleanup runtime rehearsal",
+    "Backup/recovery runtime rehearsal",
+    "Production install/security/release hardening"
   ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
@@ -57,29 +58,33 @@
     "LinkedIn candidate-evidence selection now exports newest usable capture per canonical profile section and retains older snapshots as history via PR #389.",
     "LinkedIn profile-detail capture now traverses intermediate lazy-load thresholds progressively and legacy false-complete detail evidence is fail-closed via PR #390; exact-head CI, Playwright acceptance and full-cycle certification all passed before merge.",
     "PR #393 detects and traverses the actual LinkedIn nested profile scroll surface; fresh live Licenses & certifications capture on 2026-09-19 reached later credentials that had previously been missed.",
-    "PR #396 isolates local LinkedIn job capture Playwright work on a dedicated thread; exact-head CI run 1412, Playwright acceptance 658 and full-cycle certification 581 passed, then the live 2026-09-19 capture completed 100 requested / 100 captured / 100 verified jobs over four pages with no warnings and stop_reason=requested_limit_reached."
+    "PR #396 isolates local LinkedIn job capture Playwright work on a dedicated thread; exact-head CI run 1412, Playwright acceptance 658 and full-cycle certification 581 passed, then the live 2026-09-19 capture completed 100 requested / 100 captured / 100 verified jobs over four pages with no warnings and stop_reason=requested_limit_reached.",
+    "Second consecutive real 100-job capture -> strict sequential AI review -> validated import completed on 2026-09-19 without internal data repair; imported decisions persisted through a full JOLT restart.",
+    "Manual source audit of the two promoted jobs passed on 2026-09-19: Hired explicitly states Work from Anywhere; Synthires is scoped to the European Union and states contractor/fully-remote/flexible remote engagement with no conflicting Spain-ineligible restriction.",
+    "Open issue #392 closed as completed after the live nested-scroll acceptance evidence."
   ],
   "pending_milestones": [
-    "Run strict sequential AI review for the fresh 2026-09-19 100-job capture and import the validated return without internal repair.",
-    "Restart JOLT and confirm the second-cycle imported decisions persist.",
-    "Manually source-audit the top survivors and confirm no hardline-ineligible promotion.",
-    "Perform and record capture cleanup/archive protection for pursued applications.",
-    "Perform and record a backup/restore rehearsal on the active schema.",
-    "Complete clean-install/recovery/privacy/reproducible-release production gates."
+    "Perform and record capture cleanup/archive protection for a pursued application on the active runtime.",
+    "Perform and record backup create/verify/restore rehearsal on the active schema.",
+    "Document the supported Windows/Python/Node/uv/runtime matrix.",
+    "Prove clean install on a second environment or clean Windows profile.",
+    "Complete and record privacy/security review for local evidence, browser profile and exports.",
+    "Validate LinkedIn login/checkpoint/network failure and recovery behavior on the real site.",
+    "Prove reproducible release/deployment procedure and exact-final-commit CI/Playwright/full-cycle gates."
   ],
   "next_recommended_actions": [
-    "Generate a fresh unified AI work package from the 2026-09-19 100-job capture and current candidate profile evidence.",
-    "Review all 100 jobs strictly sequentially under the source-evidence -> hardline eligibility -> candidate evidence -> fit reasoning -> recommendation invariant.",
-    "Import the returned package, verify exact-set validation and persistence after restart, then manually source-audit the top survivors.",
-    "Exercise backup create/verify/restore and record dated evidence before promoting real-prospect readiness.",
-    "Then complete clean-install, recovery-policy, privacy/security and reproducible-release production gates."
+    "Run the pursued-application cleanup/archive rehearsal and capture the result.",
+    "Run JOLT backup create -> verify -> restore to a separate path, then validate restored database identity and record counts.",
+    "Close remaining production documentation and clean-install/security/recovery evidence gaps.",
+    "Run final exact-release CI, Playwright acceptance and full-cycle certification, then promote Production ready only if no P0/P1 remains."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
-    "real_ai_import": "2026-09-05 corrected 79-job package 2ebeeeca-42bb-473f-a220-7d3b1bc0e860 imported successfully after strict sequential review: 76 reject, 1 strong_pursue, 1 pursue, 1 conditional; durable Settings & Data receipt recorded 7 intelligence sections and Review Inbox updated.",
-    "restart_persistence": "2026-09-05 full local JOLT restart preserved AI import receipt, Market Insights summary and Review Inbox decisions; no stale-runtime warning was visible after restart.",
+    "real_ai_import": "2026-09-19 second real 100-job package imported successfully after strict sequential review: 95 reject, 1 strong_pursue, 1 pursue, 3 conditional; no internal repair reported.",
+    "restart_persistence": "2026-09-19 full JOLT restart preserved the second-cycle imported review state, as confirmed by the operator.",
     "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened nested-scroll traversal contract and included later Licenses & certifications entries previously missed, including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity.",
     "latest_contract_gate": "PR #396 head 2f2356b46127b23918375459c1f93f0daa5722c6 passed CI run 1412, Playwright acceptance 658 and full-cycle certification 581, then squash-merged as c5eeee8aed2d4ca545bc720d591d8c833952c0d2.",
-    "remaining_runtime_acceptance": "Second consecutive real 100-job capture -> strict sequential AI review -> validated import -> restart persistence, survivor source audit, pursued-application cleanup/archive rehearsal, and backup/restore rehearsal."
+    "remaining_runtime_acceptance": "Dated pursued-application cleanup/archive rehearsal and backup/restore rehearsal, then production install/security/failure-recovery/release gates.",
+    "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found."
   }
 }
