@@ -252,8 +252,26 @@ def queue_local_linkedin_capture(
         return _STATUS.model_copy(deep=True)
 
 
-def _run_capture_in_worker(**kwargs: object) -> Path:
-    future = _CAPTURE_EXECUTOR.submit(run_capture, **kwargs)
+def _run_capture_in_worker(
+    *,
+    search_url: str,
+    api_url: str,
+    profile_dir: Path,
+    output_zip: Path,
+    max_jobs: int,
+    max_pages: int,
+    pause_for_login: bool,
+) -> Path:
+    future = _CAPTURE_EXECUTOR.submit(
+        run_capture,
+        search_url=search_url,
+        api_url=api_url,
+        profile_dir=profile_dir,
+        output_zip=output_zip,
+        max_jobs=max_jobs,
+        max_pages=max_pages,
+        pause_for_login=pause_for_login,
+    )
     return future.result()
 
 
