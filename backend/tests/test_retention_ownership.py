@@ -556,6 +556,7 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
     tmp_path,
 ) -> None:
     from jolt.database import (
+        AIReview,
         Application,
         CaptureItem,
         CaptureRun,
@@ -656,6 +657,68 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
                 updated_at=now,
             )
         )
+        session.add_all(
+            [
+                AIReview(
+                    id="cleanup-disposable-ai-review",
+                    capture_run_id=disposable_run.id,
+                    posting_id=disposable_posting_id,
+                    source_job_id="cleanup-disposable",
+                    review_source="chatgpt_source_first",
+                    review_version="retention-regression",
+                    contract_version="1.1",
+                    decision="reject",
+                    priority_score=0,
+                    geography_status="ineligible",
+                    clearance_status="clear",
+                    language_status="clear",
+                    technical_fit=None,
+                    hardline_status="REJECT",
+                    hardline_reasons_json='["fixture"]',
+                    location_eligibility="ineligible",
+                    location_evidence_json="[]",
+                    mandatory_requirements_json="[]",
+                    mandatory_requirement_results_json="[]",
+                    employment_constraints_json="[]",
+                    fit_analysis_allowed=False,
+                    decision_reason="fixture",
+                    duplicate_of_posting_id=None,
+                    summary="fixture",
+                    reasons_json='["fixture"]',
+                    reviewed_at=now,
+                    imported_at=now,
+                ),
+                AIReview(
+                    id="cleanup-retained-ai-review",
+                    capture_run_id=retained_run.id,
+                    posting_id=retained_posting_id,
+                    source_job_id="cleanup-retained",
+                    review_source="chatgpt_source_first",
+                    review_version="retention-regression",
+                    contract_version="1.1",
+                    decision="pursue",
+                    priority_score=80,
+                    geography_status="eligible",
+                    clearance_status="clear",
+                    language_status="clear",
+                    technical_fit=80,
+                    hardline_status="PASS",
+                    hardline_reasons_json="[]",
+                    location_eligibility="eligible",
+                    location_evidence_json="[]",
+                    mandatory_requirements_json="[]",
+                    mandatory_requirement_results_json="[]",
+                    employment_constraints_json="[]",
+                    fit_analysis_allowed=True,
+                    decision_reason="fixture",
+                    duplicate_of_posting_id=None,
+                    summary="fixture",
+                    reasons_json='["fixture"]',
+                    reviewed_at=now,
+                    imported_at=now,
+                ),
+            ]
+        )
 
         session.commit()
 
@@ -698,6 +761,7 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         session.commit()
 
         assert result["deleted"]["capture_runs"] == 2
+        assert result["deleted"]["ai_reviews"] == 1
         assert result["deleted"]["postings"] == 1
         assert result["preserved_retained_posting_count"] == 1
 
@@ -754,6 +818,8 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
             "cleanup-retained-application",
         )
         assert retained_application is not None
+        assert session.get(AIReview, "cleanup-disposable-ai-review") is None
+        assert session.get(AIReview, "cleanup-retained-ai-review") is not None
 
         historical_observation = session.scalar(
             select(MarketIntelligenceObservation).where(
