@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
@@ -54,6 +55,10 @@ class LocalLinkedInCaptureStatus(BaseModel):
 
 _STATUS_LOCK = Lock()
 _CAPTURE_LOCK = Lock()
+_CAPTURE_EXECUTOR = ThreadPoolExecutor(
+    max_workers=1,
+    thread_name_prefix="jolt-local-linkedin-playwright",
+)
 _STATUS = LocalLinkedInCaptureStatus(status="idle")
 
 
@@ -247,6 +252,11 @@ def queue_local_linkedin_capture(
         return _STATUS.model_copy(deep=True)
 
 
+def _run_capture_in_worker(**kwargs: object) -> Path:
+    future = _CAPTURE_EXECUTOR.submit(run_capture, **kwargs)
+    return future.result()
+
+
 def run_queued_local_linkedin_capture() -> None:
     global _STATUS
     with _CAPTURE_LOCK:
@@ -278,7 +288,7 @@ def run_queued_local_linkedin_capture() -> None:
                 }
             )
         try:
-            run_capture(
+            _run_capture_in_worker(
                 search_url=request.search_url,
                 api_url="http://127.0.0.1:8000",
                 profile_dir=_profile_dir(),
