@@ -134,7 +134,7 @@ class AIReview(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     capture_run_id: Mapped[str] = mapped_column(
-        ForeignKey("capture_runs.id"),
+        String(36),
         nullable=False,
         index=True,
     )
