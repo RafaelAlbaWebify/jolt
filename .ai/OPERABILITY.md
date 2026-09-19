@@ -3,13 +3,13 @@
 ## Current computed state
 - Development usable: **PASS**
 - Internal testing ready: **PASS**
-- External beta/testing ready: **FAIL**
+- External beta/testing ready: **PASS**
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
 
-Current conservative operability estimate: **96%**.
+Current conservative operability estimate: **97%**.
 
-This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, and stronger LinkedIn candidate-evidence selection. A second-cycle preparation uncovered a real profile-evidence defect: Licenses & certifications could be marked complete after an absolute footer jump while later lazy-loaded credentials were never traversed. PR #390 now traverses profile details progressively and fail-closes legacy non-progressive detail captures, but live LinkedIn recapture is still required before that P1 acceptance gap is closed.
+This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The remaining real-prospect gate is the second consecutive real capture -> strict sequential review -> validated import cycle plus recovery rehearsals.
 
 ## 1. Development usable — PASS
 Required:
@@ -32,7 +32,7 @@ Required:
 
 Internal testing remains valid. Current work is acceptance hardening of live LinkedIn detail completeness and the second real AI round trip, not absence of the underlying workflows.
 
-## 3. External beta/testing ready — FAIL
+## 3. External beta/testing ready — PASS
 All must pass:
 - [x] controlled startup and shutdown documented;
 - [x] core capture/review/application workflows implemented;
@@ -44,10 +44,10 @@ All must pass:
 - [x] durable AI round-trip status/import receipt exists — PR #382 and runtime persistence acceptance;
 - [x] LinkedIn Connections partial/complete semantics and bounded-sample AI metadata are merged — PR #377;
 - [x] release/package/API version parity is enforced at 0.8.0 — PR #388;
-- [ ] current LinkedIn profile-detail completeness fix is proven against the real live profile after PR #390;
-- [ ] no unresolved P1 issue in beta-critical paths.
+- [x] current LinkedIn profile-detail completeness fix is proven against the real live profile after PR #393 — fresh 2026-09-19 capture;
+- [x] no unresolved P1 issue in beta-critical paths.
 
-The current beta-critical P1 is the live acceptance of PR #390. Legacy LinkedIn `/details/` snapshots that predate progressive traversal are now rejected from candidate evidence instead of silently trusted.
+Live acceptance passed on 2026-09-19 for both beta-critical LinkedIn paths. PR #393's profile-detail traversal reached the later Licenses & certifications entries on the real profile using the nested scroll surface. PR #396 then repaired a Capture Jobs regression where Playwright Sync API could run inside an asyncio loop; exact-head CI/Playwright/full-cycle gates passed and a fresh live capture completed 100/100 verified jobs over four pages with no warnings and `requested_limit_reached`. Legacy LinkedIn `/details/` snapshots that predate the stronger traversal contract remain fail-closed.
 
 ## 4. Real prospect ready — FAIL
 Meaning: JOLT can be trusted to support real application decisions for a live candidate/prospect workflow without developer repair or hidden manual state correction.
@@ -92,6 +92,7 @@ All real-prospect criteria plus:
 - 2026-09-05: **95%** after the imported AI receipt, Market Insights and Review Inbox decisions survived a full local JOLT restart.
 - 2026-09-05: **96%** after PR #388 unified backend package/API/runtime version parity at 0.8.0 with regression enforcement.
 - 2026-09-05/06: PRs #389 and #390 materially harden LinkedIn candidate evidence but **do not increase the percentage yet** because real profile-detail completeness acceptance is still pending.
+- 2026-09-19: **97%** after PR #393's live profile-detail completeness acceptance and PR #396's live Capture Jobs acceptance both passed on the active runtime.
 
 ## Evidence policy
 A gate may pass only from directly verified runtime/test evidence or an exact green CI/acceptance result for the relevant commit. Code existence is not verification. Historical success does not automatically prove the current commit. When evidence expires because behavior changes, move the criterion back to FAIL until reverified. A failed live acceptance can reveal that a previously green synthetic test modeled the external site too weakly; the response must be a stronger deterministic guard plus a new regression, not a lowered standard.
