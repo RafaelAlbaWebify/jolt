@@ -7,9 +7,9 @@
 - Real prospect ready: **FAIL**
 - Production ready: **FAIL**
 
-Current conservative operability estimate: **97%**.
+Current conservative operability estimate: **98%**.
 
-This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The remaining real-prospect gate is the second consecutive real capture -> strict sequential review -> validated import cycle plus recovery rehearsals.
+This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The second consecutive real capture -> strict sequential review -> validated import cycle has now completed and persisted across a full restart. The remaining real-prospect gates are the dated pursued-application retention rehearsal and backup/restore rehearsal; production hardening remains after that.
 
 ## 1. Development usable — PASS
 Required:
@@ -53,14 +53,14 @@ Live acceptance passed on 2026-09-19 for both beta-critical LinkedIn paths. PR #
 Meaning: JOLT can be trusted to support real application decisions for a live candidate/prospect workflow without developer repair or hidden manual state correction.
 
 All external-beta criteria plus:
-- [ ] two consecutive real capture/review/import cycles complete without internal data repair;
-- [ ] top recommended jobs are manually source-audited and no hardline-ineligible job is promoted;
+- [x] two consecutive real capture/review/import cycles complete without internal data repair — second 100-job cycle imported and persisted after restart on 2026-09-19;
+- [x] top recommended jobs are manually source-audited and no hardline-ineligible job is promoted — Hired and Synthires source evidence audited on 2026-09-19;
 - [x] corrected AI decisions/import receipt/Market Insights persisted through a full real JOLT restart on 2026-09-05;
 - [ ] capture cleanup/archive cannot remove pursued applications in a dated real acceptance rehearsal, although automated regressions protect the invariant;
 - [x] AI review contract 1.1 rejects omitted capture postings as well as duplicate, outsider, source-id and deterministic-hardline conflicts — PR #385; malformed payloads also fail through schema validation;
 - [ ] backup/export and restore procedure has a dated successful rehearsal on the active schema;
 - [x] runtime commit/version evidence is available in diagnostics and package/API version parity is enforced;
-- [ ] no open P0/P1 issue affecting capture, review, import, persistence or recovery.
+- [x] no open P0/P1 issue affecting capture, review, import, persistence or recovery — issue #392 closed after live #393 acceptance; no other open issues.
 
 Do not use the phrase **real prospect ready** unless every checkbox is passed with dated evidence.
 
@@ -93,6 +93,26 @@ All real-prospect criteria plus:
 - 2026-09-05: **96%** after PR #388 unified backend package/API/runtime version parity at 0.8.0 with regression enforcement.
 - 2026-09-05/06: PRs #389 and #390 materially harden LinkedIn candidate evidence but **do not increase the percentage yet** because real profile-detail completeness acceptance is still pending.
 - 2026-09-19: **97%** after PR #393's live profile-detail completeness acceptance and PR #396's live Capture Jobs acceptance both passed on the active runtime.
+- 2026-09-19: **98%** after the second real 100-job review/import cycle persisted through restart and the promoted Hired/Synthires jobs passed manual source audit with no hardline-ineligible evidence.
 
 ## Evidence policy
 A gate may pass only from directly verified runtime/test evidence or an exact green CI/acceptance result for the relevant commit. Code existence is not verification. Historical success does not automatically prove the current commit. When evidence expires because behavior changes, move the criterion back to FAIL until reverified. A failed live acceptance can reveal that a previously green synthetic test modeled the external site too weakly; the response must be a stronger deterministic guard plus a new regression, not a lowered standard.
+
+
+## 2026-09-19 audit notes
+
+### Source audit — promoted jobs
+- **Hired — IT Support Specialist (Remote), source 4467076188:** source body explicitly says "Remote (Work from Anywhere)" and later repeats flexible hours plus the ability to work from anywhere. No conflicting territorial restriction was found. Promotion is defensible.
+- **Synthires — Technical Support Specialist (Remote | $30–$55/hr), source 4466264642:** listing scope is European Union; source body states contractor, remote, independent contractor engagement, fully remote opportunity and flexible remote schedule. No conflicting Spain-ineligible restriction was found. Promotion is defensible.
+- Conditional cases remain appropriately unresolved: Crossing Hurdles and Mercor lack affirmative Spain cross-border eligibility; ALTEN is Spain-based but the captured source does not establish a Vigo-compatible remote/hybrid model.
+
+### Recovery/retention code audit
+- Backup/restore implementation uses SQLite's online backup API, SHA-256 manifest verification, byte-size validation, PRAGMA integrity_check, Alembic-revision validation and restore-to-new-target semantics.
+- Automated backup tests verify successful restore, preserved data and tamper rejection.
+- Active applications cannot be permanently deleted; guarded cleanup tests preserve retained postings/applications. These are strong code/test controls, but the operability gate still requires dated real-runtime rehearsals.
+
+### Production audit
+- README documents Git, Node.js 22+, npm and uv prerequisites, but an explicit supported Windows/Python/runtime matrix is still incomplete.
+- No dated clean-install acceptance on a second Windows profile/environment is yet recorded.
+- Privacy/security review for local evidence, browser profile and exported packages is not yet recorded.
+- Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.
