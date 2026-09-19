@@ -4,33 +4,33 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-06",
+  "last_update_date": "2026-09-19",
   "baseline_branch": "main",
-  "baseline_commit": "e12f1befe0c1ff0d56d151b66215863a9595e60a",
+  "baseline_commit": "0b4b28b4352d10b278755e6171052aa714e83d16",
   "current_phase": "stabilization_and_operability",
-  "current_milestone": "Revalidate LinkedIn profile-detail evidence with progressive traversal, then complete the second consecutive real capture -> strict sequential AI review -> validated import cycle and backup/restore rehearsal.",
-  "overall_completion_percentage": 96,
-  "operability_percentage": 96,
+  "current_milestone": "Complete the second consecutive real capture -> strict sequential AI review -> validated import cycle, then perform backup/restore rehearsal and remaining production operability gates.",
+  "overall_completion_percentage": 97,
+  "operability_percentage": 97,
   "testing_percentage": 97,
   "readiness": {
     "development_ready": true,
     "internal_testing_ready": true,
-    "external_testing_ready": false,
+    "external_testing_ready": true,
     "real_prospect_ready": false,
     "production_ready": false
   },
   "current_blockers": [
-    "Fresh real LinkedIn profile-detail capture must confirm PR #390 progressive traversal reaches the later Licenses & certifications entries; legacy detail captures are now fail-closed instead of trusted.",
     "A second consecutive real capture/review/import cycle is required for real-prospect readiness.",
+    "Top recommended jobs still need a dated manual source audit confirming no hardline-ineligible promotion.",
+    "Capture cleanup/archive protection for pursued applications still needs a dated real acceptance rehearsal.",
     "Backup/export and restore still need a dated successful rehearsal on the active schema.",
     "Production readiness still requires clean-install/second-environment evidence, recovery policy, privacy/security review and reproducible release validation."
   ],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
-    "P1 runtime acceptance remains for LinkedIn profile-detail completeness after the real Certifications false-complete defect discovered during the second-cycle preparation."
+    "No unresolved P1 is currently known in beta-critical capture/review/import paths after the 2026-09-19 live LinkedIn profile-detail acceptance."
   ],
   "active_workstreams": [
-    "LinkedIn profile-detail evidence completeness acceptance",
     "Second real AI review/import acceptance",
     "Applications and durable workflow state",
     "Backup/recovery rehearsal",
@@ -55,29 +55,30 @@
     "Structured FastAPI/Pydantic AI import errors render actionable paths after PR #387.",
     "Backend package/API/runtime version parity at 0.8.0 enforced by PR #388.",
     "LinkedIn candidate-evidence selection now exports newest usable capture per canonical profile section and retains older snapshots as history via PR #389.",
-    "LinkedIn profile-detail capture now traverses intermediate lazy-load thresholds progressively and legacy false-complete detail evidence is fail-closed via PR #390; exact-head CI, Playwright acceptance and full-cycle certification all passed before merge."
+    "LinkedIn profile-detail capture now traverses intermediate lazy-load thresholds progressively and legacy false-complete detail evidence is fail-closed via PR #390; exact-head CI, Playwright acceptance and full-cycle certification all passed before merge.",
+    "PR #393 detects and traverses the actual LinkedIn nested scroll surface and strengthens candidate-evidence traversal validation; exact-head CI, Playwright acceptance and full-cycle certification all passed before merge.",
+    "Fresh live LinkedIn profile-detail acceptance passed on 2026-09-19: Licenses & certifications captured through the nested scroll container to position 9470/final extent 10314, stopped at stable_at_scroll_surface_end, and included previously missing later credentials such as IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity."
   ],
   "pending_milestones": [
-    "Pull/restart local JOLT at main e12f1befe0c1ff0d56d151b66215863a9595e60a or later and confirm the runtime staleness guard is clear.",
-    "Recapture real LinkedIn profile detail sections, especially Licenses & certifications, and verify later credentials plus exported capture_metadata.progressive_traversal_verified=true.",
-    "Generate a fresh unified AI work package only after candidate profile evidence is complete and usable.",
-    "Complete the second consecutive real capture/review/import cycle without internal repair and source-audit the top survivors.",
+    "Run the second consecutive real capture -> strict sequential review -> import cycle without internal repair.",
+    "Manually source-audit the top survivors from that cycle and confirm no hardline-ineligible promotion.",
+    "Perform and record capture cleanup/archive protection for pursued applications.",
     "Perform and record a backup/restore rehearsal on the active schema.",
     "Complete clean-install/recovery/privacy/reproducible-release production gates."
   ],
   "next_recommended_actions": [
-    "Update local checkout to current main and fully restart JOLT before any new profile capture or AI package export.",
-    "Run a fresh LinkedIn profile-detail capture and inspect Licenses & certifications for known later credentials rather than trusting a stable-footer marker alone.",
-    "Confirm candidate evidence excludes old non-progressive detail snapshots and exposes recorder-owned completeness/traversal metadata.",
-    "Then run the second real capture -> strict sequential review -> import loop and verify persistence.",
-    "Exercise backup create/verify/restore and record dated evidence before promoting real-prospect readiness."
+    "Run a fresh targeted job capture using the current narrower target-role/Spain-EMEA strategy rather than the stale 2026-09-05 broad worldwide IT batch.",
+    "Review the new capture strictly sequentially with candidate evidence from the now-live-validated profile package.",
+    "Import the returned package, verify persistence after restart, and source-audit the top survivors.",
+    "Exercise backup create/verify/restore and record dated evidence before promoting real-prospect readiness.",
+    "Then complete the clean-install, recovery-policy, privacy/security and reproducible-release production gates."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-04 capture 7a105d99-a81a-4486-a435-7db9a07eb0ab: 79 captured, 79 verified, 4 pages, no warnings, stop_reason=no_next_page.",
     "real_ai_import": "2026-09-05 corrected 79-job package 2ebeeeca-42bb-473f-a220-7d3b1bc0e860 imported successfully after strict sequential review: 76 reject, 1 strong_pursue, 1 pursue, 1 conditional; durable Settings & Data receipt recorded 7 intelligence sections and Review Inbox updated.",
     "restart_persistence": "2026-09-05 full local JOLT restart preserved AI import receipt, Market Insights summary and Review Inbox decisions; no stale-runtime warning was visible after restart.",
-    "profile_acceptance": "2026-09-05 fresh LinkedIn profile sections were selected correctly, but Licenses & certifications still stopped around the first ten credentials under PR #389's absolute-bottom traversal. This runtime failure triggered PR #390; fresh post-#390 live recapture is still required.",
-    "latest_contract_gate": "PR #390 head 6db3e53cb0929e2ce70aa6ce865f0dbac424d7f0 passed CI run 1367, Playwright acceptance run 636 and full-cycle certification run 559, then squash-merged as e12f1befe0c1ff0d56d151b66215863a9595e60a.",
-    "remaining_runtime_acceptance": "Progressive LinkedIn profile-detail traversal must be proven on the live profile before the second real AI cycle is trusted."
+    "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened traversal contract. Licenses & certifications used scroll_strategy=scrollable_container, furthest_scroll_position=9470, viewport_extent=844, final_scroll_extent=10314, observed_movement=true, scroll_required=true, stop_reason=stable_at_scroll_surface_end and progressive_traversal_verified=true; later credentials including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity were present.",
+    "latest_contract_gate": "PR #393 exact-head CI run 1389, Playwright acceptance run 655 and full-cycle certification run 578 all passed before merge as d29b9a8b75f6c4e5e3f28fff16a8c3905fe8a03c.",
+    "remaining_runtime_acceptance": "Second consecutive real job capture -> strict sequential AI review -> validated import, survivor source audit, pursued-application cleanup/archive rehearsal, and backup/restore rehearsal."
   }
 }
