@@ -17,6 +17,7 @@ $BackendRoot = Join-Path $RepoRoot "backend"
 $FrontendRoot = Join-Path $RepoRoot "frontend"
 $RuntimeRoot = Join-Path $RepoRoot ".jolt"
 $LogRoot = Join-Path $RuntimeRoot "logs"
+$PreMigrationBackupRoot = Join-Path $RuntimeRoot "backups\pre-migration"
 $StatePath = Join-Path $RuntimeRoot "services.json"
 $BackendOutLog = Join-Path $LogRoot "backend.out.log"
 $BackendErrLog = Join-Path $LogRoot "backend.err.log"
@@ -59,6 +60,20 @@ function Invoke-NativeCommand {
     if ($LASTEXITCODE -ne 0) {
         throw "$FailureMessage Exit code: $LASTEXITCODE."
     }
+}
+
+function Get-AlembicRevision {
+    param(
+        [Parameter(Mandatory)][string]$UvCommand,
+        [Parameter(Mandatory)][ValidateSet("current", "heads")][string]$Command
+    )
+
+    $output = @(& $UvCommand run alembic $Command 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not determine Alembic $Command revision."
+    }
+    $match = [regex]::Match(($output -join " "), '\d{8}_\d{4}')
+    return if ($match.Success) { $match.Value } else { "" }
 }
 
 function Wait-HttpEndpoint {
@@ -154,7 +169,7 @@ if ([string]::IsNullOrWhiteSpace($expectedBackendCommit)) {
     throw "Could not determine the repository commit that JOLT is about to launch."
 }
 
-New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot, $PreMigrationBackupRoot | Out-Null
 Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
 
 & (Join-Path $PSScriptRoot "stop-jolt.ps1")
@@ -170,9 +185,30 @@ try {
             -FailureMessage "Supported CPython 3.12 runtime could not be prepared."
         Invoke-NativeCommand -FilePath $uvCommand -Arguments @("sync", "--all-groups") `
             -FailureMessage "Backend dependencies could not be prepared."
+        $databasePath = Join-Path $BackendRoot "data\jolt.db"
         New-Item -ItemType Directory -Force -Path (Join-Path $BackendRoot "data") | Out-Null
+
+        if (Test-Path -LiteralPath $databasePath -PathType Leaf) {
+            $currentRevision = Get-AlembicRevision -UvCommand $uvCommand -Command "current"
+            $headRevision = Get-AlembicRevision -UvCommand $uvCommand -Command "heads"
+            if ($currentRevision -and $headRevision -and $currentRevision -ne $headRevision) {
+                $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+                $backupPath = Join-Path $PreMigrationBackupRoot "JOLT_PRE_MIGRATION_${currentRevision}_TO_${headRevision}_$stamp.zip"
+                Write-Host "Creating verified pre-migration backup: $backupPath"
+                Invoke-NativeCommand -FilePath $uvCommand -Arguments @(
+                    "run", "python", "-m", "jolt.backup", "create",
+                    "--database", $databasePath,
+                    "--output", $backupPath
+                ) -FailureMessage "Pre-migration backup could not be created."
+                Invoke-NativeCommand -FilePath $uvCommand -Arguments @(
+                    "run", "python", "-m", "jolt.backup", "verify",
+                    "--backup", $backupPath
+                ) -FailureMessage "Pre-migration backup verification failed."
+            }
+        }
+
         Invoke-NativeCommand -FilePath $uvCommand -Arguments @("run", "alembic", "upgrade", "head") `
-            -FailureMessage "Database migrations could not be applied."
+            -FailureMessage "Database migrations could not be applied. If a pre-migration backup was created, use the documented recovery procedure before retrying."
     }
     finally {
         Pop-Location
