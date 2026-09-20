@@ -32,12 +32,17 @@ Any evaluation outputs retained by JOLT are evidence and provenance, not authori
 
 ## Controlled Windows startup
 
-Prerequisites available in `PATH`:
+Supported production prerequisites:
 
-- Git
-- Node.js 22 or later
-- npm
-- `uv`
+- Windows 10 22H2 or Windows 11, x64
+- PowerShell 7.4 or later
+- Git 2.40 or later
+- Node.js 22.x
+- npm 10.x or 11.x
+- `uv` >= 0.5.14 and < 1.0.0
+- CPython 3.12.x, managed automatically by `uv`
+
+Run the production runtime preflight explicitly with `./tools/assert-jolt-runtime.ps1`. See `docs/SUPPORTED_RUNTIME.md` for the certification boundary.
 
 From the repository root:
 
