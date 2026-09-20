@@ -26,5 +26,9 @@
   },
   "overrides": {
     "browserslist": "4.28.8"
+  },
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <12"
   }
 }
