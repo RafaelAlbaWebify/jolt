@@ -60,6 +60,11 @@ if ($architecture -ne [System.Runtime.InteropServices.Architecture]::X64) {
     throw "JOLT's supported operator runtime is Windows x64. Current architecture is '$architecture'."
 }
 
+$osVersion = [System.Environment]::OSVersion.Version
+if ($osVersion.Build -lt 19045) {
+    throw "Windows 10 22H2 (build 19045) or Windows 11 is required. Current OS version: $osVersion."
+}
+
 if ($PSVersionTable.PSVersion -lt [version]'7.4.0') {
     throw "PowerShell 7.4 or later is required. Current version: $($PSVersionTable.PSVersion)."
 }
