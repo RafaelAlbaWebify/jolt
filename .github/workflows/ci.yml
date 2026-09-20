@@ -168,6 +168,7 @@ jobs:
           $stop = Get-Content tools/stop-jolt.ps1 -Raw
           $validate = Get-Content tools/validate-jolt.ps1 -Raw
           $audit = Get-Content tools/audit-jolt.ps1 -Raw
+          $runtime = Get-Content tools/assert-jolt-runtime.ps1 -Raw
           $reviewAudit = Get-Content backend/src/jolt/review_audit.py -Raw
           if ($launcher -notmatch 'JOLT_REPO_PATH') { throw 'Launcher must support path-independent repository discovery.' }
           if (-not $launcher.Contains('Documents\GitHub\jolt')) { throw 'Launcher must check the standard repository path.' }
@@ -178,4 +179,8 @@ jobs:
           if ($stop -notmatch 'services.json') { throw 'Stop command must use recorded state.' }
           if ($validate -notmatch 'JOLT_WINDOWS_VALIDATION_') { throw 'Validation must create a stable ZIP name.' }
           if ($audit -notmatch 'JOLT_REVIEW_AUDIT_') { throw 'Audit must create a stable ZIP name.' }
+          if ($start -notmatch 'assert-jolt-runtime.ps1') { throw 'Startup must enforce the supported runtime preflight.' }
+          if ($start -notmatch 'python.+install.+3\.12') { throw 'Startup must prepare the supported CPython 3.12 runtime.' }
+          if ($runtime -notmatch 'Node\.js 22\.x') { throw 'Runtime preflight must enforce Node.js 22.x.' }
+          if ($runtime -notmatch 'PowerShell 7\.4') { throw 'Runtime preflight must enforce PowerShell 7.4+.' }
           if ($reviewAudit -notmatch 'workbench-full.png') { throw 'Review audit must include a full workbench screenshot.' }

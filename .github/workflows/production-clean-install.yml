@@ -1,0 +1,91 @@
+name: Production clean-install certification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  clean-install-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.14"
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Record clean runner identity
+        shell: pwsh
+        run: |
+          Write-Host "Windows: $([System.Environment]::OSVersion.Version)"
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
+          git --version
+          uv --version
+          node --version
+          npm --version
+
+      - name: Enforce supported runtime matrix
+        shell: pwsh
+        run: .\tools\assert-jolt-runtime.ps1
+
+      - name: Prove and verify clean install
+        shell: pwsh
+        run: |
+          .\tools\start-jolt.ps1 -NoBrowser
+
+          $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -TimeoutSec 10
+          if ([string]$health.version -ne "0.8.0") {
+            throw "Unexpected backend version '$($health.version)'."
+          }
+
+          $identity = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/runtime-identity" -TimeoutSec 10
+          $loadedCommit = [string]$identity.loaded_git.commit_sha
+          $checkoutCommit = (git rev-parse HEAD).Trim()
+          if ($loadedCommit -ne $checkoutCommit) {
+            throw "Loaded backend commit '$loadedCommit' does not match checkout '$checkoutCommit'."
+          }
+
+          $frontend = Invoke-WebRequest -Uri "http://127.0.0.1:5173" -UseBasicParsing -TimeoutSec 10
+          if ($frontend.StatusCode -ne 200) {
+            throw "Frontend returned HTTP $($frontend.StatusCode)."
+          }
+
+          $database = Join-Path $PWD "backend\data\jolt.db"
+          if (-not (Test-Path -LiteralPath $database)) {
+            throw "Clean install did not create the JOLT database."
+          }
+
+          Push-Location backend
+          try {
+            $revision = (uv run alembic current).Trim()
+            if ([string]::IsNullOrWhiteSpace($revision)) {
+              throw "Alembic did not report a current database revision."
+            }
+            Write-Host "Alembic current: $revision"
+          }
+          finally {
+            Pop-Location
+          }
+
+      - name: Stop clean-install runtime
+        if: always()
+        shell: pwsh
+        run: .\tools\stop-jolt.ps1
+
+      - name: Upload clean-install logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-clean-install-windows
+          if-no-files-found: ignore
+          path: |
+            .jolt/logs/*.log
+            .jolt/services.json
