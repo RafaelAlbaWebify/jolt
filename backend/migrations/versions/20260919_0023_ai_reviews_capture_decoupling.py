@@ -6,6 +6,7 @@ Revises: 20260902_0022
 
 from __future__ import annotations
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "20260919_0023"
@@ -21,6 +22,15 @@ _CAPTURE_FK_NAME = "fk_ai_reviews_capture_run_id_capture_runs"
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    # Migration-recovery tests intentionally use a sparse historical schema
+    # without capture_runs. In that synthetic shape there is no live parent
+    # table to decouple from, and SQLite batch reflection cannot traverse the
+    # dangling historic FK metadata. Advancing the revision is sufficient.
+    if not inspector.has_table("capture_runs"):
+        return
+
     with op.batch_alter_table(
         "ai_reviews",
         recreate="always",
@@ -33,6 +43,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if not inspector.has_table("capture_runs"):
+        return
+
     with op.batch_alter_table(
         "ai_reviews",
         recreate="always",
