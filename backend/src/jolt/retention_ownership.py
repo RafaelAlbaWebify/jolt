@@ -303,6 +303,7 @@ def _guarded_retention_cleanup_state(
     candidate_posting_ids = superseded_posting_ids - durable_posting_ids
 
     dependency_tables = (
+        "ai_reviews",
         "application_readiness_reports",
         "applications",
         "capture_items",
@@ -578,6 +579,12 @@ def execute_guarded_retention_cleanup(
             "capture_runs",
             "id",
             run_ids,
+        )
+
+        deleted["ai_reviews"] = delete_where_ids(
+            "ai_reviews",
+            "posting_id",
+            posting_ids,
         )
 
         deleted["application_readiness_reports"] = delete_where_ids(
