@@ -131,6 +131,9 @@ function Stop-ProcessSafely {
     }
 }
 
+$stage = "validating supported runtime"
+& (Join-Path $PSScriptRoot "assert-jolt-runtime.ps1") | Write-Host
+
 $stage = "resolving required applications"
 $uvCommand = Resolve-ApplicationCommand -Names @("uv.exe", "uv")
 $nodeCommand = Resolve-ApplicationCommand -Names @("node.exe", "node")
@@ -163,6 +166,8 @@ try {
     Write-Host "Preparing backend dependencies..."
     Push-Location $BackendRoot
     try {
+        Invoke-NativeCommand -FilePath $uvCommand -Arguments @("python", "install", "3.12") `
+            -FailureMessage "Supported CPython 3.12 runtime could not be prepared."
         Invoke-NativeCommand -FilePath $uvCommand -Arguments @("sync", "--all-groups") `
             -FailureMessage "Backend dependencies could not be prepared."
         New-Item -ItemType Directory -Force -Path (Join-Path $BackendRoot "data") | Out-Null
