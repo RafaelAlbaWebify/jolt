@@ -18,6 +18,7 @@ from playwright.sync_api import BrowserContext, Locator, Page, TimeoutError, syn
 from pydantic import ValidationError
 
 from jolt import multipage_capture
+from jolt.linkedin_access import classify_navigation_exception, detect_linkedin_access_problem
 from jolt.linkedin_source_urls import absolute_linkedin_url, normalize_linkedin_search_url
 from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.supervised_capture import (
@@ -640,10 +641,20 @@ def capture_pages(
     pages: list[multipage_capture.PageEvidence] = []
     skipped: list[multipage_capture.SkippedCard] = []
     seen: set[str] = set()
+    access_problem = detect_linkedin_access_problem(page)
+    if access_problem is not None:
+        failure_class, message = access_problem
+        raise RuntimeError(f"LinkedIn {failure_class}: {message}")
+
     cards, selector = multipage_capture._wait_for_cards(page)
     stop_reason = "max_pages_reached"
 
     for page_number in range(1, max_pages + 1):
+        access_problem = detect_linkedin_access_problem(page)
+        if access_problem is not None:
+            failure_class, message = access_problem
+            raise RuntimeError(f"LinkedIn {failure_class}: {message}")
+
         visible_ids = multipage_capture._visible_job_ids(cards)
         control, next_present, next_enabled = multipage_capture._next_control(
             page,
@@ -907,7 +918,18 @@ def run_capture(
                 )
                 context.tracing.start(screenshots=True, snapshots=True, sources=False)
                 page = context.pages[0] if context.pages else context.new_page()
-                page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                try:
+                    page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                except Exception as exc:
+                    failure_class = classify_navigation_exception(exc)
+                    raise RuntimeError(
+                        f"LinkedIn {failure_class.replace('_', ' ')} while opening the search page: {exc}"
+                    ) from exc
+
+                access_problem = detect_linkedin_access_problem(page)
+                if access_problem is not None:
+                    failure_class, message = access_problem
+                    raise RuntimeError(f"LinkedIn {failure_class}: {message}")
                 _best_effort_screenshot(
                     page,
                     evidence_dir / "01_search_opened.png",
