@@ -69,9 +69,7 @@ def test_allows_normal_jobs_page() -> None:
 
 def test_classifies_network_navigation_failures() -> None:
     assert (
-        classify_navigation_exception(
-            RuntimeError("page.goto: net::ERR_INTERNET_DISCONNECTED")
-        )
+        classify_navigation_exception(RuntimeError("page.goto: net::ERR_INTERNET_DISCONNECTED"))
         == "network_failure"
     )
     assert classify_navigation_exception(TimeoutError("navigation timeout")) == "network_failure"
