@@ -4,38 +4,37 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-19",
+  "last_update_date": "2026-09-20",
   "baseline_branch": "main",
-  "baseline_commit": "c5eeee8aed2d4ca545bc720d591d8c833952c0d2",
+  "baseline_commit": "ca6af3b25cae181bc8b8ccd13fed45417eaf36de",
   "current_phase": "stabilization_and_operability",
-  "current_milestone": "Complete dated pursued-application retention and backup/restore rehearsals, then finish production hardening: supported runtime matrix, clean install, privacy/security review, LinkedIn failure recovery, and reproducible release validation.",
-  "overall_completion_percentage": 98,
-  "operability_percentage": 98,
-  "testing_percentage": 97,
+  "current_milestone": "Finish production hardening: supported runtime matrix, clean install, privacy/security review, LinkedIn failure recovery, reproducible release/deployment proof, and exact-final-commit certification.",
+  "overall_completion_percentage": 99,
+  "operability_percentage": 99,
+  "testing_percentage": 98,
   "readiness": {
     "development_ready": true,
     "internal_testing_ready": true,
     "external_testing_ready": true,
-    "real_prospect_ready": false,
+    "real_prospect_ready": true,
     "production_ready": false
   },
   "current_blockers": [
-    "Capture cleanup/archive protection for pursued applications still needs a dated real acceptance rehearsal.",
-    "Backup/export and restore still need a dated successful rehearsal on the active schema.",
-    "Supported Windows/Python/Node/runtime matrix is not yet explicit enough for production support.",
+    "Supported Windows/Python/Node/uv/runtime matrix is not yet explicit enough for production support.",
     "Clean install on a second environment or clean Windows profile is not yet proven.",
     "Privacy/security review for local evidence, browser profile and exported packages is not yet recorded.",
     "Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.",
-    "Final reproducible release procedure and exact-release green regression/E2E evidence remain."
+    "Final reproducible release/deployment procedure and exact-release green regression/E2E evidence remain."
   ],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
     "No unresolved P1 is currently known. GitHub issue #392 was closed as completed on 2026-09-19 after live PR #393 acceptance."
   ],
   "active_workstreams": [
-    "Retention and cleanup runtime rehearsal",
-    "Backup/recovery runtime rehearsal",
-    "Production install/security/release hardening"
+    "Production install/runtime matrix",
+    "Privacy/security review",
+    "LinkedIn failure recovery validation",
+    "Reproducible release certification"
   ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
@@ -61,11 +60,13 @@
     "PR #396 isolates local LinkedIn job capture Playwright work on a dedicated thread; exact-head CI run 1412, Playwright acceptance 658 and full-cycle certification 581 passed, then the live 2026-09-19 capture completed 100 requested / 100 captured / 100 verified jobs over four pages with no warnings and stop_reason=requested_limit_reached.",
     "Second consecutive real 100-job capture -> strict sequential AI review -> validated import completed on 2026-09-19 without internal data repair; imported decisions persisted through a full JOLT restart.",
     "Manual source audit of the two promoted jobs passed on 2026-09-19: Hired explicitly states Work from Anywhere; Synthires is scoped to the European Union and states contractor/fully-remote/flexible remote engagement with no conflicting Spain-ineligible restriction.",
-    "Open issue #392 closed as completed after the live nested-scroll acceptance evidence."
+    "Open issue #392 closed as completed after the live nested-scroll acceptance evidence.",
+    "PR #400 decoupled durable AI reviews from raw capture-run foreign-key ownership after the first 2026-09-20 real retention rehearsal exposed a production-shaped FK failure.",
+    "PR #401 extended guarded retention ownership to retained AI-review duplicate targets after the second rehearsal exposed a posting-deletion FK failure.",
+    "2026-09-20 non-destructive real-prospect acceptance passed on main ca6af3b25cae181bc8b8ccd13fed45417eaf36de: backup create/verify/restore succeeded, source/restored core counts matched before cleanup, active database was not modified, guarded cleanup on the restored copy purged 31 superseded capture runs and 1206 capture-only postings while preserving 53 retained postings and the protected application/posting fixture.",
+    "Real prospect ready promoted to PASS on 2026-09-20."
   ],
   "pending_milestones": [
-    "Perform and record capture cleanup/archive protection for a pursued application on the active runtime.",
-    "Perform and record backup create/verify/restore rehearsal on the active schema.",
     "Document the supported Windows/Python/Node/uv/runtime matrix.",
     "Prove clean install on a second environment or clean Windows profile.",
     "Complete and record privacy/security review for local evidence, browser profile and exports.",
@@ -73,10 +74,11 @@
     "Prove reproducible release/deployment procedure and exact-final-commit CI/Playwright/full-cycle gates."
   ],
   "next_recommended_actions": [
-    "Run the pursued-application cleanup/archive rehearsal and capture the result.",
-    "Run JOLT backup create -> verify -> restore to a separate path, then validate restored database identity and record counts.",
-    "Close remaining production documentation and clean-install/security/recovery evidence gaps.",
-    "Run final exact-release CI, Playwright acceptance and full-cycle certification, then promote Production ready only if no P0/P1 remains."
+    "Document and test the supported Windows/Python/Node/uv runtime matrix.",
+    "Complete privacy/security review and harden any findings.",
+    "Validate LinkedIn login/checkpoint/network failure and recovery on the real site.",
+    "Run a clean-install acceptance on a second Windows environment/profile.",
+    "Prove reproducible release/deployment and run final exact-release CI, Playwright acceptance and full-cycle certification before promoting Production ready."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
@@ -84,7 +86,8 @@
     "restart_persistence": "2026-09-19 full JOLT restart preserved the second-cycle imported review state, as confirmed by the operator.",
     "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened nested-scroll traversal contract and included later Licenses & certifications entries previously missed, including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity.",
     "latest_contract_gate": "PR #396 head 2f2356b46127b23918375459c1f93f0daa5722c6 passed CI run 1412, Playwright acceptance 658 and full-cycle certification 581, then squash-merged as c5eeee8aed2d4ca545bc720d591d8c833952c0d2.",
-    "remaining_runtime_acceptance": "Dated pursued-application cleanup/archive rehearsal and backup/restore rehearsal, then production install/security/failure-recovery/release gates.",
-    "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found."
+    "remaining_runtime_acceptance": "Production-only gates remain: runtime matrix, second-environment clean install, privacy/security review, real-site LinkedIn failure/recovery, reproducible release/deployment, and exact-final-commit certification.",
+    "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found.",
+    "real_prospect_acceptance": "2026-09-20 REAL_PROSPECT_ACCEPTANCE.bat PASS on local main ca6af3b25cae181bc8b8ccd13fed45417eaf36de. Active DB unchanged. Backup/verify/restore passed; source/restored core counts matched before cleanup. Restored-copy guarded cleanup deleted 31 superseded capture runs and 1206 capture-only postings, preserved 53 retained postings, and protected application d2df157f-152b-4f54-9a8b-f04332e4074a plus posting 733f215d-b03d-4d4d-9cc3-7d83bee0c957 survived."
   }
 }
