@@ -1,0 +1,62 @@
+name: Reproducible release certification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  reproducible-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build release twice
+        run: |
+          mkdir -p artifacts
+          python tools/build-jolt-release.py --output artifacts/jolt-release-a.zip --manifest-output artifacts/manifest-a.json
+          python tools/build-jolt-release.py --output artifacts/jolt-release-b.zip --manifest-output artifacts/manifest-b.json
+
+      - name: Require byte-identical artifacts
+        run: |
+          sha_a=$(sha256sum artifacts/jolt-release-a.zip | awk '{print $1}')
+          sha_b=$(sha256sum artifacts/jolt-release-b.zip | awk '{print $1}')
+          echo "release A: $sha_a"
+          echo "release B: $sha_b"
+          test "$sha_a" = "$sha_b"
+
+      - name: Verify embedded manifest commit and version
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import zipfile
+          from pathlib import Path
+
+          archive = Path('artifacts/jolt-release-a.zip')
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          with zipfile.ZipFile(archive) as z:
+              manifest = json.loads(z.read('RELEASE_MANIFEST.json'))
+          assert manifest['git_commit'] == commit
+          assert manifest['version'] == '0.8.0'
+          assert manifest['file_count'] > 0
+          print(json.dumps({
+              'git_commit': manifest['git_commit'],
+              'version': manifest['version'],
+              'file_count': manifest['file_count'],
+          }, indent=2))
+          PY
+
+      - name: Upload certified release
+        uses: actions/upload-artifact@v4
+        with:
+          name: jolt-reproducible-release
+          path: |
+            artifacts/jolt-release-a.zip
+            artifacts/manifest-a.json
