@@ -36,13 +36,11 @@ jobs:
         shell: pwsh
         run: .\tools\assert-jolt-runtime.ps1
 
-      - name: Prove repository starts from a clean checkout
-        shell: pwsh
-        run: .\tools\start-jolt.ps1 -NoBrowser
-
-      - name: Verify clean-install runtime
+      - name: Prove and verify clean install
         shell: pwsh
         run: |
+          .\tools\start-jolt.ps1 -NoBrowser
+
           $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -TimeoutSec 10
           if ([string]$health.version -ne "0.8.0") {
             throw "Unexpected backend version '$($health.version)'."
