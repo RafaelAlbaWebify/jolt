@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 
 from jolt.database import Base, create_session_factory
 
-HEAD_REVISION = "20260902_0022"
+HEAD_REVISION = "20260919_0023"
 
 
 def test_session_factory_uses_alembic_without_create_all(tmp_path: Path, monkeypatch) -> None:
