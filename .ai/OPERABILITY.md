@@ -68,12 +68,12 @@ All real-prospect gates now have dated evidence. **Real prospect ready** is ther
 Meaning: supportable, repeatable, recoverable operation beyond the developer/operator's own machine.
 
 All real-prospect criteria plus:
-- [ ] supported OS/runtime/dependency matrix is explicit;
-- [ ] clean install from documented prerequisites succeeds on a second environment or clean machine profile;
+- [x] supported OS/runtime/dependency matrix is explicit — PR #403;
+- [x] clean install from documented prerequisites succeeds on a second environment or clean machine profile — fresh Windows runner certification #3 on PR #403;
 - [ ] database migration/rollback/recovery policy is proven;
 - [ ] backup/restore is automated or operationally reliable;
 - [x] logs/diagnostics include loaded runtime identity versus repository checkout and structured AI import validation paths;
-- [ ] privacy/security review covers local evidence, browser profile and exports;
+- [x] privacy/security review covers local evidence, browser profile and exports — PR #404;
 - [ ] failure/recovery behavior for LinkedIn login/checkpoint/network errors is validated on the real site;
 - [x] release/package/API version parity is enforced at 0.8.0 by PR #388;
 - [ ] release artifact or deployment procedure is reproducible;
@@ -113,10 +113,10 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Active applications cannot be permanently deleted; guarded cleanup tests preserve retained postings/applications. These are strong code/test controls, but the operability gate still requires dated real-runtime rehearsals.
 
 ### Production audit
-- README documents Git, Node.js 22+, npm and uv prerequisites, but an explicit supported Windows/Python/runtime matrix is still incomplete.
-- No dated clean-install acceptance on a second Windows profile/environment is yet recorded.
-- Privacy/security review for local evidence, browser profile and exported packages is not yet recorded.
+- PR #403 documents and enforces the supported Windows/Python/Node/npm/uv/Git runtime matrix and passed fresh-Windows clean-install certification #3 plus exact-head CI #1436, Playwright #674 and full-cycle #597.
+- PR #404 records the dated privacy/security review for the SQLite evidence store, authenticated browser profiles, exports and acceptance backups, with a read-only sensitive-data audit.
 - Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.
+- Migration/rollback/recovery policy closure, reproducible release/deployment proof and exact-final-commit certification remain.
 
 
 ## 2026-09-20 real-prospect acceptance

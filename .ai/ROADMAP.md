@@ -30,8 +30,7 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-024 | ACTIVE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | production checklist + exact release evidence |
 
 ## Immediate sequence
-1. Document the explicit supported Windows/Python/Node/uv/runtime matrix for production support.
-2. Complete and record the privacy/security review for local evidence, browser profile/session data, exports, backups and logs; harden any findings.
-3. Validate real-site LinkedIn login/authwall/checkpoint and network-failure recovery behavior without weakening fail-closed evidence rules.
-4. Prove a clean install on a second Windows environment or clean profile using only documented prerequisites and the supported runtime matrix.
-5. Prove the reproducible release/deployment procedure, then run exact-final-commit CI, Playwright acceptance and full-cycle certification with no unresolved P0/P1 before promoting Production ready.
+1. Validate real-site LinkedIn login/authwall/checkpoint and network-failure recovery behavior without weakening fail-closed evidence rules.
+2. Close and document the production database migration/rollback/recovery policy.
+3. Prove the reproducible release/deployment procedure.
+4. Run exact-final-commit CI, Playwright acceptance, full-cycle certification and clean-install certification with no unresolved P0/P1 before promoting Production ready.
