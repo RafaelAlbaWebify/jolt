@@ -143,7 +143,18 @@ def test_capture_pages_reconciles_virtualized_ids(
 ) -> None:
     cards = object()
 
+    class FakeBody:
+        def inner_text(self, timeout: int) -> str:
+            assert timeout == 3_000
+            return "Jobs\nIT Support Engineer\nAbout the job"
+
     class FakePage:
+        url = "https://www.linkedin.com/jobs/search/?keywords=support"
+
+        def locator(self, selector: str) -> FakeBody:
+            assert selector == "body"
+            return FakeBody()
+
         def screenshot(self, **kwargs: Any) -> None:
             return None
 
