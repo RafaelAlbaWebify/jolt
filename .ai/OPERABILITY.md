@@ -4,12 +4,12 @@
 - Development usable: **PASS**
 - Internal testing ready: **PASS**
 - External beta/testing ready: **PASS**
-- Real prospect ready: **FAIL**
+- Real prospect ready: **PASS**
 - Production ready: **FAIL**
 
-Current conservative operability estimate: **98%**.
+Current conservative operability estimate: **99%**.
 
-This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The second consecutive real capture -> strict sequential review -> validated import cycle has now completed and persisted across a full restart. The remaining real-prospect gates are the dated pursued-application retention rehearsal and backup/restore rehearsal; production hardening remains after that.
+This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The second consecutive real capture -> strict sequential review -> validated import cycle has now completed and persisted across a full restart. Both remaining real-prospect runtime gates passed on 2026-09-20 through the non-destructive acceptance rehearsal on a restored copy of the active database. Production hardening remains before a 100%/Production-ready claim.
 
 ## 1. Development usable — PASS
 Required:
@@ -49,20 +49,20 @@ All must pass:
 
 Live acceptance passed on 2026-09-19 for both beta-critical LinkedIn paths. PR #393's profile-detail traversal reached the later Licenses & certifications entries on the real profile using the nested scroll surface. PR #396 then repaired a Capture Jobs regression where Playwright Sync API could run inside an asyncio loop; exact-head CI/Playwright/full-cycle gates passed and a fresh live capture completed 100/100 verified jobs over four pages with no warnings and `requested_limit_reached`. Legacy LinkedIn `/details/` snapshots that predate the stronger traversal contract remain fail-closed.
 
-## 4. Real prospect ready — FAIL
+## 4. Real prospect ready — PASS
 Meaning: JOLT can be trusted to support real application decisions for a live candidate/prospect workflow without developer repair or hidden manual state correction.
 
 All external-beta criteria plus:
 - [x] two consecutive real capture/review/import cycles complete without internal data repair — second 100-job cycle imported and persisted after restart on 2026-09-19;
 - [x] top recommended jobs are manually source-audited and no hardline-ineligible job is promoted — Hired and Synthires source evidence audited on 2026-09-19;
 - [x] corrected AI decisions/import receipt/Market Insights persisted through a full real JOLT restart on 2026-09-05;
-- [ ] capture cleanup/archive cannot remove pursued applications in a dated real acceptance rehearsal, although automated regressions protect the invariant;
+- [x] capture cleanup/archive cannot remove pursued applications in a dated real acceptance rehearsal — 2026-09-20 restored-copy rehearsal preserved the protected application and posting while purging 31 superseded capture runs and 1206 capture-only postings;
 - [x] AI review contract 1.1 rejects omitted capture postings as well as duplicate, outsider, source-id and deterministic-hardline conflicts — PR #385; malformed payloads also fail through schema validation;
-- [ ] backup/export and restore procedure has a dated successful rehearsal on the active schema;
+- [x] backup/export and restore procedure has a dated successful rehearsal on the active schema — 2026-09-20 acceptance created, verified and restored a 60,772,352-byte SQLite backup with SHA-256 `56c7fff434e129e03e0fe41a27eb9236195e284b1cbd9d1cc252b829786e3131`; restored core record counts matched the source before cleanup;
 - [x] runtime commit/version evidence is available in diagnostics and package/API version parity is enforced;
 - [x] no open P0/P1 issue affecting capture, review, import, persistence or recovery — issue #392 closed after live #393 acceptance; no other open issues.
 
-Do not use the phrase **real prospect ready** unless every checkbox is passed with dated evidence.
+All real-prospect gates now have dated evidence. **Real prospect ready** is therefore permitted from 2026-09-20 onward unless later evidence invalidates a gate.
 
 ## 5. Production ready — FAIL
 Meaning: supportable, repeatable, recoverable operation beyond the developer/operator's own machine.
@@ -94,6 +94,7 @@ All real-prospect criteria plus:
 - 2026-09-05/06: PRs #389 and #390 materially harden LinkedIn candidate evidence but **do not increase the percentage yet** because real profile-detail completeness acceptance is still pending.
 - 2026-09-19: **97%** after PR #393's live profile-detail completeness acceptance and PR #396's live Capture Jobs acceptance both passed on the active runtime.
 - 2026-09-19: **98%** after the second real 100-job review/import cycle persisted through restart and the promoted Hired/Synthires jobs passed manual source audit with no hardline-ineligible evidence.
+- 2026-09-20: **99%** after the active-database backup→verify→restore rehearsal passed and guarded retention cleanup on the restored production-shaped copy preserved an application-owned posting/application while safely purging superseded capture state; PRs #400 and #401 hardened the retention graph based on failures found by the rehearsal.
 
 ## Evidence policy
 A gate may pass only from directly verified runtime/test evidence or an exact green CI/acceptance result for the relevant commit. Code existence is not verification. Historical success does not automatically prove the current commit. When evidence expires because behavior changes, move the criterion back to FAIL until reverified. A failed live acceptance can reveal that a previously green synthetic test modeled the external site too weakly; the response must be a stronger deterministic guard plus a new regression, not a lowered standard.
@@ -116,3 +117,13 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - No dated clean-install acceptance on a second Windows profile/environment is yet recorded.
 - Privacy/security review for local evidence, browser profile and exported packages is not yet recorded.
 - Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.
+
+
+## 2026-09-20 real-prospect acceptance
+- Command: `REAL_PROSPECT_ACCEPTANCE.bat` on local `main` commit `ca6af3b25cae181bc8b8ccd13fed45417eaf36de`.
+- Result: **PASS**; `active_database_modified=false`.
+- Backup/restore: source core counts matched restored core counts before cleanup; manifest Alembic revision was `20260902_0022` because the backup was taken before the local runtime migration, and the restored copy then migrated successfully to `20260919_0023` before rehearsal cleanup.
+- Retention plan: 31 superseded capture runs, 1206 capture-only postings, 53 retained postings, 0 missing market observations, no blocked reasons.
+- Cleanup result on restored copy: 31 capture runs, 1879 capture items, 1879 capture artifacts, 90 capture pages, 1206 postings, 1687 source documents, 589 AI reviews, 3377 evaluations and 45 readiness reports deleted; 1740 market observations and 53 retained postings preserved.
+- Protected fixture: application `d2df157f-152b-4f54-9a8b-f04332e4074a` and posting `733f215d-b03d-4d4d-9cc3-7d83bee0c957` both survived cleanup.
+- Evidence report path: `%USERPROFILE%\\Downloads\\JOLT_ACCEPTANCE\\JOLT_REAL_PROSPECT_ACCEPTANCE_20260920_132820.json`.
