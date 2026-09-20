@@ -298,6 +298,29 @@ def _guarded_retention_cleanup_state(
         | outcome_posting_ids
     )
 
+    # A retained AI review may point at another posting through
+    # duplicate_of_posting_id. That duplicate target is durable provenance too:
+    # deleting it would violate the FK and would also destroy the review's
+    # explainable duplicate relationship. Follow the chain to a fixed point so
+    # multi-hop duplicate references remain valid.
+    while durable_posting_ids:
+        duplicate_targets = {
+            str(row[0])
+            for row in rows_for_ids(
+                """
+                SELECT DISTINCT duplicate_of_posting_id
+                FROM ai_reviews
+                WHERE posting_id IN :ids
+                  AND duplicate_of_posting_id IS NOT NULL
+                """,
+                durable_posting_ids,
+            )
+        }
+        new_targets = duplicate_targets - durable_posting_ids
+        if not new_targets:
+            break
+        durable_posting_ids |= new_targets
+
     retained_posting_ids = superseded_posting_ids & durable_posting_ids
 
     candidate_posting_ids = superseded_posting_ids - durable_posting_ids

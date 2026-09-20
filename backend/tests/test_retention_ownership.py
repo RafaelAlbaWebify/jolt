@@ -580,6 +580,13 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
             source_job_id="cleanup-disposable",
         ),
     )
+    duplicate_target_capture = client.post(
+        "/api/captures/linkedin/live",
+        json=_capture_payload(
+            title="Duplicate Target Historical Support Engineer",
+            source_job_id="cleanup-duplicate-target",
+        ),
+    )
     retained_capture = client.post(
         "/api/captures/linkedin/live",
         json=_capture_payload(
@@ -596,6 +603,7 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
     )
 
     assert disposable_capture.status_code == 200
+    assert duplicate_target_capture.status_code == 200
     assert retained_capture.status_code == 200
     assert current_capture.status_code == 200
 
@@ -605,6 +613,9 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         disposable_item = session.scalar(
             select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-disposable")
         )
+        duplicate_target_item = session.scalar(
+            select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-duplicate-target")
+        )
         retained_item = session.scalar(
             select(CaptureItem).where(CaptureItem.source_job_id == "cleanup-retained")
         )
@@ -613,15 +624,18 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         )
 
         assert disposable_item is not None
+        assert duplicate_target_item is not None
         assert retained_item is not None
         assert current_item is not None
         assert disposable_item.posting_id is not None
+        assert duplicate_target_item.posting_id is not None
         assert retained_item.posting_id is not None
         assert current_item.posting_id is not None
         assert disposable_item.source_document_id is not None
         assert retained_item.source_document_id is not None
 
         disposable_posting_id = disposable_item.posting_id
+        duplicate_target_posting_id = duplicate_target_item.posting_id
         retained_posting_id = retained_item.posting_id
         current_posting_id = current_item.posting_id
 
@@ -711,7 +725,7 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
                     employment_constraints_json="[]",
                     fit_analysis_allowed=True,
                     decision_reason="fixture",
-                    duplicate_of_posting_id=None,
+                    duplicate_of_posting_id=duplicate_target_posting_id,
                     summary="fixture",
                     reasons_json='["fixture"]',
                     reviewed_at=now,
@@ -725,9 +739,9 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         plan = build_guarded_retention_cleanup_plan(session)
 
         assert plan["blocked"] is False
-        assert plan["superseded_capture_run_count"] == 2
+        assert plan["superseded_capture_run_count"] == 3
         assert plan["capture_only_posting_count"] == 1
-        assert plan["retained_posting_count"] == 1
+        assert plan["retained_posting_count"] == 2
         assert plan["missing_market_observation_count"] == 0
 
         before_candidate = session.get(
@@ -760,10 +774,10 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
         )
         session.commit()
 
-        assert result["deleted"]["capture_runs"] == 2
+        assert result["deleted"]["capture_runs"] == 3
         assert result["deleted"]["ai_reviews"] == 1
         assert result["deleted"]["postings"] == 1
-        assert result["preserved_retained_posting_count"] == 1
+        assert result["preserved_retained_posting_count"] == 2
 
         assert (
             session.get(
@@ -779,6 +793,14 @@ def test_guarded_retention_cleanup_preserves_owned_state_and_market_history(
                 disposable_source_id,
             )
             is None
+        )
+
+        assert (
+            session.get(
+                Posting,
+                duplicate_target_posting_id,
+            )
+            is not None
         )
 
         assert (
