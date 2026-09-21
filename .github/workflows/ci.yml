@@ -180,6 +180,8 @@ jobs:
           if ($validate -notmatch 'JOLT_WINDOWS_VALIDATION_') { throw 'Validation must create a stable ZIP name.' }
           if ($audit -notmatch 'JOLT_REVIEW_AUDIT_') { throw 'Audit must create a stable ZIP name.' }
           if ($start -notmatch 'assert-jolt-runtime.ps1') { throw 'Startup must enforce the supported runtime preflight.' }
+          if ($start -notmatch 'JOLT_PRE_MIGRATION_') { throw 'Startup must create a named pre-migration backup before schema upgrades.' }
+          if ($start -notmatch 'jolt\.backup.+create') { throw 'Startup must invoke the verified JOLT backup implementation before migration.' }
           if ($start -notmatch 'python.+install.+3\.12') { throw 'Startup must prepare the supported CPython 3.12 runtime.' }
           if ($runtime -notmatch 'Node\.js 22\.x') { throw 'Runtime preflight must enforce Node.js 22.x.' }
           if ($runtime -notmatch 'PowerShell 7\.4') { throw 'Runtime preflight must enforce PowerShell 7.4+.' }

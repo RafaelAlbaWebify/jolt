@@ -1,0 +1,83 @@
+name: Migration recovery certification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  migration-recovery:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.14"
+          enable-cache: true
+
+      - name: Install Python and dependencies
+        shell: pwsh
+        run: |
+          uv python install 3.12
+          uv sync --all-groups
+
+      - name: Rehearse forward migration and backup recovery
+        shell: pwsh
+        run: |
+          $env:JOLT_DATABASE_URL = "sqlite:///data/migration-recovery.db"
+          New-Item -ItemType Directory -Force -Path data | Out-Null
+          Remove-Item data/migration-recovery.db -Force -ErrorAction SilentlyContinue
+          Remove-Item data/migration-recovery-restored.db -Force -ErrorAction SilentlyContinue
+          Remove-Item data/migration-recovery-backup.zip -Force -ErrorAction SilentlyContinue
+
+          $revisions = uv run python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; c=Config('alembic.ini'); s=ScriptDirectory.from_config(c); h=s.get_current_head(); r=s.get_revision(h); print(str(r.down_revision)); print(h)"
+          if ($LASTEXITCODE -ne 0) { throw "Could not resolve migration revisions." }
+          $previous = [string]$revisions[0]
+          $head = [string]$revisions[1]
+          if ([string]::IsNullOrWhiteSpace($previous) -or [string]::IsNullOrWhiteSpace($head)) {
+            throw "Migration revision discovery returned empty values."
+          }
+
+          uv run alembic upgrade $previous
+          if ($LASTEXITCODE -ne 0) { throw "Could not build previous-revision database." }
+
+          uv run python -c "import sqlite3; p='data/migration-recovery.db'; c=sqlite3.connect(p); c.execute('CREATE TABLE jolt_recovery_sentinel (value TEXT NOT NULL)'); c.execute('INSERT INTO jolt_recovery_sentinel VALUES (?)', ('preserved-before-upgrade',)); c.commit(); c.close()"
+          if ($LASTEXITCODE -ne 0) { throw "Could not seed pre-upgrade sentinel." }
+
+          uv run python -m jolt.backup create --database data/migration-recovery.db --output data/migration-recovery-backup.zip
+          if ($LASTEXITCODE -ne 0) { throw "Could not create pre-upgrade backup." }
+          uv run python -m jolt.backup verify --backup data/migration-recovery-backup.zip | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Pre-upgrade backup verification failed." }
+
+          uv run alembic upgrade head
+          if ($LASTEXITCODE -ne 0) { throw "Forward migration to head failed." }
+
+          $current = (uv run alembic current) -join " "
+          if ($current -notmatch [regex]::Escape($head)) { throw "Migrated database is not at head $head." }
+
+          $sentinel = uv run python -c "import sqlite3; c=sqlite3.connect('data/migration-recovery.db'); print(c.execute('SELECT value FROM jolt_recovery_sentinel').fetchone()[0]); c.close()"
+          if (($sentinel -join "").Trim() -ne "preserved-before-upgrade") {
+            throw "Seed data did not survive forward migration."
+          }
+
+          uv run python -m jolt.backup restore --backup data/migration-recovery-backup.zip --target data/migration-recovery-restored.db | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Backup restore failed." }
+
+          $restored = uv run python -c "import sqlite3; c=sqlite3.connect('data/migration-recovery-restored.db'); rev=c.execute('SELECT version_num FROM alembic_version').fetchone()[0]; val=c.execute('SELECT value FROM jolt_recovery_sentinel').fetchone()[0]; print(rev); print(val); c.close()"
+          if ([string]$restored[0] -ne $previous) { throw "Restored revision '$($restored[0])' does not match pre-upgrade revision '$previous'." }
+          if ([string]$restored[1] -ne "preserved-before-upgrade") { throw "Restored sentinel does not match pre-upgrade data." }
+
+          Write-Host "Migration/recovery certification passed: $previous -> $head -> restored $previous"
+
+      - name: Upload migration recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-recovery-certification
+          if-no-files-found: ignore
+          path: |
+            backend/data/migration-recovery-backup.zip
