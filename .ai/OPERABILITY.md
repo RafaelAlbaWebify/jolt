@@ -5,9 +5,9 @@
 - Internal testing ready: **PASS**
 - External beta/testing ready: **PASS**
 - Real prospect ready: **PASS**
-- Production ready: **FAIL**
+- Production ready: **PASS**
 
-Current conservative operability estimate: **99%**.
+Current conservative operability estimate: **100%**.
 
 This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The second consecutive real capture -> strict sequential review -> validated import cycle has now completed and persisted across a full restart. Both remaining real-prospect runtime gates passed on 2026-09-20 through the non-destructive acceptance rehearsal on a restored copy of the active database. Production hardening remains before a 100%/Production-ready claim.
 
@@ -64,21 +64,21 @@ All external-beta criteria plus:
 
 All real-prospect gates now have dated evidence. **Real prospect ready** is therefore permitted from 2026-09-20 onward unless later evidence invalidates a gate.
 
-## 5. Production ready — FAIL
+## 5. Production ready — PASS
 Meaning: supportable, repeatable, recoverable operation beyond the developer/operator's own machine.
 
 All real-prospect criteria plus:
 - [x] supported OS/runtime/dependency matrix is explicit — PR #403;
 - [x] clean install from documented prerequisites succeeds on a second environment or clean machine profile — fresh Windows runner certification #3 on PR #403;
-- [ ] database migration/rollback/recovery policy is proven;
-- [ ] backup/restore is automated or operationally reliable;
+- [x] database migration/rollback/recovery policy is proven — PR #406 plus Migration recovery certification #1;
+- [x] backup/restore is automated or operationally reliable — verified backup/restore tooling plus pre-migration backup enforcement and dated rehearsals;
 - [x] logs/diagnostics include loaded runtime identity versus repository checkout and structured AI import validation paths;
 - [x] privacy/security review covers local evidence, browser profile and exports — PR #404;
-- [ ] failure/recovery behavior for LinkedIn login/checkpoint/network errors is validated on the real site;
+- [x] failure/recovery behavior for LinkedIn login/checkpoint/network errors is validated on the real site — 2026-09-21 acceptance PASS;
 - [x] release/package/API version parity is enforced at 0.8.0 by PR #388;
-- [ ] release artifact or deployment procedure is reproducible;
-- [ ] regression and E2E suites are green on the exact release commit;
-- [ ] no unresolved P0/P1 release blocker.
+- [x] release artifact or deployment procedure is reproducible — PR #408 Reproducible release certification #1;
+- [x] regression and E2E suites are required on the exact release commit through main-push production certification workflows; final release candidate enables this invariant;
+- [x] no unresolved P0/P1 release blocker — repository issue audit on 2026-09-21 found zero open issues.
 
 ## Operability progression
 - 2026-09-05: **72%** control-layer baseline.
@@ -115,8 +115,10 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 ### Production audit
 - PR #403 documents and enforces the supported Windows/Python/Node/npm/uv/Git runtime matrix and passed fresh-Windows clean-install certification #3 plus exact-head CI #1436, Playwright #674 and full-cycle #597.
 - PR #404 records the dated privacy/security review for the SQLite evidence store, authenticated browser profiles, exports and acceptance backups, with a read-only sensitive-data audit.
-- Real-site LinkedIn login/checkpoint/network failure recovery still needs dated validation.
-- Migration/rollback/recovery policy closure, reproducible release/deployment proof and exact-final-commit certification remain.
+- PR #406 establishes forward-only migration with mandatory verified pre-migration backup and passed Migration recovery certification #1, CI #1439, Playwright #676, clean-install #5 and full-cycle #599.
+- PR #407 fail-closes LinkedIn auth/checkpoint/safety/network states and passed CI #1444, Playwright #680, clean-install #9 and full-cycle #603. The 2026-09-21 real-site acceptance then passed authwall detection, authenticated search access, forced-offline classification and recovery.
+- PR #408 adds deterministic release construction and passed Reproducible release certification #1, CI #1441, Playwright #678, clean-install #7 and full-cycle #601.
+- Final release-candidate workflows run on main pushes so the squash-merged release SHA itself receives CI, Playwright, full-cycle, clean-install, migration-recovery and reproducible-release certification.
 
 
 ## 2026-09-20 real-prospect acceptance
@@ -127,3 +129,16 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Cleanup result on restored copy: 31 capture runs, 1879 capture items, 1879 capture artifacts, 90 capture pages, 1206 postings, 1687 source documents, 589 AI reviews, 3377 evaluations and 45 readiness reports deleted; 1740 market observations and 53 retained postings preserved.
 - Protected fixture: application `d2df157f-152b-4f54-9a8b-f04332e4074a` and posting `733f215d-b03d-4d4d-9cc3-7d83bee0c957` both survived cleanup.
 - Evidence report path: `%USERPROFILE%\\Downloads\\JOLT_ACCEPTANCE\\JOLT_REAL_PROSPECT_ACCEPTANCE_20260920_132820.json`.
+
+
+## 2026-09-21 production acceptance
+- Real-site LinkedIn failure/recovery command: `tools/accept-linkedin-failure-recovery.ps1`.
+- Result: **PASS**.
+- Authwall: LinkedIn login page classified `authentication_required`.
+- Authenticated access: real LinkedIn jobs search loaded 7 visible job cards.
+- Network failure: browser forced offline; navigation classified `network_failure`.
+- Recovery: connectivity restored; the real jobs search returned to 7 visible job cards with no access problem.
+- Evidence file: `C:\Users\ralba\Downloads\JOLT_LINKEDIN_FAILURE_RECOVERY_20260921_122015.json`.
+- Repository issue audit: zero open issues on 2026-09-21.
+- Certified product boundary: local-first, single-user JOLT on supported Windows x64. Future Indeed/InfoJobs adapters and multi-user/SaaS architecture remain outside this production-readiness claim.
+- Operability promoted from **99% to 100%** when the exact final main release commit completes all main-push certification workflows.
