@@ -27,10 +27,13 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-021 | COMPLETE | Exact completeness enforcement for AI review contract 1.1 | R-007,R-008 | importer rejects any returned posting set that is not exactly the capture posting set before writing review rows | PR #385 CI 1353 + Playwright 627 + full-cycle 550 + regression tests |
 | R-022 | COMPLETE | Backup/restore active-schema rehearsal | R-014 | create, verify and restore a dated backup without modifying the live database; restored database passes integrity/schema verification | CLI output + manifest + restored test target evidence |
 | R-023 | COMPLETE | Unified release/version authority | R-001 | package, FastAPI health and runtime identity derive from one release-version source | tests + exact merge gates |
-| R-024 | ACTIVE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | production checklist + exact release evidence |
+| R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
 
 ## Immediate sequence
-1. Validate real-site LinkedIn login/authwall/checkpoint and network-failure recovery behavior without weakening fail-closed evidence rules.
-2. Close and document the production database migration/rollback/recovery policy.
-3. Prove the reproducible release/deployment procedure.
-4. Run exact-final-commit CI, Playwright acceptance, full-cycle certification and clean-install certification with no unresolved P0/P1 before promoting Production ready.
+Production certification is complete for the supported local-first single-user Windows boundary.
+
+Future work is optional/product expansion rather than a blocker:
+1. Add Indeed adapter when prioritized.
+2. Add InfoJobs adapter when prioritized.
+3. Revisit multi-user/SaaS architecture only if the product boundary changes.
+4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
