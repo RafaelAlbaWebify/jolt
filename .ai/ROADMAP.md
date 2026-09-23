@@ -44,6 +44,6 @@ Goal: replace repeated one-search-at-a-time operator work with one saved multi-s
 
 Authoritative implementation roadmap: `docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md`.
 
-Current phase: Phase 1 — canonical search identity, persistent Saved Search Portfolio and durable discovery-batch ledger.
+Current phase: Phase 4 — Saved Search Portfolio, discovery progress, and one batch AI exchange/import UI. Phases 1–3 are merged.
 
 Completion requires: saved-search UI + sequential multi-search orchestration + batch-level deduplicated review set + one ChatGPT round trip + real authenticated LinkedIn acceptance + exact-release recertification.
