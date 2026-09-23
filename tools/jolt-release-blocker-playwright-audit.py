@@ -146,14 +146,22 @@ def audit(output_dir: Path) -> dict[str, Any]:
         assert_true(fallback.is_visible(), "Single-search fallback is not visible")
 
         add_search.click()
-        assert_true(page.get_by_label("Name", exact=True).is_visible(), "Saved-search name field is missing")
+        editor = page.get_by_role("dialog", name="Add saved search", exact=True)
+        editor.wait_for(timeout=30_000)
+        assert_true(editor.get_by_label("Name", exact=True).is_visible(), "Saved-search name field is missing")
         assert_true(
-            page.get_by_label("LinkedIn search URL", exact=True).is_visible(),
+            editor.get_by_label("LinkedIn search URL", exact=True).is_visible(),
             "Saved-search LinkedIn URL field is missing",
         )
-        assert_true(page.get_by_label("Maximum jobs", exact=True).is_visible(), "Maximum jobs setting is missing")
-        assert_true(page.get_by_label("Maximum pages", exact=True).is_visible(), "Maximum pages setting is missing")
-        page.get_by_role("button", name="Cancel", exact=True).click()
+        assert_true(
+            editor.get_by_label("Maximum jobs", exact=True).is_visible(),
+            "Maximum jobs setting is missing",
+        )
+        assert_true(
+            editor.get_by_label("Maximum pages", exact=True).is_visible(),
+            "Maximum pages setting is missing",
+        )
+        editor.get_by_role("button", name="Cancel", exact=True).click()
 
         page.get_by_role("heading", name="Profile capture has moved", exact=True).wait_for(timeout=30_000)
         assert_true(
