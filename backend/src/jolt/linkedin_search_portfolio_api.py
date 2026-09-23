@@ -1,6 +1,5 @@
 from collections.abc import Callable, Iterator
 from contextlib import suppress
-
 from io import BytesIO
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
