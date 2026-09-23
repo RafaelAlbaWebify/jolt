@@ -1,0 +1,183 @@
+.linkedin-search-portfolio {
+  display: grid;
+  gap: 16px;
+}
+
+.search-portfolio-toolbar,
+.batch-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-portfolio-list,
+.discovery-progress-list {
+  display: grid;
+  gap: 8px;
+}
+
+.search-portfolio-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.search-portfolio-row-disabled {
+  opacity: 0.62;
+}
+
+.search-portfolio-check {
+  padding-top: 4px;
+}
+
+.search-portfolio-check input {
+  width: auto;
+}
+
+.search-portfolio-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.search-portfolio-main span,
+.search-portfolio-main p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.84rem;
+}
+
+.search-portfolio-main a {
+  overflow: hidden;
+  color: #294db5;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-row-menu {
+  position: relative;
+}
+
+.search-row-menu summary {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #d8dde7;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 1.15rem;
+  list-style: none;
+}
+
+.search-row-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.search-row-menu > div {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  min-width: 110px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #d8dde7;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(31, 41, 55, 0.12);
+}
+
+.search-row-menu button {
+  width: 100%;
+}
+
+.search-portfolio-editor {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #cfd7ea;
+  border-radius: 12px;
+  background: #f7f9ff;
+}
+
+.search-portfolio-empty {
+  padding: 18px;
+  border: 1px dashed #cfd7ea;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.search-portfolio-empty p {
+  margin-bottom: 0;
+  color: #667085;
+}
+
+.discovery-batch-status {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ec;
+}
+
+.discovery-batch-status h3 {
+  margin: 0 0 4px;
+  text-transform: capitalize;
+}
+
+.discovery-progress-list article {
+  padding: 10px 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.discovery-progress-list article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.discovery-progress-list span {
+  color: #667085;
+  text-transform: capitalize;
+}
+
+.discovery-progress-list p {
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 0.84rem;
+}
+
+.batch-review-import {
+  width: min(420px, 100%);
+}
+
+.batch-review-import input {
+  padding: 8px;
+}
+
+@media (max-width: 760px) {
+  .search-portfolio-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .search-row-menu {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .search-portfolio-toolbar,
+  .batch-review-actions {
+    align-items: stretch;
+  }
+}
