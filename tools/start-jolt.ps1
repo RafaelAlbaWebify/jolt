@@ -73,7 +73,10 @@ function Get-AlembicRevision {
         throw "Could not determine Alembic $Command revision."
     }
     $match = [regex]::Match(($output -join " "), '\d{8}_\d{4}')
-    return if ($match.Success) { $match.Value } else { "" }
+    if ($match.Success) {
+        return $match.Value
+    }
+    return ""
 }
 
 function Wait-HttpEndpoint {

@@ -37,7 +37,7 @@ function Get-Key([string]$Url) {
     return (($pairs | Sort-Object) -join "&").ToLowerInvariant()
 }
 
-try { Invoke-RestMethod -Uri "$ApiUrl/health" -Method GET | Out-Null } catch { throw "JOLT API is not reachable. Start it with .\tools\start-jolt.ps1" }
+try { Invoke-RestMethod -Uri "$ApiUrl/api/health" -Method GET | Out-Null } catch { throw "JOLT API is not reachable. Start it with .\tools\start-jolt.ps1" }
 $existing = @(Invoke-JoltJson "$ApiUrl/api/linkedin-searches")
 $selected = @()
 foreach ($def in $Defs) {

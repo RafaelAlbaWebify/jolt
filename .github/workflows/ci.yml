@@ -174,6 +174,7 @@ jobs:
           if (-not $launcher.Contains('Documents\GitHub\jolt')) { throw 'Launcher must check the standard repository path.' }
           if ($launcher -notmatch '"audit"') { throw 'Launcher must expose the automated audit action.' }
           if (-not $start.Contains('-Arguments @("run", "alembic", "upgrade", "head")')) { throw 'Startup must apply migrations through the validated native-command wrapper.' }
+          if ($start -match 'return\s+if\s*\(') { throw 'Startup must not use return-if command syntax; branch explicitly and return values.' }
           if ($start -notmatch 'Wait-HttpEndpoint') { throw 'Startup must wait for services.' }
           if ($start -notmatch 'run-linkedin-capture.ps1') { throw 'Startup must integrate supervised capture.' }
           if ($stop -notmatch 'services.json') { throw 'Stop command must use recorded state.' }
