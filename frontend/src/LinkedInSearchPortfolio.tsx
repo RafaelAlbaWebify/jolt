@@ -208,8 +208,16 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
       const saved = (await response.json()) as SavedSearch;
       setDraft(null);
       await loadSearches();
-      setSelectedIds((current) => new Set(current).add(saved.id));
-      setNotice(draft.id ? "Saved search updated." : "Saved search added and selected.");
+      if (saved.enabled) {
+        setSelectedIds((current) => new Set(current).add(saved.id));
+      }
+      setNotice(
+        draft.id
+          ? "Saved search updated."
+          : saved.enabled
+            ? "Saved search added and selected."
+            : "Saved search added.",
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The saved search could not be saved.");
     } finally {
