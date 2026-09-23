@@ -121,7 +121,7 @@ def mark_discovery_batch_background_failure(
     batch = session.get(LinkedInDiscoveryBatch, batch_id)
     if batch is None:
         return
-    if batch.status in {"completed", "completed_with_failures", "failed"}:
+    if batch.status in {"completed", "completed_with_failures"}:
         return
     batch.status = "failed"
     batch.completed_at = utc_now()
