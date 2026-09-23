@@ -14,9 +14,10 @@ export type ProfessionalIntelligenceSource = {
 type Props = {
   apiBase: string;
   active: boolean;
+  onAIImported?: () => void;
 };
 
-export function ProfessionalIntelligence({ apiBase, active }: Props) {
+export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Props) {
   return (
     <main className="professional-intelligence" aria-labelledby="job-capture-heading">
       <section className="panel professional-intelligence-overview">
@@ -34,7 +35,7 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         </div>
       </section>
 
-      <LinkedInSearchPortfolio apiBase={apiBase} active={active} />
+      <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
 
       <details className="panel professional-single-capture-fallback">
         <summary>Single-search capture fallback</summary>
