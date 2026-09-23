@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -130,12 +131,30 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="Capture Jobs", exact=True).click()
         page.get_by_role("heading", name="Capture Jobs", exact=True).wait_for(timeout=30_000)
 
-        primary = page.get_by_role("button", name="Start LinkedIn job capture", exact=True)
+        page.get_by_role("heading", name="Saved LinkedIn searches", exact=True).wait_for(
+            timeout=30_000
+        )
+        add_search = page.get_by_role("button", name="Add search", exact=True)
+        add_search.wait_for(timeout=30_000)
+        assert_true(add_search.is_visible(), "Saved Search Portfolio add action is not visible")
+
+        primary = page.get_by_role("button", name=re.compile(r"^Start discovery \(\d+\)$"))
         primary.wait_for(timeout=30_000)
-        assert_true(primary.is_visible(), "Primary LinkedIn job capture action is not visible")
-        assert_true(page.get_by_label("LinkedIn search URL").is_visible(), "LinkedIn search URL field is missing")
-        assert_true(page.get_by_label("Maximum jobs").is_visible(), "Maximum jobs setting is missing")
-        assert_true(page.get_by_label("Maximum pages").is_visible(), "Maximum pages setting is missing")
+        assert_true(primary.is_visible(), "Primary discovery batch action is not visible")
+
+        fallback = page.get_by_text("Single-search capture fallback", exact=True)
+        assert_true(fallback.is_visible(), "Single-search fallback is not visible")
+
+        add_search.click()
+        assert_true(page.get_by_label("Name", exact=True).is_visible(), "Saved-search name field is missing")
+        assert_true(
+            page.get_by_label("LinkedIn search URL", exact=True).is_visible(),
+            "Saved-search LinkedIn URL field is missing",
+        )
+        assert_true(page.get_by_label("Maximum jobs", exact=True).is_visible(), "Maximum jobs setting is missing")
+        assert_true(page.get_by_label("Maximum pages", exact=True).is_visible(), "Maximum pages setting is missing")
+        page.get_by_role("button", name="Cancel", exact=True).click()
+
         page.get_by_role("heading", name="Profile capture has moved", exact=True).wait_for(timeout=30_000)
         assert_true(
             page.get_by_text(
@@ -178,8 +197,10 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "badge_metrics": badge_metrics,
         "all_score_badges_bounded": True,
         "all_score_labels_human_readable": True,
-        "primary_linkedin_capture_action_visible": True,
-        "url_and_multipage_settings_visible": True,
+        "saved_search_portfolio_visible": True,
+        "primary_discovery_batch_action_visible": True,
+        "saved_search_editor_fields_visible": True,
+        "single_search_fallback_visible": True,
         "profile_capture_moved_notice_visible": True,
         "configured_source_capture_absent_from_capture_jobs": True,
         "professional_evidence_root_absent_from_capture_jobs": True,
