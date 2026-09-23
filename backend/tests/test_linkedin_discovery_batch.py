@@ -24,6 +24,16 @@ def _factory(tmp_path: Path):
     return create_session_factory(f"sqlite:///{(tmp_path / 'batch.db').as_posix()}")
 
 
+@contextmanager
+def _session(factory):
+    scope = session_scope(factory)
+    session = next(scope)
+    try:
+        yield session
+    finally:
+        scope.close()
+
+
 def _saved_search(session, label: str, keywords: str):
     return create_saved_linkedin_search(
         session,
@@ -98,7 +108,7 @@ def test_batch_runs_two_searches_in_one_browser_session(
 ) -> None:
     factory = _factory(tmp_path)
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
         second = _saved_search(
             session,
@@ -140,7 +150,7 @@ def test_batch_runs_two_searches_in_one_browser_session(
         lambda batch_id: tmp_path / "evidence" / batch_id,
     )
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         execute_discovery_batch(
             session,
             batch.id,
@@ -169,7 +179,7 @@ def test_authentication_failure_stops_remaining_searches(
 ) -> None:
     factory = _factory(tmp_path)
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
         second = _saved_search(
             session,
@@ -205,7 +215,7 @@ def test_authentication_failure_stops_remaining_searches(
         lambda batch_id: tmp_path / "evidence" / batch_id,
     )
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         execute_discovery_batch(
             session,
             batch.id,
@@ -227,7 +237,7 @@ def test_browser_start_failure_marks_batch_and_searches_terminal(
 ) -> None:
     factory = _factory(tmp_path)
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
         second = _saved_search(
             session,
@@ -252,7 +262,7 @@ def test_browser_start_failure_marks_batch_and_searches_terminal(
         lambda batch_id: tmp_path / "evidence" / batch_id,
     )
 
-    with session_scope(factory) as session:
+    with _session(factory) as session:
         with pytest.raises(RuntimeError, match="batch runtime failed"):
             execute_discovery_batch(
                 session,
