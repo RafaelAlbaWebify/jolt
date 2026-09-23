@@ -82,13 +82,15 @@ Deliver UI based on the approved mockup:
 - Saved Search Portfolio table;
 - checkboxes for batch selection;
 - editable human-friendly labels;
-- three-dot menu: run now, edit, duplicate, pause/enable, delete;
+- three-dot row menu for edit and delete; enabled/disabled state is editable in the saved-search form;
 - add-search form;
 - canonical LinkedIn URL field;
 - per-search max jobs/pages;
 - discovery batch progress view;
 - captured/new/duplicate counts;
-- one prominent `Start Discovery Batch` action.
+- one prominent `Start Discovery` action;
+- completed-batch action to download one consolidated AI review exchange and import the returned JSON;
+- legacy single-search launcher retained as an explicit fallback, not the primary workflow.
 
 Acceptance:
 - ordinary weekly workflow requires no copying/pasting after searches are configured;
