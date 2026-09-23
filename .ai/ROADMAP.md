@@ -37,3 +37,13 @@ Future work is optional/product expansion rather than a blocker:
 2. Add InfoJobs adapter when prioritized.
 3. Revisit multi-user/SaaS architecture only if the product boundary changes.
 4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
+
+
+## R-025 — LinkedIn Search Portfolio and Discovery Batch — ACTIVE
+Goal: replace repeated one-search-at-a-time operator work with one saved multi-search discovery action while preserving per-search provenance and the certified capture engine.
+
+Authoritative implementation roadmap: `docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md`.
+
+Current phase: Phase 1 — canonical search identity, persistent Saved Search Portfolio and durable discovery-batch ledger.
+
+Completion requires: saved-search UI + sequential multi-search orchestration + batch-level deduplicated review set + one ChatGPT round trip + real authenticated LinkedIn acceptance + exact-release recertification.
