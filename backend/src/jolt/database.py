@@ -80,6 +80,78 @@ class CaptureItem(Base):
     )
 
 
+class LinkedInSavedSearch(Base):
+    __tablename__ = "linkedin_saved_searches"
+    __table_args__ = (
+        UniqueConstraint(
+            "search_url",
+            name="uq_linkedin_saved_searches_search_url",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    search_url: Mapped[str] = mapped_column(Text, nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    max_jobs: Mapped[int] = mapped_column(default=100, nullable=False)
+    max_pages: Mapped[int] = mapped_column(default=10, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LinkedInDiscoveryBatch(Base):
+    __tablename__ = "linkedin_discovery_batches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    selected_search_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LinkedInDiscoveryBatchSearch(Base):
+    __tablename__ = "linkedin_discovery_batch_searches"
+    __table_args__ = (
+        UniqueConstraint(
+            "batch_id",
+            "position",
+            name="uq_linkedin_discovery_batch_search_position",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    batch_id: Mapped[str] = mapped_column(
+        ForeignKey("linkedin_discovery_batches.id"),
+        nullable=False,
+        index=True,
+    )
+    saved_search_id: Mapped[str] = mapped_column(
+        ForeignKey("linkedin_saved_searches.id"),
+        nullable=False,
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(nullable=False)
+    label_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    search_url_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    max_jobs_snapshot: Mapped[int] = mapped_column(nullable=False)
+    max_pages_snapshot: Mapped[int] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    capture_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("capture_runs.id"),
+        nullable=True,
+        index=True,
+    )
+    captured_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    verified_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    new_posting_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    duplicate_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ProfileVersion(Base):
     __tablename__ = "profile_versions"
 
