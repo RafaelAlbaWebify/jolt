@@ -953,8 +953,7 @@ def run_capture_in_context(
             if pause_for_login:
                 print("LinkedIn is open in a persistent local browser profile.")
                 print(
-                    "Log in manually if needed, apply the desired search filters, "
-                    "then return here."
+                    "Log in manually if needed, apply the desired search filters, then return here."
                 )
                 input("Press Enter to start the bounded capture: ")
 
