@@ -6,9 +6,9 @@
   "version_discrepancy": null,
   "last_update_date": "2026-09-23",
   "baseline_branch": "main",
-  "baseline_commit": "69506383fb23bfc7bed87df89200e4b481ca2476",
+  "baseline_commit": "5f1b944d68d2c6187faea435c67a1ed5350b6d69",
   "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 Phase 4: Saved Search Portfolio, discovery progress, and one batch AI exchange/import UI.",
+  "current_milestone": "R-025 Phase 5: real authenticated multi-search acceptance, consolidated AI review/import, restart persistence, and final recertification.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -30,7 +30,7 @@
       "name": "LinkedIn Search Portfolio and Discovery Batch",
       "status": "active",
       "roadmap": "docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md",
-      "current_phase": "Phase 4 — Saved Search Portfolio and Discovery Batch UI"
+      "current_phase": "Phase 5 — real authenticated multi-search acceptance and final recertification"
     }
   ],
   "completed_milestones": [
@@ -71,13 +71,14 @@
     "2026-09-21 repository issue audit found zero open GitHub issues and no known unresolved P0/P1 release blocker."
   ],
   "pending_milestones": [
-    "R-025 Phase 4: Saved Search Portfolio and batch-progress UI.",
-    "R-025 Phase 5: real authenticated multi-search acceptance and exact-release recertification."
+    "R-025 Phase 5: run the certified two-stage real acceptance harness on the supported Windows workstation.",
+    "Import one consolidated batch AI review, verify restart persistence, then record final exact-release evidence."
   ],
   "next_recommended_actions": [
-    "Exact-head certify and merge R-025 Phase 4.",
-    "Run real authenticated multi-search acceptance from the supported Windows workstation using at least two saved searches.",
-    "Complete one consolidated batch AI review/export/import round trip, verify restart persistence, then run exact-release recertification."
+    "Certify and merge the Phase 5 acceptance harness.",
+    "Run tools/accept-linkedin-portfolio-batch.ps1 on the supported Windows workstation.",
+    "Review the generated consolidated AI exchange once, import it with tools/accept-linkedin-portfolio-review.ps1, and record restart persistence.",
+    "Promote R-025 to COMPLETE only after the real evidence is captured."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
