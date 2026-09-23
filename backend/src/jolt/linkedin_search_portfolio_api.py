@@ -1,10 +1,19 @@
 from collections.abc import Callable, Iterator
 from contextlib import suppress
 
+from io import BytesIO
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
+from jolt.linkedin_batch_review import (
+    BatchAIReviewImportRequest,
+    BatchAIReviewImportResponse,
+    build_batch_ai_review_json,
+    import_batch_ai_review,
+)
 from jolt.linkedin_discovery_batch import (
     execute_discovery_batch,
     mark_discovery_batch_background_failure,
@@ -160,6 +169,48 @@ def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIR
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.get("/api/linkedin-discovery-batches/{batch_id}/ai-review-exchange")
+    def discovery_batch_ai_review_exchange(
+        batch_id: str,
+        session: Session = session_dependency,
+    ) -> StreamingResponse:
+        try:
+            content = build_batch_ai_review_json(session, batch_id)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": (
+                    f"attachment; filename=JOLT_DISCOVERY_BATCH_{batch_id}_AI_EXCHANGE.json"
+                )
+            },
+        )
+
+    @router.post(
+        "/api/linkedin-discovery-batches/{batch_id}/ai-review-import",
+        response_model=BatchAIReviewImportResponse,
+    )
+    def discovery_batch_ai_review_import(
+        batch_id: str,
+        request: BatchAIReviewImportRequest,
+        session: Session = session_dependency,
+    ) -> BatchAIReviewImportResponse:
+        if request.discovery_batch_id != batch_id:
+            raise HTTPException(
+                status_code=422,
+                detail="Path batch_id must match discovery_batch_id in the AI review payload.",
+            )
+        try:
+            return import_batch_ai_review(session, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.get(
         "/api/linkedin-discovery-batches/{batch_id}",
