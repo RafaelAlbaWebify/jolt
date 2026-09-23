@@ -1072,6 +1072,7 @@ def run_capture(
             pause_for_login=pause_for_login,
         )
 
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a bounded multi-page LinkedIn capture.")
     parser.add_argument("--search-url", default=DEFAULT_SEARCH_URL)
