@@ -166,60 +166,60 @@ def execute_discovery_batch(
             linkedin_capture_runtime_lock(),
             linkedin_capture_browser(browser_profile) as (context, page),
         ):
-                for search in searches:
-                    search.status = "running"
-                    search.started_at = utc_now()
-                    search.completed_at = None
-                    search.error = ""
+            for search in searches:
+                search.status = "running"
+                search.started_at = utc_now()
+                search.completed_at = None
+                search.error = ""
+                session.commit()
+
+                output_zip = evidence_dir / (
+                    f"{search.position:02d}_{search.saved_search_id}_capture.zip"
+                )
+                try:
+                    run_capture_in_context(
+                        context=context,
+                        page=page,
+                        search_url=search.search_url_snapshot,
+                        api_url=api_url,
+                        output_zip=output_zip,
+                        max_jobs=search.max_jobs_snapshot,
+                        max_pages=search.max_pages_snapshot,
+                        pause_for_login=False,
+                    )
+                    metrics = _capture_package_metrics(output_zip)
+                    capture_run_id = str(metrics["capture_run_id"])
+                    if not capture_run_id:
+                        raise RuntimeError(
+                            "LinkedIn capture completed without a persisted capture_run_id."
+                        )
+                    search.capture_run_id = capture_run_id
+                    search.captured_count = int(metrics["captured_count"])
+                    search.verified_count = int(metrics["verified_count"])
+                    search.new_posting_count = int(metrics["new_posting_count"])
+                    search.duplicate_count = int(metrics["duplicate_count"])
+                    search.status = "completed"
+                    search.completed_at = utc_now()
+                    session.commit()
+                except Exception as exc:
+                    failed_count += 1
+                    search.status = "failed"
+                    search.error = str(exc)
+                    search.completed_at = utc_now()
                     session.commit()
 
-                    output_zip = evidence_dir / (
-                        f"{search.position:02d}_{search.saved_search_id}_capture.zip"
-                    )
-                    try:
-                        run_capture_in_context(
-                            context=context,
-                            page=page,
-                            search_url=search.search_url_snapshot,
-                            api_url=api_url,
-                            output_zip=output_zip,
-                            max_jobs=search.max_jobs_snapshot,
-                            max_pages=search.max_pages_snapshot,
-                            pause_for_login=False,
+                    if _is_fatal_session_failure(exc):
+                        fatal_failure = True
+                        _mark_remaining_skipped(
+                            session,
+                            searches,
+                            after_position=search.position,
+                            reason=(
+                                "Batch stopped because the shared LinkedIn session "
+                                f"became unsafe/unavailable: {exc}"
+                            ),
                         )
-                        metrics = _capture_package_metrics(output_zip)
-                        capture_run_id = str(metrics["capture_run_id"])
-                        if not capture_run_id:
-                            raise RuntimeError(
-                                "LinkedIn capture completed without a persisted capture_run_id."
-                            )
-                        search.capture_run_id = capture_run_id
-                        search.captured_count = int(metrics["captured_count"])
-                        search.verified_count = int(metrics["verified_count"])
-                        search.new_posting_count = int(metrics["new_posting_count"])
-                        search.duplicate_count = int(metrics["duplicate_count"])
-                        search.status = "completed"
-                        search.completed_at = utc_now()
-                        session.commit()
-                    except Exception as exc:
-                        failed_count += 1
-                        search.status = "failed"
-                        search.error = str(exc)
-                        search.completed_at = utc_now()
-                        session.commit()
-
-                        if _is_fatal_session_failure(exc):
-                            fatal_failure = True
-                            _mark_remaining_skipped(
-                                session,
-                                searches,
-                                after_position=search.position,
-                                reason=(
-                                    "Batch stopped because the shared LinkedIn session "
-                                    f"became unsafe/unavailable: {exc}"
-                                ),
-                            )
-                            break
+                        break
     except Exception as exc:
         batch.status = "failed"
         batch.completed_at = utc_now()
