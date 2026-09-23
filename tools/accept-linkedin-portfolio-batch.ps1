@@ -20,8 +20,11 @@ $Defs = @(
 )
 
 function Invoke-JoltJson([string]$Uri, [string]$Method = "GET", [object]$Body = $null) {
-    if ($null -eq $Body) { return Invoke-RestMethod -Uri $Uri -Method $Method }
-    return Invoke-RestMethod -Uri $Uri -Method $Method -ContentType "application/json" -Body ($Body | ConvertTo-Json -Depth 8)
+    if ($null -eq $Body) {
+        Invoke-RestMethod -Uri $Uri -Method $Method
+        return
+    }
+    Invoke-RestMethod -Uri $Uri -Method $Method -ContentType "application/json" -Body ($Body | ConvertTo-Json -Depth 8)
 }
 
 function Get-Key([string]$Url) {
@@ -39,10 +42,15 @@ function Get-Key([string]$Url) {
 
 try { Invoke-RestMethod -Uri "$ApiUrl/api/health" -Method GET | Out-Null } catch { throw "JOLT API is not reachable. Start it with .\tools\start-jolt.ps1" }
 $existing = @(Invoke-JoltJson "$ApiUrl/api/linkedin-searches")
+foreach ($item in $existing) {
+    if ($null -eq $item.PSObject.Properties["search_url"]) {
+        throw "Saved-search API returned an unexpected object without search_url."
+    }
+}
 $selected = @()
 foreach ($def in $Defs) {
     $key = Get-Key $def.search_url
-    $match = $existing | Where-Object { (Get-Key $_.search_url) -eq $key } | Select-Object -First 1
+    $match = $existing | Where-Object { (Get-Key ([string]$_.search_url)) -eq $key } | Select-Object -First 1
     $body = @{ label=$def.label; search_url=$def.search_url; notes="R-025 Phase 5 real multi-search acceptance."; enabled=$true; max_jobs=$MaxJobs; max_pages=$MaxPages }
     if ($null -eq $match) { $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches" "POST" $body }
     else { $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$($match.id)" "POST" $body }
