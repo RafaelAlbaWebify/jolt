@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.ai_review_import import AIReviewJob, AIReviewImportResponse
+from jolt.ai_review_import import AIReviewJob, MandatoryRequirementResult
 from jolt.ai_review_pack import _analysis_text
 from jolt.database import (
     AIReview,
@@ -365,8 +365,13 @@ def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str,
 
 
 def build_batch_ai_review_json(session: Session, batch_id: str) -> bytes:
+    from jolt.review_inbox_exchange import enrich_review_inbox_document
+
+    document = enrich_review_inbox_document(
+        build_batch_ai_review_document(session, batch_id)
+    )
     return json.dumps(
-        build_batch_ai_review_document(session, batch_id),
+        document,
         indent=2,
         ensure_ascii=False,
         sort_keys=True,
@@ -455,7 +460,7 @@ def _validate_batch_membership(
     return expected
 
 
-def _requirement_json(items: list[object]) -> str:
+def _requirement_json(items: list[MandatoryRequirementResult]) -> str:
     return json.dumps(
         [item.model_dump() for item in items],
         ensure_ascii=False,
