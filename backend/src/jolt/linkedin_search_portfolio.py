@@ -135,6 +135,8 @@ def create_saved_linkedin_search(
     session: Session,
     request: SavedLinkedInSearchRequest,
 ) -> SavedLinkedInSearchResponse:
+    if not request.label.strip():
+        raise ValueError("Saved search label cannot be blank.")
     canonical_url = _canonical_search_url(request.search_url)
     _ensure_unique_canonical_url(session, canonical_url)
     now = utc_now()
@@ -162,6 +164,8 @@ def update_saved_linkedin_search(
     search = session.get(LinkedInSavedSearch, saved_search_id)
     if search is None:
         raise JoltNotFoundError("Saved LinkedIn search was not found.")
+    if not request.label.strip():
+        raise ValueError("Saved search label cannot be blank.")
     canonical_url = _canonical_search_url(request.search_url)
     _ensure_unique_canonical_url(session, canonical_url, exclude_id=search.id)
     search.label = request.label.strip()
@@ -252,7 +256,7 @@ def create_discovery_batch(
     if len(request.saved_search_ids) != len(set(request.saved_search_ids)):
         raise ValueError("Discovery batch search IDs must be unique.")
 
-    searches = []
+    searches: list[LinkedInSavedSearch] = []
     for saved_search_id in request.saved_search_ids:
         search = session.get(LinkedInSavedSearch, saved_search_id)
         if search is None:
