@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-from collections.abc import Iterator
-from contextlib import contextmanager
 import json
 import shutil
 import sys
 import tempfile
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
