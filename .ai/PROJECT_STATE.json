@@ -8,7 +8,7 @@
   "baseline_branch": "main",
   "baseline_commit": "ca9b131e1a60cd7f2ce5d9aaf5ba41f17f697d84",
   "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 Phase 2: sequential one-click LinkedIn discovery batch orchestration using one persistent browser session and separate CaptureRuns.",
+  "current_milestone": "R-025 Phase 3: one frozen deduplicated AI review set across a completed LinkedIn Discovery Batch.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -30,7 +30,7 @@
       "name": "LinkedIn Search Portfolio and Discovery Batch",
       "status": "active",
       "roadmap": "docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md",
-      "current_phase": "Phase 2 — sequential discovery orchestration"
+      "current_phase": "Phase 3 — consolidated deduplicated AI review set"
     }
   ],
   "completed_milestones": [
@@ -78,9 +78,9 @@
     "R-025 Phase 5: real authenticated multi-search acceptance and exact-release recertification."
   ],
   "next_recommended_actions": [
-    "Exact-head certify and merge R-025 Phase 2 before implementing consolidated batch AI review.",
-    "Preserve the certified per-search 100-job/10-page capture contract and separate CaptureRun provenance.",
-    "After Phase 2 merge, implement batch-level deduplicated review-set generation and exact-set AI import validation."
+    "Exact-head certify and merge R-025 Phase 3 before building the Saved Search Portfolio UI.",
+    "Use the frozen discovery-batch review-set ledger for one ChatGPT export/import round trip and idempotent retry.",
+    "After Phase 3 merge, implement the Capture Jobs portfolio/progress UI against the saved-search and discovery-batch APIs."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
