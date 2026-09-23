@@ -219,3 +219,53 @@ def test_authentication_failure_stops_remaining_searches(
     assert result.searches[0].status == "failed"
     assert result.searches[1].status == "skipped"
     assert "shared LinkedIn session" in result.searches[1].error
+
+
+def test_browser_start_failure_marks_batch_and_searches_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    factory = _factory(tmp_path)
+
+    with session_scope(factory) as session:
+        first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
+        second = _saved_search(
+            session,
+            "LinkedIn Application Support Engineer",
+            "Application%20Support%20Engineer",
+        )
+        batch = create_discovery_batch(
+            session,
+            DiscoveryBatchCreateRequest(saved_search_ids=[first.id, second.id]),
+        )
+        schedule_discovery_batch(session, batch.id)
+
+    @contextmanager
+    def broken_browser(_profile_dir: Path) -> Iterator[tuple[object, object]]:
+        raise RuntimeError("Chromium profile unavailable")
+        yield object(), object()
+
+    monkeypatch.setattr(linkedin_discovery_batch, "linkedin_capture_browser", broken_browser)
+    monkeypatch.setattr(
+        linkedin_discovery_batch,
+        "_batch_evidence_dir",
+        lambda batch_id: tmp_path / "evidence" / batch_id,
+    )
+
+    with session_scope(factory) as session:
+        with pytest.raises(RuntimeError, match="batch runtime failed"):
+            execute_discovery_batch(
+                session,
+                batch.id,
+                profile_dir=tmp_path / "profile",
+            )
+        linkedin_discovery_batch.mark_discovery_batch_background_failure(
+            session,
+            batch.id,
+            RuntimeError("Chromium profile unavailable"),
+        )
+        result = get_discovery_batch(session, batch.id)
+
+    assert result.status == "failed"
+    assert all(search.status == "skipped" for search in result.searches)
+    assert all("background failure" in search.error for search in result.searches)
