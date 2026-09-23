@@ -62,16 +62,13 @@ class BatchAIReviewImportRequest(BaseModel):
             missing = required_fields - job.model_fields_set
             if missing:
                 raise ValueError(
-                    "Batch AI review is missing hardline fields: "
-                    + ", ".join(sorted(missing))
+                    "Batch AI review is missing hardline fields: " + ", ".join(sorted(missing))
                 )
             if job.final_decision in {"strong_pursue", "pursue"}:
                 if job.hardline_status != "PASS":
                     raise ValueError("Positive decisions require hardline_status=PASS")
                 if job.location_eligibility != "eligible":
-                    raise ValueError(
-                        "Positive decisions require location_eligibility=eligible"
-                    )
+                    raise ValueError("Positive decisions require location_eligibility=eligible")
         return self
 
 
@@ -207,9 +204,7 @@ def _posting_occurrences(
         ).all()
     )
     by_capture = {
-        search.capture_run_id: search
-        for search in searches
-        if search.capture_run_id is not None
+        search.capture_run_id: search for search in searches if search.capture_run_id is not None
     }
     items = list(
         session.scalars(
@@ -274,25 +269,29 @@ def _response_template(batch_id: str) -> dict[str, object]:
 def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str, object]:
     review_items = materialize_batch_review_set(session, batch_id)
     all_items = _batch_items(session, batch_id)
-    unique_posting_ids = {
-        item.posting_id for item in all_items if item.posting_id is not None
-    }
+    unique_posting_ids = {item.posting_id for item in all_items if item.posting_id is not None}
 
     posting_ids = [item.posting_id for item in review_items]
-    postings = {
-        posting.id: posting
-        for posting in session.scalars(
-            select(Posting).where(Posting.id.in_(posting_ids))
-        ).all()
-    } if posting_ids else {}
+    postings = (
+        {
+            posting.id: posting
+            for posting in session.scalars(select(Posting).where(Posting.id.in_(posting_ids))).all()
+        }
+        if posting_ids
+        else {}
+    )
 
     source_ids = {posting.source_document_id for posting in postings.values()}
-    sources = {
-        source.id: source
-        for source in session.scalars(
-            select(SourceDocument).where(SourceDocument.id.in_(source_ids))
-        ).all()
-    } if source_ids else {}
+    sources = (
+        {
+            source.id: source
+            for source in session.scalars(
+                select(SourceDocument).where(SourceDocument.id.in_(source_ids))
+            ).all()
+        }
+        if source_ids
+        else {}
+    )
 
     jobs: list[dict[str, object]] = []
     for review_item in review_items:
@@ -367,9 +366,7 @@ def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str,
 def build_batch_ai_review_json(session: Session, batch_id: str) -> bytes:
     from jolt.review_inbox_exchange import enrich_review_inbox_document
 
-    document = enrich_review_inbox_document(
-        build_batch_ai_review_document(session, batch_id)
-    )
+    document = enrich_review_inbox_document(build_batch_ai_review_document(session, batch_id))
     return json.dumps(
         document,
         indent=2,
