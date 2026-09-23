@@ -260,9 +260,7 @@ def create_discovery_batch(
     for saved_search_id in request.saved_search_ids:
         search = session.get(LinkedInSavedSearch, saved_search_id)
         if search is None:
-            raise JoltNotFoundError(
-                f"Saved LinkedIn search was not found: {saved_search_id}"
-            )
+            raise JoltNotFoundError(f"Saved LinkedIn search was not found: {saved_search_id}")
         if not search.enabled:
             raise ValueError(f"Saved LinkedIn search is disabled: {search.label}")
         searches.append(search)
