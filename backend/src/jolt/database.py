@@ -152,6 +152,48 @@ class LinkedInDiscoveryBatchSearch(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class LinkedInDiscoveryBatchReviewItem(Base):
+    __tablename__ = "linkedin_discovery_batch_review_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "batch_id",
+            "posting_id",
+            name="uq_linkedin_discovery_batch_review_posting",
+        ),
+        UniqueConstraint(
+            "batch_id",
+            "position",
+            name="uq_linkedin_discovery_batch_review_position",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    batch_id: Mapped[str] = mapped_column(
+        ForeignKey("linkedin_discovery_batches.id"),
+        nullable=False,
+        index=True,
+    )
+    posting_id: Mapped[str] = mapped_column(
+        ForeignKey("postings.id"),
+        nullable=False,
+        index=True,
+    )
+    representative_capture_run_id: Mapped[str] = mapped_column(
+        ForeignKey("capture_runs.id"),
+        nullable=False,
+    )
+    representative_capture_item_id: Mapped[str] = mapped_column(
+        ForeignKey("capture_items.id"),
+        nullable=False,
+    )
+    representative_source_job_id: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+    position: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ProfileVersion(Base):
     __tablename__ = "profile_versions"
 
