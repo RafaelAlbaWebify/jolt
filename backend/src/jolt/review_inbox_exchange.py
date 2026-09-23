@@ -8,10 +8,8 @@ from jolt.ai_review_pack import build_ai_review_json
 from jolt.global_context import build_global_context_snapshot, global_context_version
 
 
-def build_review_inbox_exchange_json(session: Session) -> bytes:
-    """Enrich the proven AI review batch with JOLT's durable reasoning context."""
-
-    document = json.loads(build_ai_review_json(session))
+def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, object]:
+    """Add JOLT's durable reasoning context to an AI review document."""
     context = build_global_context_snapshot()
     context_version = global_context_version(context)
 
@@ -99,8 +97,16 @@ def build_review_inbox_exchange_json(session: Session) -> bytes:
         "return_contract": "Use response_template exactly for per-job review results.",
     }
 
+    return document
+
+
+def build_review_inbox_exchange_json(session: Session) -> bytes:
+    """Enrich the proven AI review batch with JOLT's durable reasoning context."""
+
+    document = json.loads(build_ai_review_json(session))
+    enriched = enrich_review_inbox_document(document)
     return json.dumps(
-        document,
+        enriched,
         indent=2,
         ensure_ascii=False,
         sort_keys=True,
