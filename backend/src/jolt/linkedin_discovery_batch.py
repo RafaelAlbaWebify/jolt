@@ -99,7 +99,38 @@ def schedule_discovery_batch(session: Session, batch_id: str) -> None:
         raise JoltNotFoundError("LinkedIn discovery batch was not found.")
     if batch.status != "queued":
         raise ValueError("Only queued LinkedIn discovery batches can be scheduled.")
+    active_batch_id = session.scalar(
+        select(LinkedInDiscoveryBatch.id)
+        .where(
+            LinkedInDiscoveryBatch.id != batch_id,
+            LinkedInDiscoveryBatch.status.in_(("scheduled", "running")),
+        )
+        .limit(1)
+    )
+    if active_batch_id is not None:
+        raise ValueError("Another LinkedIn discovery batch is already active.")
     batch.status = "scheduled"
+    session.commit()
+
+
+def mark_discovery_batch_background_failure(
+    session: Session,
+    batch_id: str,
+    error: Exception,
+) -> None:
+    batch = session.get(LinkedInDiscoveryBatch, batch_id)
+    if batch is None:
+        return
+    if batch.status in {"completed", "completed_with_failures", "failed"}:
+        return
+    batch.status = "failed"
+    batch.completed_at = utc_now()
+    searches = _batch_searches(session, batch_id)
+    for search in searches:
+        if search.status in {"queued", "running"}:
+            search.status = "skipped" if search.status == "queued" else "failed"
+            search.error = f"Discovery batch background failure: {error}"
+            search.completed_at = utc_now()
     session.commit()
 
 
