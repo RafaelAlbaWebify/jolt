@@ -12,7 +12,9 @@ $Downloads = Join-Path $env:USERPROFILE "Downloads"
 $Stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $EvidencePath = Join-Path $Downloads "JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_$Stamp.json"
 if (-not (Test-Path $ReviewFile)) { throw "Review JSON was not found: $ReviewFile" }
-function Get-Batch { return Invoke-RestMethod -Uri "$ApiUrl/api/linkedin-discovery-batches/$BatchId" -Method GET }
+function Get-Batch {
+    Invoke-RestMethod -Uri "$ApiUrl/api/linkedin-discovery-batches/$BatchId" -Method GET
+}
 $payload = Get-Content -Raw $ReviewFile
 $import = Invoke-RestMethod -Uri "$ApiUrl/api/linkedin-discovery-batches/$BatchId/ai-review-import" -Method POST -ContentType "application/json" -Body $payload
 $before = Get-Batch
