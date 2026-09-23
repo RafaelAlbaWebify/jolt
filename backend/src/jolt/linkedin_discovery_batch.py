@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import contextlib
 import json
-import os
 import zipfile
 from pathlib import Path
 
@@ -95,6 +93,16 @@ def _mark_remaining_skipped(
     session.commit()
 
 
+def schedule_discovery_batch(session: Session, batch_id: str) -> None:
+    batch = session.get(LinkedInDiscoveryBatch, batch_id)
+    if batch is None:
+        raise JoltNotFoundError("LinkedIn discovery batch was not found.")
+    if batch.status != "queued":
+        raise ValueError("Only queued LinkedIn discovery batches can be scheduled.")
+    batch.status = "scheduled"
+    session.commit()
+
+
 def execute_discovery_batch(
     session: Session,
     batch_id: str,
@@ -105,8 +113,8 @@ def execute_discovery_batch(
     batch = session.get(LinkedInDiscoveryBatch, batch_id)
     if batch is None:
         raise JoltNotFoundError("LinkedIn discovery batch was not found.")
-    if batch.status != "queued":
-        raise ValueError("Only queued LinkedIn discovery batches can be started.")
+    if batch.status != "scheduled":
+        raise ValueError("Only scheduled LinkedIn discovery batches can be started.")
 
     searches = _batch_searches(session, batch.id)
     if not searches:
