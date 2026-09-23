@@ -12,6 +12,7 @@ _TRANSIENT_SEARCH_QUERY_KEYS = {
     "refId",
     "origin",
     "refresh",
+    "start",
 }
 _ORIGINAL_CARD_IDENTITY = multipage_capture._card_identity
 _INSTALLED = False
