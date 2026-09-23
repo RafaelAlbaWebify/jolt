@@ -228,13 +228,9 @@ def test_only_one_discovery_batch_can_be_active(
         lambda _get_session, _batch_id: None,
     )
 
-    first_start = client.post(
-        f"/api/linkedin-discovery-batches/{batch_one['id']}/start"
-    )
+    first_start = client.post(f"/api/linkedin-discovery-batches/{batch_one['id']}/start")
     assert first_start.status_code == 200
 
-    second_start = client.post(
-        f"/api/linkedin-discovery-batches/{batch_two['id']}/start"
-    )
+    second_start = client.post(f"/api/linkedin-discovery-batches/{batch_two['id']}/start")
     assert second_start.status_code == 409
     assert "already active" in second_start.json()["detail"]
