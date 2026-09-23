@@ -162,8 +162,10 @@ def execute_discovery_batch(
     browser_profile = profile_dir or _profile_dir()
 
     try:
-        with linkedin_capture_runtime_lock():
-            with linkedin_capture_browser(browser_profile) as (context, page):
+        with (
+            linkedin_capture_runtime_lock(),
+            linkedin_capture_browser(browser_profile) as (context, page),
+        ):
                 for search in searches:
                     search.status = "running"
                     search.started_at = utc_now()
