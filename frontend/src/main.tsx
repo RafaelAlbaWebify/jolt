@@ -12,6 +12,7 @@ import "./ApplicationWorkItems.css";
 import "./OpportunityApplicationHandoff.css";
 import "./MarketIntelligence.css";
 import "./LinkedInCommandCenter.css";
+import "./LinkedInSearchPortfolio.css";
 import "./ProfessionalIntelligence.css";
 import "./ProfessionalStructuredExtraction.css";
 import "./WorkflowRefinement.css";

@@ -77,7 +77,11 @@ export function Workbench() {
         <RuntimeStalenessGuard apiBase={API_BASE} />
         <div className="workspace-view-stack">
           <div className="workspace-view workspace-view-professional" hidden={activeView !== "professional"}>
-            <ProfessionalIntelligence apiBase={API_BASE} active={activeView === "professional"} />
+            <ProfessionalIntelligence
+              apiBase={API_BASE}
+              active={activeView === "professional"}
+              onAIImported={() => setEvaluationRevision((value) => value + 1)}
+            />
           </div>
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
             <App

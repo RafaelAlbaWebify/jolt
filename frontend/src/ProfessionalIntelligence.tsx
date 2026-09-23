@@ -1,4 +1,5 @@
 import { LinkedInJobCaptureLauncher } from "./LinkedInJobCaptureLauncher";
+import { LinkedInSearchPortfolio } from "./LinkedInSearchPortfolio";
 
 export type ProfessionalIntelligenceSource = {
   source_id: string;
@@ -13,9 +14,10 @@ export type ProfessionalIntelligenceSource = {
 type Props = {
   apiBase: string;
   active: boolean;
+  onAIImported?: () => void;
 };
 
-export function ProfessionalIntelligence({ apiBase, active }: Props) {
+export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Props) {
   return (
     <main className="professional-intelligence" aria-labelledby="job-capture-heading">
       <section className="panel professional-intelligence-overview">
@@ -33,7 +35,12 @@ export function ProfessionalIntelligence({ apiBase, active }: Props) {
         </div>
       </section>
 
-      <LinkedInJobCaptureLauncher apiBase={apiBase} active={active} />
+      <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
+
+      <details className="panel professional-single-capture-fallback">
+        <summary>Single-search capture fallback</summary>
+        <LinkedInJobCaptureLauncher apiBase={apiBase} active={active} />
+      </details>
 
       <section className="panel" aria-labelledby="profile-capture-location-heading">
         <div className="section-heading">

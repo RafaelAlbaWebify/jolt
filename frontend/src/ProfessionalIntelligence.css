@@ -329,3 +329,25 @@
     flex-direction: column;
   }
 }
+
+
+.professional-single-capture-fallback {
+  padding: 14px 18px;
+}
+
+.professional-single-capture-fallback > summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #344054;
+}
+
+.professional-single-capture-fallback[open] > summary {
+  margin-bottom: 12px;
+}
+
+.professional-single-capture-fallback > .panel {
+  margin-top: 0;
+  border: 0;
+  box-shadow: none;
+  padding: 8px 0 0;
+}
