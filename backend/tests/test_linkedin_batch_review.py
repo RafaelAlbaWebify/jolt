@@ -68,8 +68,9 @@ def _seed_completed_batch(session) -> str:
     )
     session.add(batch)
 
+    capture_runs = []
     for index in (1, 2):
-        session.add(
+        capture_runs.append(
             CaptureRun(
                 id=f"capture-{index}",
                 source="linkedin",
@@ -84,6 +85,10 @@ def _seed_completed_batch(session) -> str:
                 completed_at=now,
             )
         )
+    session.add_all(capture_runs)
+    session.flush()
+
+    for index in (1, 2):
         session.add(
             LinkedInDiscoveryBatchSearch(
                 id=f"batch-search-{index}",
