@@ -1,9 +1,15 @@
 from collections.abc import Callable, Iterator
+from contextlib import suppress
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
+from jolt.linkedin_discovery_batch import (
+    execute_discovery_batch,
+    mark_discovery_batch_background_failure,
+    schedule_discovery_batch,
+)
 from jolt.linkedin_search_portfolio import (
     DiscoveryBatchCreateRequest,
     DiscoveryBatchResponse,
@@ -20,6 +26,29 @@ from jolt.linkedin_search_portfolio import (
 )
 
 SessionProvider = Callable[[], Iterator[Session]]
+
+
+def _run_discovery_batch_background(
+    get_session: SessionProvider,
+    batch_id: str,
+) -> None:
+    session_iterator = get_session()
+    session: Session | None = None
+    try:
+        session = next(session_iterator)
+        execute_discovery_batch(session, batch_id)
+    except Exception as exc:
+        if session is not None:
+            session.rollback()
+            mark_discovery_batch_background_failure(session, batch_id, exc)
+    finally:
+        close = getattr(session_iterator, "close", None)
+        if callable(close):
+            with suppress(Exception):
+                close()
+        elif session is not None:
+            with suppress(Exception):
+                session.close()
 
 
 def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIRouter:
@@ -109,6 +138,24 @@ def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIR
     ) -> DiscoveryBatchResponse:
         try:
             return create_discovery_batch(session, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post(
+        "/api/linkedin-discovery-batches/{batch_id}/start",
+        response_model=DiscoveryBatchResponse,
+    )
+    def start_discovery_batch(
+        batch_id: str,
+        background_tasks: BackgroundTasks,
+        session: Session = session_dependency,
+    ) -> DiscoveryBatchResponse:
+        try:
+            schedule_discovery_batch(session, batch_id)
+            background_tasks.add_task(_run_discovery_batch_background, get_session, batch_id)
+            return get_discovery_batch(session, batch_id)
         except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:

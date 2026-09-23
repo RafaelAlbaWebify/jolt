@@ -62,6 +62,11 @@ _CAPTURE_EXECUTOR = ThreadPoolExecutor(
 _STATUS = LocalLinkedInCaptureStatus(status="idle")
 
 
+def linkedin_capture_runtime_lock() -> Lock:
+    """Return the process-wide lock protecting the persistent LinkedIn browser profile."""
+    return _CAPTURE_LOCK
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 

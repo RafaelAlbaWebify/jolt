@@ -159,3 +159,78 @@ def test_disabled_search_cannot_be_queued_for_discovery(tmp_path: Path) -> None:
     )
     assert response.status_code == 409
     assert "disabled" in response.json()["detail"]
+
+
+def test_discovery_batch_start_schedules_once(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    client = _client(tmp_path)
+
+    created = client.post("/api/linkedin-searches", json=_search_payload()).json()
+    batch = client.post(
+        "/api/linkedin-discovery-batches",
+        json={"saved_search_ids": [created["id"]]},
+    ).json()
+
+    calls: list[str] = []
+
+    def fake_background(_get_session, batch_id: str) -> None:
+        calls.append(batch_id)
+
+    from jolt import linkedin_search_portfolio_api
+
+    monkeypatch.setattr(
+        linkedin_search_portfolio_api,
+        "_run_discovery_batch_background",
+        fake_background,
+    )
+
+    started = client.post(f"/api/linkedin-discovery-batches/{batch['id']}/start")
+    assert started.status_code == 200, started.text
+    assert started.json()["status"] == "scheduled"
+    assert calls == [batch["id"]]
+
+    repeated = client.post(f"/api/linkedin-discovery-batches/{batch['id']}/start")
+    assert repeated.status_code == 409
+    assert "Only queued" in repeated.json()["detail"]
+
+
+def test_only_one_discovery_batch_can_be_active(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    client = _client(tmp_path)
+
+    first = client.post("/api/linkedin-searches", json=_search_payload()).json()
+    second = client.post(
+        "/api/linkedin-searches",
+        json=_search_payload(
+            label="LinkedIn Application Support Engineer",
+            keywords="Application%20Support%20Engineer",
+        ),
+    ).json()
+
+    batch_one = client.post(
+        "/api/linkedin-discovery-batches",
+        json={"saved_search_ids": [first["id"]]},
+    ).json()
+    batch_two = client.post(
+        "/api/linkedin-discovery-batches",
+        json={"saved_search_ids": [second["id"]]},
+    ).json()
+
+    from jolt import linkedin_search_portfolio_api
+
+    monkeypatch.setattr(
+        linkedin_search_portfolio_api,
+        "_run_discovery_batch_background",
+        lambda _get_session, _batch_id: None,
+    )
+
+    first_start = client.post(f"/api/linkedin-discovery-batches/{batch_one['id']}/start")
+    assert first_start.status_code == 200
+
+    second_start = client.post(f"/api/linkedin-discovery-batches/{batch_two['id']}/start")
+    assert second_start.status_code == 409
+    assert "already active" in second_start.json()["detail"]

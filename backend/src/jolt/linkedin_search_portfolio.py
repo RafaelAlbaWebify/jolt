@@ -66,6 +66,12 @@ class DiscoveryBatchResponse(BaseModel):
     id: str
     status: str
     selected_search_count: int
+    completed_search_count: int
+    failed_search_count: int
+    captured_count: int
+    verified_count: int
+    new_posting_count: int
+    duplicate_count: int
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
@@ -228,10 +234,18 @@ def get_discovery_batch(session: Session, batch_id: str) -> DiscoveryBatchRespon
         .where(LinkedInDiscoveryBatchSearch.batch_id == batch.id)
         .order_by(LinkedInDiscoveryBatchSearch.position.asc())
     ).all()
+    completed_search_count = sum(search.status == "completed" for search in searches)
+    failed_search_count = sum(search.status == "failed" for search in searches)
     return DiscoveryBatchResponse(
         id=batch.id,
         status=batch.status,
         selected_search_count=batch.selected_search_count,
+        completed_search_count=completed_search_count,
+        failed_search_count=failed_search_count,
+        captured_count=sum(search.captured_count for search in searches),
+        verified_count=sum(search.verified_count for search in searches),
+        new_posting_count=sum(search.new_posting_count for search in searches),
+        duplicate_count=sum(search.duplicate_count for search in searches),
         started_at=batch.started_at,
         completed_at=batch.completed_at,
         created_at=batch.created_at,
