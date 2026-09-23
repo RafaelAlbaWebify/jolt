@@ -6,7 +6,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
-from jolt.linkedin_discovery_batch import execute_discovery_batch, schedule_discovery_batch
+from jolt.linkedin_discovery_batch import (
+    execute_discovery_batch,
+    mark_discovery_batch_background_failure,
+    schedule_discovery_batch,
+)
 from jolt.linkedin_search_portfolio import (
     DiscoveryBatchCreateRequest,
     DiscoveryBatchResponse,
@@ -34,9 +38,10 @@ def _run_discovery_batch_background(
     try:
         session = next(session_iterator)
         execute_discovery_batch(session, batch_id)
-    except Exception:
+    except Exception as exc:
         if session is not None:
             session.rollback()
+            mark_discovery_batch_background_failure(session, batch_id, exc)
     finally:
         close = getattr(session_iterator, "close", None)
         if callable(close):
