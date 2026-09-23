@@ -20,7 +20,7 @@ $before = Get-Batch
 & (Join-Path $PSScriptRoot "start-jolt.ps1")
 $deadline = (Get-Date).AddMinutes(2)
 $ready = $false
-do { Start-Sleep -Seconds 2; try { Invoke-RestMethod -Uri "$ApiUrl/health" -Method GET | Out-Null; $ready = $true } catch { $ready = $false } } while (-not $ready -and (Get-Date) -lt $deadline)
+do { Start-Sleep -Seconds 2; try { Invoke-RestMethod -Uri "$ApiUrl/api/health" -Method GET | Out-Null; $ready = $true } catch { $ready = $false } } while (-not $ready -and (Get-Date) -lt $deadline)
 if (-not $ready) { throw "JOLT did not become healthy after restart." }
 $after = Get-Batch
 if ($after.id -ne $before.id -or $after.status -ne $before.status) { throw "Discovery batch state did not persist across restart." }
