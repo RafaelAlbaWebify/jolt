@@ -60,6 +60,7 @@ from jolt.linkedin_command_center import (
     list_linkedin_command_center,
     update_linkedin_recommendation_status,
 )
+from jolt.linkedin_search_portfolio_api import build_linkedin_search_portfolio_router
 from jolt.linkedin_playwright_capture import (
     LinkedInPlaywrightBatchCaptureRequest,
     LinkedInPlaywrightBatchCaptureResponse,
@@ -143,6 +144,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     app.include_router(build_application_work_items_router(get_session))
     app.include_router(build_professional_intelligence_plan_router(get_session))
+    app.include_router(build_linkedin_search_portfolio_router(get_session))
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
