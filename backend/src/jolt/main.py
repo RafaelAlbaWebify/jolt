@@ -60,7 +60,6 @@ from jolt.linkedin_command_center import (
     list_linkedin_command_center,
     update_linkedin_recommendation_status,
 )
-from jolt.linkedin_search_portfolio_api import build_linkedin_search_portfolio_router
 from jolt.linkedin_playwright_capture import (
     LinkedInPlaywrightBatchCaptureRequest,
     LinkedInPlaywrightBatchCaptureResponse,
@@ -68,6 +67,7 @@ from jolt.linkedin_playwright_capture import (
     run_linkedin_playwright_batch_capture,
     run_linkedin_playwright_capture,
 )
+from jolt.linkedin_search_portfolio_api import build_linkedin_search_portfolio_router
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
 from jolt.market_preparation_import import (
