@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+from collections.abc import Iterator
+from contextlib import contextmanager
 import json
 import shutil
 import sys
@@ -892,75 +894,87 @@ def _write_failure_diagnostics(
             )
 
 
-def run_capture(
+@contextmanager
+def linkedin_capture_browser(profile_dir: Path) -> Iterator[tuple[BrowserContext, Page]]:
+    """Open one persistent LinkedIn browser context for one or more bounded searches."""
+    with sync_playwright() as playwright:
+        context = playwright.chromium.launch_persistent_context(
+            user_data_dir=profile_dir,
+            headless=False,
+            viewport={"width": 1440, "height": 1000},
+        )
+        page = context.pages[0] if context.pages else context.new_page()
+        try:
+            yield context, page
+        finally:
+            with contextlib.suppress(Exception):
+                context.close()
+
+
+def run_capture_in_context(
+    *,
+    context: BrowserContext,
+    page: Page,
     search_url: str,
     api_url: str,
-    profile_dir: Path,
     output_zip: Path,
     max_jobs: int,
     max_pages: int,
     pause_for_login: bool,
 ) -> Path:
+    """Run one certified bounded search inside an already-open browser context."""
     staging_dir = Path(tempfile.mkdtemp(prefix="jolt_linkedin_"))
     evidence_dir = staging_dir / "evidence"
     evidence_dir.mkdir(parents=True)
-    page: Page | None = None
-    context: BrowserContext | None = None
     metrics = RetryMetrics()
+    tracing_started = False
 
     try:
         try:
-            with sync_playwright() as playwright:
-                context = playwright.chromium.launch_persistent_context(
-                    user_data_dir=profile_dir,
-                    headless=False,
-                    viewport={"width": 1440, "height": 1000},
-                )
-                context.tracing.start(screenshots=True, snapshots=True, sources=False)
-                page = context.pages[0] if context.pages else context.new_page()
-                try:
-                    page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
-                except Exception as exc:
-                    failure_class = classify_navigation_exception(exc)
-                    raise RuntimeError(
-                        f"LinkedIn {failure_class.replace('_', ' ')} while opening the search page: {exc}"
-                    ) from exc
+            context.tracing.start(screenshots=True, snapshots=True, sources=False)
+            tracing_started = True
+            try:
+                page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+            except Exception as exc:
+                failure_class = classify_navigation_exception(exc)
+                raise RuntimeError(
+                    f"LinkedIn {failure_class.replace('_', ' ')} while opening the search page: {exc}"
+                ) from exc
 
-                access_problem = detect_linkedin_access_problem(page)
-                if access_problem is not None:
-                    failure_class, message = access_problem
-                    raise RuntimeError(f"LinkedIn {failure_class}: {message}")
-                _best_effort_screenshot(
-                    page,
-                    evidence_dir / "01_search_opened.png",
-                )
+            access_problem = detect_linkedin_access_problem(page)
+            if access_problem is not None:
+                failure_class, message = access_problem
+                raise RuntimeError(f"LinkedIn {failure_class}: {message}")
+            _best_effort_screenshot(
+                page,
+                evidence_dir / "01_search_opened.png",
+            )
 
-                if pause_for_login:
-                    print("LinkedIn is open in a persistent local browser profile.")
-                    print(
-                        "Log in manually if needed, apply the desired search filters, "
-                        "then return here."
-                    )
-                    input("Press Enter to start the bounded capture: ")
+            if pause_for_login:
+                print("LinkedIn is open in a persistent local browser profile.")
+                print(
+                    "Log in manually if needed, apply the desired search filters, "
+                    "then return here."
+                )
+                input("Press Enter to start the bounded capture: ")
 
-                search_url = normalize_linkedin_search_url(page.url)
-                search_state = extract_search_state(page, effective_url=search_url)
-                cards, pages, skipped, stop_reason = capture_pages(
-                    page,
-                    max_jobs=max_jobs,
-                    max_pages=max_pages,
-                    evidence_dir=evidence_dir,
-                    metrics=metrics,
-                )
-                if not cards:
-                    raise RuntimeError("No usable LinkedIn job cards were captured.")
-                _best_effort_screenshot(
-                    page,
-                    evidence_dir / "99_capture_complete.png",
-                )
-                context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
-                context.close()
-                context = None
+            search_url = normalize_linkedin_search_url(page.url)
+            search_state = extract_search_state(page, effective_url=search_url)
+            cards, pages, skipped, stop_reason = capture_pages(
+                page,
+                max_jobs=max_jobs,
+                max_pages=max_pages,
+                evidence_dir=evidence_dir,
+                metrics=metrics,
+            )
+            if not cards:
+                raise RuntimeError("No usable LinkedIn job cards were captured.")
+            _best_effort_screenshot(
+                page,
+                evidence_dir / "99_capture_complete.png",
+            )
+            context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
+            tracing_started = False
 
             summary = {
                 "search_url": search_url,
@@ -1026,11 +1040,9 @@ def run_capture(
             )
         except Exception as exc:
             _write_failure_diagnostics(staging_dir, evidence_dir, page, exc)
-            if context is not None:
+            if tracing_started:
                 with contextlib.suppress(Exception):
                     context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
-                with contextlib.suppress(Exception):
-                    context.close()
             package_run(staging_dir, output_zip)
             raise
 
@@ -1038,6 +1050,28 @@ def run_capture(
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
 
+
+def run_capture(
+    search_url: str,
+    api_url: str,
+    profile_dir: Path,
+    output_zip: Path,
+    max_jobs: int,
+    max_pages: int,
+    pause_for_login: bool,
+) -> Path:
+    """Run one bounded search with its own persistent-browser lifecycle."""
+    with linkedin_capture_browser(profile_dir) as (context, page):
+        return run_capture_in_context(
+            context=context,
+            page=page,
+            search_url=search_url,
+            api_url=api_url,
+            output_zip=output_zip,
+            max_jobs=max_jobs,
+            max_pages=max_pages,
+            pause_for_login=pause_for_login,
+        )
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a bounded multi-page LinkedIn capture.")
