@@ -20,11 +20,20 @@ $Defs = @(
 )
 
 function Invoke-JoltJson([string]$Uri, [string]$Method = "GET", [object]$Body = $null) {
-    if ($null -eq $Body) {
-        Invoke-RestMethod -Uri $Uri -Method $Method
-        return
+    $params = @{
+        Uri = $Uri
+        Method = $Method
+        UseBasicParsing = $true
     }
-    Invoke-RestMethod -Uri $Uri -Method $Method -ContentType "application/json" -Body ($Body | ConvertTo-Json -Depth 8)
+    if ($null -ne $Body) {
+        $params["ContentType"] = "application/json"
+        $params["Body"] = ($Body | ConvertTo-Json -Depth 8)
+    }
+    $response = Invoke-WebRequest @params
+    if ([string]::IsNullOrWhiteSpace($response.Content)) {
+        return $null
+    }
+    $response.Content | ConvertFrom-Json
 }
 
 function Get-Key([string]$Url) {
@@ -41,10 +50,20 @@ function Get-Key([string]$Url) {
 }
 
 try { Invoke-RestMethod -Uri "$ApiUrl/api/health" -Method GET | Out-Null } catch { throw "JOLT API is not reachable. Start it with .\tools\start-jolt.ps1" }
-$existing = @(Invoke-JoltJson "$ApiUrl/api/linkedin-searches")
+$existingResponse = Invoke-JoltJson "$ApiUrl/api/linkedin-searches"
+$existing = @()
+if ($null -ne $existingResponse) {
+    if ($existingResponse -is [System.Array]) {
+        $existing = @($existingResponse)
+    }
+    else {
+        $existing = @($existingResponse)
+    }
+}
 foreach ($item in $existing) {
-    if ($null -eq $item.PSObject.Properties["search_url"]) {
-        throw "Saved-search API returned an unexpected object without search_url."
+    if ($null -eq $item -or $null -eq $item.PSObject.Properties["search_url"]) {
+        $typeName = if ($null -eq $item) { "<null>" } else { $item.GetType().FullName }
+        throw "Saved-search API returned an unexpected item without search_url. Type: $typeName"
     }
 }
 $selected = @()
