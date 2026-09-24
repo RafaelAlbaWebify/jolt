@@ -44,10 +44,19 @@ def detect_linkedin_access_problem(page: Any) -> tuple[str, str] | None:
     if any(marker in current_url for marker in AUTH_URL_MARKERS):
         return "authentication_required", "LinkedIn authentication is required."
 
-    try:
-        body_text = page.locator("body").inner_text(timeout=3_000).lower()
-    except Exception as exc:
-        raise RuntimeError("Unable to inspect LinkedIn access state.") from exc
+    body_text = ""
+    last_error: Exception | None = None
+    for _attempt in range(3):
+        try:
+            body_text = page.locator("body").inner_text(timeout=3_000).lower()
+            last_error = None
+            break
+        except Exception as exc:
+            last_error = exc
+    if last_error is not None:
+        raise RuntimeError(
+            "Unable to inspect LinkedIn access state after 3 attempts."
+        ) from last_error
 
     if any(marker in body_text for marker in CHECKPOINT_BODY_MARKERS):
         return "checkpoint", "LinkedIn presented a security verification checkpoint."
