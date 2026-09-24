@@ -4,22 +4,30 @@ from jolt.linkedin_access import classify_navigation_exception, detect_linkedin_
 
 
 class _Body:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, failures: list[Exception] | None = None) -> None:
         self._text = text
+        self._failures = failures if failures is not None else []
 
     def inner_text(self, timeout: int) -> str:
         assert timeout == 3000
+        if self._failures:
+            raise self._failures.pop(0)
         return self._text
 
 
 class _Page:
-    def __init__(self, url: str, text: str = "") -> None:
+    def __init__(
+        self,
+        url: str,
+        text: str = "",
+        body_failures: list[Exception] | None = None,
+    ) -> None:
         self.url = url
-        self._text = text
+        self._body = _Body(text, body_failures)
 
     def locator(self, selector: str) -> _Body:
         assert selector == "body"
-        return _Body(self._text)
+        return self._body
 
 
 def test_detects_authentication_from_url() -> None:
@@ -74,3 +82,31 @@ def test_classifies_network_navigation_failures() -> None:
     )
     assert classify_navigation_exception(TimeoutError("navigation timeout")) == "network_failure"
     assert classify_navigation_exception(RuntimeError("browser closed")) == "navigation_failure"
+
+
+def test_retries_transient_body_inspection_failure() -> None:
+    page = _Page(
+        "https://www.linkedin.com/jobs/search/?keywords=Support",
+        "Jobs\nIT Support Engineer\nAbout the job",
+        body_failures=[TimeoutError("body not ready"), TimeoutError("body not ready")],
+    )
+
+    assert detect_linkedin_access_problem(page) is None
+
+
+def test_fails_closed_after_three_body_inspection_failures() -> None:
+    page = _Page(
+        "https://www.linkedin.com/jobs/search/?keywords=Support",
+        body_failures=[
+            TimeoutError("body not ready"),
+            TimeoutError("body not ready"),
+            TimeoutError("body not ready"),
+        ],
+    )
+
+    try:
+        detect_linkedin_access_problem(page)
+    except RuntimeError as exc:
+        assert str(exc) == "Unable to inspect LinkedIn access state after 3 attempts."
+    else:
+        raise AssertionError("Expected fail-closed LinkedIn access inspection error.")
