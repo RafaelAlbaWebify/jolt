@@ -1,8 +1,8 @@
 # LinkedIn Search Portfolio and Discovery Batch Roadmap
 
 Date: 2026-09-23
-Status: ACTIVE
-Branch: `feature/linkedin-search-portfolio-batch`
+Status: COMPLETE
+Accepted release: `1157942fec504b3d41c6371046ae04afc8111709`
 
 ## Goal
 
@@ -128,3 +128,28 @@ Final proof must include:
 - auto-apply or messaging;
 - replacing the existing capture engine with a new crawler;
 - generating arbitrary LinkedIn filter URLs before saved real LinkedIn URLs are proven sufficient.
+
+
+## Completion evidence — 2026-09-24
+
+R-025 passed real authenticated acceptance on the supported Windows workstation.
+
+- Release commit under test: `1157942fec504b3d41c6371046ae04afc8111709`
+- Exact main-push certification: CI, Playwright acceptance, Full-cycle Playwright certification, Production clean-install certification, Migration recovery certification, and Reproducible release certification all passed.
+- Discovery Batch: `02c529d0-bae8-4cc1-8288-a7575146b515`
+- Saved searches executed sequentially: 2/2 completed
+- Capture runs: `8f88f7ed-b55a-4768-aa59-deec5b29085c` and `2c903795-e02f-4227-b0a1-0804543fce30`
+- Raw captured items: 50
+- Verified items: 50
+- New postings in batch metrics: 47
+- Duplicate count in batch metrics: 3
+- Unique canonical postings in review exchange: 50
+- Already-reviewed postings excluded from first materialization: 3
+- Frozen current review set: 47
+- One consolidated 47-job ChatGPT review returned and imported successfully
+- Full JOLT restart after import: PASS; discovery batch/review state persisted
+- Local operator evidence:
+  - `JOLT_LINKEDIN_PORTFOLIO_ACCEPTANCE_20260924_110205.json`
+  - `JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_20260924_114024.json`
+
+Outcome: the ordinary discovery workflow is now saved-search selection -> one Start Discovery action -> sequential supervised capture -> one deduplicated AI review round trip -> durable imported state.
