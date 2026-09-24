@@ -39,11 +39,11 @@ Future work is optional/product expansion rather than a blocker:
 4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
 
 
-## R-025 — LinkedIn Search Portfolio and Discovery Batch — ACTIVE
+## R-025 — LinkedIn Search Portfolio and Discovery Batch — COMPLETE
 Goal: replace repeated one-search-at-a-time operator work with one saved multi-search discovery action while preserving per-search provenance and the certified capture engine.
 
 Authoritative implementation roadmap: `docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md`.
 
-Current phase: Phase 4 — Saved Search Portfolio, discovery progress, and one batch AI exchange/import UI. Phases 1–3 are merged.
+Current phase: COMPLETE. Phases 1–5 are merged and the real authenticated Windows acceptance passed on 2026-09-24.
 
-Completion requires: saved-search UI + sequential multi-search orchestration + batch-level deduplicated review set + one ChatGPT round trip + real authenticated LinkedIn acceptance + exact-release recertification.
+Completion evidence: main `1157942fec504b3d41c6371046ae04afc8111709` passed all six push certification workflows. Real Discovery Batch `02c529d0-bae8-4cc1-8288-a7575146b515` completed 2/2 saved searches sequentially, captured/verified 50/50 jobs, produced a frozen 47-posting review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved state across a full JOLT restart.
