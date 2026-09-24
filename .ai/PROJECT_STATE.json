@@ -6,9 +6,9 @@
   "version_discrepancy": null,
   "last_update_date": "2026-09-24",
   "baseline_branch": "main",
-  "baseline_commit": "1157942fec504b3d41c6371046ae04afc8111709",
+  "baseline_commit": "4bad4608adbc5cb44787dec8be4dd784a04e618d",
   "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 complete: LinkedIn Search Portfolio + sequential Discovery Batch + consolidated AI review/import accepted on real LinkedIn and persisted across restart.",
+  "current_milestone": "R-025 complete and verified through normal JOLT UI: two saved LinkedIn searches completed sequentially, consolidated review exchange/import succeeded, and final release main is six-gate green.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -70,26 +70,28 @@
     "PR #408 added deterministic source-release construction and deployment documentation; Reproducible release certification #1, CI #1441, Playwright #678, clean-install #7 and full-cycle #601 passed before merge.",
     "2026-09-21 repository issue audit found zero open GitHub issues and no known unresolved P0/P1 release blocker.",
     "R-025 LinkedIn Search Portfolio and Discovery Batch completed with real authenticated multi-search acceptance, consolidated AI review/import, and restart persistence.",
-    "2026-09-24 R-025 Phase 5 real acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709: Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515 ran two saved LinkedIn searches sequentially, captured/verified 50/50 jobs, materialized a 47-posting frozen review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved batch/review state across a full JOLT restart."
+    "2026-09-24 R-025 Phase 5 real acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709: Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515 ran two saved LinkedIn searches sequentially, captured/verified 50/50 jobs, materialized a 47-posting frozen review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved batch/review state across a full JOLT restart.",
+    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI."
   ],
   "pending_milestones": [],
   "next_recommended_actions": [
-    "Use Saved LinkedIn Search Portfolio as the normal Capture Jobs workflow and retain single-search capture only as fallback/diagnostics.",
-    "Review live search portfolio quality and add/remove saved search definitions based on observed precision; keep the per-search certified ceiling at 100 jobs / 10 pages unless separately revalidated.",
-    "Prioritize the next product workstream (for example Indeed/InfoJobs adapter or another operator-efficiency improvement) without reopening R-025."
+    "Replace the two acceptance-labelled saved searches with the real production search portfolio and use Saved LinkedIn Search Portfolio as the normal Capture Jobs workflow.",
+    "Tune saved-search labels/filters based on precision and actionable yield; keep each search within the certified 100 jobs / 10 pages ceiling unless separately revalidated.",
+    "After the real LinkedIn portfolio is stable, prioritize the next product workstream (for example another job-board adapter or another operator-efficiency improvement) without reopening R-025."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
     "real_ai_import": "2026-09-19 second real 100-job package imported successfully after strict sequential review: 95 reject, 1 strong_pursue, 1 pursue, 3 conditional; no internal repair reported.",
     "restart_persistence": "2026-09-19 full JOLT restart preserved the second-cycle imported review state, as confirmed by the operator.",
     "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened nested-scroll traversal contract and included later Licenses & certifications entries previously missed, including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity.",
-    "latest_contract_gate": "PR #403 head 07789c942e96ab1c0f824c3a2d3435b2668ea995 passed CI #1436, Playwright acceptance #674, full-cycle certification #597, and fresh-Windows Production clean-install certification #3 before squash merge as ca9b131e1a60cd7f2ce5d9aaf5ba41f17f697d84.",
+    "latest_contract_gate": "Main 4bad4608adbc5cb44787dec8be4dd784a04e618d passed all six push workflows after PR #420: CI, Playwright acceptance, Full-cycle Playwright certification, Production clean-install certification, Migration recovery certification, and Reproducible release certification.",
     "remaining_runtime_acceptance": "None within the certified local-first single-user Windows production boundary. Final release-candidate workflows are configured to run on main pushes so the squash-merged release SHA itself is certified.",
     "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found.",
     "real_prospect_acceptance": "2026-09-20 REAL_PROSPECT_ACCEPTANCE.bat PASS on local main ca6af3b25cae181bc8b8ccd13fed45417eaf36de. Active DB unchanged. Backup/verify/restore passed; source/restored core counts matched before cleanup. Restored-copy guarded cleanup deleted 31 superseded capture runs and 1206 capture-only postings, preserved 53 retained postings, and protected application d2df157f-152b-4f54-9a8b-f04332e4074a plus posting 733f215d-b03d-4d4d-9cc3-7d83bee0c957 survived.",
     "linkedin_failure_recovery": "2026-09-21 JOLT_LINKEDIN_FAILURE_RECOVERY acceptance PASS: authwall authentication_required; authenticated LinkedIn jobs search 7 cards; forced offline network_failure; restored connectivity 7 cards; evidence file JOLT_LINKEDIN_FAILURE_RECOVERY_20260921_122015.json.",
     "migration_recovery": "PR #406 exact-head Migration recovery certification #1 PASS; pre-revision seeded data survived forward upgrade and verified backup restored the prior revision/data.",
     "reproducible_release": "PR #408 exact-head Reproducible release certification #1 PASS; two builds of the same clean commit produced byte-identical release ZIPs with embedded commit/version/file-hash manifest.",
-    "linkedin_search_portfolio": "2026-09-24 real authenticated Phase 5 acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709. Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515: 2/2 searches completed; 50 captured; 50 verified; 47 new postings; 3 duplicates/known exclusions; one batch AI exchange with frozen review_set=47; consolidated 47-job ChatGPT review imported successfully; JOLT restart completed and batch/review state persisted. Local evidence files: JOLT_LINKEDIN_PORTFOLIO_ACCEPTANCE_20260924_110205.json and JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_20260924_114024.json."
+    "linkedin_search_portfolio": "2026-09-24 real authenticated Phase 5 acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709. Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515: 2/2 searches completed; 50 captured; 50 verified; 47 new postings; 3 duplicates/known exclusions; one batch AI exchange with frozen review_set=47; consolidated 47-job ChatGPT review imported successfully; JOLT restart completed and batch/review state persisted. Local evidence files: JOLT_LINKEDIN_PORTFOLIO_ACCEPTANCE_20260924_110205.json and JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_20260924_114024.json.",
+    "linkedin_search_portfolio_ui": "2026-09-24 normal JOLT UI acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d. Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16: 2/2 searches completed; 50 captured; 50 verified; 0 new at batch summary / 50 already known; consolidated AI exchange materialized review_set=1 after excluding 49 already-reviewed postings; returned review imported through the UI. The exact main SHA also passed all six push workflows."
   }
 }
