@@ -110,6 +110,27 @@ $portfolio = @(
         remote_only = $true
         notes = "Refined Windows systems remote search - EMEA/EU - past week."
     },
+    @{
+        label = "SaaS Support Engineer - EU Remote"
+        keywords = "SaaS Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Expanded remote search - SaaS/product support - EMEA/EU - past week."
+    },
+    @{
+        label = "Infrastructure Support Engineer - EU Remote"
+        keywords = "Infrastructure Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Expanded remote search - infrastructure support - EMEA/EU - past week."
+    },
+    @{
+        label = "Cloud Support Engineer - EU Remote"
+        keywords = "Cloud Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Expanded remote search - cloud support - EMEA/EU - past week."
+    },
 
     # Layer 2: Vigo / Greater Pontevedra. No workplace filter on purpose:
     # local onsite, hybrid, and remote roles are all acceptable for discovery.
@@ -189,6 +210,13 @@ $portfolio = @(
         geo_id = "92000000"
         remote_only = $true
         notes = "Global remote search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
+    },
+    @{
+        label = "SaaS Support Engineer - Worldwide Remote"
+        keywords = "SaaS Support Engineer"
+        geo_id = "92000000"
+        remote_only = $true
+        notes = "Global remote SaaS/product-support search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
     }
 )
 
@@ -211,8 +239,8 @@ foreach ($definition in $portfolio) {
         search_url = $url
         notes = $definition.notes
         enabled = $true
-        max_jobs = 25
-        max_pages = 3
+        max_jobs = 50
+        max_pages = 5
     }
 
     # Preserve saved-search identity/history when refining an existing production
@@ -279,7 +307,11 @@ foreach ($title in @(
     "IT Support Engineer",
     "Administrador de Sistemas",
     "Técnico de Soporte IT",
-    "Soporte de Aplicaciones"
+    "Soporte de Aplicaciones",
+    "Cloud Support Engineer",
+    "Modern Workplace Engineer",
+    "Endpoint Engineer",
+    "Systems Support Engineer"
 )) {
     if ($title -notin $targetTitles) {
         $targetTitles += $title
@@ -293,8 +325,13 @@ if ("onsite" -notin $workModes) {
 }
 $preferences.preferred_work_modes = $workModes
 
-$localNote = "On-site roles are acceptable when they are in Vigo/Greater Pontevedra; remote and hybrid remain preferred outside the local area."
-if ([string]$preferences.notes -notlike "*On-site roles are acceptable when they are in Vigo/Greater Pontevedra*") {
+# Shift/on-call patterns are not exclusion criteria. Keep them visible as job facts,
+# but do not remove opportunities because of schedule pattern alone.
+$preferences.preferred_shifts = @("business_hours", "flexible", "evening", "night", "rotating", "weekend")
+$preferences.excluded_shifts = @()
+
+$localNote = "On-site roles are acceptable when they are in Vigo/Greater Pontevedra; remote and hybrid remain preferred outside the local area. Shift, weekend, maintenance-window and on-call patterns are acceptable and must not independently exclude a vacancy."
+if ([string]$preferences.notes -notlike "*Shift, weekend, maintenance-window and on-call patterns are acceptable*") {
     $preferences.notes = ([string]$preferences.notes).Trim()
     if ($preferences.notes) {
         $preferences.notes += " "
@@ -303,6 +340,45 @@ if ([string]$preferences.notes -notlike "*On-site roles are acceptable when they
 }
 
 Invoke-JoltJson "$ApiUrl/api/job-search-preferences" "POST" $preferences | Out-Null
+
+# Persist the operator's explicit professional-experience statement as current
+# reasoning context. Each track is a completed structured refresh of an existing
+# professional domain with at least 3 years of real-world experience; the refresh
+# does not invent additional years or specialist production depth.
+$aiContextExchange = Invoke-JoltJson "$ApiUrl/api/ai-context/export"
+$professionalRefresh = @{
+    schema_version = "1.0"
+    as_of = "2026-09-25"
+    source = "explicit_user_assertion"
+    professional_domain_refreshes = @(
+        @{ domain = "Application Support"; minimum_professional_years = 3; refresh_track = "N2 Application Support"; refresh_completed = $true },
+        @{ domain = "IT Operations"; minimum_professional_years = 3; refresh_track = "N2 IT Operations"; refresh_completed = $true },
+        @{ domain = "Automation"; minimum_professional_years = 3; refresh_track = "N2 Automation"; refresh_completed = $true },
+        @{ domain = "Modern Workplace"; minimum_professional_years = 3; refresh_track = "N2 Modern Workplace"; refresh_completed = $true },
+        @{ domain = "Cloud"; minimum_professional_years = 3; refresh_track = "N2 Cloud"; refresh_completed = $true },
+        @{ domain = "Cybersecurity"; minimum_professional_years = 3; refresh_track = "N2 Cybersecurity"; refresh_completed = $true }
+    )
+    interpretation = @(
+        "These completed tracks systematize and update existing real professional experience; they are not study-only evidence.",
+        "Treat the stated minimum years as professional-domain evidence and the completed tracks as recent structured/hands-on refresh evidence.",
+        "Do not infer extra years or unrelated specialist depth such as OpenEdge, IMS/SIP/Diameter, SAP functional consulting, Oracle DBA, or other specializations not supported by the candidate record."
+    )
+}
+
+$aiContextImport = @{
+    contract_type = "jolt_ai_exchange_output"
+    contract_version = "1.0"
+    exchange_id = $aiContextExchange.exchange_id
+    reviewed_at = (Get-Date).ToUniversalTime().ToString("o")
+    review_source = "chatgpt"
+    review_version = "jolt-explicit-professional-refresh-2026-09-25"
+    scope = $aiContextExchange.scope
+    feedback = @()
+    context_patch = @{ candidate_evidence_summary = $professionalRefresh }
+    summary = @{ source = "explicit_user_assertion" }
+}
+Invoke-JoltJson "$ApiUrl/api/ai-context/import" "POST" $aiContextImport | Out-Null
+
 Invoke-JoltJson "$ApiUrl/api/evaluations/refresh" "POST" | Out-Null
 
 $finalResponse = Invoke-JoltJson "$ApiUrl/api/linkedin-searches"
@@ -317,13 +393,16 @@ if ($core.Count -ne $portfolio.Count) {
 }
 
 Write-Host ""
-Write-Host "JOLT LinkedIn portfolio v2 configured." -ForegroundColor Green
+Write-Host "JOLT LinkedIn portfolio v3 configured." -ForegroundColor Green
 $results | Format-Table -AutoSize
 Write-Host ""
 Write-Host "Enabled production searches: $($core.Count)/$($portfolio.Count)"
-Write-Host "Remote layer: 7 refined searches"
+Write-Host "Remote layer: 10 refined/expanded EU searches"
 Write-Host "Local layer: 6 bilingual Greater Pontevedra searches (onsite + hybrid + remote)"
-Write-Host "Global layer: 4 Worldwide Remote searches for international/EOR/contractor opportunities"
+Write-Host "Global layer: 5 Worldwide Remote searches for international/EOR/contractor opportunities"
+Write-Host "Sampling: 50 jobs / up to 5 pages per search"
+Write-Host "Shift/on-call exclusions removed."
+Write-Host "Six professional-domain refresh tracks persisted as completed (3+ years real experience each)."
 Write-Host "Job-search preferences aligned and existing jobs re-evaluated."
 $core |
     Sort-Object label |
