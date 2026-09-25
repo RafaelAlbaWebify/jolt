@@ -17,16 +17,20 @@ describe("DataTools", () => {
 
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
 
-    const exportLink = screen.getByRole("link", { name: "Export AI work package" });
+    const exportLink = screen.getByRole("link", { name: "Export full JOLT AI work package" });
     expect(exportLink).toHaveAttribute(
       "href",
       "http://127.0.0.1:8000/api/ai-work-package/export",
     );
     expect(exportLink).toHaveAttribute("download", "JOLT_AI_WORK_PACKAGE.json");
+    expect(exportLink).toHaveAttribute(
+      "title",
+      expect.stringContaining("full AI context package"),
+    );
     expect(screen.getByLabelText("Import AI update")).toBeInTheDocument();
     expect(screen.getByText("Advanced / compatibility exports")).toBeInTheDocument();
     expect(
-      screen.getByText(/one JOLT work package, analyze it in ChatGPT/i),
+      screen.getByText(/For normal saved-search discovery, use the batch-specific AI review export/i),
     ).toBeInTheDocument();
     expect(screen.getByText("No import yet")).toBeInTheDocument();
   });
