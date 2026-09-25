@@ -109,3 +109,6 @@ def test_review_inbox_exchange_adds_reasoning_context_without_local_decisions(
         for step in instructions["post_review_self_audit"]
     )
     assert "after all per-job reviews" in instructions["aggregation_rule"]
+    assert "informational only" in instructions["schedule_rule"]
+    assert "minimum number of real-world years" in instructions["professional_refresh_rule"]
+    assert "Do not hard-reject merely because" in instructions["mandatory_experience_rule"]
