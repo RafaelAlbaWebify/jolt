@@ -16,7 +16,7 @@ function Invoke-JoltJson(
     }
     if ($null -ne $Body) {
         $params["ContentType"] = "application/json"
-        $params["Body"] = ($Body | ConvertTo-Json -Depth 8)
+        $params["Body"] = ($Body | ConvertTo-Json -Depth 12)
     }
 
     $response = Invoke-WebRequest @params
@@ -43,39 +43,119 @@ function Get-CanonicalKey([string]$Url) {
         ForEach-Object { "$($_.Name)=$($_.Value)" }) -join "&"
 }
 
+function New-LinkedInSearchUrl(
+    [string]$Keywords,
+    [string]$GeoId,
+    [bool]$RemoteOnly
+) {
+    $encodedKeywords = [System.Uri]::EscapeDataString($Keywords).Replace("%20", "+")
+    $workType = if ($RemoteOnly) { "&f_WT=2" } else { "" }
+    "https://www.linkedin.com/jobs/search/?f_TPR=r604800$workType&geoId=$GeoId&keywords=$encodedKeywords&sortBy=DD"
+}
+
 $health = Invoke-JoltJson "$ApiUrl/api/health"
 if ($null -eq $health) {
     throw "JOLT API is not reachable at $ApiUrl."
 }
 
+# Layer 1: cross-border remote. EMEA/Microsoft qualifiers reduce country-local and
+# unrelated specialist noise observed in the first real 175-item production batch.
 $portfolio = @(
     @{
         label = "Application Support Engineer - EU Remote"
-        keywords = "Application Support Engineer"
+        keywords = "Application Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Core remote search - EMEA/EU - past week - newest first."
     },
     @{
         label = "Technical Support Engineer - EU Remote"
-        keywords = "Technical Support Engineer"
+        keywords = "Technical Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Core remote search - EMEA/EU - past week - newest first."
     },
     @{
         label = "Production Support Engineer - EU Remote"
-        keywords = "Production Support Engineer"
+        keywords = "Production Support Engineer Windows EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Refined remote search - Windows/support bias - EMEA/EU - past week."
     },
     @{
         label = "IT Operations Engineer - EU Remote"
-        keywords = "IT Operations Engineer"
+        keywords = "IT Operations Engineer Microsoft 365 EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Refined remote search - Microsoft operations bias - EMEA/EU - past week."
     },
     @{
         label = "Microsoft 365 Support Engineer - EU Remote"
-        keywords = "Microsoft 365 Support Engineer"
+        keywords = "Microsoft 365 Support Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Core Microsoft 365 remote search - EMEA/EU - past week."
     },
     @{
         label = "Intune Engineer - EU Remote"
-        keywords = "Intune Engineer"
+        keywords = "Intune Endpoint Engineer EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Refined endpoint/Intune remote search - EMEA/EU - past week."
     },
     @{
         label = "System Administrator - EU Remote"
+        keywords = "Windows System Administrator EMEA"
+        geo_id = "91000000"
+        remote_only = $true
+        notes = "Refined Windows systems remote search - EMEA/EU - past week."
+    },
+
+    # Layer 2: Vigo / Greater Pontevedra. No workplace filter on purpose:
+    # local onsite, hybrid, and remote roles are all acceptable for discovery.
+    # English/Spanish pairs are intentional so real yield can determine whether
+    # both languages are worth retaining after the next production batch.
+    @{
+        label = "Application Support - Pontevedra Local EN"
+        keywords = "Application Support Engineer"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - English title."
+    },
+    @{
+        label = "Soporte de Aplicaciones - Pontevedra Local ES"
+        keywords = "Soporte de Aplicaciones"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - Spanish title."
+    },
+    @{
+        label = "IT Support - Pontevedra Local EN"
+        keywords = "IT Support Engineer"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - English title."
+    },
+    @{
+        label = "Soporte IT - Pontevedra Local ES"
+        keywords = "Técnico de Soporte IT"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - Spanish title."
+    },
+    @{
+        label = "System Administrator - Pontevedra Local EN"
         keywords = "System Administrator"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - English title."
+    },
+    @{
+        label = "Administrador de Sistemas - Pontevedra Local ES"
+        keywords = "Administrador de Sistemas"
+        geo_id = "90009802"
+        remote_only = $false
+        notes = "Local bilingual test - Greater Pontevedra - all workplace types - Spanish title."
     }
 )
 
@@ -85,27 +165,33 @@ if ($null -ne $existingResponse) {
     $existing = @($existingResponse)
 }
 
-$desiredKeys = @{}
+$desiredLabels = @{}
 $results = @()
 
 foreach ($definition in $portfolio) {
-    $encodedKeywords = [System.Uri]::EscapeDataString($definition.keywords).Replace("%20", "+")
-    $url = "https://www.linkedin.com/jobs/search/?f_TPR=r604800&f_WT=2&geoId=91000000&keywords=$encodedKeywords&sortBy=DD"
+    $desiredLabels[$definition.label] = $true
+    $url = New-LinkedInSearchUrl $definition.keywords $definition.geo_id $definition.remote_only
     $key = Get-CanonicalKey $url
-    $desiredKeys[$key] = $true
 
     $payload = @{
         label = $definition.label
         search_url = $url
-        notes = "Core production search - EU remote - past week - newest first."
+        notes = $definition.notes
         enabled = $true
         max_jobs = 25
         max_pages = 3
     }
 
+    # Preserve saved-search identity/history when refining an existing production
+    # search. Fall back to canonical URL for idempotent first-time setup.
     $match = $existing |
-        Where-Object { (Get-CanonicalKey ([string]$_.search_url)) -eq $key } |
+        Where-Object { $_.label -eq $definition.label } |
         Select-Object -First 1
+    if ($null -eq $match) {
+        $match = $existing |
+            Where-Object { (Get-CanonicalKey ([string]$_.search_url)) -eq $key } |
+            Select-Object -First 1
+    }
 
     if ($null -eq $match) {
         $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches" "POST" $payload
@@ -126,49 +212,85 @@ foreach ($definition in $portfolio) {
     }
 }
 
+# Acceptance-only searches remain as immutable history references but are retired
+# from the active portfolio and hidden from the normal list by the UI.
 foreach ($search in $existing) {
     if ($search.label -notlike "Acceptance - LinkedIn*") {
-        continue
-    }
-
-    $key = Get-CanonicalKey ([string]$search.search_url)
-    if ($desiredKeys.ContainsKey($key)) {
         continue
     }
 
     $payload = @{
         label = $search.label
         search_url = $search.search_url
-        notes = "Legacy acceptance search retained for discovery history; disabled after production portfolio setup."
+        notes = "Retired acceptance search retained only for discovery-history integrity."
         enabled = $false
         max_jobs = [int]$search.max_jobs
         max_pages = [int]$search.max_pages
     }
     $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$($search.id)" "POST" $payload
     $results += [pscustomobject]@{
-        action = "disabled"
+        action = "retired"
         label = $saved.label
         id = $saved.id
     }
 }
 
+# Keep user-owned classification preferences aligned with what the portfolio now
+# searches for. Preserve every existing preference and only extend the explicit
+# title/work-mode scope the operator requested.
+$preferences = Invoke-JoltJson "$ApiUrl/api/job-search-preferences"
+$targetTitles = @($preferences.target_titles)
+foreach ($title in @(
+    "System Administrator",
+    "Intune Engineer",
+    "IT Support Engineer",
+    "Administrador de Sistemas",
+    "Técnico de Soporte IT",
+    "Soporte de Aplicaciones"
+)) {
+    if ($title -notin $targetTitles) {
+        $targetTitles += $title
+    }
+}
+$preferences.target_titles = $targetTitles
+
+$workModes = @($preferences.preferred_work_modes)
+if ("onsite" -notin $workModes) {
+    $workModes += "onsite"
+}
+$preferences.preferred_work_modes = $workModes
+
+$localNote = "On-site roles are acceptable when they are in Vigo/Greater Pontevedra; remote and hybrid remain preferred outside the local area."
+if ([string]$preferences.notes -notlike "*On-site roles are acceptable when they are in Vigo/Greater Pontevedra*") {
+    $preferences.notes = ([string]$preferences.notes).Trim()
+    if ($preferences.notes) {
+        $preferences.notes += " "
+    }
+    $preferences.notes += $localNote
+}
+
+Invoke-JoltJson "$ApiUrl/api/job-search-preferences" "POST" $preferences | Out-Null
+Invoke-JoltJson "$ApiUrl/api/evaluations/refresh" "POST" | Out-Null
+
 $finalResponse = Invoke-JoltJson "$ApiUrl/api/linkedin-searches"
 $final = @($finalResponse)
 $core = @(
     $final |
-        Where-Object { $_.enabled -eq $true } |
-        Where-Object { $desiredKeys.ContainsKey((Get-CanonicalKey ([string]$_.search_url))) }
+        Where-Object { $_.enabled -eq $true -and $desiredLabels.ContainsKey([string]$_.label) }
 )
 
-if ($core.Count -ne 7) {
-    throw "Portfolio verification failed: expected 7 enabled core searches, found $($core.Count)."
+if ($core.Count -ne $portfolio.Count) {
+    throw "Portfolio verification failed: expected $($portfolio.Count) enabled production searches, found $($core.Count)."
 }
 
 Write-Host ""
-Write-Host "JOLT real LinkedIn portfolio configured." -ForegroundColor Green
+Write-Host "JOLT LinkedIn portfolio v2 configured." -ForegroundColor Green
 $results | Format-Table -AutoSize
 Write-Host ""
-Write-Host "Enabled core searches: $($core.Count)/7"
+Write-Host "Enabled production searches: $($core.Count)/$($portfolio.Count)"
+Write-Host "Remote layer: 7 refined searches"
+Write-Host "Local layer: 6 bilingual Greater Pontevedra searches (onsite + hybrid + remote)"
+Write-Host "Job-search preferences aligned and existing jobs re-evaluated."
 $core |
     Sort-Object label |
     Select-Object label, max_jobs, max_pages |
