@@ -51,7 +51,11 @@ function Invoke-VersionCommand {
     return ($output -join " ").Trim()
 }
 
-if (-not $IsWindows) {
+$isWindowsPlatform = (
+    $env:OS -eq "Windows_NT" -or
+    [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+)
+if (-not $isWindowsPlatform) {
     throw "JOLT's supported operator runtime is Windows x64. Current platform is not Windows."
 }
 
