@@ -365,16 +365,46 @@ $professionalRefresh = @{
     )
 }
 
+$existingCandidateSummary = @{}
+if ($null -ne $aiContextExchange.context.ai_context.candidate_evidence_summary) {
+    $existingCandidateSummary = (
+        $aiContextExchange.context.ai_context.candidate_evidence_summary |
+            ConvertTo-Json -Depth 20 |
+            ConvertFrom-Json -AsHashtable
+    )
+}
+$existingProfessionalSummary = @{}
+if ($null -ne $aiContextExchange.context.ai_context.professional_evidence_summary) {
+    $existingProfessionalSummary = (
+        $aiContextExchange.context.ai_context.professional_evidence_summary |
+            ConvertTo-Json -Depth 20 |
+            ConvertFrom-Json -AsHashtable
+    )
+}
+
+$existingCandidateSummary["professional_domain_refreshes"] = $professionalRefresh.professional_domain_refreshes
+$existingCandidateSummary["professional_refresh_interpretation"] = $professionalRefresh.interpretation
+$existingCandidateSummary["professional_refresh_as_of"] = $professionalRefresh.as_of
+$existingCandidateSummary["professional_refresh_source"] = $professionalRefresh.source
+
+$existingProfessionalSummary["professional_domain_refreshes"] = $professionalRefresh.professional_domain_refreshes
+$existingProfessionalSummary["professional_refresh_interpretation"] = $professionalRefresh.interpretation
+$existingProfessionalSummary["professional_refresh_as_of"] = $professionalRefresh.as_of
+$existingProfessionalSummary["professional_refresh_source"] = $professionalRefresh.source
+
 $aiContextImport = @{
     contract_type = "jolt_ai_exchange_output"
     contract_version = "1.0"
     exchange_id = $aiContextExchange.exchange_id
     reviewed_at = (Get-Date).ToUniversalTime().ToString("o")
     review_source = "chatgpt"
-    review_version = "jolt-explicit-professional-refresh-2026-09-25"
+    review_version = "jolt-explicit-professional-refresh-2026-09-25.2"
     scope = $aiContextExchange.scope
     feedback = @()
-    context_patch = @{ candidate_evidence_summary = $professionalRefresh }
+    context_patch = @{
+        candidate_evidence_summary = $existingCandidateSummary
+        professional_evidence_summary = $existingProfessionalSummary
+    }
     summary = @{ source = "explicit_user_assertion" }
 }
 Invoke-JoltJson "$ApiUrl/api/ai-context/import" "POST" $aiContextImport | Out-Null
