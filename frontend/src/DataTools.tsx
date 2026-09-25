@@ -168,12 +168,20 @@ export function DataTools({ apiBase, onImported }: Props) {
           <section aria-labelledby="ai-exchange-heading">
             <h2 id="ai-exchange-heading">AI exchange</h2>
             <p>
-              Export one JOLT work package, analyze it in ChatGPT, then import the single returned
-              update. The package includes current JOLT context and evidence while keeping human-owned
-              decisions and preferences protected.
+              Export the full JOLT context package when you want ChatGPT to update broader strategy or
+              intelligence. For normal saved-search discovery, use the batch-specific AI review export in
+              Capture Jobs instead. Human-owned decisions and preferences remain protected.
             </p>
             <ol>
-              <li><a href={`${apiBase}/api/ai-work-package/export`} download="JOLT_AI_WORK_PACKAGE.json"><strong>Export AI work package</strong></a></li>
+              <li>
+                <a
+                  href={`${apiBase}/api/ai-work-package/export`}
+                  download="JOLT_AI_WORK_PACKAGE.json"
+                  title="Export JOLT's full AI context package: preferences, evidence, market intelligence, and current Review Inbox state. Use the discovery-batch export in Capture Jobs for a normal multi-search review."
+                >
+                  <strong>Export full JOLT AI work package</strong>
+                </a>
+              </li>
               <li>
                 <label>
                   <strong>Import AI update</strong>
