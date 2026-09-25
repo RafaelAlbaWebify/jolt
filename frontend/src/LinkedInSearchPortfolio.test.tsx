@@ -135,3 +135,36 @@ describe("LinkedInSearchPortfolio", () => {
     await waitFor(() => expect(screen.getByText("Saved search updated.")).toBeInTheDocument());
   });
 });
+
+
+it("keeps retired searches out of the primary list and collapses search URLs", async () => {
+  const retiredSearch = {
+    id: "s3",
+    label: "Acceptance - LinkedIn IT Support",
+    search_url: "https://www.linkedin.com/jobs/search/?keywords=Acceptance",
+    notes: "Historical acceptance search",
+    enabled: false,
+    max_jobs: 25,
+    max_pages: 3,
+    created_at: "2026-09-23T00:00:00Z",
+    updated_at: "2026-09-23T00:00:00Z",
+  };
+
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify([...savedSearches, retiredSearch]), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: GET ${url}`);
+  });
+
+  render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
+
+  expect(await screen.findByText("LinkedIn IT Support")).toBeInTheDocument();
+  expect(screen.getByText("Retired searches (1)")).toBeInTheDocument();
+  expect(screen.getAllByText("Search URL")).toHaveLength(3);
+  expect(screen.queryByText("https://www.linkedin.com/jobs/search/?keywords=IT+Support")).not.toBeInTheDocument();
+});
