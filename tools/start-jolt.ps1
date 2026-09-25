@@ -9,6 +9,27 @@ param(
     [switch]$NoBrowser
 )
 
+# Windows PowerShell 5.1 does not provide the supported JOLT runtime. If the
+# operator launches this script from powershell.exe, transparently hand off to
+# PowerShell 7.4+ when pwsh is available instead of failing on runtime-only
+# automatic variables.
+if ($PSVersionTable.PSVersion -lt [version]'7.4.0') {
+    $pwsh = Get-Command pwsh.exe -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $pwsh) {
+        throw "PowerShell 7.4 or later is required. Install pwsh or launch JOLT from PowerShell 7. Current version: $($PSVersionTable.PSVersion)."
+    }
+
+    $forwarded = @("-NoProfile", "-File", $PSCommandPath)
+    if ($StartLinkedInCapture) { $forwarded += "-StartLinkedInCapture" }
+    if ($SearchUrl) { $forwarded += @("-SearchUrl", $SearchUrl) }
+    $forwarded += @("-MaxJobs", [string]$MaxJobs, "-MaxPages", [string]$MaxPages)
+    if ($NoBrowser) { $forwarded += "-NoBrowser" }
+
+    & $pwsh.Source @forwarded
+    exit $LASTEXITCODE
+}
+
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
