@@ -331,7 +331,7 @@ $preferences.preferred_shifts = @("business_hours", "flexible", "evening", "nigh
 $preferences.excluded_shifts = @()
 
 $localNote = "On-site roles are acceptable when they are in Vigo/Greater Pontevedra; remote and hybrid remain preferred outside the local area. Shift, weekend, maintenance-window and on-call patterns are acceptable and must not independently exclude a vacancy."
-if ([string]$preferences.notes -notlike "*On-site roles are acceptable when they are in Vigo/Greater Pontevedra*") {
+if ([string]$preferences.notes -notlike "*Shift, weekend, maintenance-window and on-call patterns are acceptable*") {
     $preferences.notes = ([string]$preferences.notes).Trim()
     if ($preferences.notes) {
         $preferences.notes += " "
