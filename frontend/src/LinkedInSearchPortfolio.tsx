@@ -153,9 +153,17 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     return () => window.clearInterval(interval);
   }, [active, apiBase, batch, loadSearches]);
 
+  const enabledSearches = useMemo(
+    () => searches.filter((item) => item.enabled),
+    [searches],
+  );
+  const retiredSearches = useMemo(
+    () => searches.filter((item) => !item.enabled),
+    [searches],
+  );
   const selectedSearches = useMemo(
-    () => searches.filter((item) => selectedIds.has(item.id) && item.enabled),
-    [searches, selectedIds],
+    () => enabledSearches.filter((item) => selectedIds.has(item.id)),
+    [enabledSearches, selectedIds],
   );
 
   function toggleSelected(id: string, checked: boolean) {
@@ -401,14 +409,14 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
 
       <div className="search-portfolio-toolbar">
         <div>
-          <strong>{selectedSearches.length}</strong> of {searches.filter((item) => item.enabled).length} enabled searches selected
+          <strong>{selectedSearches.length}</strong> of {enabledSearches.length} enabled searches selected
         </div>
         <div className="button-row">
           <button
             type="button"
             className="secondary"
-            disabled={busy || searches.every((item) => !item.enabled)}
-            onClick={() => setSelectedIds(new Set(searches.filter((item) => item.enabled).map((item) => item.id)))}
+            disabled={busy || enabledSearches.length === 0}
+            onClick={() => setSelectedIds(new Set(enabledSearches.map((item) => item.id)))}
           >
             Select enabled
           </button>
@@ -438,38 +446,76 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
           <p>Add your first LinkedIn job search URL, give it a useful name, then select it for discovery.</p>
         </div>
       ) : (
-        <div className="search-portfolio-list">
-          {searches.map((search) => (
-            <article className={`search-portfolio-row${search.enabled ? "" : " search-portfolio-row-disabled"}`} key={search.id}>
-              <label className="search-portfolio-check">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(search.id)}
-                  disabled={!search.enabled || busy || batchIsActive}
-                  onChange={(event) => toggleSelected(search.id, event.target.checked)}
-                  aria-label={`Select ${search.label}`}
-                />
-              </label>
-              <div className="search-portfolio-main">
-                <strong>{search.label}</strong>
-                <span>{search.enabled ? "Enabled" : "Disabled"} · {search.max_jobs} jobs · {search.max_pages} pages</span>
-                <a href={search.search_url} target="_blank" rel="noreferrer">{search.search_url}</a>
-                {search.notes && <p>{search.notes}</p>}
-              </div>
-              <details className="search-row-menu">
-                <summary aria-label={`Actions for ${search.label}`}>⋯</summary>
-                <div>
-                  <button type="button" className="secondary" onClick={() => beginEdit(search)} disabled={busy || batchIsActive}>
-                    Edit
-                  </button>
-                  <button type="button" className="danger" onClick={() => void deleteSearch(search)} disabled={busy || batchIsActive}>
-                    Delete
-                  </button>
+        <>
+          <div className="search-portfolio-list">
+            {enabledSearches.map((search) => (
+              <article className="search-portfolio-row" key={search.id}>
+                <label className="search-portfolio-check">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(search.id)}
+                    disabled={busy || batchIsActive}
+                    onChange={(event) => toggleSelected(search.id, event.target.checked)}
+                    aria-label={`Select ${search.label}`}
+                  />
+                </label>
+                <div className="search-portfolio-main">
+                  <strong>{search.label}</strong>
+                  <span>Enabled · {search.max_jobs} jobs · {search.max_pages} pages</span>
+                  <details className="search-url-details">
+                    <summary>Search URL</summary>
+                    <a href={search.search_url} target="_blank" rel="noreferrer">Open LinkedIn search</a>
+                  </details>
+                  {search.notes && <p>{search.notes}</p>}
                 </div>
-              </details>
-            </article>
-          ))}
-        </div>
+                <details className="search-row-menu">
+                  <summary aria-label={`Actions for ${search.label}`}>⋯</summary>
+                  <div>
+                    <button type="button" className="secondary" onClick={() => beginEdit(search)} disabled={busy || batchIsActive}>
+                      Edit
+                    </button>
+                    <button type="button" className="danger" onClick={() => void deleteSearch(search)} disabled={busy || batchIsActive}>
+                      Delete
+                    </button>
+                  </div>
+                </details>
+              </article>
+            ))}
+          </div>
+
+          {retiredSearches.length > 0 && (
+            <details className="retired-searches">
+              <summary>Retired searches ({retiredSearches.length})</summary>
+              <p>Kept only to preserve discovery history. They are excluded from normal discovery.</p>
+              <div className="search-portfolio-list">
+                {retiredSearches.map((search) => (
+                  <article className="search-portfolio-row search-portfolio-row-disabled" key={search.id}>
+                    <div className="search-portfolio-main search-portfolio-retired-main">
+                      <strong>{search.label}</strong>
+                      <span>Retired · {search.max_jobs} jobs · {search.max_pages} pages</span>
+                      <details className="search-url-details">
+                        <summary>Search URL</summary>
+                        <a href={search.search_url} target="_blank" rel="noreferrer">Open LinkedIn search</a>
+                      </details>
+                      {search.notes && <p>{search.notes}</p>}
+                    </div>
+                    <details className="search-row-menu">
+                      <summary aria-label={`Actions for ${search.label}`}>⋯</summary>
+                      <div>
+                        <button type="button" className="secondary" onClick={() => beginEdit(search)} disabled={busy || batchIsActive}>
+                          Edit
+                        </button>
+                        <button type="button" className="danger" onClick={() => void deleteSearch(search)} disabled={busy || batchIsActive}>
+                          Delete
+                        </button>
+                      </div>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            </details>
+          )}
+        </>
       )}
 
       {batch && (
@@ -511,8 +557,9 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 href={`${apiBase}/api/linkedin-discovery-batches/${batch.id}/ai-review-exchange`}
                 target="_blank"
                 rel="noreferrer"
+                title="Download only the new, deduplicated jobs from this discovery batch for ChatGPT review."
               >
-                Download one AI review exchange
+                Download this discovery batch for AI review
               </a>
               <label className="batch-review-import">
                 Import returned AI review
