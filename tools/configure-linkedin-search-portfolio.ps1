@@ -156,6 +156,39 @@ $portfolio = @(
         geo_id = "90009802"
         remote_only = $false
         notes = "Local bilingual test - Greater Pontevedra - all workplace types - Spanish title."
+    },
+
+    # Layer 3: global remote / US-company opportunity capture. These searches are
+    # intentionally broad on geography; JOLT Stage 1 must reject US-only,
+    # residency-restricted, or work-authorization-restricted vacancies and keep
+    # only roles that explicitly support Spain/EMEA/worldwide/EOR/contractor hiring.
+    @{
+        label = "Technical Support Engineer - Worldwide Remote"
+        keywords = "Technical Support Engineer"
+        geo_id = "92000000"
+        remote_only = $true
+        notes = "Global remote search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
+    },
+    @{
+        label = "Application Support Engineer - Worldwide Remote"
+        keywords = "Application Support Engineer"
+        geo_id = "92000000"
+        remote_only = $true
+        notes = "Global remote search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
+    },
+    @{
+        label = "IT Operations Engineer - Worldwide Remote"
+        keywords = "IT Operations Engineer"
+        geo_id = "92000000"
+        remote_only = $true
+        notes = "Global remote search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
+    },
+    @{
+        label = "System Administrator - Worldwide Remote"
+        keywords = "System Administrator"
+        geo_id = "92000000"
+        remote_only = $true
+        notes = "Global remote search - retain only explicit worldwide/Spain/EMEA/EOR/contractor eligibility."
     }
 )
 
@@ -290,6 +323,7 @@ Write-Host ""
 Write-Host "Enabled production searches: $($core.Count)/$($portfolio.Count)"
 Write-Host "Remote layer: 7 refined searches"
 Write-Host "Local layer: 6 bilingual Greater Pontevedra searches (onsite + hybrid + remote)"
+Write-Host "Global layer: 4 Worldwide Remote searches for international/EOR/contractor opportunities"
 Write-Host "Job-search preferences aligned and existing jobs re-evaluated."
 $core |
     Sort-Object label |
