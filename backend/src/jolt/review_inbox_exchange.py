@@ -44,7 +44,7 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
         "per_job_stage_1_order": [
             "location and hiring territory",
             "employment and work-authorization constraints",
-            "onsite, commute, travel, field, shift, weekend, or on-call constraints",
+            "onsite, commute, travel, and field constraints",
             "mandatory language requirements",
             "mandatory certification or clearance requirements",
             "mandatory experience and other explicit non-negotiables",
@@ -73,10 +73,24 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
             "Remote is not global remote. Explicit US-only, US Remote, anywhere-in-US, residency, "
             "work-authorization, E-Verify, or state restrictions override a generic Remote label."
         ),
+        "schedule_rule": (
+            "Shift pattern, night work, weekends, maintenance windows, and on-call participation are "
+            "informational only unless the current user-owned preferences explicitly exclude them. "
+            "They must not independently cause Stage 1 rejection when excluded_shifts is empty."
+        ),
+        "professional_refresh_rule": (
+            "Explicit user-owned/AI-context professional-domain refresh records may state that a completed "
+            "training track systematizes and refreshes an already-existing professional domain with a stated "
+            "minimum number of real-world years. Treat the stated years as professional evidence for the "
+            "domain, and the completed track as recent structured/hands-on refresh evidence. Do not invent "
+            "additional years or specialist production depth beyond the stated domain."
+        ),
         "mandatory_experience_rule": (
-            "Classify required vs preferred vs nice-to-have. Adjacent work, study, labs, or projects "
-            "must not be upgraded to direct production experience. Material unmet required experience "
-            "can be a hardline reject."
+            "Classify required vs preferred vs nice-to-have. Do not hard-reject merely because a required "
+            "technology is not named verbatim in one profile capture when current context contains direct "
+            "professional-domain evidence plus a completed refresh. Reserve mandatory-experience hard rejects "
+            "for materially different specializations or explicit deep/specialist production requirements "
+            "that the candidate evidence does not support."
         ),
         "stage_2_fit": (
             "Only when Stage 1 PASS, evaluate direct verified, adjacent/transferable, project/lab/study, "
