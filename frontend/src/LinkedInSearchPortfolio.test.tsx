@@ -168,3 +168,127 @@ it("keeps retired searches out of the primary list and collapses search URLs", a
   expect(screen.getAllByText("Search URL")).toHaveLength(3);
   expect(screen.queryByText("https://www.linkedin.com/jobs/search/?keywords=IT+Support")).not.toBeInTheDocument();
 });
+
+
+it("keeps critical discovery controls visible when search and batch lists are long", async () => {
+  const manySearches = Array.from({ length: 21 }, (_, index) => ({
+    id: `s${index + 1}`,
+    label: `Saved search ${index + 1}`,
+    search_url: `https://www.linkedin.com/jobs/search/?keywords=Search+${index + 1}`,
+    notes: "",
+    enabled: true,
+    max_jobs: 50,
+    max_pages: 5,
+    created_at: "2026-09-25T00:00:00Z",
+    updated_at: "2026-09-25T00:00:00Z",
+  }));
+
+  const batchSearches = manySearches.map((search, index) => ({
+    id: `bs${index + 1}`,
+    saved_search_id: search.id,
+    position: index + 1,
+    label: search.label,
+    search_url: search.search_url,
+    max_jobs: 50,
+    max_pages: 5,
+    status: "completed",
+    capture_run_id: `c${index + 1}`,
+    captured_count: 50,
+    verified_count: 50,
+    new_posting_count: 10,
+    duplicate_count: 40,
+    error: "",
+    started_at: "2026-09-25T00:00:00Z",
+    completed_at: "2026-09-25T01:00:00Z",
+  }));
+
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify(manySearches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([{
+        id: "b-long",
+        status: "completed",
+        selected_search_count: 21,
+        completed_search_count: 21,
+        failed_search_count: 0,
+        captured_count: 1050,
+        verified_count: 1050,
+        new_posting_count: 210,
+        duplicate_count: 840,
+        started_at: "2026-09-25T00:00:00Z",
+        completed_at: "2026-09-25T01:00:00Z",
+        created_at: "2026-09-25T00:00:00Z",
+        searches: batchSearches,
+      }]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: GET ${url}`);
+  });
+
+  const { container } = render(
+    <LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />,
+  );
+
+  expect(await screen.findByText("Saved searches (21)")).toBeInTheDocument();
+  expect(screen.getByText("Download this discovery batch for AI review")).toBeInTheDocument();
+  expect(screen.getByText("Import returned AI review")).toBeInTheDocument();
+
+  const activeDetails = container.querySelector(".active-searches-details");
+  const batchDetails = container.querySelector(".batch-search-details");
+  expect(activeDetails).not.toHaveAttribute("open");
+  expect(batchDetails).not.toHaveAttribute("open");
+});
+
+it("keeps live batch progress expanded while discovery is running", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify(savedSearches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([{
+        id: "b-live",
+        status: "running",
+        selected_search_count: 2,
+        completed_search_count: 1,
+        failed_search_count: 0,
+        captured_count: 50,
+        verified_count: 50,
+        new_posting_count: 20,
+        duplicate_count: 30,
+        started_at: "2026-09-25T00:00:00Z",
+        completed_at: null,
+        created_at: "2026-09-25T00:00:00Z",
+        searches: [],
+      }]), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches/b-live")) {
+      return new Response(JSON.stringify({
+        id: "b-live",
+        status: "running",
+        selected_search_count: 2,
+        completed_search_count: 1,
+        failed_search_count: 0,
+        captured_count: 50,
+        verified_count: 50,
+        new_posting_count: 20,
+        duplicate_count: 30,
+        started_at: "2026-09-25T00:00:00Z",
+        completed_at: null,
+        created_at: "2026-09-25T00:00:00Z",
+        searches: [],
+      }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: GET ${url}`);
+  });
+
+  const { container, unmount } = render(
+    <LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />,
+  );
+
+  expect(await screen.findByText("Search-by-search details (0)")).toBeInTheDocument();
+  expect(container.querySelector(".batch-search-details")).toHaveAttribute("open");
+  unmount();
+});
