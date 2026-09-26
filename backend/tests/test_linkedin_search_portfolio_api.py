@@ -255,9 +255,7 @@ def test_backend_restart_recovers_stale_active_discovery_batch(tmp_path: Path) -
     assert batch["status"] == "queued"
 
     restarted = TestClient(create_app(database_url))
-    recovered = restarted.get(
-        f"/api/linkedin-discovery-batches/{batch['id']}"
-    )
+    recovered = restarted.get(f"/api/linkedin-discovery-batches/{batch['id']}")
 
     assert recovered.status_code == 200
     payload = recovered.json()
