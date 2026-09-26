@@ -318,9 +318,10 @@ def _response_template(batch_id: str) -> dict[str, object]:
 def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str, object]:
     review_items = materialize_batch_review_set(session, batch_id)
     all_items = _batch_items(session, batch_id)
-    unique_posting_ids = {item.posting_id for item in all_items if item.posting_id is not None}
-
+    current_posting_ids = {item.posting_id for item in all_items if item.posting_id is not None}
     posting_ids = [item.posting_id for item in review_items]
+    review_posting_ids = set(posting_ids)
+    candidate_posting_ids = current_posting_ids | review_posting_ids
     postings = (
         {
             posting.id: posting
@@ -403,8 +404,8 @@ def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str,
         "jolt_scores_included": False,
         "counts": {
             "raw_capture_items": len(all_items),
-            "unique_canonical_postings": len(unique_posting_ids),
-            "already_reviewed_excluded": len(unique_posting_ids) - len(review_items),
+            "unique_canonical_postings": len(candidate_posting_ids),
+            "already_reviewed_excluded": len(candidate_posting_ids) - len(review_items),
             "review_set": len(review_items),
         },
         "jobs": jobs,
