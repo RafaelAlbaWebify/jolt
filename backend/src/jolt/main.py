@@ -67,6 +67,7 @@ from jolt.linkedin_playwright_capture import (
     run_linkedin_playwright_batch_capture,
     run_linkedin_playwright_capture,
 )
+from jolt.linkedin_discovery_batch import recover_interrupted_discovery_batches
 from jolt.linkedin_search_portfolio_api import build_linkedin_search_portfolio_router
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence import build_market_intelligence
@@ -134,6 +135,13 @@ def create_app(database_url: str | None = None) -> FastAPI:
         allow_headers=["Content-Type"],
     )
     session_factory = create_session_factory(database_url)
+
+    # Discovery batches run as in-memory background tasks. If the backend or PC
+    # stops mid-batch, persisted scheduled/running rows would otherwise remain
+    # permanently active and block the next discovery. Reconcile that stale
+    # runtime state immediately when the backend process starts.
+    with session_factory() as recovery_session:
+        recover_interrupted_discovery_batches(recovery_session)
 
     def get_session() -> Iterator[Session]:
         session = session_factory()
