@@ -103,7 +103,7 @@ def schedule_discovery_batch(session: Session, batch_id: str) -> None:
         select(LinkedInDiscoveryBatch.id)
         .where(
             LinkedInDiscoveryBatch.id != batch_id,
-            LinkedInDiscoveryBatch.status.in_(("scheduled", "running")),
+            LinkedInDiscoveryBatch.status.in_(("queued", "scheduled", "running")),
         )
         .limit(1)
     )
@@ -132,6 +132,43 @@ def mark_discovery_batch_background_failure(
             search.error = f"Discovery batch background failure: {error}"
             search.completed_at = utc_now()
     session.commit()
+
+
+def recover_interrupted_discovery_batches(session: Session) -> int:
+    """Close non-terminal batches whose UI/background execution vanished on process restart."""
+    batches = list(
+        session.scalars(
+            select(LinkedInDiscoveryBatch).where(
+                LinkedInDiscoveryBatch.status.in_(("scheduled", "running"))
+            )
+        ).all()
+    )
+    if not batches:
+        return 0
+
+    now = utc_now()
+    reason = (
+        "Discovery interrupted because the JOLT backend stopped or restarted before "
+        "the batch finished. Completed search captures were preserved; unfinished "
+        "searches can be run again in a new discovery batch."
+    )
+
+    for batch in batches:
+        batch.status = "failed"
+        batch.completed_at = now
+
+        for search in _batch_searches(session, batch.id):
+            if search.status == "running":
+                search.status = "failed"
+                search.error = reason
+                search.completed_at = now
+            elif search.status == "queued":
+                search.status = "skipped"
+                search.error = reason
+                search.completed_at = now
+
+    session.commit()
+    return len(batches)
 
 
 def execute_discovery_batch(
