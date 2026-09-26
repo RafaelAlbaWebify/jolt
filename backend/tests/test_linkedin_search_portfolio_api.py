@@ -250,16 +250,9 @@ def test_backend_restart_recovers_stale_active_discovery_batch(tmp_path: Path) -
         json={"saved_search_ids": [search["id"]]},
     ).json()
 
-    from jolt.database import LinkedInDiscoveryBatch, create_session_factory
-    from jolt.linkedin_discovery_batch import schedule_discovery_batch
-
-    factory = create_session_factory(database_url)
-    with factory() as session:
-        schedule_discovery_batch(session, batch["id"])
-        stored = session.get(LinkedInDiscoveryBatch, batch["id"])
-        assert stored is not None
-        stored.status = "running"
-        session.commit()
+    # Simulate the exact interrupted UI state: the batch row was created,
+    # but Windows/backend stopped before /start could schedule its worker.
+    assert batch["status"] == "queued"
 
     restarted = TestClient(create_app(database_url))
     recovered = restarted.get(
