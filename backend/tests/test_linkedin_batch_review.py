@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -288,5 +288,121 @@ def test_batch_review_import_requires_exact_frozen_set(tmp_path: Path) -> None:
         retry = import_batch_ai_review(session, complete)
         assert retry.created_count == 0
         assert retry.updated_count == 2
+    finally:
+        session.close()
+
+
+def test_batch_review_recovers_verified_posting_from_earlier_failed_batch(
+    tmp_path: Path,
+) -> None:
+    factory = _factory(tmp_path)
+    session = factory()
+    try:
+        batch_id = _seed_completed_batch(session)
+        good_batch = session.get(LinkedInDiscoveryBatch, batch_id)
+        assert good_batch is not None
+        earlier = good_batch.created_at - timedelta(hours=1)
+
+        failed_batch = LinkedInDiscoveryBatch(
+            id="failed-batch",
+            status="failed",
+            selected_search_count=1,
+            started_at=earlier,
+            completed_at=earlier,
+            created_at=earlier,
+        )
+        failed_capture = CaptureRun(
+            id="failed-capture",
+            source="linkedin",
+            mode="live",
+            status="completed",
+            search_url="https://www.linkedin.com/jobs/search/?keywords=Orphan",
+            warnings_json="[]",
+            requested_item_limit=100,
+            observed_item_count=1,
+            stop_reason="error",
+            started_at=earlier,
+            completed_at=earlier,
+        )
+        source = SourceDocument(
+            id="orphan-source",
+            source_type="linkedin",
+            source_url="https://www.linkedin.com/jobs/view/orphan/",
+            raw_text="Verified orphan vacancy evidence",
+            content_hash="a" * 64,
+            captured_at=earlier,
+        )
+        posting = Posting(
+            id="orphan-posting",
+            source_document_id=source.id,
+            canonical_url=source.source_url,
+            identity_key="linkedin:orphan",
+            title="Orphan Support Engineer",
+            company="Example Corp",
+            location="Spain",
+            description="Orphan description",
+            identity_status="canonical",
+            created_at=earlier,
+        )
+        session.add_all([failed_batch, failed_capture, source, posting])
+        session.flush()
+        session.add(
+            LinkedInDiscoveryBatchSearch(
+                id="failed-search",
+                batch_id=failed_batch.id,
+                saved_search_id="search-1",
+                position=1,
+                label_snapshot="Failed search",
+                search_url_snapshot=failed_capture.search_url,
+                max_jobs_snapshot=100,
+                max_pages_snapshot=10,
+                status="completed",
+                capture_run_id=failed_capture.id,
+                captured_count=1,
+                verified_count=1,
+                new_posting_count=1,
+                duplicate_count=0,
+                error="",
+                started_at=earlier,
+                completed_at=earlier,
+            )
+        )
+        session.add(
+            CaptureItem(
+                id="orphan-item",
+                capture_run_id=failed_capture.id,
+                source_job_id="orphan-job",
+                source_url=source.source_url,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                detail_status="verified",
+                verification_reasons_json="[]",
+                source_document_id=source.id,
+                posting_id=posting.id,
+            )
+        )
+        session.commit()
+
+        document = build_batch_ai_review_document(session, batch_id)
+        jobs = document["jobs"]
+        assert isinstance(jobs, list)
+        assert {job["posting_id"] for job in jobs} == {
+            "posting-1",
+            "posting-2",
+            "orphan-posting",
+        }
+        assert document["counts"] == {
+            "raw_capture_items": 3,
+            "unique_canonical_postings": 3,
+            "already_reviewed_excluded": 0,
+            "review_set": 3,
+        }
+
+        # The set is frozen after first materialization.
+        second = build_batch_ai_review_document(session, batch_id)
+        assert [job["posting_id"] for job in second["jobs"]] == [
+            job["posting_id"] for job in jobs
+        ]
     finally:
         session.close()
