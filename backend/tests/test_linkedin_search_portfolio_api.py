@@ -234,3 +234,46 @@ def test_only_one_discovery_batch_can_be_active(
     second_start = client.post(f"/api/linkedin-discovery-batches/{batch_two['id']}/start")
     assert second_start.status_code == 409
     assert "already active" in second_start.json()["detail"]
+
+
+def test_backend_restart_recovers_stale_active_discovery_batch(tmp_path: Path) -> None:
+    database = tmp_path / "restart-recovery.db"
+    database_url = f"sqlite:///{database.as_posix()}"
+    client = TestClient(create_app(database_url))
+
+    search = client.post(
+        "/api/linkedin-searches",
+        json=_search_payload(),
+    ).json()
+    batch = client.post(
+        "/api/linkedin-discovery-batches",
+        json={"saved_search_ids": [search["id"]]},
+    ).json()
+
+    from jolt.database import LinkedInDiscoveryBatch, create_session_factory
+    from jolt.linkedin_discovery_batch import schedule_discovery_batch
+
+    factory = create_session_factory(database_url)
+    with factory() as session:
+        schedule_discovery_batch(session, batch["id"])
+        stored = session.get(LinkedInDiscoveryBatch, batch["id"])
+        assert stored is not None
+        stored.status = "running"
+        session.commit()
+
+    restarted = TestClient(create_app(database_url))
+    recovered = restarted.get(
+        f"/api/linkedin-discovery-batches/{batch['id']}"
+    )
+
+    assert recovered.status_code == 200
+    payload = recovered.json()
+    assert payload["status"] == "failed"
+    assert payload["searches"][0]["status"] == "skipped"
+    assert "interrupted" in payload["searches"][0]["error"].lower()
+
+    next_batch = restarted.post(
+        "/api/linkedin-discovery-batches",
+        json={"saved_search_ids": [search["id"]]},
+    )
+    assert next_batch.status_code == 200
