@@ -10,7 +10,11 @@ import pytest
 
 from jolt import linkedin_discovery_batch
 from jolt.database import CaptureRun, create_session_factory, session_scope, utc_now
-from jolt.linkedin_discovery_batch import execute_discovery_batch, schedule_discovery_batch
+from jolt.linkedin_discovery_batch import (
+    execute_discovery_batch,
+    recover_interrupted_discovery_batches,
+    schedule_discovery_batch,
+)
 from jolt.linkedin_search_portfolio import (
     DiscoveryBatchCreateRequest,
     SavedLinkedInSearchRequest,
@@ -279,3 +283,72 @@ def test_browser_start_failure_marks_batch_and_searches_terminal(
     assert result.status == "failed"
     assert all(search.status == "skipped" for search in result.searches)
     assert all("background failure" in search.error for search in result.searches)
+
+
+def test_recover_interrupted_discovery_preserves_completed_searches_and_closes_batch(
+    tmp_path: Path,
+) -> None:
+    factory = _factory(tmp_path)
+
+    with _session(factory) as session:
+        first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
+        second = _saved_search(
+            session,
+            "LinkedIn Application Support Engineer",
+            "Application%20Support%20Engineer",
+        )
+        batch = create_discovery_batch(
+            session,
+            DiscoveryBatchCreateRequest(saved_search_ids=[first.id, second.id]),
+        )
+        schedule_discovery_batch(session, batch.id)
+
+        stored = session.get(linkedin_discovery_batch.LinkedInDiscoveryBatch, batch.id)
+        assert stored is not None
+        stored.status = "running"
+        searches = linkedin_discovery_batch._batch_searches(session, batch.id)
+        searches[0].status = "completed"
+        searches[0].capture_run_id = _capture_run(session, first.search_url)
+        searches[0].captured_count = 2
+        searches[0].verified_count = 2
+        searches[0].new_posting_count = 2
+        searches[0].duplicate_count = 0
+        searches[0].completed_at = utc_now()
+        searches[1].status = "running"
+        searches[1].started_at = utc_now()
+        session.commit()
+
+    with _session(factory) as session:
+        recovered = recover_interrupted_discovery_batches(session)
+        result = get_discovery_batch(session, batch.id)
+
+    assert recovered == 1
+    assert result.status == "failed"
+    assert result.completed_search_count == 1
+    assert result.failed_search_count == 1
+    assert result.searches[0].status == "completed"
+    assert result.searches[1].status == "failed"
+    assert "interrupted" in result.searches[1].error.lower()
+
+
+def test_recover_interrupted_discovery_marks_queued_searches_skipped(
+    tmp_path: Path,
+) -> None:
+    factory = _factory(tmp_path)
+
+    with _session(factory) as session:
+        first = _saved_search(session, "LinkedIn IT Support", "IT%20Support")
+        batch = create_discovery_batch(
+            session,
+            DiscoveryBatchCreateRequest(saved_search_ids=[first.id]),
+        )
+        schedule_discovery_batch(session, batch.id)
+
+    with _session(factory) as session:
+        recovered = recover_interrupted_discovery_batches(session)
+        result = get_discovery_batch(session, batch.id)
+
+    assert recovered == 1
+    assert result.status == "failed"
+    assert result.searches[0].status == "skipped"
+    assert "interrupted" in result.searches[0].error.lower()
