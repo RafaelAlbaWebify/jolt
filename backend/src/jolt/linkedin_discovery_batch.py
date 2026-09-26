@@ -103,7 +103,7 @@ def schedule_discovery_batch(session: Session, batch_id: str) -> None:
         select(LinkedInDiscoveryBatch.id)
         .where(
             LinkedInDiscoveryBatch.id != batch_id,
-            LinkedInDiscoveryBatch.status.in_(("scheduled", "running")),
+            LinkedInDiscoveryBatch.status.in_(("queued", "scheduled", "running")),
         )
         .limit(1)
     )
@@ -135,7 +135,7 @@ def mark_discovery_batch_background_failure(
 
 
 def recover_interrupted_discovery_batches(session: Session) -> int:
-    """Close batches whose in-memory background task vanished on process restart."""
+    """Close non-terminal batches whose UI/background execution vanished on process restart."""
     batches = list(
         session.scalars(
             select(LinkedInDiscoveryBatch).where(
