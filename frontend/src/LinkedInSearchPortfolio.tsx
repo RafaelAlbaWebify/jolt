@@ -447,7 +447,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         </div>
       ) : (
         <>
-          <div className="search-portfolio-list">
+          <details className="active-searches-details" open={enabledSearches.length <= 8}>
+            <summary>
+              Saved searches ({enabledSearches.length})
+              <span>Manage names, URLs, limits, and individual search settings</span>
+            </summary>
+            <div className="search-portfolio-list">
             {enabledSearches.map((search) => (
               <article className="search-portfolio-row" key={search.id}>
                 <label className="search-portfolio-check">
@@ -481,7 +486,8 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 </details>
               </article>
             ))}
-          </div>
+            </div>
+          </details>
 
           {retiredSearches.length > 0 && (
             <details className="retired-searches">
@@ -534,24 +540,8 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
             </button>
           </div>
 
-          <div className="discovery-progress-list">
-            {batch.searches.map((search) => (
-              <article key={search.id}>
-                <div>
-                  <strong>{search.position}. {search.label}</strong>
-                  <span>{statusLabel(search.status)}</span>
-                </div>
-                <p>
-                  {search.captured_count} captured · {search.verified_count} verified · {search.new_posting_count} new ·{" "}
-                  {search.duplicate_count} known
-                </p>
-                {search.error && <p className="error">{search.error}</p>}
-              </article>
-            ))}
-          </div>
-
           {canExportReview && (
-            <div className="batch-review-actions">
+            <div className="batch-review-actions batch-review-actions-prominent">
               <a
                 className="primary-link"
                 href={`${apiBase}/api/linkedin-discovery-batches/${batch.id}/ai-review-exchange`}
@@ -576,6 +566,28 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               </label>
             </div>
           )}
+
+          <details className="batch-search-details" open={batchIsActive}>
+            <summary>
+              Search-by-search details ({batch.searches.length})
+              <span>{batchIsActive ? "Live progress" : "Expand to inspect individual captures"}</span>
+            </summary>
+            <div className="discovery-progress-list">
+              {batch.searches.map((search) => (
+                <article key={search.id}>
+                  <div>
+                    <strong>{search.position}. {search.label}</strong>
+                    <span>{statusLabel(search.status)}</span>
+                  </div>
+                  <p>
+                    {search.captured_count} captured · {search.verified_count} verified · {search.new_posting_count} new ·{" "}
+                    {search.duplicate_count} known
+                  </p>
+                  {search.error && <p className="error">{search.error}</p>}
+                </article>
+              ))}
+            </div>
+          </details>
         </section>
       )}
     </section>
