@@ -12,6 +12,7 @@ from jolt.database import (
     LinkedInDiscoveryBatchSearch,
     LinkedInSavedSearch,
     Posting,
+    ReviewDecision,
     SourceDocument,
     create_session_factory,
 )
@@ -404,5 +405,39 @@ def test_batch_review_recovers_verified_posting_from_earlier_failed_batch(
         assert [job["posting_id"] for job in second["jobs"]] == [
             job["posting_id"] for job in jobs
         ]
+    finally:
+        session.close()
+
+
+def test_batch_review_excludes_postings_with_human_decisions(tmp_path: Path) -> None:
+    factory = _factory(tmp_path)
+    session = factory()
+    try:
+        batch_id = _seed_completed_batch(session)
+        session.add(
+            ReviewDecision(
+                id="human-decision",
+                posting_id="posting-1",
+                evaluation_id=None,
+                ai_review_id=None,
+                decision="reject",
+                reason_code="human",
+                notes="Human state must be protected from AI review export.",
+                evaluation_overridden=False,
+                reviewed_at=_now(),
+            )
+        )
+        session.commit()
+
+        document = build_batch_ai_review_document(session, batch_id)
+        jobs = document["jobs"]
+        assert isinstance(jobs, list)
+        assert [job["posting_id"] for job in jobs] == ["posting-2"]
+        assert document["counts"] == {
+            "raw_capture_items": 3,
+            "unique_canonical_postings": 2,
+            "already_reviewed_excluded": 1,
+            "review_set": 1,
+        }
     finally:
         session.close()
