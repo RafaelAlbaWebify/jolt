@@ -26,6 +26,7 @@ from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequ
 from jolt.supervised_capture import (
     CapturedCard,
     extract_job_id,
+    extract_listing_metadata,
     package_run,
     redact_text,
     safe_text,
@@ -418,6 +419,9 @@ def capture_page_cards(
         with contextlib.suppress(TimeoutError):
             card.scroll_into_view_if_needed(timeout=2_000)
 
+        listing_text = safe_text(card)
+        promoted, posted_age_text = extract_listing_metadata(listing_text)
+        result_position = len(seen) + 1
         virtualized_title = _virtualized_card_title(card)
 
         if virtualized_title:
@@ -533,6 +537,11 @@ def capture_page_cards(
                     description,
                     verified,
                     reason,
+                    result_position=result_position,
+                    page_number=page_number,
+                    card_index=index,
+                    promoted=promoted,
+                    posted_age_text=posted_age_text,
                 )
             )
             continue
@@ -595,6 +604,11 @@ def capture_page_cards(
                     "",
                     False,
                     "Listing click timed out after one retry.",
+                    result_position=result_position,
+                    page_number=page_number,
+                    card_index=index,
+                    promoted=promoted,
+                    posted_age_text=posted_age_text,
                 )
             )
             continue
@@ -621,6 +635,11 @@ def capture_page_cards(
                 description,
                 verified,
                 reason,
+                result_position=result_position,
+                page_number=page_number,
+                card_index=index,
+                promoted=promoted,
+                posted_age_text=posted_age_text,
             )
         )
     return captured

@@ -177,9 +177,7 @@ def materialize_batch_review_set(
             .order_by(LinkedInDiscoveryBatch.created_at.asc(), CaptureItem.id.asc())
         ).all()
     )
-    orphan_posting_ids = {
-        item.posting_id for item in orphan_items if item.posting_id is not None
-    }
+    orphan_posting_ids = {item.posting_id for item in orphan_items if item.posting_id is not None}
     candidate_posting_ids = posting_ids | orphan_posting_ids
 
     reviewed_posting_ids = set(
@@ -196,14 +194,10 @@ def materialize_batch_review_set(
     )
     applied_posting_ids = set(
         session.scalars(
-            select(Application.posting_id).where(
-                Application.posting_id.in_(candidate_posting_ids)
-            )
+            select(Application.posting_id).where(Application.posting_id.in_(candidate_posting_ids))
         ).all()
     )
-    excluded_posting_ids = (
-        reviewed_posting_ids | human_decided_posting_ids | applied_posting_ids
-    )
+    excluded_posting_ids = reviewed_posting_ids | human_decided_posting_ids | applied_posting_ids
 
     items = items + orphan_items
 
