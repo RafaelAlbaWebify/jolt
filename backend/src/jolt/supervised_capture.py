@@ -60,6 +60,25 @@ class CapturedCard:
     description: str
     identity_verified: bool
     verification_reason: str
+    result_position: int = 0
+    page_number: int = 0
+    card_index: int = 0
+    promoted: bool = False
+    posted_age_text: str = ""
+
+
+_LISTING_AGE_PATTERN = re.compile(
+    r"\b(?:Reposted\s+)?(?:Just now|\d+\s+(?:minute|hour|day|week|month)s?\s+ago)\b",
+    re.IGNORECASE,
+)
+
+
+def extract_listing_metadata(value: str) -> tuple[bool, str]:
+    """Extract ranking metadata from visible LinkedIn job-card text."""
+    normalized = " ".join(value.split()).strip()
+    promoted = bool(re.search(r"\bPromoted(?:\s+by\s+hirer)?\b", normalized, re.IGNORECASE))
+    match = _LISTING_AGE_PATTERN.search(normalized)
+    return promoted, match.group(0) if match else ""
 
 
 def redact_text(value: str) -> str:
