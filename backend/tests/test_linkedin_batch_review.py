@@ -403,9 +403,7 @@ def test_batch_review_recovers_verified_posting_from_earlier_failed_batch(
 
         # The set is frozen after first materialization.
         second = build_batch_ai_review_document(session, batch_id)
-        assert [job["posting_id"] for job in second["jobs"]] == [
-            job["posting_id"] for job in jobs
-        ]
+        assert [job["posting_id"] for job in second["jobs"]] == [job["posting_id"] for job in jobs]
     finally:
         session.close()
 
