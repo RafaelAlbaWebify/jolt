@@ -137,7 +137,7 @@ def main() -> int:
         if search["capture_run_id"]:
             capture_rows = con.execute(
                 """
-                SELECT ci.source_job_id, ci.posting_id, p.title, p.location, p.description
+                SELECT ci.source_job_id, ci.posting_id, p.title, p.company, p.location, p.description
                 FROM capture_items ci
                 LEFT JOIN postings p ON p.id = ci.posting_id
                 WHERE ci.capture_run_id = ?
@@ -151,11 +151,15 @@ def main() -> int:
         restrictive_signal = 0
         decisions = Counter()
         titles: set[str] = set()
+        companies: set[str] = set()
         support_titles = 0
         admin_titles = 0
 
         for row in capture_rows:
             title = (row["title"] or "").strip()
+            company = (row["company"] or "").strip()
+            if company:
+                companies.add(company.casefold())
             if title:
                 titles.add(title.casefold())
                 if "support" in title.casefold():
@@ -190,6 +194,7 @@ def main() -> int:
                 "age_parsed_count": len(ages),
                 "median_age_hours": round(statistics.median(ages), 2) if ages else None,
                 "unique_titles": len(titles),
+                "unique_companies": len(companies),
                 "support_title_count": support_titles,
                 "administrator_title_count": admin_titles,
                 "international_positive_signal_count": positive_signal,
@@ -246,11 +251,30 @@ def main() -> int:
             f"     captured={item['captured']} promoted={item['promoted_count']} "
             f"({item['promoted_pct']}%) exclusive={item['exclusive_jobs']} "
             f"shared={item['shared_jobs']} unique_titles={item['unique_titles']} "
+            f"unique_companies={item['unique_companies']} "
             f"median_age_h={item['median_age_hours']}\n"
             f"     intl_positive={item['international_positive_signal_count']} "
             f"intl_restrictive={item['international_restrictive_signal_count']} "
             f"AI={item['ai_decisions']}"
         )
+
+    print()
+    print("=== EXPERIMENT V2 GROUPS ===")
+    group_positions = {
+        "support": [item["position"] for item in per_search if "EXP2 S" in item["label"] or item["label"].startswith("EXP B1") or item["label"].startswith("EXP A1")],
+        "distinct": [item["position"] for item in per_search if "EXP2 D" in item["label"] or item["label"].startswith("EXP A3")],
+        "geo": [item["position"] for item in per_search if "EXP2 G" in item["label"]],
+    }
+    for group, positions in group_positions.items():
+        if len(positions) < 2:
+            continue
+        print(f"{group}: positions={positions}")
+        for p in report["pair_overlap"]:
+            if p["left_position"] in positions and p["right_position"] in positions:
+                print(
+                    f"  {p['left_position']:02d}<->{p['right_position']:02d}: "
+                    f"overlap={p['overlap']} jaccard={p['jaccard']}"
+                )
 
     print()
     print("=== KEY A/B COMPARISONS ===")
