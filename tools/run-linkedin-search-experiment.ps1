@@ -84,8 +84,23 @@ do {
     Write-Host ("Status: {0} | completed {1}/{2} | captured {3}" -f $status.status, $status.completed_search_count, $status.selected_search_count, $status.captured_count)
 } while ($status.status -in @("queued", "scheduled", "running"))
 
+# Retire the EXP searches after the batch so they do not clutter the production portfolio.
+# Re-running this script re-enables and updates the same saved-search records.
+foreach ($id in $ids) {
+    $search = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$id"
+    $null = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$id" "POST" @{
+        label = $search.label
+        search_url = $search.search_url
+        notes = $search.notes
+        enabled = $false
+        max_jobs = [int]$search.max_jobs
+        max_pages = [int]$search.max_pages
+    }
+}
+
 Write-Host ""
 Write-Host "Final status: $($status.status)"
 Write-Host "Batch ID: $batchId"
+Write-Host "Experimental saved searches retired after the run."
 Write-Host "Analyze with:"
 Write-Host "uv run --project backend python tools/analyze-linkedin-search-experiment.py --batch-id $batchId"
