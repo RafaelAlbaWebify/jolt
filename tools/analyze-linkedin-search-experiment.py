@@ -74,7 +74,7 @@ def main() -> int:
     searches = con.execute(
         """
         SELECT position, saved_search_id, label_snapshot, search_url_snapshot,
-               capture_run_id, captured_count, verified_count
+               capture_run_id, captured_count, verified_count, status, error
         FROM linkedin_discovery_batch_searches
         WHERE batch_id = ?
         ORDER BY position
@@ -94,11 +94,12 @@ def main() -> int:
         zip_path = evidence_root / (
             f"{search['position']:02d}_{search['saved_search_id']}_capture.zip"
         )
-        if not zip_path.exists():
-            raise SystemExit(f"Missing capture evidence: {zip_path}")
-
-        summary = load_summary(zip_path)
-        cards = summary.get("cards", []) or []
+        if zip_path.exists():
+            summary = load_summary(zip_path)
+            cards = summary.get("cards", []) or []
+        else:
+            summary = {}
+            cards = []
         ids = {str(card.get("source_job_id", "")) for card in cards if card.get("source_job_id")}
         for job_id in ids:
             job_searches[job_id].add(search["position"])
@@ -119,15 +120,18 @@ def main() -> int:
             if (hours := age_hours(str(card.get("posted_age_text", "") or ""))) is not None
         ]
 
-        capture_rows = con.execute(
-            """
-            SELECT ci.source_job_id, ci.posting_id, p.title, p.location, p.description
-            FROM capture_items ci
-            LEFT JOIN postings p ON p.id = ci.posting_id
-            WHERE ci.capture_run_id = ?
-            """,
-            (search["capture_run_id"],),
-        ).fetchall()
+        if search["capture_run_id"]:
+            capture_rows = con.execute(
+                """
+                SELECT ci.source_job_id, ci.posting_id, p.title, p.location, p.description
+                FROM capture_items ci
+                LEFT JOIN postings p ON p.id = ci.posting_id
+                WHERE ci.capture_run_id = ?
+                """,
+                (search["capture_run_id"],),
+            ).fetchall()
+        else:
+            capture_rows = []
 
         positive_signal = 0
         restrictive_signal = 0
@@ -162,6 +166,9 @@ def main() -> int:
                 "url": search["search_url_snapshot"],
                 "captured": len(cards),
                 "verified": search["verified_count"],
+                "status": search["status"],
+                "error": search["error"],
+                "evidence_present": zip_path.exists(),
                 "job_ids": sorted(ids),
                 "promoted_count": len(promoted),
                 "promoted_pct": round(100 * len(promoted) / len(cards), 1) if cards else 0.0,
@@ -220,7 +227,7 @@ def main() -> int:
 
     for item in per_search:
         print(
-            f"{item['position']:02d} | {item['label']}\n"
+            f"{item['position']:02d} | {item['label']} | status={item['status']}\n"
             f"     captured={item['captured']} promoted={item['promoted_count']} "
             f"({item['promoted_pct']}%) exclusive={item['exclusive_jobs']} "
             f"shared={item['shared_jobs']} unique_titles={item['unique_titles']} "
