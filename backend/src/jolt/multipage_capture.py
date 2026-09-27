@@ -22,6 +22,7 @@ from jolt.supervised_capture import (
     TITLE_LINK_SELECTORS,
     CapturedCard,
     extract_job_id,
+    extract_listing_metadata,
     package_run,
     redact_text,
     safe_text,
@@ -245,6 +246,9 @@ def capture_page_cards(
         with contextlib.suppress(TimeoutError):
             card.scroll_into_view_if_needed(timeout=2_000)
 
+        listing_text = safe_text(card)
+        promoted, posted_age_text = extract_listing_metadata(listing_text)
+        result_position = len(seen) + 1
         title_link = _title_link(card)
         source_job_id, source_url = _card_identity(card, title_link)
         if not source_job_id:
@@ -286,6 +290,11 @@ def capture_page_cards(
                     description="",
                     identity_verified=False,
                     verification_reason="Listing click timed out.",
+                    result_position=result_position,
+                    page_number=page_number,
+                    card_index=index,
+                    promoted=promoted,
+                    posted_age_text=posted_age_text,
                 )
             )
             continue
@@ -337,6 +346,11 @@ def capture_page_cards(
                 description=description,
                 identity_verified=verified,
                 verification_reason=reason,
+                result_position=result_position,
+                page_number=page_number,
+                card_index=index,
+                promoted=promoted,
+                posted_age_text=posted_age_text,
             )
         )
     return captured
