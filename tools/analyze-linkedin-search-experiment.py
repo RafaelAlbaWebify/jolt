@@ -39,9 +39,21 @@ def age_hours(value: str) -> float | None:
     return amount * factors[unit]
 
 
-def load_summary(path: Path) -> dict[str, Any]:
-    with zipfile.ZipFile(path) as archive:
-        return json.loads(archive.read("capture_summary.json"))
+def load_summary(path: Path) -> tuple[dict[str, Any], str]:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            names = set(archive.namelist())
+            if "capture_summary.json" in names:
+                return json.loads(archive.read("capture_summary.json")), ""
+            if "failure.json" in names:
+                try:
+                    failure = json.loads(archive.read("failure.json"))
+                    return {}, str(failure.get("error", "") or "Capture failed before summary generation.")
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    return {}, "Capture failed before summary generation."
+            return {}, "Capture ZIP contains no capture_summary.json."
+    except (OSError, zipfile.BadZipFile, KeyError, json.JSONDecodeError) as exc:
+        return {}, f"Unreadable capture evidence: {exc}"
 
 
 def latest_ai_by_posting(con: sqlite3.Connection) -> dict[str, str]:
@@ -94,12 +106,14 @@ def main() -> int:
         zip_path = evidence_root / (
             f"{search['position']:02d}_{search['saved_search_id']}_capture.zip"
         )
+        evidence_error = ""
         if zip_path.exists():
-            summary = load_summary(zip_path)
+            summary, evidence_error = load_summary(zip_path)
             cards = summary.get("cards", []) or []
         else:
             summary = {}
             cards = []
+            evidence_error = "Capture ZIP not present."
         ids = {str(card.get("source_job_id", "")) for card in cards if card.get("source_job_id")}
         for job_id in ids:
             job_searches[job_id].add(search["position"])
@@ -167,8 +181,9 @@ def main() -> int:
                 "captured": len(cards),
                 "verified": search["verified_count"],
                 "status": search["status"],
-                "error": search["error"],
+                "error": search["error"] or evidence_error,
                 "evidence_present": zip_path.exists(),
+                "summary_present": bool(summary),
                 "job_ids": sorted(ids),
                 "promoted_count": len(promoted),
                 "promoted_pct": round(100 * len(promoted) / len(cards), 1) if cards else 0.0,
