@@ -220,4 +220,31 @@ describe("ApplicationDocuments", () => {
     expect(await screen.findByText("Support resume")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+
+  it("fills the title from the selected filename so the document can be saved", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse([]));
+
+    render(
+      <ApplicationDocuments
+        apiBase="http://api"
+        applicationId="application-1"
+        onChanged={vi.fn()}
+        onError={vi.fn()}
+      />,
+    );
+
+    await screen.findByText("No document records yet.");
+
+    const file = new File(["resume bytes"], "CV_Rafael_Alba.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(screen.getByLabelText("File"), {
+      target: { files: [file] },
+    });
+
+    expect(screen.getByLabelText("Title")).toHaveValue("CV_Rafael_Alba");
+    expect(screen.getByRole("button", { name: "Add document" })).toBeEnabled();
+  });
+
 });
