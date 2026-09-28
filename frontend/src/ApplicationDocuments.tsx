@@ -227,6 +227,7 @@ export function ApplicationDocuments({
           <label className="work-item-form-wide">
             {editingId ? "Replacement file" : "File"}
             <input
+              aria-label={editingId ? "Replacement file" : "File"}
               type="file"
               accept=".pdf,.doc,.docx,.txt"
               onChange={(event) => {
