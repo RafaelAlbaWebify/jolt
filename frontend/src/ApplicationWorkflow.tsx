@@ -123,7 +123,6 @@ function stageGuidance(status: ApplicationStatus | null | undefined) {
 export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision, applicationId, applicationStatus, disabled, onChanged, onError }: Props) {
   const [application, setApplication] = useState<ApplicationData | null>(null);
   const [applicationUrl, setApplicationUrl] = useState("");
-  const [resumeUsed, setResumeUsed] = useState("");
   const [notes, setNotes] = useState("");
   const [activityNotes, setActivityNotes] = useState("");
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeType>("rejected_by_employer");
@@ -218,18 +217,17 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
 
   async function start(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await post(`/api/opportunities/${postingId}/applications`, { application_url: applicationUrl, resume_used: resumeUsed, notes });
+    await post(`/api/opportunities/${postingId}/applications`, { application_url: applicationUrl, resume_used: "", notes });
   }
 
   if (!applicationId && reviewDecision !== "pursue") return <p>Record a pursue decision before preparing an application.</p>;
   if (!applicationId) return <details className="application-workflow">
     <summary>Prepare application</summary>
-    <div className="workflow-guidance"><strong>Preparation stage</strong><p>Create the local record before submitting externally. This does not apply to the role.</p></div>
+    <div className="workflow-guidance"><strong>Preparation stage</strong><p>Create the application record first. Then attach the exact CV you will use from the Documents tab. This does not apply to the role.</p></div>
     <form className="application-preparation-form" onSubmit={start}>
       <label>External application URL <span>(optional)</span><input type="url" value={applicationUrl} onChange={(event) => setApplicationUrl(event.target.value)} /></label>
-      <label>CV or resume version <span>(optional)</span><input value={resumeUsed} onChange={(event) => setResumeUsed(event.target.value)} placeholder="Example: Rafael_Application_Support_CV.pdf" /></label>
       <label className="application-form-wide">Preparation notes <span>(optional)</span><textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Tailoring, cover letter, questions to confirm, or blockers." /></label>
-      <button disabled={disabled || busy} type="submit">Create preparation record</button>
+      <button disabled={disabled || busy} type="submit">Start preparing application</button>
     </form>
   </details>;
 
@@ -252,31 +250,36 @@ export function ApplicationWorkflow({ apiBase, postingId, title, reviewDecision,
           <div><p className="eyebrow">Current stage</p><h4>{label(application.status)}</h4><p>{stageGuidance(application.status)}</p></div>
           <div className="workflow-record-details">
             {application.application_url && <a href={application.application_url} target="_blank" rel="noreferrer">Open external application page</a>}
-            {application.resume_used && <span><strong>CV:</strong> {application.resume_used}</span>}
+            {application.resume_used && (
+              <details className="workflow-legacy-details">
+                <summary>Legacy CV note</summary>
+                <span>{application.resume_used}</span>
+              </details>
+            )}
             {application.notes && <span><strong>Preparation:</strong> {application.notes}</span>}
           </div>
         </section>
-        <label className="workflow-notes">Activity or correction notes <span>(recommended)</span><textarea rows={2} value={activityNotes} onChange={(event) => setActivityNotes(event.target.value)} placeholder="Date, contact, result, correction reason, next action, interview details, or follow-up context." /></label>
-        <section className="workflow-outcome-section">
-          <h4>Change stage</h4>
+        <label className="workflow-notes">Notes for this update <span>(recommended)</span><textarea rows={2} value={activityNotes} onChange={(event) => setActivityNotes(event.target.value)} placeholder="Date, contact, result, next action, interview details, or correction reason." /></label>
+        <details className="workflow-stage-correction">
+          <summary>Correct stage manually</summary>
+          <p>Use this only when the recorded stage is wrong. Normal progress should use the suggested next actions or the Applications board.</p>
           <div className="workflow-outcome-controls">
-            <label>Stage<select value={selectedStage || application.status} onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}>{APPLICATION_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
-            <button className="secondary" disabled={disabled || busy || !selectedStage || selectedStage === application.status} type="button" onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: selectedStage, notes: activityNotes })}>Save stage</button>
+            <label>Correct stage<select value={selectedStage || application.status} onChange={(event) => setSelectedStage(event.target.value as ApplicationStatus)}>{APPLICATION_STAGES.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</select></label>
+            <button className="secondary" disabled={disabled || busy || !selectedStage || selectedStage === application.status} type="button" onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: selectedStage, notes: activityNotes })}>Save correction</button>
           </div>
-          <p>Active stages can move backward or forward as audited corrections. Use a final outcome to close an application; reopening preserves that outcome event in the timeline.</p>
-        </section>
+        </details>
         {!application.outcome_type && actions.length > 0 && <section className="workflow-actions-section">
           <h4>Suggested next actions</h4>
           <div className="workflow-action-grid" aria-label={`Advance ${title}`}>{actions.map((action) => <button disabled={disabled || busy} type="button" key={action.status} onClick={() => post(`/api/applications/${application.application_id}/transitions`, { status: action.status, notes: activityNotes })}><strong>{action.label}</strong><span>{action.guidance}</span></button>)}</div>
         </section>}
         {!application.outcome_type && <section className="workflow-outcome-section">
-          <h4>{application.status === "offer" ? "Close the offer" : "Close the application"}</h4>
+          <h4>What happened?</h4>
           <div className="workflow-outcome-controls">
             <label>Outcome<select value={outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value} onChange={(event) => setSelectedOutcome(event.target.value as OutcomeType)}>{outcomes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
             <button className="secondary" disabled={disabled || busy} type="button" onClick={() => {
               const effectiveOutcome = outcomes.some((item) => item.value === selectedOutcome) ? selectedOutcome : outcomes[0].value;
               void post(`/api/applications/${application.application_id}/outcomes`, { outcome_type: effectiveOutcome, notes: activityNotes });
-            }}>Record final outcome</button>
+            }}>Save outcome</button>
           </div>
         </section>}
         {application.outcome_type && <div className="workflow-closed-state"><strong>Final outcome: {label(application.outcome_type)}</strong><span>Use Change stage above to reopen this application. The previous outcome remains in the timeline.</span></div>}
