@@ -96,9 +96,9 @@ describe("Runtime identity", () => {
     render(<RuntimeStalenessGuard apiBase="http://127.0.0.1:8000" />);
 
     const alert = await screen.findByRole("alert", { name: "JOLT restart required" });
-    expect(alert).toHaveTextContent("backend is running old code");
-    expect(alert).toHaveTextContent("1234567890ab");
-    expect(alert).toHaveTextContent("fedcba098765");
-    expect(alert).toHaveTextContent("Stop and restart JOLT before capture, export, review, or import");
+    expect(alert).toHaveTextContent("Restart JOLT to use the latest version");
+    expect(alert).toHaveTextContent("JOLT was updated while it was open");
+    expect(alert).not.toHaveTextContent("1234567890ab");
+    expect(alert).not.toHaveTextContent("fedcba098765");
   });
 });
