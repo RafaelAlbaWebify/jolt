@@ -621,7 +621,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               </tbody>
             </table>
             <p className="search-performance-note">
-              AI+ = strong pursue + pursue + conditional. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted.
+              AI+ = strong pursue + pursue + conditional. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted. Overlapping searches share credit when both observed the same canonical job.
             </p>
           </div>
         )}
