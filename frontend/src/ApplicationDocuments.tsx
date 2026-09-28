@@ -39,7 +39,7 @@ const EMPTY: DocumentForm = {
   document_type: "resume",
   title: "",
   source_url: "",
-  status: "draft",
+  status: "ready",
   notes: "",
 };
 
@@ -220,64 +220,14 @@ export function ApplicationDocuments({
 
       {readOnly ? (
         <p className="application-read-only-notice" role="status">
-          Archived application — document metadata is read-only, but stored files remain
-          downloadable.
+          Hidden application — files are read-only, but saved files remain downloadable.
         </p>
       ) : (
         <form className="work-item-form" onSubmit={submit}>
-          <label>
-            Document type
-            <select
-              value={form.document_type}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  document_type: event.target.value as DocumentRecord["document_type"],
-                }))
-              }
-            >
-              <option value="resume">Resume</option>
-              <option value="cover_letter">Cover letter</option>
-              <option value="preparation_pack">Preparation pack</option>
-              <option value="portfolio">Portfolio</option>
-              <option value="certificate">Certificate</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-
-          <label>
-            Status
-            <select
-              value={form.status}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  status: event.target.value as DocumentRecord["status"],
-                }))
-              }
-            >
-              <option value="draft">Draft</option>
-              <option value="ready">Ready</option>
-              <option value="submitted">Submitted</option>
-              <option value="superseded">Superseded</option>
-            </select>
-          </label>
-
           <label className="work-item-form-wide">
-            Title
-            <input
-              required
-              maxLength={240}
-              value={form.title}
-              onChange={(event) =>
-                setForm((value) => ({ ...value, title: event.target.value }))
-              }
-            />
-          </label>
-
-          <label>
             {editingId ? "Replacement file" : "File"}
             <input
+              aria-label={editingId ? "Replacement file" : "File"}
               type="file"
               accept=".pdf,.doc,.docx,.txt"
               onChange={(event) => {
@@ -289,32 +239,94 @@ export function ApplicationDocuments({
                 }
               }}
             />
-          </label>
-
-          <label>
-            Source URL
-            <input
-              type="url"
-              value={form.source_url}
-              onChange={(event) =>
-                setForm((value) => ({ ...value, source_url: event.target.value }))
-              }
-            />
+            {!editingId && (
+              <small>
+                Attach the exact CV or supporting file you plan to use for this application.
+              </small>
+            )}
           </label>
 
           <label className="work-item-form-wide">
-            Notes
-            <textarea
-              rows={2}
-              value={form.notes}
+            Title
+            <input
+              required
+              maxLength={240}
+              value={form.title}
               onChange={(event) =>
-                setForm((value) => ({ ...value, notes: event.target.value }))
+                setForm((value) => ({ ...value, title: event.target.value }))
               }
+              placeholder="Filled automatically from the filename"
             />
           </label>
 
+          <details className="work-item-form-wide work-item-advanced" open={Boolean(editingId)}>
+            <summary>More details</summary>
+
+            <div className="work-item-form work-item-form-nested">
+              <label>
+                Document type
+                <select
+                  value={form.document_type}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      document_type: event.target.value as DocumentRecord["document_type"],
+                    }))
+                  }
+                >
+                  <option value="resume">Resume</option>
+                  <option value="cover_letter">Cover letter</option>
+                  <option value="preparation_pack">Preparation pack</option>
+                  <option value="portfolio">Portfolio</option>
+                  <option value="certificate">Certificate</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+
+              <label>
+                Status
+                <select
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      status: event.target.value as DocumentRecord["status"],
+                    }))
+                  }
+                >
+                  <option value="draft">Draft</option>
+                  <option value="ready">Ready</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="superseded">Superseded</option>
+                </select>
+              </label>
+
+              <label>
+                Source URL
+                <input
+                  type="url"
+                  value={form.source_url}
+                  onChange={(event) =>
+                    setForm((value) => ({ ...value, source_url: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="work-item-form-wide">
+                Notes
+                <textarea
+                  rows={2}
+                  value={form.notes}
+                  onChange={(event) =>
+                    setForm((value) => ({ ...value, notes: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+          </details>
+
           <button type="submit" disabled={busy || !form.title.trim()}>
-            {busy ? "Saving…" : editingId ? "Save document changes" : "Add document"}
+            {busy ? "Saving…" : editingId ? "Save changes" : "Attach file"}
           </button>
 
           {editingId && (
@@ -340,7 +352,9 @@ export function ApplicationDocuments({
       {loading ? (
         <p role="status">Loading documents…</p>
       ) : documents.length === 0 ? (
-        <p className="work-items-empty">No document records yet.</p>
+        <p className="work-items-empty">
+          No files attached yet. Add the CV or supporting document you plan to use.
+        </p>
       ) : (
         <ul className="work-item-list">
           {documents.map((document) => (
@@ -377,7 +391,7 @@ export function ApplicationDocuments({
                     className="secondary"
                     href={`${apiBase}/api/application-documents/${document.document_id}/file`}
                   >
-                    Download file
+                    Download
                   </a>
                 )}
 
@@ -388,7 +402,7 @@ export function ApplicationDocuments({
                     disabled={busy}
                     onClick={() => edit(document)}
                   >
-                    Edit document
+                    Edit
                   </button>
                 )}
               </div>

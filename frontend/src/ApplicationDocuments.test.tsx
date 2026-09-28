@@ -62,7 +62,7 @@ describe("ApplicationDocuments", () => {
       />,
     );
 
-    await screen.findByText("No document records yet.");
+    await screen.findByText("No files attached yet. Add the CV or supporting document you plan to use.");
 
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Support resume" },
@@ -76,7 +76,7 @@ describe("ApplicationDocuments", () => {
       target: { files: [file] },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Add document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Attach file" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -90,7 +90,7 @@ describe("ApplicationDocuments", () => {
     );
 
     expect(await screen.findByText(/Stored in JOLT: resume-v1\.pdf/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
       "href",
       "http://api/api/application-documents/document-1/file",
     );
@@ -124,14 +124,15 @@ describe("ApplicationDocuments", () => {
 
     expect(await screen.findByText("Support resume")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByText("More details").closest("details")).toHaveAttribute("open");
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Support resume final" },
     });
     fireEvent.change(screen.getByLabelText("Status"), {
       target: { value: "submitted" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save document changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -164,11 +165,11 @@ describe("ApplicationDocuments", () => {
     );
 
     expect(await screen.findByText("Support resume")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
       "href",
       "http://api/api/application-documents/document-1/file",
     );
-    expect(screen.queryByRole("button", { name: "Edit document" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("File")).not.toBeInTheDocument();
   });
 
@@ -186,7 +187,7 @@ describe("ApplicationDocuments", () => {
 
     await screen.findByText("Support resume");
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Local only" },
     });
@@ -234,7 +235,7 @@ describe("ApplicationDocuments", () => {
       />,
     );
 
-    await screen.findByText("No document records yet.");
+    await screen.findByText("No files attached yet. Add the CV or supporting document you plan to use.");
 
     const file = new File(["resume bytes"], "CV_Rafael_Alba.pdf", {
       type: "application/pdf",
@@ -244,7 +245,40 @@ describe("ApplicationDocuments", () => {
     });
 
     expect(screen.getByLabelText("Title")).toHaveValue("CV_Rafael_Alba");
-    expect(screen.getByRole("button", { name: "Add document" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Attach file" })).toBeEnabled();
+  });
+
+
+  it("keeps document metadata out of the primary attachment path", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse([]));
+
+    render(
+      <ApplicationDocuments
+        apiBase="http://api"
+        applicationId="application-1"
+        onChanged={vi.fn()}
+        onError={vi.fn()}
+      />,
+    );
+
+    await screen.findByText("No files attached yet. Add the CV or supporting document you plan to use.");
+
+    const advanced = screen.getByText("More details").closest("details");
+    expect(advanced).not.toHaveAttribute("open");
+
+    const file = new File(["resume bytes"], "CV_Rafael_Alba.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(screen.getByLabelText("File"), {
+      target: { files: [file] },
+    });
+
+    expect(screen.getByLabelText("Title")).toHaveValue("CV_Rafael_Alba");
+    expect(screen.getByRole("button", { name: "Attach file" })).toBeEnabled();
+
+    fireEvent.click(screen.getByText("More details"));
+    expect(screen.getByLabelText("Document type")).toHaveValue("resume");
+    expect(screen.getByLabelText("Status")).toHaveValue("ready");
   });
 
 });

@@ -62,10 +62,9 @@ describe("application contacts and documents", () => {
       .mockResolvedValueOnce(jsonResponse([]));
 
     render(<ApplicationDocuments apiBase="http://127.0.0.1:8000" applicationId="application-1" onChanged={vi.fn().mockResolvedValue(undefined)} onError={vi.fn()} />);
-    await screen.findByText("No document records yet.");
+    await screen.findByText("No files attached yet. Add the CV or supporting document you plan to use.");
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Tailored support resume" } });
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "ready" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add document" }));
+    fireEvent.click(screen.getByRole("button", { name: "Attach file" }));
 
     await waitFor(() => expect(screen.getByText("Tailored support resume")).toBeInTheDocument());
     expect(screen.getByText("resume · ready")).toBeInTheDocument();
