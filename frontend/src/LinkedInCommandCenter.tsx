@@ -140,12 +140,12 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     if (!active) return;
     setError("");
     const response = await fetch(`${apiBase}/api/linkedin-command-center`);
-    if (!response.ok) throw await responseError(response, "Unable to load LinkedIn profile evidence.");
+    if (!response.ok) throw await responseError(response, "Unable to load LinkedIn profile data.");
     setData(await response.json() as LinkedInProfileData);
   }, [active, apiBase]);
 
   useEffect(() => {
-    if (active) void load().catch((caught) => setError(caught instanceof Error ? caught.message : "LinkedIn profile load failed."));
+    if (active) void load().catch((caught) => setError(caught instanceof Error ? caught.message : "LinkedIn profile data could not be loaded."));
   }, [active, load]);
 
   useEffect(() => {
@@ -175,17 +175,17 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
   }
 
   async function captureTarget(target: CaptureTarget) {
-    setBusy(true); setCapturingId(target.id); setError(""); setNotice(`Opening ${target.name} in the managed browser…`);
+    setBusy(true); setCapturingId(target.id); setError(""); setNotice(`Opening ${target.name} in the browser…`);
     try {
       const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(targetPayload(target)),
       });
-      if (!response.ok) throw await responseError(response, `Unable to capture ${target.name}.`);
-      setNotice(`${target.name} captured and stored as LinkedIn profile evidence.`);
+      if (!response.ok) throw await responseError(response, `Unable to refresh ${target.name}.`);
+      setNotice(`${target.name} refreshed.`);
       await load();
       switchView("overview");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : `${target.name} capture failed.`);
+      setError(caught instanceof Error ? caught.message : `${target.name} refresh failed.`);
     } finally {
       setBusy(false); setCapturingId(null);
     }
@@ -193,14 +193,14 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
 
   async function captureEnabled() {
     if (enabledTargets.length === 0) return;
-    setBusy(true); setCapturingId("batch"); setError(""); setNotice(`Capturing ${enabledTargets.length} enabled profile sections…`);
+    setBusy(true); setCapturingId("batch"); setError(""); setNotice(`Refreshing ${enabledTargets.length} profile sections…`);
     try {
       const response = await fetch(`${apiBase}/api/linkedin-command-center/captures/playwright-batch`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: enabledTargets.map(targetPayload) }),
       });
-      if (!response.ok) throw await responseError(response, "Unable to refresh LinkedIn profile evidence.");
+      if (!response.ok) throw await responseError(response, "Unable to refresh LinkedIn profile data.");
       const result = await response.json() as { captured_count: number };
-      setNotice(`${result.captured_count} LinkedIn profile sections captured.`);
+      setNotice(`${result.captured_count} profile sections refreshed.`);
       await load();
       switchView("overview");
     } catch (caught) {
@@ -217,12 +217,12 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category: manualCategory, title: manualTitle, source_url: manualUrl, visible_text: manualText, notes: manualNotes }),
       });
-      if (!response.ok) throw await responseError(response, "Unable to save manual LinkedIn evidence.");
-      setManualTitle(""); setManualUrl(""); setManualText(""); setManualNotes(""); setNotice("Manual LinkedIn evidence saved.");
+      if (!response.ok) throw await responseError(response, "Unable to save profile information.");
+      setManualTitle(""); setManualUrl(""); setManualText(""); setManualNotes(""); setNotice("Profile information saved.");
       await load();
       switchView("overview");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Manual LinkedIn evidence failed.");
+      setError(caught instanceof Error ? caught.message : "Profile information could not be saved.");
     } finally {
       setBusy(false);
     }
@@ -268,7 +268,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
           <div><p className="eyebrow">Professional positioning</p><h2 id="linkedin-profile-heading">LinkedIn Profile</h2><p>Refresh your LinkedIn profile data and work through concrete improvement suggestions.</p></div>
           <button type="button" disabled={busy || enabledTargets.length === 0} onClick={() => void captureEnabled()}>{capturingId === "batch" ? "Refreshing profile…" : "Refresh profile data"}</button>
         </div>
-        <div className="professional-safety-boundary" role="note"><strong>Read-only boundary</strong><span>JOLT captures visible evidence. It does not message, react, connect, apply, or edit LinkedIn.</span></div>
+        <div className="professional-safety-boundary" role="note"><strong>Read-only boundary</strong><span>JOLT reads visible profile information. It does not message, react, connect, apply, or edit LinkedIn.</span></div>
         <nav className="linkedin-profile-tabs" aria-label="LinkedIn profile workspace">
           <button type="button" className={view === "overview" ? "active" : "secondary"} onClick={() => switchView("overview")}>Overview</button>
           <button type="button" className={view === "targets" ? "active" : "secondary"} onClick={() => switchView("targets")}>Profile sources</button>
@@ -290,7 +290,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
             <article className="market-card"><span>Enabled sources</span><strong>{enabledTargets.length}</strong></article>
           </div>
           <div className="linkedin-overview-grid">
-            <div><h3>Latest evidence</h3>{!data?.captures.length ? <p>No LinkedIn profile evidence yet.</p> : captureCards(data.captures.slice(0, 1))}</div>
+            <div><h3>Latest profile snapshot</h3>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : captureCards(data.captures.slice(0, 1))}</div>
             <div><h3>Next profile improvement</h3>{!data?.recommendations.length ? <p>No LinkedIn recommendations yet.</p> : recommendationCards(data.recommendations.slice(0, 1))}</div>
           </div>
         </section>
@@ -314,11 +314,11 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
       )}
 
       {view === "manual" && (
-        <section className="panel linkedin-manual-view"><h3>Add manually fallback</h3><form onSubmit={saveManual} className="form-grid"><label>Category<select value={manualCategory} onChange={(event) => setManualCategory(event.target.value as CaptureCategory)}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label>Title<input required value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} /></label><label className="full-width">Source URL<input value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} /></label><label className="full-width">Visible text<textarea required rows={5} value={manualText} onChange={(event) => setManualText(event.target.value)} /></label><label className="full-width">Notes<textarea rows={3} value={manualNotes} onChange={(event) => setManualNotes(event.target.value)} /></label><button type="submit" disabled={busy}>Save profile information</button></form></section>
+        <section className="panel linkedin-manual-view"><h3>Add profile information manually</h3><form onSubmit={saveManual} className="form-grid"><label>Category<select value={manualCategory} onChange={(event) => setManualCategory(event.target.value as CaptureCategory)}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label>Title<input required value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} /></label><label className="full-width">Source URL<input value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} /></label><label className="full-width">Profile text<textarea required rows={5} value={manualText} onChange={(event) => setManualText(event.target.value)} /></label><label className="full-width">Notes<textarea rows={3} value={manualNotes} onChange={(event) => setManualNotes(event.target.value)} /></label><button type="submit" disabled={busy}>Save profile information</button></form></section>
       )}
 
       {view === "evidence" && (
-        <section className="panel"><div className="section-heading"><div><h3>History</h3><p>{data?.capture_count ?? 0} retained snapshots.</p></div></div>{!data?.captures.length ? <p>No LinkedIn profile evidence yet.</p> : <div className="professional-source-grid">{captureCards(data.captures.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE))}</div>}<div className="pagination"><button type="button" className="secondary" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" className="secondary" disabled={currentPage >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div></section>
+        <section className="panel"><div className="section-heading"><div><h3>History</h3><p>{data?.capture_count ?? 0} saved snapshots.</p></div></div>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : <div className="professional-source-grid">{captureCards(data.captures.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE))}</div>}<div className="pagination"><button type="button" className="secondary" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" className="secondary" disabled={currentPage >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div></section>
       )}
 
       {view === "recommendations" && (
