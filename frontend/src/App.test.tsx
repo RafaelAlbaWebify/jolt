@@ -164,11 +164,11 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("strong pursue"),
+      screen.getByText("High priority"),
     ).toBeInTheDocument();
 
     expect(
-      screen.getAllByText("Awaiting AI review").length,
+      screen.getAllByText("Needs AI review").length,
     ).toBeGreaterThanOrEqual(1);
 
     expect(
@@ -242,13 +242,13 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getAllByText("REJECT — HARDLINE").length,
+      screen.getAllByText("Required condition not met").length,
     ).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText("US-only remote: applicants must be anywhere in the US."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Technical similarity: not evaluated because a hardline failed."),
+      screen.getByText("Fit score not shown because a required condition was not met."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Technical fit 95/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Technical fit 91/i)).not.toBeInTheDocument();
@@ -258,10 +258,10 @@ describe("App AI review workflow", () => {
     );
 
     expect(
-      screen.getAllByText("REJECT — HARDLINE").length,
+      screen.getAllByText("Required condition not met").length,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getAllByText("Technical similarity: not evaluated because a hardline failed.").length,
+      screen.getAllByText("Fit score not shown because a required condition was not met.").length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("Technical fit")).not.toBeInTheDocument();
   });
@@ -351,7 +351,7 @@ describe("App AI review workflow", () => {
     expect(
       await screen.findByRole("status"),
     ).toHaveTextContent(
-      "Application Pipeline",
+      "ready in Applications",
     );
   });
 
@@ -473,11 +473,12 @@ describe("App AI review workflow", () => {
 
     render(<App />);
 
+    fireEvent.click(await screen.findByText("Maintenance"));
     fireEvent.click(
-      await screen.findByRole(
+      screen.getByRole(
         "button",
         {
-          name: "Clear pending inbox (1)",
+          name: "Clear unresolved inbox (1)",
         },
       ),
     );
