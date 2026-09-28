@@ -213,8 +213,8 @@ def run(
                             }
                         )
                 for summary_text, protected_text in COLLAPSED_BY_DEFAULT.get(view_id, ()):
-                    summary = page.get_by_text(summary_text, exact=True)
-                    if summary.count() == 0:
+                    disclosure_summary = page.get_by_text(summary_text, exact=True)
+                    if disclosure_summary.count() == 0:
                         findings.append(
                             {
                                 "severity": "error",
