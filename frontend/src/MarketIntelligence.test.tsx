@@ -93,9 +93,9 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByText("decision counts")).toBeInTheDocument();
-    expect(screen.getByText("reject")).toBeInTheDocument();
+    expect(screen.getByText("not a match")).toBeInTheDocument();
     expect(screen.getByText("98")).toBeInTheDocument();
-    expect(screen.getByText("strong pursue")).toBeInTheDocument();
+    expect(screen.getByText("high priority")).toBeInTheDocument();
     expect(screen.getByText("Quik Hire Staffing")).toBeInTheDocument();
     expect(screen.getByText("Support Engineer (Remote)")).toBeInTheDocument();
     expect(screen.getByText("Dash0")).toBeInTheDocument();
