@@ -373,6 +373,36 @@ def store_document_file(
     return _document_response(document)
 
 
+def purge_application_document_files(
+    session: Session,
+    application_id: str,
+) -> int:
+    """Remove stored document bytes for a discarded application while keeping metadata."""
+    documents = session.scalars(
+        select(ApplicationDocument).where(ApplicationDocument.application_id == application_id)
+    ).all()
+    purged = 0
+    for document in documents:
+        if document.file_content is None:
+            continue
+        document.file_content = None
+        document.stored_filename = ""
+        document.mime_type = ""
+        document.file_size = 0
+        document.file_sha256 = ""
+        document.updated_at = utc_now()
+        purged += 1
+    if purged:
+        session.add(
+            _event(
+                application_id,
+                "document_files_purged",
+                f"Removed stored file content from {purged} application document(s).",
+            )
+        )
+    return purged
+
+
 def get_document_file(
     session: Session,
     document_id: str,
