@@ -72,7 +72,7 @@ describe("LinkedInCommandCenter", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(POPULATED), { status: 200 }));
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
-    await screen.findByText("No LinkedIn profile evidence yet.");
+    await screen.findByText("No LinkedIn profile history yet.");
     fireEvent.click(screen.getByRole("button", { name: "Profile sources" }));
 
     const profileCard = screen.getByText("Profile").closest("article");
@@ -83,7 +83,7 @@ describe("LinkedInCommandCenter", () => {
       "http://api/api/linkedin-command-center/captures/playwright",
       expect.objectContaining({ method: "POST" }),
     ));
-    expect(await screen.findByText("Profile captured and stored as LinkedIn profile evidence.")).toBeInTheDocument();
+    expect(await screen.findByText("Profile refreshed.")).toBeInTheDocument();
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
   });
 
@@ -112,7 +112,7 @@ describe("LinkedInCommandCenter", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(EMPTY), { status: 200 }));
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
-    await screen.findByText("No LinkedIn profile evidence yet.");
+    await screen.findByText("No LinkedIn profile history yet.");
     fireEvent.click(screen.getByRole("button", { name: "Profile sources" }));
 
     const connectionsCard = screen.getByText("Connections").closest("article");
