@@ -127,7 +127,8 @@ def test_application_creation_reraises_unrelated_integrity_error(monkeypatch) ->
     assert session.rollback_count == 1
 
 
-def test_outcome_race_becomes_existing_outcome_conflict() -> None:
+def test_outcome_race_becomes_existing_outcome_conflict(monkeypatch) -> None:
+    monkeypatch.setattr(workflow, "purge_application_document_files", lambda _session, _id: 0)
     session = FakeSession(
         scalar_results=[None, FakeOutcome()],
         commit_error=unique_error(),
@@ -144,7 +145,8 @@ def test_outcome_race_becomes_existing_outcome_conflict() -> None:
     assert session.commit_count == 1
 
 
-def test_outcome_reraises_unrelated_integrity_error() -> None:
+def test_outcome_reraises_unrelated_integrity_error(monkeypatch) -> None:
+    monkeypatch.setattr(workflow, "purge_application_document_files", lambda _session, _id: 0)
     session = FakeSession(
         scalar_results=[None, None],
         commit_error=unique_error(),
