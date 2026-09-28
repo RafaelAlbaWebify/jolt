@@ -8,6 +8,19 @@ export type AutomatedReviewEvidence = {
   dimensions: Record<string, number>;
 };
 
+const DECISION_LABELS: Record<string, string> = {
+  strong_pursue: "High priority",
+  pursue: "Good match",
+  conditional: "Check requirements",
+  reject: "Not a match",
+};
+
+function readableLabel(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .replace(/w/g, (character) => character.toUpperCase());
+}
+
 function EvidenceGroup({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
@@ -20,19 +33,19 @@ function EvidenceGroup({ title, items }: { title: string; items: string[] }) {
 
 export function AutomatedReview({ review }: { review: AutomatedReviewEvidence }) {
   return (
-    <section className="automated-review" aria-label="Automated job review">
+    <section className="automated-review" aria-label="Job match review">
       <div className="automated-review-heading">
         <div>
-          <span className="review-label">Automated proposed decision</span>
-          <strong>{review.proposed_decision.replaceAll("_", " ")}</strong>
+          <span className="review-label">Suggested decision</span>
+          <strong>{DECISION_LABELS[review.proposed_decision] ?? readableLabel(review.proposed_decision)}</strong>
         </div>
-        <span>Human confirmation required</span>
+        <span>Your decision is final</span>
       </div>
       <p>{review.fit_summary}</p>
       <div className="dimension-grid">
         {Object.entries(review.dimensions).map(([name, score]) => (
           <div key={name}>
-            <span>{name.replaceAll("_", " ")}</span>
+            <span>{readableLabel(name)}</span>
             <strong>{score}</strong>
           </div>
         ))}
@@ -40,7 +53,7 @@ export function AutomatedReview({ review }: { review: AutomatedReviewEvidence })
       <div className="review-evidence-grid">
         <EvidenceGroup title="Supported strengths" items={review.strengths} />
         <EvidenceGroup title="Gaps" items={review.gaps} />
-        <EvidenceGroup title="Verified blockers" items={review.blockers} />
+        <EvidenceGroup title="Requirements not met" items={review.blockers} />
         <EvidenceGroup title="Needs confirmation" items={review.uncertainties} />
       </div>
     </section>
