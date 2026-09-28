@@ -21,11 +21,31 @@ VIEW_SPECS = (
 )
 
 FORBIDDEN_PRIMARY_COPY = {
-    "professional": ("Start discovery", "Discovery running", "AI review set"),
-    "opportunities": ("REJECT — HARDLINE", "MANUAL REVIEW — HARDLINE", "Clear pending inbox"),
+    "professional": (
+        "Start discovery",
+        "Discovery running",
+        "AI review set",
+        "Latest discovery batch",
+        "Observed funnel from capture",
+    ),
+    "opportunities": (
+        "REJECT — HARDLINE",
+        "MANUAL REVIEW — HARDLINE",
+        "Clear pending inbox",
+        "capture batch",
+    ),
     "applications": ("Archive card",),
-    "linkedin": ("Capture targets", "Evidence snapshots", "Manual evidence fallback"),
-    "market": ("export a new AI work package from Data tools",),
+    "linkedin": (
+        "Capture targets",
+        "Evidence snapshots",
+        "Manual evidence fallback",
+        "Add manually fallback",
+    ),
+    "market": (
+        "export a new AI work package from Data tools",
+        "Canonical roles",
+        "Evidence observations",
+    ),
 }
 
 
