@@ -40,13 +40,26 @@ type MarketData = {
 
 type Props = { apiBase: string; active: boolean };
 
+const HUMAN_LABELS: Record<string, string> = {
+  decision_counts: "Review results",
+  actionable_opportunities: "Jobs worth considering",
+  eligibility_verification_queue: "Needs eligibility check",
+  strong_pursue: "high priority",
+  pursue: "good match",
+  conditional: "check requirements",
+  reject: "not a match",
+  posting_id: "JOLT job ID",
+  source_job_id: "Source job ID",
+};
+
 function readable(value: string) {
-  return value.replaceAll("_", " ");
+  return HUMAN_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
 function primitiveValue(value: unknown): string {
   if (value == null) return "—";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "string") return readable(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "—";
 }
 
@@ -170,7 +183,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <section className="market-overview-grid">
             <details className="market-card market-ranking-card">
               <summary>Data details</summary>
-              <p>{data.evidence_provenance.observation_count} jobs analyzed · {data.evidence_provenance.canonical_role_count} unique roles · {data.evidence_provenance.duplicate_observation_count} repeated jobs analyzed · {data.evidence_provenance.capture_run_count} search runs</p>
+              <p>{data.evidence_provenance.observation_count} jobs analyzed · {data.evidence_provenance.canonical_role_count} unique roles · {data.evidence_provenance.duplicate_observation_count} repeated listings · {data.evidence_provenance.capture_run_count} search runs</p>
               <p>
                 Oldest: {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "None"}
                 {" · "}
