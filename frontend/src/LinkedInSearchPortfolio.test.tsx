@@ -292,3 +292,50 @@ it("keeps live batch progress expanded while discovery is running", async () => 
   expect(container.querySelector(".batch-search-details")).toHaveAttribute("open");
   unmount();
 });
+
+
+it("shows deterministic search performance from capture through application outcomes", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify(savedSearches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-search-performance")) {
+      return new Response(JSON.stringify([
+        {
+          saved_search_id: "s1",
+          label: "LinkedIn IT Support",
+          enabled: true,
+          completed_runs: 2,
+          captured_count: 80,
+          verified_count: 80,
+          new_posting_count: 20,
+          duplicate_count: 60,
+          canonical_posting_count: 65,
+          ai_reviewed_count: 20,
+          ai_strong_pursue_count: 1,
+          ai_pursue_count: 2,
+          ai_conditional_count: 1,
+          ai_actionable_count: 4,
+          human_pursue_count: 2,
+          application_count: 2,
+          applied_count: 1,
+          interview_count: 1,
+          offer_count: 0,
+          accepted_offer_count: 0,
+        },
+      ]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: GET ${url}`);
+  });
+
+  render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
+
+  expect(await screen.findByText("Search performance (1)")).toBeInTheDocument();
+  expect(screen.getByText("2 completed runs · 65 unique jobs")).toBeInTheDocument();
+  expect(screen.getByText("20%")).toBeInTheDocument();
+  expect(screen.getByText(/Applied counts only applications that reached submitted/i)).toBeInTheDocument();
+});
