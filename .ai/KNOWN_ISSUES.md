@@ -81,3 +81,11 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Capture cleanup could make Applications disappear — behavior invariant retained in `PROJECT_MEMORY.md`; keep mixed-batch/application-index regressions.
 - Settings & Data viewport overflow at 1680x945 — fix product layout, never weaken certification.
 - Structured AI import errors rendered `[object Object]` — fixed by PR #387; keep structured validation-path regression.
+
+
+## KI-008 — RESOLVED 2026-09-28 — Discovery batch can remain active after backend/PC restart
+- Module: Capture Jobs / LinkedIn Discovery Batch
+- Description: discovery workers are process-local background tasks while batch state is persisted in SQLite. If Windows or the backend stops while a batch is `scheduled` or `running`, the worker disappears and the durable row could remain active indefinitely, blocking later discovery.
+- Resolution: PR #437 reconciles stale `scheduled/running` batches during backend startup, preserves completed search captures, marks interrupted running searches failed, marks not-yet-started searches inside that interrupted batch skipped, and leaves ordinary `queued` batches untouched.
+- Verification: PR #437 passed CI, Playwright acceptance, Full-cycle Playwright certification, Production clean-install certification, Migration recovery certification and Reproducible release certification before squash merge as `bf9a9fce87ac7e35f195931a2460b02396349346`.
+- Operator implication: manual SQLite repair should no longer be required for this restart failure mode.
