@@ -175,11 +175,11 @@ function compareAIPriority(
 
 function reviewNotice(decision: ReviewChoice, title: string) {
   const name = title || "Opportunity";
-  if (decision === "pursue") return `${name} moved out of the review inbox and is available in Application Pipeline.`;
-  if (decision === "needs_more_information") return `${name} marked as needing more information and removed from the pending inbox.`;
-  if (decision === "defer") return `${name} deferred and removed from the pending inbox.`;
-  if (decision === "reject") return `${name} rejected and removed from the pending inbox.`;
-  return `${name} reviewed and removed from the pending inbox.`;
+  if (decision === "pursue") return `${name} is ready in Applications.`;
+  if (decision === "needs_more_information") return `${name} saved as needing more information.`;
+  if (decision === "defer") return `${name} saved for later.`;
+  if (decision === "reject") return `${name} rejected.`;
+  return `${name} saved as maybe.`;
 }
 
 async function errorFromResponse(response: Response, fallback: string) {
