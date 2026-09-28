@@ -47,6 +47,29 @@ type DiscoveryBatch = {
   searches: BatchSearch[];
 };
 
+type SearchPerformance = {
+  saved_search_id: string;
+  label: string;
+  enabled: boolean;
+  completed_runs: number;
+  captured_count: number;
+  verified_count: number;
+  new_posting_count: number;
+  duplicate_count: number;
+  canonical_posting_count: number;
+  ai_reviewed_count: number;
+  ai_strong_pursue_count: number;
+  ai_pursue_count: number;
+  ai_conditional_count: number;
+  ai_actionable_count: number;
+  human_pursue_count: number;
+  application_count: number;
+  applied_count: number;
+  interview_count: number;
+  offer_count: number;
+  accepted_offer_count: number;
+};
+
 type SearchDraft = {
   id: string | null;
   label: string;
@@ -93,6 +116,8 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batch, setBatch] = useState<DiscoveryBatch | null>(null);
+  const [performance, setPerformance] = useState<SearchPerformance[]>([]);
+  const [performanceError, setPerformanceError] = useState("");
   const [draft, setDraft] = useState<SearchDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -110,6 +135,13 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     });
   }, [apiBase]);
 
+  const loadPerformance = useCallback(async () => {
+    const response = await fetch(`${apiBase}/api/linkedin-search-performance`);
+    if (!response.ok) throw await responseError(response, "Unable to load search performance.");
+    setPerformance((await response.json()) as SearchPerformance[]);
+    setPerformanceError("");
+  }, [apiBase]);
+
   const loadBatches = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/linkedin-discovery-batches`);
     if (!response.ok) throw await responseError(response, "Unable to load discovery batches.");
@@ -121,11 +153,19 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      await Promise.all([loadSearches(), loadBatches()]);
+      await Promise.all([
+        loadSearches(),
+        loadBatches(),
+        loadPerformance().catch((caught) => {
+          setPerformanceError(
+            caught instanceof Error ? caught.message : "Unable to load search performance.",
+          );
+        }),
+      ]);
     } finally {
       setLoading(false);
     }
-  }, [loadBatches, loadSearches]);
+  }, [loadBatches, loadPerformance, loadSearches]);
 
   useEffect(() => {
     if (!active) return;
@@ -143,7 +183,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
           const loaded = (await response.json()) as DiscoveryBatch;
           setBatch(loaded);
           if (terminalBatch(loaded.status)) {
-            await loadSearches();
+            await Promise.all([loadSearches(), loadPerformance()]);
           }
         })
         .catch((caught) => {
@@ -151,7 +191,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         });
     }, 2_000);
     return () => window.clearInterval(interval);
-  }, [active, apiBase, batch, loadSearches]);
+  }, [active, apiBase, batch, loadPerformance, loadSearches]);
 
   const enabledSearches = useMemo(
     () => searches.filter((item) => item.enabled),
@@ -164,6 +204,11 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const selectedSearches = useMemo(
     () => enabledSearches.filter((item) => selectedIds.has(item.id)),
     [enabledSearches, selectedIds],
+  );
+
+  const enabledPerformance = useMemo(
+    () => performance.filter((item) => item.enabled),
+    [performance],
   );
 
   function toggleSelected(id: string, checked: boolean) {
@@ -523,6 +568,63 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
           )}
         </>
       )}
+
+      <details className="search-performance-details" open>
+        <summary>
+          Search performance ({enabledPerformance.length})
+          <span>Observed funnel from capture to real application outcomes</span>
+        </summary>
+        {performanceError && <p className="error" role="alert">{performanceError}</p>}
+        {enabledPerformance.length === 0 ? (
+          <p className="search-performance-empty">
+            No completed production search history yet. Metrics will appear after discoveries run.
+          </p>
+        ) : (
+          <div className="search-performance-table-wrap">
+            <table className="search-performance-table">
+              <thead>
+                <tr>
+                  <th>Search</th>
+                  <th>Captured</th>
+                  <th>New</th>
+                  <th>AI+</th>
+                  <th>Human pursue</th>
+                  <th>Applied</th>
+                  <th>Interview</th>
+                  <th>Offer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enabledPerformance.map((item) => (
+                  <tr key={item.saved_search_id}>
+                    <th scope="row">
+                      <strong>{item.label}</strong>
+                      <span>{item.completed_runs} completed run{item.completed_runs === 1 ? "" : "s"} · {item.canonical_posting_count} unique jobs</span>
+                    </th>
+                    <td>{item.captured_count}</td>
+                    <td>{item.new_posting_count}</td>
+                    <td>
+                      <strong>{item.ai_actionable_count}</strong>
+                      <span>
+                        {item.ai_reviewed_count
+                          ? `${Math.round((item.ai_actionable_count / item.ai_reviewed_count) * 100)}%`
+                          : "—"}
+                      </span>
+                    </td>
+                    <td>{item.human_pursue_count}</td>
+                    <td>{item.applied_count}</td>
+                    <td>{item.interview_count}</td>
+                    <td>{item.offer_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="search-performance-note">
+              AI+ = strong pursue + pursue + conditional. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted.
+            </p>
+          </div>
+        )}
+      </details>
 
       {batch && (
         <section className="discovery-batch-status" aria-labelledby="discovery-batch-status-heading">
