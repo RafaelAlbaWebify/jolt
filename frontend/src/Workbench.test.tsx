@@ -105,12 +105,10 @@ describe("Workbench", () => {
     expect(market).not.toHaveAttribute("hidden");
   });
 
-  it("shows the practical workflow and updates active descriptions", () => {
+  it("keeps the sidebar focused on navigation and the active workspace description", () => {
     render(<Workbench />);
     const sidebar = screen.getByRole("complementary", { name: "JOLT workspace navigation" });
-    expect(sidebar).toHaveTextContent("Capture jobs");
-    expect(sidebar).toHaveTextContent("Review opportunities");
-    expect(sidebar).toHaveTextContent("Prepare and apply");
+    expect(sidebar).not.toHaveTextContent("Capture jobs Review opportunities Prepare and apply");
 
     fireEvent.click(screen.getByRole("button", { name: "LinkedIn Profile" }));
     expect(sidebar).toHaveTextContent(
