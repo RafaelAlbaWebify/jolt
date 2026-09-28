@@ -84,10 +84,10 @@ export function RuntimeStalenessGuard({ apiBase }: Props) {
 
   return (
     <section className="panel error" role="alert" aria-label="JOLT restart required">
-      <strong>JOLT restart required — the backend is running old code.</strong>
+      <strong>Restart JOLT to use the latest version.</strong>
       <p>
-        Loaded backend {shortSha(identity!.loaded_git.commit_sha)} while the repository checkout is{" "}
-        {shortSha(identity!.git.commit_sha)}. Stop and restart JOLT before capture, export, review, or import.
+        JOLT was updated while it was open. Restart it before running searches, reviewing jobs,
+        or importing data.
       </p>
     </section>
   );
