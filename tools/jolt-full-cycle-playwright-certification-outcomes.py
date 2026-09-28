@@ -52,7 +52,7 @@ def exercise_outcome_cycle(
     actions: list[dict[str, str]],
 ) -> None:
     dialog = open_workflow(page, module, fixture, "submitted")
-    dialog.get_by_label("Activity or correction notes").fill(
+    dialog.get_by_label("Notes for this update").fill(
         "Certification rejection outcome before reopening."
     )
     dialog.get_by_role("combobox", name="Outcome", exact=True).select_option(
@@ -62,7 +62,7 @@ def exercise_outcome_cycle(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/outcomes")
     ) as response_info:
-        dialog.get_by_role("button", name="Record final outcome", exact=True).click()
+        dialog.get_by_role("button", name="Save outcome", exact=True).click()
     if response_info.value.status >= 400:
         raise AssertionError(
             f"Final outcome returned HTTP {response_info.value.status}"
@@ -81,17 +81,18 @@ def exercise_outcome_cycle(
     )
     module.record_action(actions, "Outcome persists after reload", "passed")
 
-    dialog.get_by_label("Activity or correction notes").fill(
+    dialog.get_by_label("Notes for this update").fill(
         "Certification reopening correction."
     )
-    dialog.get_by_role("combobox", name="Stage", exact=True).select_option(
+    dialog.get_by_text("Correct stage manually", exact=True).click()
+    dialog.get_by_role("combobox", name="Correct stage", exact=True).select_option(
         "recruiter_screen"
     )
     with page.expect_response(
         lambda response: response.request.method == "POST"
         and response.url.endswith("/transitions")
     ) as response_info:
-        dialog.get_by_role("button", name="Save stage", exact=True).click()
+        dialog.get_by_role("button", name="Save correction", exact=True).click()
     if response_info.value.status >= 400:
         raise AssertionError(
             f"Outcome reopening returned HTTP {response_info.value.status}"
