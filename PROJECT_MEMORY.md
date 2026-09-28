@@ -266,3 +266,38 @@ Update this file when:
 Do not fill this file with temporary debugging notes or transient implementation details.
 
 - Mixed-batch cleanup regression coverage must verify that the application index still contains any pursued/applied opportunity after the capture batch is archived.
+
+
+## 2026-09-28 — Production-use workflow and search optimization boundary
+
+JOLT has moved from readiness/search-behavior experimentation into normal job-search operation.
+
+Current operator loop:
+
+1. Run the enabled production saved-search portfolio from Capture Jobs.
+2. Export the official discovery-batch AI exchange from JOLT.
+3. Review with ChatGPT and import the validated result through JOLT.
+4. Make the final human decision in Review Inbox.
+5. Keep Applications status and outcomes current.
+6. Use accumulated search-performance evidence to decide whether a saved search should change.
+
+PowerShell/API calls used during the September 27–28 portfolio audit were an operator shortcut for fast analysis; export/import functionality already exists in the product UI and must not be reimplemented as if missing.
+
+### Search-strategy rule
+
+Do not restart broad A/B keyword experimentation by default. A production saved search should change only when real evidence shows one of:
+- repeated operational failure;
+- sustained low actionable yield across real runs;
+- materially better application/interview/offer outcomes from another search; or
+- a deliberate target-role/geography change by the user.
+
+Capture volume alone is not success. The preferred feedback chain is:
+`saved search -> canonical jobs -> AI signal -> human pursue -> submitted application -> interview -> offer/outcome`.
+
+Overlapping searches may both receive descriptive credit for the same canonical posting. Treat this as multi-touch discovery evidence, not exclusive causal attribution.
+
+### Restart recovery invariant
+
+A backend/PC restart may invalidate process-local discovery workers. On startup, stale `scheduled/running` discovery batches must become terminal while preserving completed captures. Normal `queued` batches are valid durable operator intent and must not be failed merely because the backend restarted.
+
+PR #437 is the certified implementation of this invariant.
