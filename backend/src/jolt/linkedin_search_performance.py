@@ -108,11 +108,7 @@ def build_linkedin_search_performance(
                 )
             ).all()
         )
-        capture_run_ids = {
-            run.capture_run_id
-            for run in runs
-            if run.capture_run_id is not None
-        }
+        capture_run_ids = {run.capture_run_id for run in runs if run.capture_run_id is not None}
 
         posting_ids: set[str] = set()
         if capture_run_ids:
@@ -130,11 +126,15 @@ def build_linkedin_search_performance(
         ai_reviews = _latest_ai_reviews(session, posting_ids)
         human_reviews = _latest_human_reviews(session, posting_ids)
 
-        applications = list(
-            session.scalars(
-                select(Application).where(Application.posting_id.in_(posting_ids))
-            ).all()
-        ) if posting_ids else []
+        applications = (
+            list(
+                session.scalars(
+                    select(Application).where(Application.posting_id.in_(posting_ids))
+                ).all()
+            )
+            if posting_ids
+            else []
+        )
         applications_by_id = {application.id: application for application in applications}
         application_ids = set(applications_by_id)
 
@@ -143,18 +143,20 @@ def build_linkedin_search_performance(
         }
         if application_ids:
             events = session.scalars(
-                select(ApplicationEvent).where(
-                    ApplicationEvent.application_id.in_(application_ids)
-                )
+                select(ApplicationEvent).where(ApplicationEvent.application_id.in_(application_ids))
             ).all()
             for event in events:
                 reached_stages.setdefault(event.application_id, set()).add(event.to_status)
 
-        outcomes = list(
-            session.scalars(
-                select(Outcome).where(Outcome.application_id.in_(application_ids))
-            ).all()
-        ) if application_ids else []
+        outcomes = (
+            list(
+                session.scalars(
+                    select(Outcome).where(Outcome.application_id.in_(application_ids))
+                ).all()
+            )
+            if application_ids
+            else []
+        )
         outcomes_by_application = {
             outcome.application_id: outcome
             for outcome in outcomes
@@ -178,12 +180,8 @@ def build_linkedin_search_performance(
             if outcome is not None and outcome.outcome_type == "offer_accepted":
                 accepted_offer_count += 1
 
-        ai_strong = sum(
-            1 for review in ai_reviews.values() if review.decision == "strong_pursue"
-        )
-        ai_pursue = sum(
-            1 for review in ai_reviews.values() if review.decision == "pursue"
-        )
+        ai_strong = sum(1 for review in ai_reviews.values() if review.decision == "strong_pursue")
+        ai_pursue = sum(1 for review in ai_reviews.values() if review.decision == "pursue")
         ai_conditional = sum(
             1 for review in ai_reviews.values() if review.decision == "conditional"
         )
