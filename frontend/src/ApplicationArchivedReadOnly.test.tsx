@@ -106,13 +106,13 @@ describe("archived application workspace resources", () => {
     render(<ApplicationDocuments {...sharedProps} />);
     expect(await screen.findByText("Submitted resume")).toBeInTheDocument();
     expect(
-      screen.getByText(/document metadata is read-only, but stored files remain downloadable/)
+      screen.getByText(/files are read-only, but saved files remain downloadable/)
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Download" })).toHaveAttribute(
       "href",
       "http://api/api/application-documents/document-1/file",
     );
-    expect(screen.queryByRole("button", { name: "Add document" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit document" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Attach file" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
   });
 });
