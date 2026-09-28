@@ -29,7 +29,7 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-023 | COMPLETE | Unified release/version authority | R-001 | package, FastAPI health and runtime identity derive from one release-version source | tests + exact merge gates |
 | R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
 | R-026 | COMPLETE | Restart recovery for interrupted discovery batches | R-025 | backend restart closes stale scheduled/running discovery state without touching normal queued batches or completed capture evidence | PR #437 six green gates + squash merge bf9a9fce87ac7e35f195931a2460b02396349346 |
-| R-027 | ACTIVE | Saved-search performance funnel | R-025 | each saved search exposes deterministic capture -> AI -> human pursue -> submitted -> interview -> offer/outcome metrics without schema migration or automatic search decisions | PR #438 exact gates + real accumulated application outcomes |
+| R-027 | ACTIVE | Saved-search performance funnel | R-025 | each saved search exposes deterministic capture -> AI -> human pursue -> submitted -> interview -> offer/outcome metrics without schema migration or automatic search decisions | PR #439 exact gates + real accumulated application outcomes |
 
 ## Immediate sequence
 Production certification is complete for the supported local-first single-user Windows boundary.
