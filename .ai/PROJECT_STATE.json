@@ -4,11 +4,11 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-24",
+  "last_update_date": "2026-09-28",
   "baseline_branch": "main",
-  "baseline_commit": "4bad4608adbc5cb44787dec8be4dd784a04e618d",
-  "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 complete and verified through normal JOLT UI: two saved LinkedIn searches completed sequentially, consolidated review exchange/import succeeded, and final release main is six-gate green.",
+  "baseline_commit": "bf9a9fce87ac7e35f195931a2460b02396349346",
+  "current_phase": "production_job_search_with_targeted_improvements",
+  "current_milestone": "Production portfolio is live; stale discovery recovery is merged via PR #437; saved-search outcome funnel R-027 is the active qualitative improvement.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -26,11 +26,11 @@
   ],
   "active_workstreams": [
     {
-      "id": "R-025",
-      "name": "LinkedIn Search Portfolio and Discovery Batch",
-      "status": "complete",
-      "roadmap": "docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md",
-      "current_phase": "COMPLETE — real multi-search acceptance and restart persistence passed"
+      "id": "R-027",
+      "name": "Saved Search Performance Funnel",
+      "status": "active",
+      "roadmap": ".ai/ROADMAP.md",
+      "current_phase": "PR #438 in validation — deterministic capture-to-outcome metrics, no schema migration"
     }
   ],
   "completed_milestones": [
@@ -71,13 +71,20 @@
     "2026-09-21 repository issue audit found zero open GitHub issues and no known unresolved P0/P1 release blocker.",
     "R-025 LinkedIn Search Portfolio and Discovery Batch completed with real authenticated multi-search acceptance, consolidated AI review/import, and restart persistence.",
     "2026-09-24 R-025 Phase 5 real acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709: Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515 ran two saved LinkedIn searches sequentially, captured/verified 50/50 jobs, materialized a 47-posting frozen review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved batch/review state across a full JOLT restart.",
-    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI."
+    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI.",
+    "2026-09-27/28 controlled V1/V2/V3 LinkedIn search-behavior experiments completed and production portfolio consolidated to 12 active saved searches; experimental/HIST searches remain disabled for provenance.",
+    "2026-09-28 production portfolio validation completed through official batch AI exchange/import. Main production batch imported 52/52 reviews; IT Operations EU validation imported 15/15 reviews; human/application state remained protected.",
+    "2026-09-28 PR #437 merged stale discovery restart recovery on current main after six green gates; persisted scheduled/running batches are reconciled on backend start while normal queued batches are preserved.",
+    "2026-09-28 stale historical PRs #334, #369 and #428 closed as superseded to reduce project-control ambiguity."
   ],
-  "pending_milestones": [],
+  "pending_milestones": [
+    "R-027: merge the saved-search performance funnel after exact green gates, then accumulate real application/interview/offer data before tuning the portfolio again."
+  ],
   "next_recommended_actions": [
-    "Replace the two acceptance-labelled saved searches with the real production search portfolio and use Saved LinkedIn Search Portfolio as the normal Capture Jobs workflow.",
-    "Tune saved-search labels/filters based on precision and actionable yield; keep each search within the certified 100 jobs / 10 pages ceiling unless separately revalidated.",
-    "After the real LinkedIn portfolio is stable, prioritize the next product workstream (for example another job-board adapter or another operator-efficiency improvement) without reopening R-025."
+    "Use the 12-search production portfolio for the real job search; stop broad A/B experimentation unless live evidence exposes a problem.",
+    "Review AI-positive opportunities in Review Inbox, make human decisions, submit applications, and keep application stages/outcomes current so the search funnel has trustworthy data.",
+    "After R-027 merges, evaluate searches from real funnel outcomes over time rather than capture volume alone.",
+    "Treat additional job-board adapters as later expansion, not a blocker for the current job search."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
