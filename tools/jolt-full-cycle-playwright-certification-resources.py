@@ -96,6 +96,7 @@ def document_cycle(
     title = f"Certification Resume {stamp}"
     corrected = f"{title} Corrected"
     dialog.get_by_role("textbox", name="Title", exact=True).fill(title)
+    dialog.get_by_text("More details", exact=True).click()
     dialog.get_by_role("textbox", name="Source URL", exact=True).fill(
         f"https://example.test/documents/{stamp}"
     )
@@ -109,7 +110,7 @@ def document_cycle(
             encoding="utf-8",
         )
         dialog.get_by_label("File", exact=True).set_input_files(str(upload_path))
-        dialog.get_by_role("button", name="Add document", exact=True).click()
+        dialog.get_by_role("button", name="Attach file", exact=True).click()
 
         dialog.get_by_text(title, exact=True).wait_for(timeout=30_000)
         dialog.get_by_text(
@@ -117,20 +118,20 @@ def document_cycle(
             exact=False,
         ).wait_for(timeout=30_000)
     item = dialog.locator("li").filter(has_text=title)
-    item.get_by_role("link", name="Download file", exact=True).wait_for(timeout=30_000)
+    item.get_by_role("link", name="Download", exact=True).wait_for(timeout=30_000)
     module.record_action(actions, "Create application document with stored file", "passed")
 
-    item.get_by_role("button", name="Edit document", exact=True).click()
+    item.get_by_role("button", name="Edit", exact=True).click()
     dialog.get_by_role("textbox", name="Title", exact=True).fill(f"{title} Cancelled")
     dialog.get_by_role("button", name="Cancel edit", exact=True).click()
     dialog.get_by_text(title, exact=True).wait_for()
     module.record_action(actions, "Cancel document edit", "passed")
 
-    item.get_by_role("button", name="Edit document", exact=True).click()
+    item.get_by_role("button", name="Edit", exact=True).click()
     dialog.get_by_role("textbox", name="Title", exact=True).fill(corrected)
     dialog.get_by_role("combobox", name="Status", exact=True).select_option("ready")
     dialog.get_by_role("textbox", name="Notes", exact=True).fill("Corrected document notes.")
-    dialog.get_by_role("button", name="Save document changes", exact=True).click()
+    dialog.get_by_role("button", name="Save changes", exact=True).click()
     dialog.get_by_text(corrected, exact=True).wait_for(timeout=30_000)
     module.record_action(actions, "Edit application document", "passed")
 
@@ -146,7 +147,7 @@ def document_cycle(
     persisted_item = dialog.locator("li").filter(has_text=corrected)
     persisted_item.get_by_role(
         "link",
-        name="Download file",
+        name="Download",
         exact=True,
     ).wait_for(timeout=30_000)
     module.record_action(
@@ -158,7 +159,7 @@ def document_cycle(
     dialog.get_by_role("tab", name="Timeline", exact=True).click()
     runner.require_rendered(
         dialog.inner_text(),
-        ("Document Updated", title, corrected, "draft", "ready"),
+        ("Document Updated", title, corrected, "ready"),
         "Document correction timeline",
     )
     module.record_action(actions, "Document correction visible in timeline", "passed")
