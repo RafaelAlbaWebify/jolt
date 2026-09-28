@@ -92,7 +92,7 @@ describe("LinkedInSearchPortfolio", () => {
 
     expect(await screen.findByText("LinkedIn IT Support")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Select enabled" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start discovery (2)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run searches (2)" }));
 
     await waitFor(() => {
       expect(calls).toContainEqual({
@@ -164,7 +164,7 @@ it("keeps retired searches out of the primary list and collapses search URLs", a
   render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
 
   expect(await screen.findByText("LinkedIn IT Support")).toBeInTheDocument();
-  expect(screen.getByText("Retired searches (1)")).toBeInTheDocument();
+  expect(screen.getByText("Inactive searches (1)")).toBeInTheDocument();
   expect(screen.getAllByText("Search URL")).toHaveLength(3);
   expect(screen.queryByText("https://www.linkedin.com/jobs/search/?keywords=IT+Support")).not.toBeInTheDocument();
 });
@@ -231,9 +231,9 @@ it("keeps critical discovery controls visible when search and batch lists are lo
     <LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />,
   );
 
-  expect(await screen.findByText("Saved searches (21)")).toBeInTheDocument();
-  expect(screen.getByText("Download this discovery batch for AI review")).toBeInTheDocument();
-  expect(screen.getByText("Import returned AI review")).toBeInTheDocument();
+  expect(await screen.findByText("Search settings (21)")).toBeInTheDocument();
+  expect(screen.getByText("Export new jobs for review")).toBeInTheDocument();
+  expect(screen.getByText("Import reviewed jobs")).toBeInTheDocument();
 
   const activeDetails = container.querySelector(".active-searches-details");
   const batchDetails = container.querySelector(".batch-search-details");
