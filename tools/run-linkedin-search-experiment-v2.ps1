@@ -36,6 +36,15 @@ function Get-CanonicalKey([string]$Url) {
     ($pairs.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join "&"
 }
 
+function Test-ExperimentOwnedSearch([object]$Search) {
+    $label = [string]$Search.label
+    $notes = [string]$Search.notes
+    return (
+        ($label -like "EXP *" -or $label -like "EXP2 *") -and
+        $notes -like "Controlled LinkedIn search experiment*"
+    )
+}
+
 function New-LinkedInSearchUrl(
     [string]$Keywords,
     [string]$GeoId,
@@ -87,17 +96,33 @@ foreach ($definition in $definitions) {
         max_pages = $MaxPages
     }
 
-    # Reuse an existing experimental saved search when the canonical criteria are
-    # identical. Historical discovery batches retain their own label/URL snapshots.
-    $match = $existing |
-        Where-Object { (Get-CanonicalKey ([string]$_.search_url)) -eq $key } |
-        Select-Object -First 1
+    # Only experiment-owned searches may be reused. If production already owns
+    # the same canonical criteria, fail closed instead of mutating that search.
+    $canonicalMatches = @(
+        $existing |
+            Where-Object { (Get-CanonicalKey ([string]$_.search_url)) -eq $key }
+    )
+    $experimentMatches = @(
+        $canonicalMatches |
+            Where-Object { Test-ExperimentOwnedSearch $_ }
+    )
 
-    if ($null -eq $match) {
+    if ($experimentMatches.Count -gt 1) {
+        throw "Multiple experiment-owned saved searches use the same canonical criteria: $url"
+    }
+
+    if ($experimentMatches.Count -eq 1) {
+        $match = $experimentMatches[0]
+        $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$($match.id)" "POST" $payload
+    } elseif ($canonicalMatches.Count -gt 0) {
+        $owner = $canonicalMatches[0]
+        throw (
+            "Refusing to reuse canonical criteria owned by a non-experiment saved search. " +
+            "ID=$($owner.id) LABEL='$($owner.label)' URL='$($owner.search_url)'"
+        )
+    } else {
         $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches" "POST" $payload
         $existing += $saved
-    } else {
-        $saved = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$($match.id)" "POST" $payload
     }
     $ids += $saved.id
 }
@@ -118,15 +143,16 @@ do {
 
 foreach ($id in $ids) {
     $search = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$id"
-    if ($search.notes -like "Controlled LinkedIn search experiment v2*") {
-        $null = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$id" "POST" @{
-            label = $search.label
-            search_url = $search.search_url
-            notes = $search.notes
-            enabled = $false
-            max_jobs = [int]$search.max_jobs
-            max_pages = [int]$search.max_pages
-        }
+    if (-not (Test-ExperimentOwnedSearch $search)) {
+        throw "Refusing to retire non-experiment saved search ID=$id LABEL='$($search.label)'"
+    }
+    $null = Invoke-JoltJson "$ApiUrl/api/linkedin-searches/$id" "POST" @{
+        label = $search.label
+        search_url = $search.search_url
+        notes = $search.notes
+        enabled = $false
+        max_jobs = [int]$search.max_jobs
+        max_pages = [int]$search.max_pages
     }
 }
 
