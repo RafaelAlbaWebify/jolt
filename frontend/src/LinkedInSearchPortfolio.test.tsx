@@ -91,7 +91,7 @@ describe("LinkedInSearchPortfolio", () => {
     render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByText("LinkedIn IT Support")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Select enabled" }));
+    expect(screen.getByText("2 of 2 enabled searches selected")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run searches (2)" }));
 
     await waitFor(() => {
