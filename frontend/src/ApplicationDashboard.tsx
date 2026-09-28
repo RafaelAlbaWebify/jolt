@@ -780,21 +780,26 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
                         <button
                           type="button"
-                          className="danger application-card-archive"
+                          className="secondary application-card-archive"
                           disabled={busy}
                           onClick={() => void archiveCard(opportunity)}
                         >
                           Hide from board
                         </button>
                         {currentLane === "closed" && (
-                          <button
-                            type="button"
-                            className="danger application-card-delete"
-                            disabled={busy}
-                            onClick={() => void deleteCardPermanently(opportunity)}
-                          >
-                            Delete permanently
-                          </button>
+                          <details className="application-card-more">
+                            <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
+                              More
+                            </summary>
+                            <button
+                              type="button"
+                              className="danger application-card-delete"
+                              disabled={busy}
+                              onClick={() => void deleteCardPermanently(opportunity)}
+                            >
+                              Delete permanently
+                            </button>
+                          </details>
                         )}
                       </div>
                     </article>
@@ -839,14 +844,19 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                     >
                       Restore to board
                     </button>
-                    <button
-                      type="button"
-                      className="danger application-card-delete"
-                      disabled={busy}
-                      onClick={() => void deleteCardPermanently(opportunity)}
-                    >
-                      Delete permanently
-                    </button>
+                    <details className="application-card-more">
+                      <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
+                        More
+                      </summary>
+                      <button
+                        type="button"
+                        className="danger application-card-delete"
+                        disabled={busy}
+                        onClick={() => void deleteCardPermanently(opportunity)}
+                      >
+                        Delete permanently
+                      </button>
+                    </details>
                   </div>
                 </article>
               ))}
@@ -922,9 +932,12 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                     <button type="button" className="secondary" disabled={busy} onClick={() => void restoreCard(selected)}>
                       Restore application
                     </button>
-                    <button type="button" className="danger" disabled={busy} onClick={() => void deleteCardPermanently(selected)}>
-                      Delete permanently
-                    </button>
+                    <details className="application-card-more">
+                      <summary>More actions</summary>
+                      <button type="button" className="danger" disabled={busy} onClick={() => void deleteCardPermanently(selected)}>
+                        Delete permanently
+                      </button>
+                    </details>
                   </>
                 )}
                 <button type="button" className="secondary" onClick={() => setSelectedPostingId(null)}>
