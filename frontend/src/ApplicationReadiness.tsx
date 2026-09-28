@@ -25,17 +25,20 @@ function ReadinessList({ title, items }: { title: string; items?: string[] | nul
 export function ApplicationReadiness({ readiness }: { readiness: ApplicationReadinessData }) {
   return (
     <details className="application-readiness">
-      <summary>Application evidence preparation</summary>
-      <p className="confidence">
-        {readiness.engine_version} · profile {readiness.profile_version_id}
-      </p>
-      <ReadinessList title="Evidence to use" items={readiness.evidence_matches} />
-      <ReadinessList title="Credibility warnings" items={readiness.credibility_warnings} />
-      <ReadinessList title="CV tailoring points" items={readiness.cv_tailoring_points} />
-      <ReadinessList title="Application talking points" items={readiness.talking_points} />
+      <summary>Application preparation guidance</summary>
+      <ReadinessList title="Evidence to mention" items={readiness.evidence_matches} />
+      <ReadinessList title="Claims to verify" items={readiness.credibility_warnings} />
+      <ReadinessList title="CV tailoring" items={readiness.cv_tailoring_points} />
+      <ReadinessList title="Talking points" items={readiness.talking_points} />
       <ReadinessList title="Likely interview questions" items={readiness.interview_questions} />
-      <ReadinessList title="Technical revision topics" items={readiness.revision_topics} />
-      <ReadinessList title="Application checklist" items={readiness.checklist} />
+      <ReadinessList title="Topics to refresh" items={readiness.revision_topics} />
+      <ReadinessList title="Checklist" items={readiness.checklist} />
+      <details className="readiness-technical-details">
+        <summary>Technical details</summary>
+        <p className="confidence">
+          Analysis {readiness.engine_version} · profile version {readiness.profile_version_id}
+        </p>
+      </details>
     </details>
   );
 }
