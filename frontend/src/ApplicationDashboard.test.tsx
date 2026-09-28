@@ -421,15 +421,15 @@ describe("ApplicationDashboard", () => {
     });
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Show archived cards" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Show hidden applications" }));
 
-    expect(await screen.findByLabelText("Archived count")).toHaveTextContent("1");
+    expect(await screen.findByLabelText("Hidden count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Closed count")).toHaveTextContent("1");
-    expect(screen.getByRole("heading", { name: "Archived applications" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hidden applications" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Archived Support Engineer" }));
     const workspace = screen.getByRole("dialog", { name: "Archived Support Engineer" });
-    expect(await within(workspace).findByText(/Archived application — this workspace is read-only/)).toBeInTheDocument();
+    expect(await within(workspace).findByText(/Hidden application — restore it to the board before editing/)).toBeInTheDocument();
     expect(within(workspace).getByRole("button", { name: "Restore application" })).toBeInTheDocument();
 
     fireEvent.click(within(workspace).getByRole("tab", { name: "Tasks" }));
@@ -486,8 +486,13 @@ describe("ApplicationDashboard", () => {
     });
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Show archived cards" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Delete permanently" }));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Show hidden applications" }));
+    fireEvent.click(
+      await screen.findByText("More", {
+        selector: "summary",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/applications/application-1/delete",

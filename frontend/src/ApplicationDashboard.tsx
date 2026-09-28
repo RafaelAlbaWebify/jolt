@@ -299,12 +299,12 @@ function ApplicationSummaryButton({ item, onOpen }: { item: Opportunity; onOpen:
 }
 
 function ArchivedOverview({ detail, loading }: { detail: ApplicationDetail | null; loading: boolean }) {
-  if (loading) return <p role="status">Loading archived application…</p>;
-  if (!detail) return <Placeholder title="Archived application unavailable" copy="The archived record could not be loaded." />;
+  if (loading) return <p role="status">Loading hidden application…</p>;
+  if (!detail) return <Placeholder title="Hidden application unavailable" copy="The archived record could not be loaded." />;
   return (
     <section className="application-archived-overview">
       <p className="application-read-only-notice" role="status">
-        Archived application — this workspace is read-only until the application is restored.
+        Hidden application — restore it to the board before editing.
       </p>
       <dl>
         <div><dt>Status</dt><dd>Archived</dd></div>
@@ -674,10 +674,10 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
-          Show archived cards
+          Show hidden applications
         </label>
         <p className="application-boundary">
-          Closed means the process ended. Archived applications are shown separately and remain read-only until restored.
+          Closed means the hiring process ended. Hidden applications stay out of the active board and can be restored later.
         </p>
       </div>
 
@@ -780,21 +780,26 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
                         <button
                           type="button"
-                          className="danger application-card-archive"
+                          className="secondary application-card-archive"
                           disabled={busy}
                           onClick={() => void archiveCard(opportunity)}
                         >
-                          Archive card
+                          Hide from board
                         </button>
                         {currentLane === "closed" && (
-                          <button
-                            type="button"
-                            className="danger application-card-delete"
-                            disabled={busy}
-                            onClick={() => void deleteCardPermanently(opportunity)}
-                          >
-                            Delete permanently
-                          </button>
+                          <details className="application-card-more">
+                            <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
+                              More
+                            </summary>
+                            <button
+                              type="button"
+                              className="danger application-card-delete"
+                              disabled={busy}
+                              onClick={() => void deleteCardPermanently(opportunity)}
+                            >
+                              Delete permanently
+                            </button>
+                          </details>
                         )}
                       </div>
                     </article>
@@ -810,14 +815,14 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
         <section className="application-archived-section" aria-labelledby="application-archived-heading">
           <div className="application-archived-heading">
             <div>
-              <p className="eyebrow">Separate lifecycle state</p>
-              <h3 id="application-archived-heading">Archived applications</h3>
-              <p>Archived records do not count as Closed and cannot be edited until restored.</p>
+              <p className="eyebrow">Hidden from active board</p>
+              <h3 id="application-archived-heading">Hidden applications</h3>
+              <p>Hidden applications stay out of the active board until you restore them.</p>
             </div>
-            <strong aria-label="Archived count">{visibleArchivedCandidates.length}</strong>
+            <strong aria-label="Hidden count">{visibleArchivedCandidates.length}</strong>
           </div>
           {visibleArchivedCandidates.length === 0 ? (
-            <p className="application-lane-empty">No archived applications</p>
+            <p className="application-lane-empty">No hidden applications</p>
           ) : (
             <div className="application-archived-list">
               {visibleArchivedCandidates.map((opportunity) => (
@@ -837,16 +842,21 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       disabled={busy}
                       onClick={() => void restoreCard(opportunity)}
                     >
-                      Restore card
+                      Restore to board
                     </button>
-                    <button
-                      type="button"
-                      className="danger application-card-delete"
-                      disabled={busy}
-                      onClick={() => void deleteCardPermanently(opportunity)}
-                    >
-                      Delete permanently
-                    </button>
+                    <details className="application-card-more">
+                      <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
+                        More
+                      </summary>
+                      <button
+                        type="button"
+                        className="danger application-card-delete"
+                        disabled={busy}
+                        onClick={() => void deleteCardPermanently(opportunity)}
+                      >
+                        Delete permanently
+                      </button>
+                    </details>
                   </div>
                 </article>
               ))}
@@ -922,9 +932,12 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                     <button type="button" className="secondary" disabled={busy} onClick={() => void restoreCard(selected)}>
                       Restore application
                     </button>
-                    <button type="button" className="danger" disabled={busy} onClick={() => void deleteCardPermanently(selected)}>
-                      Delete permanently
-                    </button>
+                    <details className="application-card-more">
+                      <summary>More actions</summary>
+                      <button type="button" className="danger" disabled={busy} onClick={() => void deleteCardPermanently(selected)}>
+                        Delete permanently
+                      </button>
+                    </details>
                   </>
                 )}
                 <button type="button" className="secondary" onClick={() => setSelectedPostingId(null)}>

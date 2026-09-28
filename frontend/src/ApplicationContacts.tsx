@@ -146,7 +146,7 @@ export function ApplicationContacts({ apiBase, applicationId, readOnly = false, 
         <span>{contacts.length} recorded</span>
       </div>
       {readOnly ? (
-        <p className="application-read-only-notice" role="status">Archived application — contacts are read-only until the application is restored.</p>
+        <p className="application-read-only-notice" role="status">Hidden application — contacts are read-only until the application is restored.</p>
       ) : (
         <form className="work-item-form" onSubmit={submit}>
           <label>

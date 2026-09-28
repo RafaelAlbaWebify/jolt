@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./LinkedInSearchPortfolio", () => ({
   LinkedInSearchPortfolio: () => (
     <section>
-      <h3>Saved LinkedIn searches</h3>
-      <button type="button">Start discovery (2)</button>
+      <h3>Run LinkedIn searches</h3>
+      <button type="button">Run searches (2)</button>
     </section>
   ),
 }));
@@ -13,8 +13,8 @@ vi.mock("./LinkedInSearchPortfolio", () => ({
 vi.mock("./LinkedInJobCaptureLauncher", () => ({
   LinkedInJobCaptureLauncher: () => (
     <section>
-      <h3>Capture a LinkedIn job search</h3>
-      <button type="button">Start LinkedIn job capture</button>
+      <h3>Run one LinkedIn search</h3>
+      <button type="button">Run this search</button>
     </section>
   ),
 }));
@@ -28,12 +28,11 @@ describe("ProfessionalIntelligence", () => {
     render(<ProfessionalIntelligence apiBase="http://127.0.0.1:8000" active />);
 
     expect(screen.getByRole("heading", { name: "Capture Jobs" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Saved LinkedIn searches" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start discovery (2)" })).toBeInTheDocument();
-    expect(screen.getByText("Single-search capture fallback")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Capture a LinkedIn job search" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Profile capture has moved" })).toBeInTheDocument();
-    expect(screen.getByText(/belong in LinkedIn Profile/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Run LinkedIn searches" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run searches (2)" })).toBeInTheDocument();
+    expect(screen.getByText("Run one LinkedIn search manually")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Run one LinkedIn search" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Profile capture has moved" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start configured-source capture" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Evidence directory" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Primary sources" })).not.toBeInTheDocument();

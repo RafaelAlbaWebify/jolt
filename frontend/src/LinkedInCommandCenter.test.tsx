@@ -52,10 +52,10 @@ describe("LinkedInCommandCenter", () => {
     render(<LinkedInCommandCenter apiBase="http://api" active />);
 
     expect(await screen.findByRole("heading", { name: "LinkedIn Profile" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Capture targets" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Capture targets" }));
+    expect(screen.queryByRole("region", { name: "Profile sources" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Profile sources" }));
 
-    const registry = screen.getByRole("region", { name: "Capture targets" });
+    const registry = screen.getByRole("region", { name: "Profile sources" });
     expect(within(registry).getByText("Experience")).toBeInTheDocument();
     expect(within(registry).getByText("Skills")).toBeInTheDocument();
     expect(within(registry).getByText("Licenses & certifications")).toBeInTheDocument();
@@ -73,11 +73,11 @@ describe("LinkedInCommandCenter", () => {
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
     await screen.findByText("No LinkedIn profile evidence yet.");
-    fireEvent.click(screen.getByRole("button", { name: "Capture targets" }));
+    fireEvent.click(screen.getByRole("button", { name: "Profile sources" }));
 
     const profileCard = screen.getByText("Profile").closest("article");
     expect(profileCard).not.toBeNull();
-    fireEvent.click(within(profileCard as HTMLElement).getByRole("button", { name: "Capture" }));
+    fireEvent.click(within(profileCard as HTMLElement).getByRole("button", { name: "Refresh now" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/linkedin-command-center/captures/playwright",
@@ -87,7 +87,7 @@ describe("LinkedInCommandCenter", () => {
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
   });
 
-  it("keeps manual evidence as a fallback and updates recommendation status", async () => {
+  it("keeps manual profile entry available and updates recommendation status", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify(POPULATED), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ ...POPULATED.recommendations[0], status: "implemented" }), { status: 200 }))
@@ -102,7 +102,7 @@ describe("LinkedInCommandCenter", () => {
       expect.objectContaining({ method: "POST" }),
     ));
     expect(await screen.findByDisplayValue("implemented")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Manual evidence" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add manually" })).toBeInTheDocument();
   });
 
   it("sends the configured Connections capture limit", async () => {
@@ -113,7 +113,7 @@ describe("LinkedInCommandCenter", () => {
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
     await screen.findByText("No LinkedIn profile evidence yet.");
-    fireEvent.click(screen.getByRole("button", { name: "Capture targets" }));
+    fireEvent.click(screen.getByRole("button", { name: "Profile sources" }));
 
     const connectionsCard = screen.getByText("Connections").closest("article");
     expect(connectionsCard).not.toBeNull();
@@ -133,7 +133,7 @@ describe("LinkedInCommandCenter", () => {
       within(connectionsCard as HTMLElement).getByRole("button", { name: "Done" }),
     );
     fireEvent.click(
-      within(connectionsCard as HTMLElement).getByRole("button", { name: "Capture" }),
+      within(connectionsCard as HTMLElement).getByRole("button", { name: "Refresh now" }),
     );
 
     await waitFor(() => {

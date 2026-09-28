@@ -13,10 +13,20 @@ APP_URL = "http://127.0.0.1:5173"
 API_URL = "http://127.0.0.1:8000"
 MAX_SCROLL_STEPS = 200
 VIEW_SPECS = (
-    ("opportunities", "Opportunities", "Opportunity review workbench"),
-    ("applications", "Applications", "Application management"),
-    ("evidence", "Evidence", "Identity evidence"),
+    ("professional", "Capture Jobs", "Capture Jobs"),
+    ("opportunities", "Review Inbox", "Review Inbox"),
+    ("applications", "Applications", "Applications"),
+    ("linkedin", "LinkedIn Profile", "LinkedIn Profile"),
+    ("market", "Market Insights", "Market Insights"),
 )
+
+FORBIDDEN_PRIMARY_COPY = {
+    "professional": ("Start discovery", "Discovery running", "AI review set"),
+    "opportunities": ("REJECT — HARDLINE", "MANUAL REVIEW — HARDLINE", "Clear pending inbox"),
+    "applications": ("Archive card",),
+    "linkedin": ("Capture targets", "Evidence snapshots", "Manual evidence fallback"),
+    "market": ("export a new AI work package from Data tools",),
+}
 
 
 class ViewAudit(TypedDict):
@@ -78,8 +88,11 @@ def _wait_for_view_data(
     application_candidate_count: int,
     first_application_title: str,
 ) -> bool:
-    if view_id == "opportunities":
-        expected_text = f"all ({opportunity_count})"
+    if view_id == "professional":
+        expected_text = "Run LinkedIn searches"
+        timeout = 60_000
+    elif view_id == "opportunities":
+        expected_text = "jobs waiting for your decision"
         timeout = 60_000
     elif view_id == "applications":
         expected_text = (
@@ -88,9 +101,12 @@ def _wait_for_view_data(
             else "No applications match this view"
         )
         timeout = 60_000
+    elif view_id == "linkedin":
+        expected_text = "LinkedIn Profile"
+        timeout = 60_000
     else:
-        expected_text = f"Identity evidence loaded for {opportunity_count} opportunities."
-        timeout = 180_000
+        expected_text = "Market Insights"
+        timeout = 60_000
 
     page.wait_for_function(
         "expectedText => (document.body?.innerText || '').includes(expectedText)",
@@ -131,6 +147,7 @@ def run(
     page_errors: list[str] = []
     console_messages: list[str] = []
     views: list[ViewAudit] = []
+    findings: list[dict[str, str]] = []
 
     _progress("Launching Playwright Chromium.")
     with sync_playwright() as playwright:
@@ -171,6 +188,18 @@ def run(
                 _progress(f"{label}: measuring scroll positions.")
                 positions = _review_scroll_positions(page)
                 visible_buttons = _visible_button_count(page)
+                visible_text = page.locator("body").inner_text()
+                for forbidden in FORBIDDEN_PRIMARY_COPY.get(view_id, ()):
+                    if forbidden in visible_text:
+                        findings.append(
+                            {
+                                "severity": "error",
+                                "message": (
+                                    f"Primary {label} view exposes internal/deprecated copy: "
+                                    f'"{forbidden}".'
+                                ),
+                            }
+                        )
                 screenshot_name = f"workspace-{view_id}.png"
                 _progress(
                     f"{label}: capturing screenshot "
@@ -199,9 +228,9 @@ def run(
             _progress("Closing Playwright Chromium.")
             browser.close()
 
-    findings = [
+    findings.extend(
         {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
-    ]
+    )
     for view in views:
         if not view["heading_visible"]:
             findings.append(

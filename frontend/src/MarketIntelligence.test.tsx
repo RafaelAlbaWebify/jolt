@@ -57,7 +57,7 @@ describe("MarketIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
-    expect(screen.getByText("120 observations · 90 canonical roles · 30 repeated observations · 3 capture runs")).toBeInTheDocument();
+    expect(screen.getByText("120 observations · 90 canonical roles · 30 repeated observations · 3 search runs")).toBeInTheDocument();
     expect(screen.getByText("Application support and modern workplace roles remain strong targets.")).toBeInTheDocument();
     expect(screen.getByText("Strengthen API troubleshooting evidence")).toBeInTheDocument();
     expect(screen.queryByText(/Fit shortfall/i)).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByRole("heading", { name: "Market analysis needs refresh" })).toBeInTheDocument();
-    expect(screen.getByText(/export a new AI work package from Data tools/i)).toBeInTheDocument();
+    expect(screen.getByText(/open Settings & Data, export the strategy update/i)).toBeInTheDocument();
   });
 
   it("refreshes the persisted view without recomputing local intelligence", async () => {

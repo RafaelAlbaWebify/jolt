@@ -138,9 +138,9 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       <section className="panel market-control-panel">
         <div className="section-heading market-heading-row">
           <div>
-            <p className="eyebrow">ChatGPT reasoning · JOLT evidence</p>
+            <p className="eyebrow">Job-market feedback</p>
             <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Market conclusions come from the latest imported AI analysis. JOLT supplies deterministic evidence and provenance.</p>
+            <p>Use what JOLT has learned from your captured jobs to adjust search, applications, skills, and profile positioning.</p>
           </div>
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh view"}</button>
         </div>
@@ -164,19 +164,19 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               {" · "}
               Latest AI context: {data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleString() : "None"}
             </p>
-            {data.freshness.needs_analysis && <p><strong>Next:</strong> export a new AI work package from Data tools, analyze it in ChatGPT, then import the returned AI update.</p>}
+            {data.freshness.needs_analysis && <p><strong>Next:</strong> open Settings & Data, export the strategy update, review it in ChatGPT, then import the returned file.</p>}
           </section>
 
           <section className="market-overview-grid">
-            <section className="market-card market-ranking-card">
-              <h3>Evidence provenance</h3>
-              <p>{data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} canonical roles · {data.evidence_provenance.duplicate_observation_count} repeated observations · {data.evidence_provenance.capture_run_count} capture runs</p>
+            <details className="market-card market-ranking-card">
+              <summary>Evidence details</summary>
+              <p>{data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} canonical roles · {data.evidence_provenance.duplicate_observation_count} repeated observations · {data.evidence_provenance.capture_run_count} search runs</p>
               <p>
                 Oldest: {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "None"}
                 {" · "}
                 Newest: {data.evidence_provenance.newest_evidence_at ? new Date(data.evidence_provenance.newest_evidence_at).toLocaleDateString() : "None"}
               </p>
-            </section>
+            </details>
             <InsightSection title="Market summary" data={data.market_summary} empty="No ChatGPT market summary has been imported yet." />
           </section>
 
