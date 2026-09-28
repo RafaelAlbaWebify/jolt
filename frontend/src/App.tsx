@@ -436,9 +436,9 @@ export function App({
       setWorkflowNotice(
         `${result.cleared_pending_count} pending card${
           result.cleared_pending_count === 1 ? "" : "s"
-        } cleared from ${result.archived_capture_run_count} capture batch${
-          result.archived_capture_run_count === 1 ? "" : "es"
-        }.${protectedNotice}`,
+        } cleared. ${result.archived_capture_run_count} related search run${
+          result.archived_capture_run_count === 1 ? "" : "s"
+        } archived.${protectedNotice}`,
       );
     } catch (caught) {
       setError(
