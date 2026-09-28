@@ -16,11 +16,11 @@ type PrimaryView = "professional" | "opportunities" | "applications" | "linkedin
 type WorkbenchView = PrimaryView | "settings";
 
 const PRIMARY_VIEWS: Array<{ id: PrimaryView; label: string; description: string }> = [
-  { id: "professional", label: "Capture Jobs", description: "Capture LinkedIn job searches and send verified opportunities into JOLT." },
-  { id: "opportunities", label: "Review Inbox", description: "Review captured or manually added jobs and decide what moves forward." },
-  { id: "applications", label: "Applications", description: "Track preparation, submissions, interviews, offers, outcomes, and archived records." },
-  { id: "linkedin", label: "LinkedIn Profile", description: "Refresh profile evidence, see whether ChatGPT analysis is current, and manage concrete profile improvements." },
-  { id: "market", label: "Market Insights", description: "Use retained job evidence to improve search strategy and preparation priorities." },
+  { id: "professional", label: "Capture Jobs", description: "Run your LinkedIn job searches and bring new opportunities into JOLT." },
+  { id: "opportunities", label: "Review Inbox", description: "Review new jobs and decide which ones deserve your time." },
+  { id: "applications", label: "Applications", description: "Track preparation, submissions, interviews, offers, outcomes, and hidden applications." },
+  { id: "linkedin", label: "LinkedIn Profile", description: "Refresh your profile data and work through concrete profile improvements." },
+  { id: "market", label: "Market Insights", description: "Use what JOLT learned from your jobs to improve search and preparation." },
 ];
 
 
@@ -39,7 +39,7 @@ export function Workbench() {
           <div className="hero">
             <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Capture suitable jobs, make review decisions, track applications, and improve your market positioning.</p>
+            <p>Find jobs, decide what to pursue, track applications, and learn what is working.</p>
           </div>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
