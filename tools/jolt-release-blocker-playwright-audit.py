@@ -131,19 +131,19 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="Capture Jobs", exact=True).click()
         page.get_by_role("heading", name="Capture Jobs", exact=True).wait_for(timeout=30_000)
 
-        page.get_by_role("heading", name="Saved LinkedIn searches", exact=True).wait_for(
+        page.get_by_role("heading", name="Run LinkedIn searches", exact=True).wait_for(
             timeout=30_000
         )
         add_search = page.get_by_role("button", name="Add search", exact=True)
         add_search.wait_for(timeout=30_000)
         assert_true(add_search.is_visible(), "Saved Search Portfolio add action is not visible")
 
-        primary = page.get_by_role("button", name=re.compile(r"^Start discovery \(\d+\)$"))
+        primary = page.get_by_role("button", name=re.compile(r"^Run searches \(\d+\)$"))
         primary.wait_for(timeout=30_000)
-        assert_true(primary.is_visible(), "Primary discovery batch action is not visible")
+        assert_true(primary.is_visible(), "Primary search action is not visible")
 
-        fallback = page.get_by_text("Single-search capture fallback", exact=True)
-        assert_true(fallback.is_visible(), "Single-search fallback is not visible")
+        fallback = page.get_by_text("Run one LinkedIn search manually", exact=True)
+        assert_true(fallback.is_visible(), "Manual single-search option is not visible")
 
         add_search.click()
         editor = page.get_by_role("dialog", name="Add saved search", exact=True)
@@ -162,15 +162,6 @@ def audit(output_dir: Path) -> dict[str, Any]:
             "Maximum pages setting is missing",
         )
         editor.get_by_role("button", name="Cancel", exact=True).click()
-
-        page.get_by_role("heading", name="Profile capture has moved", exact=True).wait_for(timeout=30_000)
-        assert_true(
-            page.get_by_text(
-                "Profile, experience, skills, certifications, and activity belong in LinkedIn Profile.",
-                exact=False,
-            ).is_visible(),
-            "Capture Jobs does not explain the LinkedIn Profile boundary",
-        )
 
         assert_true(
             page.get_by_role("button", name="Start configured-source capture", exact=True).count() == 0,
@@ -193,8 +184,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="LinkedIn Profile", exact=True).click()
         page.get_by_role("heading", name="LinkedIn Profile", exact=True).wait_for(timeout=30_000)
         assert_true(
-            page.get_by_role("button", name="Capture targets", exact=True).is_visible(),
-            "LinkedIn Profile does not expose its profile-capture entry point",
+            page.get_by_role("button", name="Profile sources", exact=True).is_visible(),
+            "LinkedIn Profile does not expose its profile-source entry point",
         )
         page.screenshot(path=output_dir / "linkedin-profile-boundary.png", full_page=True)
         browser.close()
@@ -206,11 +197,10 @@ def audit(output_dir: Path) -> dict[str, Any]:
         "all_score_badges_bounded": True,
         "all_score_labels_human_readable": True,
         "saved_search_portfolio_visible": True,
-        "primary_discovery_batch_action_visible": True,
+        "primary_search_action_visible": True,
         "saved_search_editor_fields_visible": True,
-        "single_search_fallback_visible": True,
-        "profile_capture_moved_notice_visible": True,
-        "configured_source_capture_absent_from_capture_jobs": True,
+        "manual_single_search_visible": True,
+                "configured_source_capture_absent_from_capture_jobs": True,
         "professional_evidence_root_absent_from_capture_jobs": True,
         "linkedin_profile_workspace_available": True,
         "console_errors": console_errors,
