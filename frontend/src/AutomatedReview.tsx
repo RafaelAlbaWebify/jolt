@@ -18,7 +18,10 @@ const DECISION_LABELS: Record<string, string> = {
 function readableLabel(value: string) {
   return value
     .replaceAll("_", " ")
-    .replace(/w/g, (character) => character.toUpperCase());
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function EvidenceGroup({ title, items }: { title: string; items: string[] }) {
