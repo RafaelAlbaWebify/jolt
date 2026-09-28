@@ -487,7 +487,12 @@ describe("ApplicationDashboard", () => {
 
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
     fireEvent.click(await screen.findByRole("checkbox", { name: "Show hidden applications" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Delete permanently" }));
+    fireEvent.click(
+      await screen.findByText("More", {
+        selector: "summary",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/applications/application-1/delete",
