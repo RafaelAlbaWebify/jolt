@@ -119,3 +119,52 @@ def test_resource_routes_return_not_found_for_unknown_application(tmp_path: Path
     client = _client(tmp_path / "missing.db")
     assert client.get("/api/applications/missing/contacts").status_code == 404
     assert client.get("/api/applications/missing/documents").status_code == 404
+
+
+def test_discarded_application_purges_stored_document_file(tmp_path: Path) -> None:
+    database = tmp_path / "discarded-document.db"
+    client = _client(database)
+    application_id = _application(client)["application_id"]
+
+    created = client.post(
+        f"/api/applications/{application_id}/documents",
+        json={
+            "document_type": "resume",
+            "title": "Tailored CV",
+            "file_path": "",
+            "source_url": "",
+            "status": "submitted",
+            "notes": "CV used for this application.",
+        },
+    )
+    assert created.status_code == 200
+    document_id = created.json()["document_id"]
+
+    uploaded = client.post(
+        f"/api/application-documents/{document_id}/file?filename=CV_Rafael_Alba.pdf",
+        content=b"pdf bytes",
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert uploaded.status_code == 200
+    assert uploaded.json()["has_file"] is True
+
+    closed = client.post(
+        f"/api/applications/{application_id}/outcomes",
+        json={
+            "outcome_type": "withdrawn_by_user",
+            "notes": "Discarded application.",
+        },
+    )
+    assert closed.status_code == 200
+
+    documents = client.get(f"/api/applications/{application_id}/documents")
+    assert documents.status_code == 200
+    assert documents.json()[0]["has_file"] is False
+    assert documents.json()[0]["stored_filename"] == ""
+    assert documents.json()[0]["file_size"] == 0
+
+    download = client.get(f"/api/application-documents/{document_id}/file")
+    assert download.status_code == 404
+
+    timeline = client.get(f"/api/applications/{application_id}").json()["events"]
+    assert any(event["event_type"] == "document_files_purged" for event in timeline)
