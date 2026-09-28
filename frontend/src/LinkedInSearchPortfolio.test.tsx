@@ -337,5 +337,8 @@ it("shows deterministic search performance from capture through application outc
   expect(await screen.findByText("Search performance (1)")).toBeInTheDocument();
   expect(screen.getByText("2 completed runs · 65 unique jobs")).toBeInTheDocument();
   expect(screen.getByText("20%")).toBeInTheDocument();
-  expect(screen.getByText(/Applied counts only applications that reached submitted/i)).toBeInTheDocument();
+  expect(screen.getByText(/Applied starts after an application is actually submitted/i)).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Found" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Matches" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Chosen" })).toBeInTheDocument();
 });
