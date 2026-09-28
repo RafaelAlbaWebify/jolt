@@ -112,7 +112,7 @@ describe("Workbench", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "LinkedIn Profile" }));
     expect(sidebar).toHaveTextContent(
-      "Refresh profile evidence, see whether ChatGPT analysis is current, and manage concrete profile improvements.",
+      "Refresh your profile data and work through concrete profile improvements.",
     );
   });
 });
