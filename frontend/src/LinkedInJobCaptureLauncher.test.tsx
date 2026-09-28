@@ -48,7 +48,7 @@ describe("LinkedInJobCaptureLauncher", () => {
     });
 
     render(<LinkedInJobCaptureLauncher apiBase="http://api" active />);
-    await screen.findByRole("button", { name: "Start LinkedIn job capture" });
+    await screen.findByRole("button", { name: "Run this search" });
 
     expect(screen.getByLabelText(/JSON — Recommended/)).toBeChecked();
 
@@ -57,7 +57,7 @@ describe("LinkedInJobCaptureLauncher", () => {
     });
     fireEvent.change(screen.getByLabelText("Maximum jobs"), { target: { value: "20" } });
     fireEvent.change(screen.getByLabelText("Maximum pages"), { target: { value: "4" } });
-    fireEvent.click(screen.getByRole("button", { name: "Start LinkedIn job capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run this search" }));
 
     await waitFor(() => expect(submitted).toEqual({
       search_url: searchUrl,
@@ -91,20 +91,20 @@ describe("LinkedInJobCaptureLauncher", () => {
     });
 
     render(<LinkedInJobCaptureLauncher apiBase="http://api" active />);
-    await screen.findByRole("button", { name: "Start LinkedIn job capture" });
+    await screen.findByRole("button", { name: "Run this search" });
 
     fireEvent.click(screen.getByLabelText(/ZIP — Full archive/));
-    fireEvent.click(screen.getByRole("button", { name: "Start LinkedIn job capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run this search" }));
     await waitFor(() => expect(submitted?.export_format).toBe("zip"));
 
     cleanup();
     submitted = null;
     render(<LinkedInJobCaptureLauncher apiBase="http://api" active />);
-    await screen.findByRole("button", { name: "Start LinkedIn job capture" });
+    await screen.findByRole("button", { name: "Run this search" });
     expect(screen.getByLabelText(/ZIP — Full archive/)).toBeChecked();
 
     fireEvent.click(screen.getByLabelText("Also create the other format"));
-    fireEvent.click(screen.getByRole("button", { name: "Start LinkedIn job capture" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run this search" }));
     await waitFor(() => expect(submitted?.export_format).toBe("both"));
   });
 
@@ -157,7 +157,7 @@ describe("LinkedInJobCaptureLauncher", () => {
     render(<LinkedInJobCaptureLauncher apiBase="http://api" active />);
 
     await screen.findByRole("button", {
-      name: "Start LinkedIn job capture",
+      name: "Run this search",
     });
 
     const jobsInput = screen.getByLabelText(
@@ -182,7 +182,7 @@ describe("LinkedInJobCaptureLauncher", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Start LinkedIn job capture",
+        name: "Run this search",
       }),
     );
 
@@ -229,12 +229,12 @@ describe("LinkedInJobCaptureLauncher", () => {
     render(<LinkedInJobCaptureLauncher apiBase="http://api" active />);
 
     await screen.findByRole("button", {
-      name: "Start LinkedIn job capture",
+      name: "Run this search",
     });
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Start LinkedIn job capture",
+        name: "Run this search",
       }),
     );
 
