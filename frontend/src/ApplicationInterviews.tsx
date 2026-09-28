@@ -155,7 +155,7 @@ export function ApplicationInterviews({ apiBase, applicationId, readOnly = false
 
   return <section className="work-items-panel" aria-labelledby="application-interviews-heading">
     <div className="application-tab-heading"><div><p className="eyebrow">Scheduled conversations</p><h4 id="application-interviews-heading">Interviews</h4></div><span>{interviews.filter((item) => item.status === "scheduled").length} scheduled</span></div>
-    {readOnly ? <p className="application-read-only-notice" role="status">Archived application — interviews are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
+    {readOnly ? <p className="application-read-only-notice" role="status">Hidden application — interviews are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
       <label>Interview type<select value={interviewType} onChange={(event) => setInterviewType(event.target.value)}><option value="recruiter_screen">Recruiter screen</option><option value="technical_interview">Technical interview</option><option value="hiring_manager_interview">Hiring-manager interview</option><option value="final_interview">Final interview</option><option value="other">Other</option></select></label>
       <label>Date and time<input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} /></label>
       <label>Timezone<input required maxLength={80} value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label>
