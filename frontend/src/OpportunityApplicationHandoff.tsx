@@ -16,14 +16,14 @@ export function OpportunityApplicationHandoff({ applicationId, applicationStatus
   return (
     <section className="opportunity-application-handoff" aria-labelledby="opportunity-application-handoff-heading">
       <div>
-        <p className="eyebrow">Application handoff</p>
-        <h3 id="opportunity-application-handoff-heading">Manage this process in Applications</h3>
+        <p className="eyebrow">Application status</p>
+        <h3 id="opportunity-application-handoff-heading">Continue in Applications</h3>
         <p>
           {applicationId
-            ? `Current recorded state: ${label(state)}. Stage changes, outcomes, and timeline history belong in the Applications workspace.`
+            ? `Current stage: ${label(state)}. Continue tracking this process in Applications.`
             : reviewDecision === "pursue"
-              ? "A Pursue decision should already have a Preparing application record. Refresh Applications before taking any further action."
-              : "Choose Pursue to create the durable Preparing application record and hand the process to Applications."}
+              ? "This job is marked Apply and should already appear in Applications. Refresh Applications if you do not see it."
+              : "Choose Apply in Review Inbox to start tracking this job in Applications."}
         </p>
       </div>
       <span className="opportunity-application-status">{label(state)}</span>
