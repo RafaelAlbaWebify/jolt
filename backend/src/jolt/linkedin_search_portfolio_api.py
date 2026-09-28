@@ -18,6 +18,10 @@ from jolt.linkedin_discovery_batch import (
     mark_discovery_batch_background_failure,
     schedule_discovery_batch,
 )
+from jolt.linkedin_search_performance import (
+    LinkedInSearchPerformanceItem,
+    build_linkedin_search_performance,
+)
 from jolt.linkedin_search_portfolio import (
     DiscoveryBatchCreateRequest,
     DiscoveryBatchResponse,
@@ -71,6 +75,15 @@ def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIR
         session: Session = session_dependency,
     ) -> list[SavedLinkedInSearchResponse]:
         return list_saved_linkedin_searches(session)
+
+    @router.get(
+        "/api/linkedin-search-performance",
+        response_model=list[LinkedInSearchPerformanceItem],
+    )
+    def linkedin_search_performance(
+        session: Session = session_dependency,
+    ) -> list[LinkedInSearchPerformanceItem]:
+        return build_linkedin_search_performance(session)
 
     @router.post(
         "/api/linkedin-searches",
