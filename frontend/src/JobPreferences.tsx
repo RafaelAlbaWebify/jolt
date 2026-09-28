@@ -304,7 +304,7 @@ export function JobPreferences({
     }
 
     if (!payload.base_locality) {
-      return "Base locality is required.";
+      return "Base location is required.";
     }
 
     if (
@@ -357,7 +357,7 @@ export function JobPreferences({
         < payload.expected_salary_eur_min
     ) {
       return (
-        "Target salary cannot be lower "
+        "Target salary expectation cannot be lower "
         + "than minimum salary."
       );
     }
@@ -438,7 +438,7 @@ export function JobPreferences({
 
       if (!refreshResponse.ok) {
         setNotice(
-          "Preferences were saved, but job re-evaluation failed. "
+          "Preferences were saved, but job matching could not refresh. "
           + "Your saved preferences are still preserved.",
         );
         return;
@@ -452,8 +452,7 @@ export function JobPreferences({
       setNotice(
         `Preferences saved. `
         + `${refresh.strategy_evaluation_count} jobs `
-        + `re-evaluated with `
-        + `${refresh.authoritative_engine}.`,
+        + `refreshed.`,
       );
     } catch (caught) {
       setError(
@@ -474,17 +473,13 @@ export function JobPreferences({
       <div className="section-heading">
         <div>
           <p className="eyebrow">
-            Classification controls
+            Matching preferences
           </p>
           <h3 id="job-preferences-heading">
             Job Search Preferences
           </h3>
           <p>
-            These settings directly influence
-            eligibility, blockers, ranking and
-            recommendations. Saving re-evaluates
-            existing jobs while preserving your
-            human review decisions.
+            These settings tell JOLT what kinds of jobs fit your search. Saving them refreshes job matching while preserving your decisions and applications.
           </p>
         </div>
 
@@ -646,7 +641,7 @@ export function JobPreferences({
 
               <label>
                 <span>
-                  Base locality
+                  Base location
                 </span>
                 <input
                   value={draft.baseLocality}
@@ -688,7 +683,7 @@ export function JobPreferences({
 
               <div>
                 <span className="job-preferences-label">
-                  Preferred shifts
+                  Preferred schedules
                 </span>
 
                 <div className="job-preferences-checks">
@@ -723,7 +718,7 @@ export function JobPreferences({
 
               <div>
                 <span className="job-preferences-label">
-                  Excluded shifts
+                  Unavailable schedules
                 </span>
 
                 <div className="job-preferences-checks">
@@ -758,7 +753,7 @@ export function JobPreferences({
 
               <label>
                 <span>
-                  Preferred workload
+                  Workload preference
                 </span>
                 <select
                   value={
@@ -773,13 +768,13 @@ export function JobPreferences({
                   }
                 >
                   <option value="normal">
-                    Normal
+                    Standard workload
                   </option>
                   <option value="high">
-                    High
+                    High-intensity roles are okay
                   </option>
                   <option value="unknown">
-                    Unknown
+                    No preference
                   </option>
                 </select>
               </label>
@@ -788,13 +783,16 @@ export function JobPreferences({
 
           <fieldset>
             <legend>
-              Compensation and signals
+              Compensation and role signals
             </legend>
+            <p className="job-preferences-help">
+              Salary values are stored in EUR. Use the same basis consistently for minimum and target.
+            </p>
 
             <div className="job-preferences-grid">
               <label>
                 <span>
-                  Minimum salary
+                  Minimum salary expectation
                 </span>
                 <div className="job-preferences-inline">
                   <span>EUR</span>
@@ -820,7 +818,7 @@ export function JobPreferences({
 
               <label>
                 <span>
-                  Target salary
+                  Target salary expectation
                 </span>
                 <div className="job-preferences-inline">
                   <span>EUR</span>
@@ -890,7 +888,7 @@ export function JobPreferences({
 
               <label className="job-preferences-wide">
                 <span>
-                  Strategy notes
+                  Search notes
                 </span>
                 <textarea
                   rows={4}
@@ -913,15 +911,12 @@ export function JobPreferences({
               disabled={saving}
             >
               {saving
-                ? "Saving and re-evaluating..."
-                : "Save & re-evaluate jobs"}
+                ? "Saving preferences..."
+                : "Save preferences"}
             </button>
 
             <span>
-              Machine recommendations will
-              refresh. Human review decisions
-              and application records are
-              preserved.
+              JOLT refreshes job matching after save. Your review decisions and applications are preserved.
             </span>
           </div>
         </form>
