@@ -155,14 +155,14 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
 
   const loadStatus = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/captures/linkedin/local/status`);
-    if (!response.ok) throw new Error("Unable to load LinkedIn capture status.");
+    if (!response.ok) throw new Error("Unable to load LinkedIn search status.");
     setStatus((await response.json()) as CaptureStatus);
   }, [apiBase]);
 
   useEffect(() => {
     if (!active) return;
     void loadStatus().catch((caught) => {
-      setError(caught instanceof Error ? caught.message : "Capture status failed.");
+      setError(caught instanceof Error ? caught.message : "LinkedIn search status failed.");
     });
   }, [active, loadStatus]);
 
@@ -170,7 +170,7 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
     if (!active || !isBusy(status.status)) return;
     const interval = window.setInterval(() => {
       void loadStatus().catch((caught) => {
-        setError(caught instanceof Error ? caught.message : "Capture status failed.");
+        setError(caught instanceof Error ? caught.message : "LinkedIn search status failed.");
       });
     }, 2_000);
     return () => window.clearInterval(interval);
@@ -213,12 +213,12 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
       if (!response.ok) {
         throw await responseError(
           response,
-          "The LinkedIn capture could not start.",
+          "The LinkedIn search could not start.",
         );
       }
       setStatus((await response.json()) as CaptureStatus);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The LinkedIn capture could not start.");
+      setError(caught instanceof Error ? caught.message : "The LinkedIn search could not start.");
     }
   }
 
@@ -226,12 +226,11 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
     <section className="panel" aria-labelledby="linkedin-job-capture-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Primary job discovery</p>
-          <h2 id="linkedin-job-capture-heading">Capture a LinkedIn job search</h2>
+          <p className="eyebrow">Manual search</p>
+          <h2 id="linkedin-job-capture-heading">Run one LinkedIn search</h2>
           <p>
             Paste the exact LinkedIn search URL after choosing your keywords, location, and filters.
-            JOLT follows LinkedIn’s enabled Next control, deduplicates jobs across pages, verifies each
-            detail panel, and sends verified listings directly to Review Inbox and Market Insights.
+            JOLT checks the visible search results, removes duplicates, verifies each job, and sends new listings to Review Inbox and Market Insights.
           </p>
         </div>
       </div>
@@ -312,7 +311,7 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
           disabled={!active || isBusy(status.status) || !searchUrl.trim()}
           onClick={() => void startCapture()}
         >
-          {isBusy(status.status) ? "Capture running…" : "Start LinkedIn job capture"}
+          {isBusy(status.status) ? "Search running…" : "Run this search"}
         </button>
         <span>Use the visible local Chromium window. JOLT never requests or stores LinkedIn credentials.</span>
       </div>
@@ -328,10 +327,10 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
               {status.output_json && <p>JSON: {status.output_json}</p>}
               {status.output_zip && <p>ZIP: {status.output_zip}</p>}
               <p>
-                <strong>Capture health: {status.health || "unknown"}</strong>
+                <strong>Search health: {status.health || "unknown"}</strong>
               </p>
               <p>
-                {status.captured_count} captured · {status.verified_count} verified ·{" "}
+                {status.captured_count} found · {status.verified_count} verified ·{" "}
                 {status.skipped_count} skipped · {status.pages_used} page(s)
               </p>
               <p>
@@ -341,7 +340,7 @@ export function LinkedInJobCaptureLauncher({ apiBase, active }: Props) {
               {status.stop_reason && <p>Stop reason: {status.stop_reason.replaceAll("_", " ")}</p>}
             </>
           )}
-          {status.status === "failed" && <p>{status.error || "Capture failed. Review the generated evidence package and backend logs."}</p>}
+          {status.status === "failed" && <p>{status.error || "Search failed. Review the error details and try again."}</p>}
         </div>
       )}
     </section>
