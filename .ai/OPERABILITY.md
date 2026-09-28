@@ -142,3 +142,12 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Repository issue audit: zero open issues on 2026-09-21.
 - Certified product boundary: local-first, single-user JOLT on supported Windows x64. Future Indeed/InfoJobs adapters and multi-user/SaaS architecture remain outside this production-readiness claim.
 - Operability promoted from **99% to 100%** when the exact final main release commit completes all main-push certification workflows.
+
+
+## 2026-09-28 production-use update
+- JOLT is now being used for the real job search rather than further readiness testing.
+- The LinkedIn saved-search portfolio has been consolidated to 12 active production searches after controlled V1/V2/V3 experiments.
+- Production batch AI review/import was validated again on 2026-09-28: the main portfolio batch imported 52/52 new reviews and the replacement IT Operations EU batch imported 15/15 reviews with zero protected human-state mutations.
+- PR #437 closes the remaining stale-discovery restart failure mode without changing normal queued-batch semantics.
+- Production operability remains **100%** for the certified local-first single-user Windows boundary.
+- Future product changes should be driven by observed job-search outcomes and operator friction. Additional synthetic/A-B search experiments are not an operability requirement.
