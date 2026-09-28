@@ -31,18 +31,10 @@ FORBIDDEN_PRIMARY_COPY = {
 }
 
 COLLAPSED_BY_DEFAULT = {
-    "opportunities": (
-        ("Maintenance", "Clear unresolved inbox"),
-    ),
-    "professional": (
-        ("Run one LinkedIn search manually", "Run this search"),
-    ),
-    "market": (
-        ("Evidence details", "Oldest:"),
-    ),
-    "settings": (
-        ("Data & Diagnostics", "Legacy AI review JSON"),
-    ),
+    "opportunities": (("Maintenance", "Clear unresolved inbox"),),
+    "professional": (("Run one LinkedIn search manually", "Run this search"),),
+    "market": (("Evidence details", "Oldest:"),),
+    "settings": (("Data & Diagnostics", "Legacy AI review JSON"),),
 }
 
 
@@ -239,7 +231,7 @@ def run(
                                 "severity": "error",
                                 "message": (
                                     f'Advanced/destructive content "{protected_text}" is visible by default '
-                                    f'in {label}.'
+                                    f"in {label}."
                                 ),
                             }
                         )
