@@ -41,6 +41,8 @@ class SavedLinkedInSearchResponse(BaseModel):
 
 class DiscoveryBatchCreateRequest(BaseModel):
     saved_search_ids: list[str] = Field(min_length=1, max_length=25)
+    max_jobs_override: int | None = Field(default=None, ge=1, le=100)
+    max_pages_override: int | None = Field(default=None, ge=1, le=10)
 
 
 class DiscoveryBatchSearchResponse(BaseModel):
@@ -300,8 +302,16 @@ def create_discovery_batch(
                 position=position,
                 label_snapshot=search.label,
                 search_url_snapshot=search.search_url,
-                max_jobs_snapshot=search.max_jobs,
-                max_pages_snapshot=search.max_pages,
+                max_jobs_snapshot=(
+                    request.max_jobs_override
+                    if request.max_jobs_override is not None
+                    else search.max_jobs
+                ),
+                max_pages_snapshot=(
+                    request.max_pages_override
+                    if request.max_pages_override is not None
+                    else search.max_pages
+                ),
                 status="queued",
                 capture_run_id=None,
                 captured_count=0,
