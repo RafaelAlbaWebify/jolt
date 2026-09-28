@@ -23,14 +23,13 @@ const PRIMARY_VIEWS: Array<{ id: PrimaryView; label: string; description: string
   { id: "market", label: "Market Insights", description: "Use retained job evidence to improve search strategy and preparation priorities." },
 ];
 
-const WORKFLOW_STEPS = ["Capture jobs", "Review opportunities", "Prepare and apply", "Track outcomes", "Learn from the market"];
 
 export function Workbench() {
   const [activeView, setActiveView] = useState<WorkbenchView>("professional");
   const [evaluationRevision, setEvaluationRevision] = useState(0);
   const [aiImportRevision, setAIImportRevision] = useState(0);
   const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
-  const description = primary?.description ?? "Manage capture history, reviewed decisions, exports, and developer diagnostics.";
+  const description = primary?.description ?? "Preferences, data exchange, and advanced diagnostics.";
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
@@ -42,10 +41,6 @@ export function Workbench() {
             <h1>JOLT</h1>
             <p>Capture suitable jobs, make review decisions, track applications, and improve your market positioning.</p>
           </div>
-
-          <ol className="workspace-flow" aria-label="JOLT workflow order">
-            {WORKFLOW_STEPS.map((step) => <li key={step}>{step}</li>)}
-          </ol>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
             {PRIMARY_VIEWS.map((item) => (
@@ -130,10 +125,10 @@ export function Workbench() {
             <section className="panel" aria-labelledby="operational-data-heading">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Secondary utility</p>
-                  <h2 id="operational-data-heading">Operational Data</h2>
+                  <p className="eyebrow">Advanced</p>
+                  <h2 id="operational-data-heading">Data & Diagnostics</h2>
                   <p>
-                    Capture history, reviewed decisions, exports, and developer diagnostics.
+                    AI exchange, compatibility tools, runtime checks, and technical diagnostics.
                   </p>
                 </div>
               </div>
