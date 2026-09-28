@@ -10,14 +10,14 @@ describe("DataTools", () => {
     vi.restoreAllMocks();
   });
 
-  it("makes the unified AI work package the primary workflow", () => {
+  it("presents strategy updates as an advanced workflow", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify([]), { status: 200 }),
     );
 
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
 
-    const exportLink = screen.getByRole("link", { name: "Export full JOLT AI work package" });
+    const exportLink = screen.getByRole("link", { name: "Export strategy update package" });
     expect(exportLink).toHaveAttribute(
       "href",
       "http://127.0.0.1:8000/api/ai-work-package/export",
@@ -27,12 +27,12 @@ describe("DataTools", () => {
       "title",
       expect.stringContaining("full AI context package"),
     );
-    expect(screen.getByLabelText("Import AI update")).toBeInTheDocument();
-    expect(screen.getByText("Advanced / compatibility exports")).toBeInTheDocument();
+    expect(screen.getByLabelText("Import reviewed strategy update")).toBeInTheDocument();
+    expect(screen.getByText("Legacy compatibility exports")).toBeInTheDocument();
     expect(
-      screen.getByText(/For normal saved-search discovery, use the batch-specific AI review export/i),
+      screen.getByText(/For normal job review, use Export new jobs for review in Capture Jobs/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("No import yet")).toBeInTheDocument();
+    expect(screen.getByText("No update yet")).toBeInTheDocument();
   });
 
   it("imports the returned unified update and shows a persistent receipt", async () => {
@@ -76,7 +76,7 @@ describe("DataTools", () => {
       { type: "application/json" },
     );
 
-    fireEvent.change(screen.getByLabelText("Import AI update"), {
+    fireEvent.change(screen.getByLabelText("Import reviewed strategy update"), {
       target: { files: [file] },
     });
 
@@ -91,7 +91,7 @@ describe("DataTools", () => {
     );
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "AI update imported successfully. Review Inbox updated. 2 intelligence sections imported.",
+      "Strategy update imported successfully. Review Inbox updated. 2 intelligence sections imported.",
     );
     expect(screen.getByText("Imported")).toBeInTheDocument();
     expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("DataTools", () => {
     const file = new File([JSON.stringify({ contract_type: "bad" })], "BAD.json", {
       type: "application/json",
     });
-    fireEvent.change(screen.getByLabelText("Import AI update"), {
+    fireEvent.change(screen.getByLabelText("Import reviewed strategy update"), {
       target: { files: [file] },
     });
 
