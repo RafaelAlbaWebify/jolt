@@ -147,6 +147,7 @@ def run(
     page_errors: list[str] = []
     console_messages: list[str] = []
     views: list[ViewAudit] = []
+    findings: list[dict[str, str]] = []
 
     _progress("Launching Playwright Chromium.")
     with sync_playwright() as playwright:
@@ -227,9 +228,10 @@ def run(
             _progress("Closing Playwright Chromium.")
             browser.close()
 
-    findings = [
-        {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
-    ]
+    findings.extend(
+        {"severity": "error", "message": f"Browser page error: {error}"}
+        for error in page_errors
+    )
     for view in views:
         if not view["heading_visible"]:
             findings.append(
