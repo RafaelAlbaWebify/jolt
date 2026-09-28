@@ -280,7 +280,14 @@ export function ApplicationDocuments({
             <input
               type="file"
               accept=".pdf,.doc,.docx,.txt"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setSelectedFile(file);
+                if (file && !form.title.trim()) {
+                  const suggestedTitle = file.name.replace(/\.[^.]+$/, "");
+                  setForm((value) => ({ ...value, title: suggestedTitle }));
+                }
+              }}
             />
           </label>
 
