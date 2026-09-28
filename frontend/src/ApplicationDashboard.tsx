@@ -299,8 +299,8 @@ function ApplicationSummaryButton({ item, onOpen }: { item: Opportunity; onOpen:
 }
 
 function ArchivedOverview({ detail, loading }: { detail: ApplicationDetail | null; loading: boolean }) {
-  if (loading) return <p role="status">Loading archived application…</p>;
-  if (!detail) return <Placeholder title="Archived application unavailable" copy="The archived record could not be loaded." />;
+  if (loading) return <p role="status">Loading hidden application…</p>;
+  if (!detail) return <Placeholder title="Hidden application unavailable" copy="The archived record could not be loaded." />;
   return (
     <section className="application-archived-overview">
       <p className="application-read-only-notice" role="status">
@@ -814,7 +814,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
               <h3 id="application-archived-heading">Hidden applications</h3>
               <p>Hidden applications stay out of the active board until you restore them.</p>
             </div>
-            <strong aria-label="Archived count">{visibleArchivedCandidates.length}</strong>
+            <strong aria-label="Hidden count">{visibleArchivedCandidates.length}</strong>
           </div>
           {visibleArchivedCandidates.length === 0 ? (
             <p className="application-lane-empty">No hidden applications</p>
