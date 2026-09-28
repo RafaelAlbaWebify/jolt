@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from jolt.application_response import build_application_response
+from jolt.application_resources import purge_application_document_files
 from jolt.database import (
     AIReview,
     Application,
@@ -462,6 +463,8 @@ def record_outcome(
         notes=request.notes,
         recorded_at=now,
     )
+    if request.outcome_type != "offer_accepted":
+        purge_application_document_files(session, application.id)
     try:
         session.add(outcome)
         session.add(
