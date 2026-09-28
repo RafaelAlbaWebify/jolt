@@ -76,6 +76,21 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const PAGE_SIZE = 5;
 const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject", "needs_more_information"];
 
+const REVIEW_LABELS: Record<ReviewChoice, string> = {
+  pursue: "Apply",
+  consider: "Maybe",
+  defer: "Save for later",
+  reject: "Reject",
+  needs_more_information: "Need information",
+};
+
+const AI_DECISION_LABELS: Record<AIReviewDecision, string> = {
+  strong_pursue: "High priority",
+  pursue: "Good match",
+  conditional: "Check requirements",
+  reject: "Not a match",
+};
+
 
 function externalSourceUrl(value: string) {
   const trimmed = value.trim();
@@ -89,19 +104,19 @@ function externalSourceUrl(value: string) {
 }
 
 function decisionLabel(value: ReviewChoice | null) {
-  return value ? value.replaceAll("_", " ") : "Pending review";
+  return value ? REVIEW_LABELS[value] : "Pending review";
 }
 
 function aiDecisionLabel(opportunity: OpportunityIndex) {
   if (opportunity.ai_review_status !== "reviewed") {
-    return "Awaiting AI review";
+    return "Needs AI review";
   }
 
   if (!opportunity.decision) {
-    return "AI review unavailable";
+    return "Review unavailable";
   }
 
-  return opportunity.decision.replaceAll("_", " ");
+  return AI_DECISION_LABELS[opportunity.decision];
 }
 
 function hardlineStopped(opportunity: OpportunityIndex) {
@@ -113,8 +128,8 @@ function hardlineStopped(opportunity: OpportunityIndex) {
 }
 
 function hardlineLabel(opportunity: OpportunityIndex) {
-  if (opportunity.hardline_status === "REJECT") return "REJECT — HARDLINE";
-  if (opportunity.hardline_status === "MANUAL_REVIEW") return "MANUAL REVIEW — HARDLINE";
+  if (opportunity.hardline_status === "REJECT") return "Required condition not met";
+  if (opportunity.hardline_status === "MANUAL_REVIEW") return "Needs manual check";
   return "";
 }
 
@@ -123,7 +138,7 @@ function hardlineIcon(opportunity: OpportunityIndex) {
 }
 
 function hardlineReason(opportunity: OpportunityIndex) {
-  return opportunity.hardline_reasons[0] || opportunity.decision_reason || "Hardline review required.";
+  return opportunity.hardline_reasons[0] || opportunity.decision_reason || "A required condition needs review.";
 }
 
 function aiPriorityGroup(opportunity: OpportunityIndex) {
@@ -160,11 +175,11 @@ function compareAIPriority(
 
 function reviewNotice(decision: ReviewChoice, title: string) {
   const name = title || "Opportunity";
-  if (decision === "pursue") return `${name} moved out of the review inbox and is available in Application Pipeline.`;
-  if (decision === "needs_more_information") return `${name} marked as needing more information and removed from the pending inbox.`;
-  if (decision === "defer") return `${name} deferred and removed from the pending inbox.`;
-  if (decision === "reject") return `${name} rejected and removed from the pending inbox.`;
-  return `${name} reviewed and removed from the pending inbox.`;
+  if (decision === "pursue") return `${name} is ready in Applications.`;
+  if (decision === "needs_more_information") return `${name} saved as needing more information.`;
+  if (decision === "defer") return `${name} saved for later.`;
+  if (decision === "reject") return `${name} rejected.`;
+  return `${name} saved as maybe.`;
 }
 
 async function errorFromResponse(response: Response, fallback: string) {
@@ -528,19 +543,11 @@ export function App({
           <div>
             <p className="eyebrow">Pending review inbox</p>
             <h2 id="queue-heading">Review Inbox</h2>
-            <p>Captured jobs wait here until an external AI review is imported. Human decisions then move them into or out of the application workflow.</p>
+            <p>Review the jobs JOLT has analyzed and decide which ones deserve your time.</p>
           </div>
           <div className="professional-source-editor-actions">
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually
-            </button>
-            <button
-              type="button"
-              className="danger"
-              disabled={busy || opportunities.length === 0}
-              onClick={() => void clearPendingInbox()}
-            >
-              Clear pending inbox ({opportunities.length})
             </button>
             <button
               type="button"
@@ -553,8 +560,23 @@ export function App({
           </div>
         </div>
         <div className="queue-summary">
-          <strong>{opportunities.length}</strong> pending review items
+          <strong>{opportunities.length}</strong> jobs waiting for your decision
         </div>
+        <details className="review-inbox-maintenance">
+          <summary>Maintenance</summary>
+          <p>
+            Use this only to remove unresolved inbox cards in bulk. Reviewed jobs,
+            applications, and captured evidence are preserved.
+          </p>
+          <button
+            type="button"
+            className="danger"
+            disabled={busy || opportunities.length === 0}
+            onClick={() => void clearPendingInbox()}
+          >
+            Clear unresolved inbox ({opportunities.length})
+          </button>
+        </details>
         <div className="opportunity-query-tools">
           <label>
             <span>Search inbox</span>
@@ -577,7 +599,7 @@ export function App({
                 setPage(1);
               }}
             >
-              <option value="ai_priority">AI priority</option>
+              <option value="ai_priority">Best matches first</option>
               <option value="title_asc">Title A–Z</option>
               <option value="company_asc">Company A–Z</option>
             </select>
@@ -617,16 +639,16 @@ export function App({
                   <div className="opportunity-state">
                     <strong>
                       {opportunity.ai_review_status !== "reviewed"
-                        ? "Awaiting AI review"
+                        ? "Needs AI review"
                         : hardlineStopped(opportunity)
                           ? hardlineLabel(opportunity)
                           : "AI reviewed"}
                     </strong>
                     <span>
                       {opportunity.ai_review_status !== "reviewed"
-                        ? "Export capture → AI analysis → import review"
+                        ? "Export from Capture Jobs → review in ChatGPT → import results"
                         : hardlineStopped(opportunity)
-                          ? "Technical similarity: not evaluated because a hardline failed."
+                          ? "Fit score not shown because a required condition was not met."
                           : `Technical fit ${opportunity.technical_fit ?? "—"}`}
                     </span>
                   </div>
@@ -767,7 +789,7 @@ export function App({
                   <option value="">
                     {selectedOpportunity.ai_review_id
                       ? "Pending review"
-                      : "Awaiting AI review"}
+                      : "Needs AI review"}
                   </option>
 
                   {REVIEW_CHOICES.map((choice) => (
@@ -803,7 +825,7 @@ export function App({
                     <span className="review-label">
                       Classification authority
                     </span>
-                    <strong>Awaiting AI review</strong>
+                    <strong>Needs AI review</strong>
                   </div>
                 </div>
 
@@ -838,7 +860,7 @@ export function App({
                   <div className="review-evidence-group">
                     <strong>{hardlineLabel(selectedOpportunity)}</strong>
                     <p>Reason: {hardlineReason(selectedOpportunity)}</p>
-                    <p>Technical similarity: not evaluated because a hardline failed.</p>
+                    <p>Fit score not shown because a required condition was not met.</p>
                   </div>
                 )}
 
