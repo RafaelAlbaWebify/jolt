@@ -304,7 +304,7 @@ function ArchivedOverview({ detail, loading }: { detail: ApplicationDetail | nul
   return (
     <section className="application-archived-overview">
       <p className="application-read-only-notice" role="status">
-        Archived application — this workspace is read-only until the application is restored.
+        Hidden application — restore it to the board before editing.
       </p>
       <dl>
         <div><dt>Status</dt><dd>Archived</dd></div>
@@ -674,10 +674,10 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
-          Show archived cards
+          Show hidden applications
         </label>
         <p className="application-boundary">
-          Closed means the process ended. Archived applications are shown separately and remain read-only until restored.
+          Closed means the hiring process ended. Hidden applications stay out of the active board and can be restored later.
         </p>
       </div>
 
@@ -784,7 +784,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                           disabled={busy}
                           onClick={() => void archiveCard(opportunity)}
                         >
-                          Archive card
+                          Hide from board
                         </button>
                         {currentLane === "closed" && (
                           <button
@@ -810,14 +810,14 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
         <section className="application-archived-section" aria-labelledby="application-archived-heading">
           <div className="application-archived-heading">
             <div>
-              <p className="eyebrow">Separate lifecycle state</p>
-              <h3 id="application-archived-heading">Archived applications</h3>
-              <p>Archived records do not count as Closed and cannot be edited until restored.</p>
+              <p className="eyebrow">Hidden from active board</p>
+              <h3 id="application-archived-heading">Hidden applications</h3>
+              <p>Hidden applications stay out of the active board until you restore them.</p>
             </div>
             <strong aria-label="Archived count">{visibleArchivedCandidates.length}</strong>
           </div>
           {visibleArchivedCandidates.length === 0 ? (
-            <p className="application-lane-empty">No archived applications</p>
+            <p className="application-lane-empty">No hidden applications</p>
           ) : (
             <div className="application-archived-list">
               {visibleArchivedCandidates.map((opportunity) => (
@@ -837,7 +837,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       disabled={busy}
                       onClick={() => void restoreCard(opportunity)}
                     >
-                      Restore card
+                      Restore to board
                     </button>
                     <button
                       type="button"
