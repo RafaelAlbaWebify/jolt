@@ -122,7 +122,6 @@ def test_discovery_batch_snapshots_selected_searches_in_order(tmp_path: Path) ->
     assert all(item["status"] == "queued" for item in batch["searches"])
 
 
-
 def test_discovery_batch_overrides_capture_limits_without_mutating_saved_search(
     tmp_path: Path,
 ) -> None:
