@@ -144,7 +144,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
 
   const loadBatches = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/linkedin-discovery-batches`);
-    if (!response.ok) throw await responseError(response, "Unable to load discovery batches.");
+    if (!response.ok) throw await responseError(response, "Unable to load search runs.");
     const batches = (await response.json()) as DiscoveryBatch[];
     const activeBatch = batches.find((item) => !terminalBatch(item.status));
     setBatch(activeBatch ?? batches[0] ?? null);
@@ -572,12 +572,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
       <details className="search-performance-details" open>
         <summary>
           Search performance ({enabledPerformance.length})
-          <span>Observed funnel from capture to real application outcomes</span>
+          <span>From search results to real application outcomes</span>
         </summary>
         {performanceError && <p className="error" role="alert">{performanceError}</p>}
         {enabledPerformance.length === 0 ? (
           <p className="search-performance-empty">
-            No completed production search history yet. Metrics will appear after discoveries run.
+            No completed search history yet. Metrics will appear after searches run.
           </p>
         ) : (
           <div className="search-performance-table-wrap">
@@ -585,10 +585,10 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               <thead>
                 <tr>
                   <th>Search</th>
-                  <th>Captured</th>
+                  <th>Found</th>
                   <th>New</th>
-                  <th>AI+</th>
-                  <th>Human pursue</th>
+                  <th>Matches</th>
+                  <th>Chosen</th>
                   <th>Applied</th>
                   <th>Interview</th>
                   <th>Offer</th>
@@ -620,7 +620,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               </tbody>
             </table>
             <p className="search-performance-note">
-              AI+ = high priority + good match + check requirements. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted. Overlapping searches share credit when both observed the same canonical job.
+              Matches = high priority + good match + check requirements. Applied starts after an application is actually submitted. Overlapping searches share credit when both found the same job.
             </p>
           </div>
         )}
@@ -630,11 +630,11 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         <section className="discovery-batch-status" aria-labelledby="discovery-batch-status-heading">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Latest discovery batch</p>
+              <p className="eyebrow">Latest search run</p>
               <h3 id="discovery-batch-status-heading">{statusLabel(batch.status)}</h3>
               <p>
                 {batch.completed_search_count}/{batch.selected_search_count} searches completed · {batch.captured_count} captured ·{" "}
-                {batch.verified_count} verified · {batch.new_posting_count} new · {batch.duplicate_count} already known
+                {batch.verified_count} checked · {batch.new_posting_count} new · {batch.duplicate_count} already known
               </p>
             </div>
             <button type="button" className="secondary" disabled={loading} onClick={() => void loadBatches()}>
@@ -682,7 +682,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                     <span>{statusLabel(search.status)}</span>
                   </div>
                   <p>
-                    {search.captured_count} captured · {search.verified_count} verified · {search.new_posting_count} new ·{" "}
+                    {search.captured_count} found · {search.verified_count} checked · {search.new_posting_count} new ·{" "}
                     {search.duplicate_count} known
                   </p>
                   {search.error && <p className="error">{search.error}</p>}
