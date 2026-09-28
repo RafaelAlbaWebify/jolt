@@ -20,9 +20,9 @@ function readTextFile(file: File): Promise<string> {
         resolve(reader.result);
         return;
       }
-      reject(new Error("The AI update file could not be read."));
+      reject(new Error("The strategy update file could not be read."));
     };
-    reader.onerror = () => reject(new Error("The AI update file could not be read."));
+    reader.onerror = () => reject(new Error("The strategy update file could not be read."));
     reader.readAsText(file);
   });
 }
@@ -46,7 +46,7 @@ function loadImportReceipt(): AIImportReceipt | null {
 }
 
 function formatImportProblem(problem: unknown): string {
-  if (!problem || typeof problem !== "object") return "The AI update could not be imported.";
+  if (!problem || typeof problem !== "object") return "The strategy update could not be imported.";
 
   const detail = (problem as { detail?: unknown }).detail;
   if (typeof detail === "string" && detail.trim()) return detail;
@@ -64,7 +64,7 @@ function formatImportProblem(problem: unknown): string {
     if (messages.length) return messages.join("\n");
   }
 
-  return "The AI update could not be imported.";
+  return "The strategy update could not be imported.";
 }
 
 type Props = {
@@ -89,7 +89,7 @@ export function DataTools({ apiBase, onImported }: Props) {
       try {
         payload = JSON.parse(text);
       } catch {
-        throw new Error("The AI update file is not valid JSON.");
+        throw new Error("The strategy update file is not valid JSON.");
       }
 
       const response = await fetch(`${apiBase}/api/ai-work-package/import`, {
@@ -120,11 +120,11 @@ export function DataTools({ apiBase, onImported }: Props) {
       const sectionCount = result.imported_sections.length;
       const reviewText = result.review_inbox_imported ? "Review Inbox updated. " : "";
       setImportNotice(
-        `AI update imported successfully. ${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
+        `Strategy update imported successfully. ${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
       );
       await onImported?.();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The AI update could not be imported.");
+      setError(caught instanceof Error ? caught.message : "The strategy update could not be imported.");
     } finally {
       setImporting(false);
     }
@@ -135,15 +135,15 @@ export function DataTools({ apiBase, onImported }: Props) {
       <section className="panel" aria-labelledby="ai-import-status-heading">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">AI round trip</p>
-            <h2 id="ai-import-status-heading">AI update status</h2>
+            <p className="eyebrow">Strategy updates</p>
+            <h2 id="ai-import-status-heading">Strategy update status</h2>
             <p>
               {lastImport
-                ? "The most recent reviewed package was accepted by JOLT. This receipt remains visible after navigation or reload."
-                : "No successful AI update import has been recorded in this browser yet."}
+                ? "The most recent reviewed strategy update was accepted by JOLT. This receipt remains visible after navigation or reload."
+                : "No reviewed strategy update has been imported in this browser yet."}
             </p>
           </div>
-          <strong>{lastImport ? "Imported" : "No import yet"}</strong>
+          <strong>{lastImport ? "Imported" : "No update yet"}</strong>
         </div>
 
         {lastImport && (
@@ -160,17 +160,15 @@ export function DataTools({ apiBase, onImported }: Props) {
       </section>
 
       <details className="panel operations-tools workspace-sidebar-operations">
-        <summary>Data tools: AI exchange, capture history, and decisions</summary>
+        <summary>Advanced data & diagnostics</summary>
         {error && <p className="error" role="alert" style={{ whiteSpace: "pre-line" }}>{error}</p>}
         {importNotice && <p role="status">{importNotice}</p>}
 
         <div className="operations-grid">
           <section aria-labelledby="ai-exchange-heading">
-            <h2 id="ai-exchange-heading">AI exchange</h2>
+            <h2 id="ai-exchange-heading">Strategy update exchange</h2>
             <p>
-              Export the full JOLT context package when you want ChatGPT to update broader strategy or
-              intelligence. For normal saved-search discovery, use the batch-specific AI review export in
-              Capture Jobs instead. Human-owned decisions and preferences remain protected.
+              Use this only when you want ChatGPT to refresh broader search strategy, profile guidance, or market insights. For normal job review, use Export new jobs for review in Capture Jobs.
             </p>
             <ol>
               <li>
@@ -179,14 +177,14 @@ export function DataTools({ apiBase, onImported }: Props) {
                   download="JOLT_AI_WORK_PACKAGE.json"
                   title="Export JOLT's full AI context package: preferences, evidence, market intelligence, and current Review Inbox state. Use the discovery-batch export in Capture Jobs for a normal multi-search review."
                 >
-                  <strong>Export full JOLT AI work package</strong>
+                  <strong>Export strategy update package</strong>
                 </a>
               </li>
               <li>
                 <label>
-                  <strong>Import AI update</strong>
+                  <strong>Import reviewed strategy update</strong>
                   <input
-                    aria-label="Import AI update"
+                    aria-label="Import reviewed strategy update"
                     type="file"
                     accept=".json,application/json"
                     disabled={importing}
@@ -199,12 +197,11 @@ export function DataTools({ apiBase, onImported }: Props) {
                 </label>
               </li>
             </ol>
-            <p>{importing ? "Importing AI update…" : "JOLT validates the returned file before applying AI-derived intelligence."}</p>
+            <p>{importing ? "Importing strategy update…" : "JOLT validates the returned file before applying the reviewed update."}</p>
             <details>
-              <summary>Advanced / compatibility exports</summary>
+              <summary>Legacy compatibility exports</summary>
               <p>
-                These older Review-Inbox-only formats remain available for troubleshooting or archive
-                compatibility. The unified AI work package above is the normal workflow.
+                Older export formats remain available only for troubleshooting or archive compatibility.
               </p>
               <ul>
                 <li><a href={`${apiBase}/api/exports/ai-review-json`} download="JOLT_AI_REVIEW_INPUT.json">Legacy AI review JSON</a></li>
