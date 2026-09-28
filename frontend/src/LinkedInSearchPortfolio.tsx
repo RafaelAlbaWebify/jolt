@@ -309,7 +309,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         body: JSON.stringify({ saved_search_ids: selectedSearches.map((item) => item.id) }),
       });
       if (!createResponse.ok) {
-        throw await responseError(createResponse, "The discovery batch could not be created.");
+        throw await responseError(createResponse, "The search run could not be created.");
       }
       const created = (await createResponse.json()) as DiscoveryBatch;
       const startResponse = await fetch(
@@ -317,12 +317,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         { method: "POST" },
       );
       if (!startResponse.ok) {
-        throw await responseError(startResponse, "The discovery batch could not start.");
+        throw await responseError(startResponse, "The search run could not start.");
       }
       setBatch((await startResponse.json()) as DiscoveryBatch);
-      setNotice("Discovery started. JOLT will reuse one visible Chromium session for the selected searches.");
+      setNotice("Search run started. JOLT will use one visible LinkedIn session for the selected searches.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The discovery batch could not start.");
+      setError(caught instanceof Error ? caught.message : "The search run could not start.");
     } finally {
       setBusy(false);
     }
@@ -343,19 +343,19 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
           body: JSON.stringify(payload),
         },
       );
-      if (!response.ok) throw await responseError(response, "The batch AI review could not be imported.");
+      if (!response.ok) throw await responseError(response, "The reviewed jobs could not be imported.");
       const result = (await response.json()) as {
         received_count: number;
         created_count: number;
         updated_count: number;
       };
       setNotice(
-        `AI review imported: ${result.received_count} jobs · ${result.created_count} new · ${result.updated_count} updated.`,
+        `Reviewed jobs imported: ${result.received_count} jobs · ${result.created_count} new · ${result.updated_count} updated.`,
       );
       await loadPerformance();
       onAIImported?.();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The batch AI review could not be imported.");
+      setError(caught instanceof Error ? caught.message : "The reviewed jobs could not be imported.");
     } finally {
       setBusy(false);
     }
@@ -368,11 +368,10 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     <section className="panel linkedin-search-portfolio" aria-labelledby="linkedin-search-portfolio-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Primary job discovery</p>
-          <h2 id="linkedin-search-portfolio-heading">Saved LinkedIn searches</h2>
+          <p className="eyebrow">Job search</p>
+          <h2 id="linkedin-search-portfolio-heading">Run LinkedIn searches</h2>
           <p>
-            Select the searches you want to run. JOLT opens one visible Chromium session, captures each
-            search sequentially, deduplicates canonical jobs, and prepares one AI review set.
+            Choose the searches to run. JOLT checks them in one visible LinkedIn session, removes duplicates, and prepares only new jobs for review.
           </p>
         </div>
         <button type="button" className="secondary" onClick={() => beginEdit()} disabled={busy}>
@@ -479,7 +478,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
             disabled={!active || busy || batchIsActive || selectedSearches.length === 0}
             onClick={() => void startDiscovery()}
           >
-            {batchIsActive ? "Discovery running…" : `Start discovery (${selectedSearches.length})`}
+            {batchIsActive ? "Searches running…" : `Run searches (${selectedSearches.length})`}
           </button>
         </div>
       </div>
@@ -489,14 +488,14 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
       ) : searches.length === 0 ? (
         <div className="search-portfolio-empty">
           <strong>No saved searches yet.</strong>
-          <p>Add your first LinkedIn job search URL, give it a useful name, then select it for discovery.</p>
+          <p>Add your first LinkedIn job search URL, give it a useful name, then select it when you want to run it.</p>
         </div>
       ) : (
         <>
           <details className="active-searches-details" open={enabledSearches.length <= 8}>
             <summary>
-              Saved searches ({enabledSearches.length})
-              <span>Manage names, URLs, limits, and individual search settings</span>
+              Search settings ({enabledSearches.length})
+              <span>Advanced: names, URLs, limits, and search settings</span>
             </summary>
             <div className="search-portfolio-list">
             {enabledSearches.map((search) => (
@@ -537,14 +536,14 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
 
           {retiredSearches.length > 0 && (
             <details className="retired-searches">
-              <summary>Retired searches ({retiredSearches.length})</summary>
-              <p>Kept only to preserve discovery history. They are excluded from normal discovery.</p>
+              <summary>Inactive searches ({retiredSearches.length})</summary>
+              <p>Kept for history. They are excluded from normal search runs.</p>
               <div className="search-portfolio-list">
                 {retiredSearches.map((search) => (
                   <article className="search-portfolio-row search-portfolio-row-disabled" key={search.id}>
                     <div className="search-portfolio-main search-portfolio-retired-main">
                       <strong>{search.label}</strong>
-                      <span>Retired · {search.max_jobs} jobs · {search.max_pages} pages</span>
+                      <span>Inactive · {search.max_jobs} jobs · {search.max_pages} pages</span>
                       <details className="search-url-details">
                         <summary>Search URL</summary>
                         <a href={search.search_url} target="_blank" rel="noreferrer">Open LinkedIn search</a>
@@ -621,7 +620,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               </tbody>
             </table>
             <p className="search-performance-note">
-              AI+ = strong pursue + pursue + conditional. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted. Overlapping searches share credit when both observed the same canonical job.
+              AI+ = high priority + good match + check requirements. Applied counts only applications that reached submitted or a later stage; preparing alone is not counted. Overlapping searches share credit when both observed the same canonical job.
             </p>
           </div>
         )}
@@ -639,7 +638,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
               </p>
             </div>
             <button type="button" className="secondary" disabled={loading} onClick={() => void loadBatches()}>
-              Refresh batch
+              Refresh run
             </button>
           </div>
 
@@ -650,12 +649,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 href={`${apiBase}/api/linkedin-discovery-batches/${batch.id}/ai-review-exchange`}
                 target="_blank"
                 rel="noreferrer"
-                title="Download only the new, deduplicated jobs from this discovery batch for ChatGPT review."
+                title="Download only the new, deduplicated jobs from this search run for review in ChatGPT."
               >
-                Download this discovery batch for AI review
+                Export new jobs for review
               </a>
               <label className="batch-review-import">
-                Import returned AI review
+                Import reviewed jobs
                 <input
                   type="file"
                   accept="application/json,.json"
@@ -672,8 +671,8 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
 
           <details className="batch-search-details" open={batchIsActive}>
             <summary>
-              Search-by-search details ({batch.searches.length})
-              <span>{batchIsActive ? "Live progress" : "Expand to inspect individual captures"}</span>
+              Search details ({batch.searches.length})
+              <span>{batchIsActive ? "Running now" : "Expand to inspect each search"}</span>
             </summary>
             <div className="discovery-progress-list">
               {batch.searches.map((search) => (
