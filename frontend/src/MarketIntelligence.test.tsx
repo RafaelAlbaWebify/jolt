@@ -57,12 +57,14 @@ describe("MarketIntelligence", () => {
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
-    expect(screen.getByText("120 observations · 90 canonical roles · 30 repeated observations · 3 search runs")).toBeInTheDocument();
+    expect(screen.getByText("120 jobs analyzed · 90 unique roles · 30 repeated observations · 3 search runs")).toBeInTheDocument();
     expect(screen.getByText("Application support and modern workplace roles remain strong targets.")).toBeInTheDocument();
     expect(screen.getByText("Strengthen API troubleshooting evidence")).toBeInTheDocument();
     expect(screen.queryByText(/Fit shortfall/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Evidence indicator/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Adaptive market baseline/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Jobs analyzed")).toBeInTheDocument();
+    expect(screen.getByText("Unique roles")).toBeInTheDocument();
   });
 
   it("renders nested market records as readable fields instead of raw JSON", async () => {
