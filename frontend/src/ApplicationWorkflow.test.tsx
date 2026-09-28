@@ -148,15 +148,57 @@ describe("ApplicationWorkflow", () => {
     );
 
     fireEvent.click(screen.getByText(/Manage application/));
-    expect(await screen.findByText("Change stage")).toBeInTheDocument();
+    expect(await screen.findByText("Correct stage manually")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Activity or correction notes (recommended)"), {
+    fireEvent.change(screen.getByLabelText("Notes for this update (recommended)"), {
       target: { value: "Corrected the recorded stage." },
     });
-    fireEvent.change(screen.getByLabelText("Stage"), { target: { value: "recruiter_screen" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save stage" }));
+    fireEvent.change(screen.getByLabelText("Correct stage"), { target: { value: "recruiter_screen" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save correction" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("recruiter screen")).toBeInTheDocument();
   });
+
+
+  it("uses Documents as the CV source of truth for new applications", async () => {
+    let submittedBody: Record<string, unknown> | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/opportunities/posting-1/applications") && init?.method === "POST") {
+        submittedBody = JSON.parse(String(init.body)) as Record<string, unknown>;
+        return jsonResponse({
+          ...application,
+          status: "preparing",
+          resume_used: "",
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(
+      <ApplicationWorkflow
+        apiBase="http://127.0.0.1:8000"
+        postingId="posting-1"
+        title="Support Engineer"
+        reviewDecision="pursue"
+        applicationId={null}
+        applicationStatus={null}
+        disabled={false}
+        onChanged={async () => undefined}
+        onError={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Prepare application"));
+    expect(screen.queryByText("CV or resume version")).not.toBeInTheDocument();
+    expect(screen.getByText(/attach the exact CV you will use from the Documents tab/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start preparing application" }));
+
+    await waitFor(() => expect(submittedBody).toMatchObject({
+      resume_used: "",
+    }));
+  });
+
 });
