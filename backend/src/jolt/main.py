@@ -60,6 +60,7 @@ from jolt.linkedin_command_center import (
     list_linkedin_command_center,
     update_linkedin_recommendation_status,
 )
+from jolt.linkedin_discovery_batch import recover_interrupted_discovery_batches
 from jolt.linkedin_playwright_capture import (
     LinkedInPlaywrightBatchCaptureRequest,
     LinkedInPlaywrightBatchCaptureResponse,
@@ -134,6 +135,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         allow_headers=["Content-Type"],
     )
     session_factory = create_session_factory(database_url)
+
+    # Discovery workers are process-local. Reconcile persisted scheduled/running
+    # state left behind when Windows or the backend stops mid-batch.
+    with session_factory() as recovery_session:
+        recover_interrupted_discovery_batches(recovery_session)
 
     def get_session() -> Iterator[Session]:
         session = session_factory()
