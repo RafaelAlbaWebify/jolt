@@ -68,7 +68,37 @@ describe(
     afterEach(() => {
       cleanup();
       vi.unstubAllGlobals();
-    });
+    
+
+    it(
+      "uses clear operator labels while preserving stored preference values",
+      async () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(savedPreferences), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          ),
+        );
+
+        render(
+          <JobPreferences
+            apiBase="http://api.test"
+            active
+          />,
+        );
+
+        expect(await screen.findByLabelText("Base location")).toHaveValue("Vigo, Galicia, Spain");
+        expect(screen.getByText("Unavailable schedules")).toBeInTheDocument();
+        expect(screen.getByLabelText("Workload preference")).toHaveValue("normal");
+        expect(screen.getByRole("option", { name: "Standard workload" })).toHaveValue("normal");
+        expect(screen.getByText(/use the same basis consistently/i)).toBeInTheDocument();
+      },
+    );
+
+});
 
     it(
       "loads, saves, re-evaluates and reports the active engine",
@@ -168,7 +198,7 @@ describe(
             "button",
             {
               name:
-                "Save & re-evaluate jobs",
+                "Save preferences",
             },
           ),
         );
@@ -213,7 +243,7 @@ describe(
 
         expect(
           await screen.findByText(
-            /182 jobs re-evaluated with profile-rules-v10/i,
+            /182 jobs refreshed/i,
           ),
         ).toBeInTheDocument();
       },
