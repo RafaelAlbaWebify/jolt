@@ -134,7 +134,7 @@ export function ApplicationTasks({ apiBase, applicationId, readOnly = false, onC
 
   return <section className="work-items-panel" aria-labelledby="application-tasks-heading">
     <div className="application-tab-heading"><div><p className="eyebrow">Next actions</p><h4 id="application-tasks-heading">Tasks</h4></div><span>{tasks.filter((task) => task.status === "open").length} open</span></div>
-    {readOnly ? <p className="application-read-only-notice" role="status">Archived application — tasks are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
+    {readOnly ? <p className="application-read-only-notice" role="status">Hidden application — tasks are read-only until the application is restored.</p> : <form className="work-item-form" onSubmit={submit}>
       <label>Task title<input required maxLength={240} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
       <label>Due date and time<input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></label>
       <label className="work-item-form-wide">Notes<textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
