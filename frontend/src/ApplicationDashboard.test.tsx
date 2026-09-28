@@ -453,8 +453,9 @@ describe("ApplicationDashboard", () => {
     const workspace = screen.getByRole("dialog", { name: "Application Support Engineer" });
     fireEvent.click(within(workspace).getByText("Manage application · submitted"));
     await within(workspace).findByText("Rafael_Application_Support_CV.pdf");
-    fireEvent.change(within(workspace).getByLabelText("Stage"), { target: { value: "technical_interview" } });
-    fireEvent.click(within(workspace).getByRole("button", { name: "Save stage" }));
+    fireEvent.click(within(workspace).getByText("Correct stage manually"));
+    fireEvent.change(within(workspace).getByLabelText("Correct stage"), { target: { value: "technical_interview" } });
+    fireEvent.click(within(workspace).getByRole("button", { name: "Save correction" }));
 
     expect(await within(workspace).findByRole("alert")).toHaveTextContent("Transition rejected for test.");
     expect(fetchMock).toHaveBeenCalledWith(
