@@ -352,6 +352,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
       setNotice(
         `AI review imported: ${result.received_count} jobs · ${result.created_count} new · ${result.updated_count} updated.`,
       );
+      await loadPerformance();
       onAIImported?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The batch AI review could not be imported.");
