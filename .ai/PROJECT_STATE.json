@@ -30,7 +30,7 @@
       "name": "Saved Search Performance Funnel",
       "status": "active",
       "roadmap": ".ai/ROADMAP.md",
-      "current_phase": "PR #438 in validation — deterministic capture-to-outcome metrics, no schema migration"
+      "current_phase": "PR #439 in validation — deterministic capture-to-outcome metrics, no schema migration"
     }
   ],
   "completed_milestones": [
