@@ -15,7 +15,10 @@ def test_v3_runner_keeps_production_searches_read_only() -> None:
 
     assert 'owner = "production"' in runner
     assert 'Write-Host "READ-ONLY production: $($saved.label)"' in runner
-    assert '$experimentIds += $saved.id' not in runner.split('if ($definition.owner -eq "production")')[1].split('continue')[0]
+    assert (
+        "$experimentIds += $saved.id"
+        not in runner.split('if ($definition.owner -eq "production")')[1].split("continue")[0]
+    )
 
 
 def test_v3_runner_uses_batch_capture_overrides() -> None:
