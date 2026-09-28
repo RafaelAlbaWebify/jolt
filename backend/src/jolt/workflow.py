@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from jolt.application_response import build_application_response
 from jolt.application_resources import purge_application_document_files
+from jolt.application_response import build_application_response
 from jolt.database import (
     AIReview,
     Application,
