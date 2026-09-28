@@ -28,15 +28,18 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-022 | COMPLETE | Backup/restore active-schema rehearsal | R-014 | create, verify and restore a dated backup without modifying the live database; restored database passes integrity/schema verification | CLI output + manifest + restored test target evidence |
 | R-023 | COMPLETE | Unified release/version authority | R-001 | package, FastAPI health and runtime identity derive from one release-version source | tests + exact merge gates |
 | R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
+| R-026 | COMPLETE | Restart recovery for interrupted discovery batches | R-025 | backend restart closes stale scheduled/running discovery state without touching normal queued batches or completed capture evidence | PR #437 six green gates + squash merge bf9a9fce87ac7e35f195931a2460b02396349346 |
+| R-027 | ACTIVE | Saved-search performance funnel | R-025 | each saved search exposes deterministic capture -> AI -> human pursue -> submitted -> interview -> offer/outcome metrics without schema migration or automatic search decisions | PR #438 exact gates + real accumulated application outcomes |
 
 ## Immediate sequence
 Production certification is complete for the supported local-first single-user Windows boundary.
 
-Future work is optional/product expansion rather than a blocker:
-1. Add Indeed adapter when prioritized.
-2. Add InfoJobs adapter when prioritized.
-3. Revisit multi-user/SaaS architecture only if the product boundary changes.
-4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
+Current sequence:
+1. Use the real 12-search production portfolio for normal job discovery.
+2. Complete R-027 and let real applications/interviews/offers accumulate before changing search strategy again.
+3. Tune or retire a search only from repeated operational failure or measured funnel evidence, not theoretical keyword optimization.
+4. Add Indeed/InfoJobs only when prioritized as product expansion.
+5. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
 
 
 ## R-025 — LinkedIn Search Portfolio and Discovery Batch — COMPLETE
