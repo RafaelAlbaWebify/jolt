@@ -560,7 +560,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   async function archiveCard(item: Opportunity) {
     if (!item.application_id || busy) return;
     const confirmed = window.confirm(
-      `Archive ${item.title || "this application"}? It will be removed from the active board, but its history stays in the database.`,
+      `Hide ${item.title || "this application"} from the active board? You can restore it later and its history will be kept.`,
     );
     if (!confirmed) return;
     setBusy(true);
