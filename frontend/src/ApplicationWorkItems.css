@@ -3,6 +3,9 @@
 .work-item-form label { display: grid; gap: 6px; color: #344054; font-size: 0.8rem; font-weight: 700; }
 .work-item-form-wide { grid-column: 1 / -1; }
 .work-item-form button { justify-self: start; }
+.work-item-advanced { border: 1px solid #e4e7ec; border-radius: 10px; background: #fff; }
+.work-item-advanced > summary { cursor: pointer; padding: 11px 12px; color: #475467; font-size: 0.82rem; font-weight: 700; }
+.work-item-form-nested { margin-top: 0; border: 0; border-top: 1px solid #eef1f5; border-radius: 0 0 10px 10px; background: #fff; }
 .work-items-empty { margin: 0; padding: 28px; border: 1px dashed #c7ced9; border-radius: 12px; color: #667085; text-align: center; }
 .work-item-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .work-item-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 16px; border: 1px solid #d8dde7; border-radius: 12px; background: #fff; }
