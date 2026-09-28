@@ -122,6 +122,33 @@ def test_discovery_batch_snapshots_selected_searches_in_order(tmp_path: Path) ->
     assert all(item["status"] == "queued" for item in batch["searches"])
 
 
+
+def test_discovery_batch_overrides_capture_limits_without_mutating_saved_search(
+    tmp_path: Path,
+) -> None:
+    client = _client(tmp_path)
+
+    created = client.post("/api/linkedin-searches", json=_search_payload()).json()
+
+    response = client.post(
+        "/api/linkedin-discovery-batches",
+        json={
+            "saved_search_ids": [created["id"]],
+            "max_jobs_override": 20,
+            "max_pages_override": 3,
+        },
+    )
+    assert response.status_code == 200, response.text
+    batch = response.json()
+
+    assert batch["searches"][0]["max_jobs"] == 20
+    assert batch["searches"][0]["max_pages"] == 3
+
+    saved = client.get(f"/api/linkedin-searches/{created['id']}").json()
+    assert saved["max_jobs"] == 100
+    assert saved["max_pages"] == 10
+
+
 def test_discovery_history_blocks_delete_but_allows_disable(tmp_path: Path) -> None:
     client = _client(tmp_path)
 

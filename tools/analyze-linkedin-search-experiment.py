@@ -278,7 +278,7 @@ def main() -> int:
 
     print()
     print("=== KEY A/B COMPARISONS ===")
-    key_pairs = {(1, 2), (3, 4), (5, 6)}
+    key_pairs = {(1, 2), (3, 4), (5, 6), (7, 8)}
     pair_index = {
         (p["left_position"], p["right_position"]): p
         for p in report["pair_overlap"]
