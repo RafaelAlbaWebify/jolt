@@ -51,7 +51,7 @@ export function LinkedInAIAnalysisStatus({ apiBase, active, importRevision = 0 }
         return await response.json() as LinkedInProfileData;
       }),
       fetch(`${apiBase}/api/ai-linkedin/feedback`).then(async (response) => {
-        if (!response.ok) throw new Error("Unable to read LinkedIn AI analysis status.");
+        if (!response.ok) throw new Error("Unable to read LinkedIn profile analysis status.");
         return await response.json() as FeedbackIndex;
       }),
     ])
@@ -62,7 +62,7 @@ export function LinkedInAIAnalysisStatus({ apiBase, active, importRevision = 0 }
       })
       .catch((caught) => {
         if (cancelled) return;
-        setError(caught instanceof Error ? caught.message : "Unable to read LinkedIn AI status.");
+        setError(caught instanceof Error ? caught.message : "Unable to read LinkedIn profile analysis status.");
       });
 
     return () => {
@@ -90,24 +90,24 @@ export function LinkedInAIAnalysisStatus({ apiBase, active, importRevision = 0 }
   }, [latestCaptureAt, latestFeedback, profile]);
 
   const statusLabel = {
-    no_evidence: "No profile evidence yet",
-    not_analyzed: "Needs ChatGPT analysis",
-    stale: "Analysis outdated",
+    no_evidence: "No profile data yet",
+    not_analyzed: "Needs strategy update",
+    stale: "Strategy update outdated",
     current: "Current",
   }[analysisState];
 
   const nextStep = {
-    no_evidence: "Capture your enabled LinkedIn profile sections first.",
-    not_analyzed: "Export the AI Work Package from Settings & Data, analyze it in ChatGPT, then import the returned update.",
-    stale: "Your LinkedIn evidence is newer than the latest ChatGPT review. Export a fresh AI Work Package and run the round trip again.",
-    current: "Your latest captured profile evidence has a ChatGPT review that is at least as recent.",
+    no_evidence: "Refresh your enabled LinkedIn profile sections first.",
+    not_analyzed: "Open Settings & Data, export a strategy update, review it in ChatGPT, then import the returned file.",
+    stale: "Your LinkedIn profile data is newer than the latest strategy review. Export a fresh strategy update from Settings & Data.",
+    current: "Your latest LinkedIn profile data is covered by the current strategy review.",
   }[analysisState];
 
   return (
     <section className="panel" aria-labelledby="linkedin-ai-analysis-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">AI round trip</p>
+          <p className="eyebrow">Profile strategy</p>
           <h3 id="linkedin-ai-analysis-heading">LinkedIn profile analysis</h3>
           <p>{nextStep}</p>
         </div>
@@ -118,19 +118,19 @@ export function LinkedInAIAnalysisStatus({ apiBase, active, importRevision = 0 }
 
       <div className="market-summary-grid">
         <article className="market-card">
-          <span>Profile snapshots</span>
+          <span>Profile refreshes</span>
           <strong>{profile?.capture_count ?? 0}</strong>
         </article>
         <article className="market-card">
-          <span>Latest profile capture</span>
+          <span>Latest profile refresh</span>
           <strong>{formatDate(latestCaptureAt)}</strong>
         </article>
         <article className="market-card">
-          <span>Latest ChatGPT review</span>
+          <span>Latest strategy review</span>
           <strong>{formatDate(latestFeedback?.reviewed_at)}</strong>
         </article>
         <article className="market-card">
-          <span>Imported into JOLT</span>
+          <span>Imported update</span>
           <strong>{formatDate(latestFeedback?.imported_at)}</strong>
         </article>
       </div>
