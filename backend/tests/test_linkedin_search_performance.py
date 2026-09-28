@@ -146,7 +146,11 @@ def test_search_performance_tracks_real_funnel_without_counting_preparing_as_app
                 reviewed_at=_now(),
                 imported_at=_now(),
             )
-            session.add_all([source, posting, item])
+            session.add(source)
+            session.flush()
+            session.add(posting)
+            session.flush()
+            session.add(item)
             session.flush()
             session.add(review)
 
