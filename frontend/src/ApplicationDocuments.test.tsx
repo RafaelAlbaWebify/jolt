@@ -132,7 +132,7 @@ describe("ApplicationDocuments", () => {
     fireEvent.change(screen.getByLabelText("Status"), {
       target: { value: "submitted" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save document changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
