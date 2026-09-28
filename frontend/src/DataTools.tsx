@@ -175,7 +175,7 @@ export function DataTools({ apiBase, onImported }: Props) {
                 <a
                   href={`${apiBase}/api/ai-work-package/export`}
                   download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export JOLT's full AI context package: preferences, evidence, market intelligence, and current Review Inbox state. Use the discovery-batch export in Capture Jobs for a normal multi-search review."
+                  title="Export JOLT's full AI context package: preferences, evidence, market intelligence, and current Review Inbox state. Use Export new jobs for review in Capture Jobs for normal job review."
                 >
                   <strong>Export strategy update package</strong>
                 </a>
