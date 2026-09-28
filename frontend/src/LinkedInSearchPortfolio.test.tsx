@@ -288,7 +288,7 @@ it("keeps live batch progress expanded while discovery is running", async () => 
     <LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />,
   );
 
-  expect(await screen.findByText("Search-by-search details (0)")).toBeInTheDocument();
+  expect(await screen.findByText("Search details (0)")).toBeInTheDocument();
   expect(container.querySelector(".batch-search-details")).toHaveAttribute("open");
   unmount();
 });
