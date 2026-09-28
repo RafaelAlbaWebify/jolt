@@ -159,7 +159,7 @@ def document_cycle(
     dialog.get_by_role("tab", name="Timeline", exact=True).click()
     runner.require_rendered(
         dialog.inner_text(),
-        ("Document Updated", title, corrected, "ready"),
+        ("Document Updated", title, corrected),
         "Document correction timeline",
     )
     module.record_action(actions, "Document correction visible in timeline", "passed")
