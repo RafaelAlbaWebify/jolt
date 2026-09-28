@@ -81,7 +81,9 @@ def test_search_performance_tracks_real_funnel_without_counting_preparing_as_app
             started_at=_now(),
             completed_at=_now(),
         )
-        session.add_all([search, batch, run, batch_search])
+        session.add_all([search, batch, run])
+        session.flush()
+        session.add(batch_search)
         session.flush()
 
         for index in (1, 2):
