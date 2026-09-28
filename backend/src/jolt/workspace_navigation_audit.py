@@ -18,6 +18,7 @@ VIEW_SPECS = (
     ("applications", "Applications", "Applications"),
     ("linkedin", "LinkedIn Profile", "LinkedIn Profile"),
     ("market", "Market Insights", "Market Insights"),
+    ("settings", "Settings & Data", "Job Search Preferences"),
 )
 
 FORBIDDEN_PRIMARY_COPY = {
@@ -26,6 +27,22 @@ FORBIDDEN_PRIMARY_COPY = {
     "applications": ("Archive card",),
     "linkedin": ("Capture targets", "Evidence snapshots", "Manual evidence fallback"),
     "market": ("export a new AI work package from Data tools",),
+    "settings": ("Developer diagnostics",),
+}
+
+COLLAPSED_BY_DEFAULT = {
+    "opportunities": (
+        ("Maintenance", "Clear unresolved inbox"),
+    ),
+    "professional": (
+        ("Run one LinkedIn search manually", "Run this search"),
+    ),
+    "market": (
+        ("Evidence details", "Oldest:"),
+    ),
+    "settings": (
+        ("Data & Diagnostics", "Legacy AI review JSON"),
+    ),
 }
 
 
@@ -104,8 +121,11 @@ def _wait_for_view_data(
     elif view_id == "linkedin":
         expected_text = "LinkedIn Profile"
         timeout = 60_000
-    else:
+    elif view_id == "market":
         expected_text = "Market Insights"
+        timeout = 60_000
+    else:
+        expected_text = "Job Search Preferences"
         timeout = 60_000
 
     page.wait_for_function(
@@ -197,6 +217,29 @@ def run(
                                 "message": (
                                     f"Primary {label} view exposes internal/deprecated copy: "
                                     f'"{forbidden}".'
+                                ),
+                            }
+                        )
+                for summary_text, protected_text in COLLAPSED_BY_DEFAULT.get(view_id, ()):
+                    summary = page.get_by_text(summary_text, exact=True)
+                    if summary.count() == 0:
+                        findings.append(
+                            {
+                                "severity": "error",
+                                "message": (
+                                    f'Expected advanced disclosure "{summary_text}" is missing in {label}.'
+                                ),
+                            }
+                        )
+                        continue
+                    protected = page.get_by_text(protected_text, exact=False)
+                    if protected.count() and protected.first.is_visible():
+                        findings.append(
+                            {
+                                "severity": "error",
+                                "message": (
+                                    f'Advanced/destructive content "{protected_text}" is visible by default '
+                                    f'in {label}.'
                                 ),
                             }
                         )
