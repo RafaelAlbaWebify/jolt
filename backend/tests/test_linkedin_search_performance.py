@@ -27,9 +27,7 @@ def _now() -> datetime:
 def test_search_performance_tracks_real_funnel_without_counting_preparing_as_applied(
     tmp_path: Path,
 ) -> None:
-    factory = create_session_factory(
-        f"sqlite:///{(tmp_path / 'performance.db').as_posix()}"
-    )
+    factory = create_session_factory(f"sqlite:///{(tmp_path / 'performance.db').as_posix()}")
 
     with factory() as session:
         search = LinkedInSavedSearch(
