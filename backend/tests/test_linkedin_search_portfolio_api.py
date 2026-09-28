@@ -305,3 +305,38 @@ def test_backend_restart_recovers_stale_scheduled_discovery_batch(
         json={"saved_search_ids": [search["id"]]},
     )
     assert next_batch.status_code == 200
+
+
+def test_search_performance_endpoint_returns_saved_searches_before_first_run(
+    tmp_path: Path,
+) -> None:
+    client = _client(tmp_path)
+    created = client.post("/api/linkedin-searches", json=_search_payload()).json()
+
+    response = client.get("/api/linkedin-search-performance")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "saved_search_id": created["id"],
+            "label": "LinkedIn IT Support",
+            "enabled": True,
+            "completed_runs": 0,
+            "captured_count": 0,
+            "verified_count": 0,
+            "new_posting_count": 0,
+            "duplicate_count": 0,
+            "canonical_posting_count": 0,
+            "ai_reviewed_count": 0,
+            "ai_strong_pursue_count": 0,
+            "ai_pursue_count": 0,
+            "ai_conditional_count": 0,
+            "ai_actionable_count": 0,
+            "human_pursue_count": 0,
+            "application_count": 0,
+            "applied_count": 0,
+            "interview_count": 0,
+            "offer_count": 0,
+            "accepted_offer_count": 0,
+        }
+    ]
