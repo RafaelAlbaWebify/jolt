@@ -24,6 +24,8 @@ FORBIDDEN_PRIMARY_COPY = {
     "professional": ("Start discovery", "Discovery running", "AI review set"),
     "opportunities": ("REJECT — HARDLINE", "MANUAL REVIEW — HARDLINE", "Clear pending inbox"),
     "applications": ("Archive card",),
+    "linkedin": ("Capture targets", "Evidence snapshots", "Manual evidence fallback"),
+    "market": ("export a new AI work package from Data tools",),
 }
 
 
