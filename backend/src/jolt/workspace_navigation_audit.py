@@ -195,7 +195,7 @@ def run(
                             {
                                 "severity": "error",
                                 "message": (
-                                    f'Primary {label} view exposes internal/deprecated copy: '
+                                    f"Primary {label} view exposes internal/deprecated copy: "
                                     f'"{forbidden}".'
                                 ),
                             }
@@ -229,8 +229,7 @@ def run(
             browser.close()
 
     findings.extend(
-        {"severity": "error", "message": f"Browser page error: {error}"}
-        for error in page_errors
+        {"severity": "error", "message": f"Browser page error: {error}"} for error in page_errors
     )
     for view in views:
         if not view["heading_visible"]:
