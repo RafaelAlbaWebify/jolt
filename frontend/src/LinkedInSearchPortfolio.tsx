@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SavedSearch = {
   id: string;
@@ -123,6 +123,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const selectionInitializedRef = useRef(false);
 
   const loadSearches = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/linkedin-searches`);
@@ -131,6 +132,10 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     setSearches(loaded);
     setSelectedIds((current) => {
       const enabledIds = new Set(loaded.filter((item) => item.enabled).map((item) => item.id));
+      if (!selectionInitializedRef.current) {
+        selectionInitializedRef.current = true;
+        return enabledIds;
+      }
       return new Set([...current].filter((id) => enabledIds.has(id)));
     });
   }, [apiBase]);
