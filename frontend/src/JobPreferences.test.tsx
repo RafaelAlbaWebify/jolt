@@ -71,19 +71,16 @@ describe(
     });
 
     it(
-      "loads, saves, re-evaluates and reports the active engine",
+      "loads, saves, refreshes matching and hides the internal engine",
       async () => {
         const fetchMock = vi.fn()
           .mockResolvedValueOnce(
             new Response(
-              JSON.stringify(
-                savedPreferences,
-              ),
+              JSON.stringify(savedPreferences),
               {
                 status: 200,
                 headers: {
-                  "Content-Type":
-                    "application/json",
+                  "Content-Type": "application/json",
                 },
               },
             ),
@@ -97,8 +94,7 @@ describe(
               {
                 status: 200,
                 headers: {
-                  "Content-Type":
-                    "application/json",
+                  "Content-Type": "application/json",
                 },
               },
             ),
@@ -114,74 +110,50 @@ describe(
               {
                 status: 200,
                 headers: {
-                  "Content-Type":
-                    "application/json",
+                  "Content-Type": "application/json",
                 },
               },
             ),
           );
 
-        vi.stubGlobal(
-          "fetch",
-          fetchMock,
-        );
-
-        const onRefreshed =
-          vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        const onRefreshed = vi.fn();
 
         render(
           <JobPreferences
             apiBase="http://api.test"
             active
-            onEvaluationsRefreshed={
-              onRefreshed
-            }
+            onEvaluationsRefreshed={onRefreshed}
           />,
         );
 
         expect(
           await screen.findByRole(
             "heading",
-            {
-              name:
-                "Job Search Preferences",
-            },
+            { name: "Job Search Preferences" },
           ),
         ).toBeInTheDocument();
 
         const distance =
-          await screen.findByDisplayValue(
-            "30",
-          );
+          await screen.findByDisplayValue("30");
 
         fireEvent.change(
           distance,
-          {
-            target: {
-              value: "45",
-            },
-          },
+          { target: { value: "45" } },
         );
 
         fireEvent.click(
           screen.getByRole(
             "button",
-            {
-              name:
-                "Save & re-evaluate jobs",
-            },
+            { name: "Save preferences" },
           ),
         );
 
         await waitFor(() =>
-          expect(
-            onRefreshed,
-          ).toHaveBeenCalledTimes(1),
+          expect(onRefreshed).toHaveBeenCalledTimes(1),
         );
 
-        expect(
-          fetchMock,
-        ).toHaveBeenNthCalledWith(
+        expect(fetchMock).toHaveBeenNthCalledWith(
           2,
           "http://api.test/api/job-search-preferences",
           expect.objectContaining({
@@ -191,29 +163,69 @@ describe(
 
         const request =
           (fetchMock.mock.calls[1][1] as RequestInit);
-
         const payload =
-          JSON.parse(
-            String(request.body),
-          );
+          JSON.parse(String(request.body));
 
-        expect(
-          payload.max_hybrid_distance_km,
-        ).toBe(45);
+        expect(payload.max_hybrid_distance_km).toBe(45);
 
-        expect(
-          fetchMock,
-        ).toHaveBeenNthCalledWith(
+        expect(fetchMock).toHaveBeenNthCalledWith(
           3,
           "http://api.test/api/evaluations/refresh",
-          {
-            method: "POST",
-          },
+          { method: "POST" },
         );
 
         expect(
-          await screen.findByText(
-            /182 jobs re-evaluated with profile-rules-v10/i,
+          await screen.findByText(/182 jobs refreshed/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText(/profile-rules-v10/i),
+        ).not.toBeInTheDocument();
+      },
+    );
+
+    it(
+      "uses clear operator labels while preserving stored preference values",
+      async () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn().mockResolvedValue(
+            new Response(
+              JSON.stringify(savedPreferences),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              },
+            ),
+          ),
+        );
+
+        render(
+          <JobPreferences
+            apiBase="http://api.test"
+            active
+          />,
+        );
+
+        expect(
+          await screen.findByLabelText("Base location"),
+        ).toHaveValue("Vigo, Galicia, Spain");
+        expect(
+          screen.getByText("Unavailable schedules"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByLabelText("Workload preference"),
+        ).toHaveValue("normal");
+        expect(
+          screen.getByRole(
+            "option",
+            { name: "Standard workload" },
+          ),
+        ).toHaveValue("normal");
+        expect(
+          screen.getByText(
+            /use the same basis consistently/i,
           ),
         ).toBeInTheDocument();
       },
@@ -222,13 +234,8 @@ describe(
     it(
       "does not fetch preferences until the settings view is active",
       () => {
-        const fetchMock =
-          vi.fn();
-
-        vi.stubGlobal(
-          "fetch",
-          fetchMock,
-        );
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
 
         render(
           <JobPreferences
@@ -237,9 +244,7 @@ describe(
           />,
         );
 
-        expect(
-          fetchMock,
-        ).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
       },
     );
   },
