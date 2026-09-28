@@ -17,7 +17,7 @@ Major user modules: Capture Jobs, Review Inbox, Applications, LinkedIn Profile, 
 - Normal production job discovery is the Saved LinkedIn Searches / Discovery Batch flow.
 - AI review export/import is already implemented in JOLT UI. PowerShell/API calls used during the September 27–28 audit were only an analysis shortcut, not a missing product capability.
 - Recovery of stale `scheduled/running` discovery batches after backend/PC restart is merged in PR #437. Ordinary `queued` batches remain untouched.
-- Search-performance funnel work is tracked as R-027 / PR #438 until merged.
+- Search-performance funnel work is tracked as R-027 / PR #439 until merged.
 - Historical experimental searches (EXP/EXP2/EXP3/HIST) are retained disabled for provenance; do not reactivate/delete them casually.
 - Review Inbox human decisions and Applications remain protected durable state. Never clear or rewrite them to simplify capture experiments.
 
