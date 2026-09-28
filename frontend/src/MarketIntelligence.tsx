@@ -140,7 +140,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <div>
             <p className="eyebrow">Job-market feedback</p>
             <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Use what JOLT has learned from your captured jobs to adjust search, applications, skills, and profile positioning.</p>
+            <p>Use what JOLT has learned from your jobs to adjust search, applications, skills, and profile positioning.</p>
           </div>
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh view"}</button>
         </div>
@@ -152,25 +152,25 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <section className="market-summary-grid" aria-label="Market intelligence status">
             <article className="market-card"><span>Authority</span><strong>{data.authority === "chatgpt" ? "ChatGPT" : data.authority}</strong></article>
             <article className="market-card"><span>Analysis status</span><strong>{readable(data.freshness.status)}</strong></article>
-            <article className="market-card"><span>Evidence observations</span><strong>{data.evidence_provenance.observation_count}</strong></article>
-            <article className="market-card"><span>Canonical roles</span><strong>{data.evidence_provenance.canonical_role_count}</strong></article>
+            <article className="market-card"><span>Jobs analyzed</span><strong>{data.evidence_provenance.observation_count}</strong></article>
+            <article className="market-card"><span>Unique roles</span><strong>{data.evidence_provenance.canonical_role_count}</strong></article>
           </section>
 
           <section className="panel market-card">
             <h3>{data.freshness.needs_analysis ? "Market analysis needs refresh" : "Market analysis is current"}</h3>
             <p>{data.freshness.reason}</p>
             <p>
-              Latest capture: {data.freshness.latest_capture_at ? new Date(data.freshness.latest_capture_at).toLocaleString() : "None"}
+              Latest job update: {data.freshness.latest_capture_at ? new Date(data.freshness.latest_capture_at).toLocaleString() : "None"}
               {" · "}
-              Latest AI context: {data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleString() : "None"}
+              Latest analysis: {data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleString() : "None"}
             </p>
             {data.freshness.needs_analysis && <p><strong>Next:</strong> open Settings & Data, export the strategy update, review it in ChatGPT, then import the returned file.</p>}
           </section>
 
           <section className="market-overview-grid">
             <details className="market-card market-ranking-card">
-              <summary>Evidence details</summary>
-              <p>{data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} canonical roles · {data.evidence_provenance.duplicate_observation_count} repeated observations · {data.evidence_provenance.capture_run_count} search runs</p>
+              <summary>Data details</summary>
+              <p>{data.evidence_provenance.observation_count} jobs analyzed · {data.evidence_provenance.canonical_role_count} unique roles · {data.evidence_provenance.duplicate_observation_count} repeated jobs analyzed · {data.evidence_provenance.capture_run_count} search runs</p>
               <p>
                 Oldest: {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "None"}
                 {" · "}
@@ -181,10 +181,10 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           </section>
 
           <section className="market-demand-grid">
-            <InsightSection title="Skills & evidence gaps" data={data.skills_gap_summary} empty="No AI-derived skills-gap summary is available." />
-            <InsightSection title="Capture strategy" data={data.capture_strategy} empty="No AI-derived capture strategy is available." />
-            <InsightSection title="Application strategy" data={data.application_strategy} empty="No AI-derived application strategy is available." />
-            <InsightSection title="Profile implications" data={data.profile_strategy} empty="No AI-derived profile strategy is available." />
+            <InsightSection title="Skills & experience gaps" data={data.skills_gap_summary} empty="No skills-gap summary is available." />
+            <InsightSection title="Search strategy" data={data.capture_strategy} empty="No search strategy is available." />
+            <InsightSection title="Application approach" data={data.application_strategy} empty="No application guidance is available." />
+            <InsightSection title="Profile improvements" data={data.profile_strategy} empty="No profile guidance is available." />
           </section>
 
           <section className="panel market-card">
