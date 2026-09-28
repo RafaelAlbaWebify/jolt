@@ -38,22 +38,9 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
       <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
 
       <details className="panel professional-single-capture-fallback">
-        <summary>Single-search capture fallback</summary>
+        <summary>Run one LinkedIn search manually</summary>
         <LinkedInJobCaptureLauncher apiBase={apiBase} active={active} />
       </details>
-
-      <section className="panel" aria-labelledby="profile-capture-location-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">LinkedIn profile evidence</p>
-            <h2 id="profile-capture-location-heading">Profile capture has moved</h2>
-            <p>
-              Profile, experience, skills, certifications, and activity belong in LinkedIn Profile.
-              This workspace is intentionally limited to job discovery.
-            </p>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }
