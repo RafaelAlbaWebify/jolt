@@ -396,8 +396,8 @@ export function App({
     const confirmed = window.confirm(
       `Clear ${opportunities.length} pending Review Inbox card${
         opportunities.length === 1 ? "" : "s"
-      }? Capture batches containing only pending items will be archived. ` +
-        "Reviewed or applied opportunities and all evidence will be preserved.",
+      }? Search history containing only unresolved cards will be archived. ` +
+        "Reviewed jobs, applications, and source data will be preserved.",
     );
     if (!confirmed) return;
 
@@ -481,9 +481,9 @@ export function App({
     <section className="panel manual-intake-panel" aria-labelledby="manual-intake-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Manual intake</p>
+          <p className="eyebrow">Outside JOLT</p>
           <h2 id="manual-intake-heading">Add job manually</h2>
-          <p>Paste a job description when you do not have a capture batch yet.</p>
+          <p>Paste a job description you found outside JOLT or could not bring in through a saved search.</p>
         </div>
         <button type="button" className="secondary" onClick={() => setShowManualIntake(false)}>
           Close
@@ -505,7 +505,7 @@ export function App({
           />
         </label>
         <button disabled={busy || !rawText.trim()} type="submit">
-          {busy ? "Processing…" : "Clean and add to inbox"}
+          {busy ? "Adding…" : "Add to Review Inbox"}
         </button>
       </form>
     </section>
@@ -566,7 +566,7 @@ export function App({
           <summary>Maintenance</summary>
           <p>
             Use this only to remove unresolved inbox cards in bulk. Reviewed jobs,
-            applications, and captured evidence are preserved.
+            applications, and source data are preserved.
           </p>
           <button
             type="button"
