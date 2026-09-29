@@ -122,6 +122,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const searchEditorReturnFocusRef = useRef<HTMLElement | null>(null);
   const [draft, setDraft] = useState<SearchDraft | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -155,11 +156,15 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const editorOpen = Boolean(draft);
 
   useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  useEffect(() => {
     if (!editorOpen) return;
 
     const timer = window.setTimeout(() => searchEditorNameRef.current?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) {
+      if (event.key === "Escape" && !busyRef.current) {
         setDraft(null);
       }
     };
@@ -170,7 +175,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
       window.removeEventListener("keydown", onKeyDown);
       searchEditorReturnFocusRef.current?.focus();
     };
-  }, [editorOpen, busy]);
+  }, [editorOpen]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -243,13 +248,15 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   }
 
   function beginEdit(search?: SavedSearch, trigger?: HTMLElement | null) {
-    if (!search) {
-      searchEditorReturnFocusRef.current =
+    searchEditorReturnFocusRef.current =
       trigger ??
       (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setDraft({ ...EMPTY_DRAFT });
+
+    if (!search) {
+      setDraft({ ...EMPTY_DRAFT });
       return;
     }
+
     setDraft({
       id: search.id,
       label: search.label,
