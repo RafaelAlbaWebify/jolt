@@ -341,6 +341,9 @@ it("shows deterministic search performance from capture through application outc
 });
 
 it("moves focus into the saved-search editor and restores it on Escape", async () => {
+  cleanup();
+  vi.restoreAllMocks();
+
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.endsWith("/api/linkedin-searches")) {
