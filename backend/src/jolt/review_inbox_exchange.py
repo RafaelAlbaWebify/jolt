@@ -27,86 +27,112 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
         "authority": "chatgpt_source_first",
         "processing_mode": "strict_sequential_per_job",
         "source_priority": (
-            "Vacancy body evidence outranks card labels, search filters, and inferred geography."
+            "Resolve the employer's official ATS/careers posting when possible. Verified official "
+            "ATS/careers evidence outranks LinkedIn card/location metadata and LinkedIn vacancy text "
+            "when they conflict. Record the official source URL, status, location, and evidence."
         ),
         "context_use": (
-            "Use JOLT context as candidate/search state; do not invent or upgrade unsupported experience."
+            "Use JOLT context as candidate/search state. Candidate evidence inventory is user-owned. "
+            "Do not invent experience, certifications, credentials, or production depth."
         ),
-        "sequential_review_protocol": [
-            "Process jobs in jobs[] order, one vacancy at a time.",
-            "For the current vacancy, read its complete jobs[].analysis_text and deterministic evidence before considering any other vacancy.",
-            "Complete and internally validate the current vacancy's Stage 1 result before moving to the next vacancy.",
-            "If Stage 1 is REJECT or MANUAL_REVIEW, stop that vacancy immediately; do not perform technical-fit analysis.",
-            "Only when Stage 1 is PASS, compare the vacancy with candidate_evidence and perform Stage 2 technical fit.",
-            "Write exactly one review result for the current posting_id, then move to the next jobs[] entry.",
-            "Do not compare, rank, shortlist, or aggregate vacancies until every jobs[] entry has one completed review result.",
+        "pre_application_pipeline": [
+            "1. Parse the complete vacancy.",
+            "2. Resolve the official employer ATS/careers source when possible.",
+            "3. Validate geography, remote scope, work authorization, salary/conditions and mandatory non-technical eligibility.",
+            "4. Evaluate technical fit independently even when eligibility blocks applying; eligibility must not be converted into low technical fit.",
+            "5. For every relevant technology/skill, classify candidate evidence as confirmed_experience, not_in_profile_yet, unknown_ask_user, or confirmed_gap.",
+            "6. If a decisive requirement is unknown_ask_user, return NEEDS_USER_CONFIRMATION and explicit questions_for_user; do not penalize it as a gap.",
+            "7. Use the complete credential inventory only when credential_inventory_complete=true; select at most 5-6 relevant credentials and never invent one.",
+            "8. Decide APPLY/SKIP and independently decide whether the company should be watched.",
+            "9. Only for APPLY decisions, recommend the CV master from vacancy language + role family. Do not tailor a CV for a skipped job.",
         ],
-        "per_job_stage_1_order": [
-            "location and hiring territory",
-            "employment and work-authorization constraints",
-            "onsite, commute, travel, and field constraints",
-            "mandatory language requirements",
-            "mandatory certification or clearance requirements",
-            "mandatory experience and other explicit non-negotiables",
-        ],
-        "deterministic_location_authority": (
-            "If jobs[].location_hardline_evidence.hardline_reject is true, Stage 1 MUST return REJECT, "
-            "location_eligibility=ineligible, geography_status=ineligible, final_decision=reject, "
-            "fit_analysis_allowed=false, and technical_fit_percent/technical_fit=null. Do not reinterpret "
-            "or soften deterministic hardline evidence in the AI review; JOLT will reject a contradictory return payload."
+        "official_source_rule": (
+            "Try to locate the employer's official ATS/careers vacancy. If verified, set "
+            "official_source_status=verified and use it as geographic/employment authority over "
+            "LinkedIn. If not found or unavailable, say so explicitly; never fabricate an ATS URL."
         ),
-        "stage_1_hardline_gate": (
-            "Evaluate location/hiring geography, mandatory experience, employment/legal constraints, "
-            "language/certification/clearance and other explicit non-negotiables before fit. "
-            "Return PASS, REJECT, or rare MANUAL_REVIEW."
+        "remote_scope_rule": (
+            "Remote is not worldwide. Classify remote_scope as worldwide, EMEA, Europe, Spain, "
+            "specific_country, USA_only, region_bound, or unknown. Treat phrases such as Remote USA "
+            "- East Coast, US East Coast, North America region, must be based in, work authorization "
+            "required, or a North America responsibility paired with a counterpart in EMEA as "
+            "restrictive evidence. Generic Remote never overrides explicit territory restrictions."
         ),
-        "hardline_precedence": (
-            "HARDLINE REJECT overrides everything. If hardline_status=REJECT, final_decision=reject, "
-            "fit_analysis_allowed=false, and technical_fit_percent/technical_fit must be null."
+        "eligibility_fit_separation": (
+            "Eligibility and technical fit are orthogonal. A USA-only role may have technical_fit=95 "
+            "and still be SKIP_BY_LOCATION. Never reduce technical fit merely because geography, work "
+            "authorization, salary, or conditions make the role ineligible."
         ),
-        "conditional_rule": (
-            "Conditional is not a fallback for lack of proof. Use conditional only when there is affirmative "
-            "source evidence that eligibility may be possible but one decisive fact remains unresolved. A foreign-local "
-            "requisition with no affirmative Spain/cross-border hiring evidence is not automatically conditional."
+        "decision_codes": {
+            "APPLY_HIGH_FIT": "Eligible and strong technical/role fit.",
+            "APPLY_MEDIUM_FIT": "Eligible and credible medium fit.",
+            "SKIP_BY_LOCATION": "Hiring territory or remote scope excludes the candidate location.",
+            "SKIP_BY_WORK_AUTHORIZATION": "Required work authorization/visa/employment status is blocked.",
+            "SKIP_BY_SALARY_CONDITIONS": "Explicit salary or non-negotiable conditions fail saved preferences.",
+            "SKIP_BY_TECHNICAL_FIT": "Only for confirmed technical gaps materially blocking the role.",
+            "TARGET_COMPANY_WATCH": "Use only when company targeting itself is the primary decision; normally combine a concrete SKIP code with company_watch=true.",
+            "NEEDS_USER_CONFIRMATION": "A decisive experience fact is unknown and must be asked before applying or rejecting on technical grounds.",
+        },
+        "experience_evidence_rule": (
+            "Absence from LinkedIn/CV is not evidence of absence. First consult "
+            "reasoning_context.candidate_evidence_inventory. confirmed_experience and "
+            "not_in_profile_yet count as evidence. unknown_ask_user must create a question and must "
+            "not be scored as unmet. confirmed_gap means the user has actually confirmed the gap."
         ),
-        "remote_rule": (
-            "Remote is not global remote. Explicit US-only, US Remote, anywhere-in-US, residency, "
-            "work-authorization, E-Verify, or state restrictions override a generic Remote label."
+        "linkedin_skill_feedback_rule": (
+            "When relevant experience is confirmed and the skill is absent from the known LinkedIn "
+            "skills list, add it to linkedin_skill_suggestions. Prefer durable/transversal skills "
+            "over one-off vacancy wording; still allow role-specific suggestions when genuinely reusable."
+        ),
+        "credential_rule": (
+            "The user owns 38 credential entries. Do not rely only on CV masters. Use the complete "
+            "candidate credential inventory when available and select at most 5-6 most relevant. "
+            "If inventory is incomplete, do not invent or finalize certification recommendations. "
+            "A DP-300 Cert Prep course is not the Microsoft DP-300 certification."
+        ),
+        "cv_master_rule": (
+            "For an English vacancy choose an English master; for Spanish choose Spanish. "
+            "Application Support / Technical Support / SaaS roles use Application Support master. "
+            "Systems / Infrastructure / Automation roles use Systems & Automation master. "
+            "Master files are immutable: master -> copy -> tailor copy -> formatting QA -> apply."
+        ),
+        "cv_format_rule": (
+            "Tailoring must preserve exactly font, sizes, bold, colors, structure, page breaks, and "
+            "two pages. Company=black bold; job title=blue bold; dates/location=black normal; "
+            "certifications=credential name only bold; skills=category before ':' only bold; "
+            "projects=title bold and description normal. After replaceAllText, verify textStyle "
+            "because Google Docs may inherit bold/style from the replaced run."
+        ),
+        "company_watch_rule": (
+            "If the current role is ineligible but the company/role family is a strong target, set "
+            "company_watch=true with a reason and reusable role patterns. The job keeps its concrete "
+            "SKIP reason; company watch is a separate durable fact."
         ),
         "schedule_rule": (
             "Shift pattern, night work, weekends, maintenance windows, and on-call participation are "
-            "informational only unless the current user-owned preferences explicitly exclude them. "
-            "They must not independently cause Stage 1 rejection when excluded_shifts is empty."
+            "informational unless saved preferences explicitly exclude them."
         ),
         "professional_refresh_rule": (
-            "Explicit user-owned/AI-context professional-domain refresh records may state that a completed "
-            "training track systematizes and refreshes an already-existing professional domain with a stated "
-            "minimum number of real-world years. Treat the stated years as professional evidence for the "
-            "domain, and the completed track as recent structured/hands-on refresh evidence. Do not invent "
-            "additional years or specialist production depth beyond the stated domain."
+            "Professional-domain refresh/training can support already-existing experience only when "
+            "the user-owned context says so. Do not invent specialist production depth."
         ),
-        "mandatory_experience_rule": (
-            "Classify required vs preferred vs nice-to-have. Do not hard-reject merely because a required "
-            "technology is not named verbatim in one profile capture when current context contains direct "
-            "professional-domain evidence plus a completed refresh. Reserve mandatory-experience hard rejects "
-            "for materially different specializations or explicit deep/specialist production requirements "
-            "that the candidate evidence does not support."
-        ),
-        "stage_2_fit": (
-            "Only when Stage 1 PASS, evaluate direct verified, adjacent/transferable, project/lab/study, "
-            "missing, and preferred-only gaps. Fit is informational and can never reverse Stage 1."
+        "technical_fit_rule": (
+            "Evaluate direct verified, adjacent/transferable, project/lab/study, unknown, and confirmed "
+            "gaps. Technical fit can never make an ineligible role eligible, but it should still be "
+            "recorded for market learning and company-watch decisions."
         ),
         "post_review_self_audit": [
-            "Confirm every current jobs[] posting_id appears exactly once in the returned review payload.",
-            "Confirm no returned posting_id falls outside this capture.",
-            "Confirm every deterministic hardline_reject=true vacancy is REJECT.",
-            "Confirm every REJECT or MANUAL_REVIEW has fit_analysis_allowed=false and no technical-fit score.",
-            "Confirm every pursue or strong_pursue passed Stage 1 and has location_eligibility=eligible.",
-            "Confirm duplicates are not recommended for pursuit.",
-            "Only after these checks pass may results be ranked or summarized across the capture.",
+            "Every jobs[] posting_id appears exactly once and no extra posting_id is returned.",
+            "Every official_source_status=verified result has a real official_source_url and evidence.",
+            "Every USA_only/region-bound incompatible role is SKIP_BY_LOCATION.",
+            "No unknown_ask_user item is treated as an unmet/confirmed technical gap.",
+            "SKIP_BY_TECHNICAL_FIT has at least one confirmed_gap.",
+            "APPLY decisions have eligible geography, clear work authorization, no blocked conditions, and no unresolved user questions.",
+            "No certification recommendation is returned when the complete credential inventory is unavailable.",
+            "CV master/certification/tailoring guidance is only produced after eligibility and decisioning, never before.",
         ],
         "aggregation_rule": (
-            "Aggregate, rank, and derive market/application strategy only after all per-job reviews and the final self-audit are complete."
+            "Aggregate market/application strategy only after all per-job reviews and self-audit."
         ),
         "return_contract": "Use response_template exactly for per-job review results.",
     }
