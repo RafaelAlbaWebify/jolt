@@ -214,19 +214,19 @@ function Sources({ postingId }: { postingId: string }) {
         if (event.currentTarget.open) void load();
       }}
     >
-      <summary>Sources and capture history</summary>
+      <summary>Sources and history</summary>
       {loading && <p>Loading sources…</p>}
       {error && <p className="error" role="alert">{error}</p>}
       {error && <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>Retry sources</button>}
       {data && (
         <div className="source-compact">
           <p>
-            <strong>{data.evidence_count}</strong> captures · <strong>{data.duplicate_evidence_count}</strong>{" "}
-            repeated observations
+            <strong>{data.evidence_count}</strong> observations · <strong>{data.duplicate_evidence_count}</strong>{" "}
+            repeated
           </p>
           {data.canonical_url && (
             <a href={externalSourceUrl(data.canonical_url)} target="_blank" rel="noreferrer">
-              Open canonical job
+              Open job
             </a>
           )}
           <ul>
@@ -436,7 +436,7 @@ export function App({
       setWorkflowNotice(
         `${result.cleared_pending_count} pending card${
           result.cleared_pending_count === 1 ? "" : "s"
-        } cleared from ${result.archived_capture_run_count} capture batch${
+        } cleared from ${result.archived_capture_run_count} search run${
           result.archived_capture_run_count === 1 ? "" : "es"
         }.${protectedNotice}`,
       );
@@ -483,7 +483,7 @@ export function App({
         <div>
           <p className="eyebrow">Manual intake</p>
           <h2 id="manual-intake-heading">Add job manually</h2>
-          <p>Paste a job description when you do not have a capture batch yet.</p>
+          <p>Paste a job description when a role was not found through your saved searches.</p>
         </div>
         <button type="button" className="secondary" onClick={() => setShowManualIntake(false)}>
           Close
