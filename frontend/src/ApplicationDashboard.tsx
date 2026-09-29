@@ -683,6 +683,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
         <label className="professional-source-checkbox application-archive-toggle">
           <input
             type="checkbox"
+            aria-label="Show hidden applications"
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
