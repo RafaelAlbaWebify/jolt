@@ -30,7 +30,7 @@ describe("ProfessionalIntelligence", () => {
     expect(screen.getByRole("heading", { name: "Capture Jobs" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Run LinkedIn searches" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run searches (2)" })).toBeInTheDocument();
-    expect(screen.getByText("Run one LinkedIn search manually")).toBeInTheDocument();
+    expect(screen.getByText("Advanced capture")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Run one LinkedIn search" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Profile capture has moved" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start configured-source capture" })).not.toBeInTheDocument();
