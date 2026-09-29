@@ -28,7 +28,7 @@ def slug(value: str) -> str:
 
 def visible_controls(page: Page) -> list[dict[str, Any]]:
     return page.evaluate(
-        """() => {
+        r"""() => {
             const root = [...document.querySelectorAll('.workspace-view')]
                 .find((node) => !node.hasAttribute('hidden'));
             if (!root) return [];
@@ -64,7 +64,7 @@ def visible_controls(page: Page) -> list[dict[str, Any]]:
 
 def workspace_metrics(page: Page) -> dict[str, Any]:
     return page.evaluate(
-        """() => {
+        r"""() => {
             const root = [...document.querySelectorAll('.workspace-view')]
                 .find((node) => !node.hasAttribute('hidden'));
             const shell = document.querySelector('.workspace-shell');
@@ -140,7 +140,7 @@ def focus_order(page: Page, maximum: int = 30) -> list[dict[str, str]]:
     for _ in range(maximum):
         page.keyboard.press("Tab")
         item = page.evaluate(
-            """() => {
+            r"""() => {
                 const el = document.activeElement;
                 if (!el) return {tag:'', label:''};
                 const label = el.getAttribute('aria-label')

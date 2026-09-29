@@ -54,9 +54,15 @@ function compactEntries(data: Record<string, unknown>, limit = 5) {
     .slice(0, limit);
 }
 
+function looksLikeTechnicalIdentifier(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    || /^[0-9a-f]{24,}$/i.test(value);
+}
+
 function primitiveValue(value: unknown): string {
   if (value == null) return "—";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "string") return looksLikeTechnicalIdentifier(value) ? "Internal reference hidden" : value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "—";
 }
 

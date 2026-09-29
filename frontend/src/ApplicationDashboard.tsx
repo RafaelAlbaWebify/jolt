@@ -15,6 +15,7 @@ type Opportunity = {
   title: string;
   company: string;
   location: string;
+  company_logo_url?: string | null;
   review_decision: string | null;
   application_id?: string | null;
   application_status?: ApplicationRecordStatus | null;
@@ -264,7 +265,15 @@ function Timeline({ detail, loading }: { detail: ApplicationDetail | null; loadi
   );
 }
 
+function companyInitials(company: string) {
+  const words = company.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
 function ApplicationSummaryButton({ item, onOpen }: { item: Opportunity; onOpen: () => void }) {
+  const company = item.company || "Unknown company";
   return (
     <button
       type="button"
@@ -272,11 +281,20 @@ function ApplicationSummaryButton({ item, onOpen }: { item: Opportunity; onOpen:
       onClick={onOpen}
       aria-label={`Open ${item.title || "untitled opportunity"}`}
     >
-      <span className="application-card-stage">{label(item.outcome_type ?? item.application_status)}</span>
-      {item.overdue && <span className="application-card-alert">Overdue</span>}
-      <strong>{item.title || "Untitled opportunity"}</strong>
-      <span className="application-card-company">{item.company || "Unknown company"}</span>
-      {item.location && <span className="application-card-location">{item.location}</span>}
+      <div className="application-card-identity">
+        <span className="application-company-mark" aria-hidden="true">
+          {item.company_logo_url ? <img src={item.company_logo_url} alt="" /> : companyInitials(company)}
+        </span>
+        <span className="application-card-role">
+          <strong>{item.title || "Untitled opportunity"}</strong>
+          <span className="application-card-company">{company}</span>
+          {item.location && <span className="application-card-location">{item.location}</span>}
+        </span>
+      </div>
+      <span className="application-card-badges">
+        <span className="application-card-stage">{label(item.outcome_type ?? item.application_status)}</span>
+        {item.overdue && <span className="application-card-alert">Overdue</span>}
+      </span>
       <dl className="application-card-signals">
         <div>
           <dt>Last activity</dt>
@@ -695,6 +713,12 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       {moveNotice && <p className="application-move-notice" role="status">{moveNotice}</p>}
 
       <div className={`application-board application-board-${density}`} aria-label="Application pipeline board">
+        {visibleActiveCandidates.length === 0 && (
+          <div className="application-board-empty-state">
+            <strong>No active applications yet</strong>
+            <span>{query.trim() ? "No applications match this search." : "Move a suitable job from Review Inbox to start tracking it here."}</span>
+          </div>
+        )}
         {LANES.map((lane) => (
           <section
             className={`application-lane application-lane-${lane.id}`}
@@ -709,9 +733,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
               <strong aria-label={`${lane.label} count`}>{grouped[lane.id].length}</strong>
             </header>
             <div className="application-lane-cards">
-              {grouped[lane.id].length === 0 ? (
-                <p className="application-lane-empty">No applications</p>
-              ) : (
+              {grouped[lane.id].length === 0 ? null : (
                 grouped[lane.id].map((opportunity) => {
                   const currentLane = activeLaneFor(opportunity);
                   const targets = availableTargetLanes(opportunity);
