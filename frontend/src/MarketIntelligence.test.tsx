@@ -56,7 +56,7 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
-    expect(screen.getByText("ChatGPT")).toBeInTheDocument();
+    expect(screen.getByText("What this means now")).toBeInTheDocument();
     expect(screen.getByText("120 observations · 90 unique roles · 30 repeated observations · 3 search runs")).toBeInTheDocument();
     expect(screen.getByText("Application support and modern workplace roles remain strong targets.")).toBeInTheDocument();
     expect(screen.getByText("Strengthen API troubleshooting evidence")).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("MarketIntelligence", () => {
   it("loads only the authoritative AI market view endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByRole("heading", { name: "Market summary" });
+    await screen.findByRole("heading", { name: "What this means now" });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/ai-market/view",
@@ -128,14 +128,14 @@ describe("MarketIntelligence", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(stale), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
 
-    expect(await screen.findByRole("heading", { name: "Market analysis needs refresh" })).toBeInTheDocument();
+    expect(await screen.findByText("Market analysis needs an update")).toBeInTheDocument();
     expect(screen.getByText(/open Settings & Data, export the strategy update/i)).toBeInTheDocument();
   });
 
   it("refreshes the persisted view without recomputing local intelligence", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByRole("heading", { name: "Market summary" });
+    await screen.findByRole("heading", { name: "What this means now" });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh view" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
