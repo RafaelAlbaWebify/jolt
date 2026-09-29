@@ -3,7 +3,7 @@
 This file records durable product contracts, project boundaries, and development rules.
 Review it before changing existing JOLT behavior.
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-29
 
 ## Product purpose
 
@@ -266,3 +266,62 @@ Update this file when:
 Do not fill this file with temporary debugging notes or transient implementation details.
 
 - Mixed-batch cleanup regression coverage must verify that the application index still contains any pursued/applied opportunity after the capture batch is archived.
+
+
+## Production-use workflow — 2026-09-29
+
+JOLT is now used as a normal real-job-search workbench.
+
+Preferred operator loop:
+
+1. Run enabled saved LinkedIn searches from Capture Jobs.
+2. Export only the new/deduplicated jobs for ChatGPT review.
+3. Import the reviewed jobs.
+4. Make the final human decision in Review Inbox.
+5. Track pursued jobs in Applications.
+6. Attach the exact CV/supporting file used from Documents.
+7. Keep application stage, interviews and final outcomes current.
+8. Use Search Performance to compare which searches produce useful downstream results.
+
+PowerShell/API calls used during search experiments were analysis shortcuts. Do not reimplement UI functionality merely because those shortcuts appeared in historical chats.
+
+### Search optimization boundary
+
+Do not restart broad A/B keyword experimentation by default.
+
+Change a production saved search only when:
+- it repeatedly fails operationally;
+- sustained real runs show poor actionable yield;
+- application/interview/offer evidence supports a change; or
+- the user's target role/geography changes deliberately.
+
+Capture volume alone is not success.
+
+### Search Performance attribution
+
+When two saved searches observe the same canonical job, both may receive descriptive credit. Treat this as multi-touch discovery evidence, not exclusive causal attribution.
+
+## Application documents / CV invariant
+
+For new applications, Documents is the primary source of truth for the exact CV/supporting file used.
+
+- Do not ask the operator to maintain a duplicate free-text CV filename when the actual file can be attached.
+- Legacy `resume_used` values remain historical/read-only context.
+- Stored document bytes remain available while the application is active.
+- A non-success final outcome may purge stored file bytes while retaining document metadata/timeline evidence.
+- `offer_accepted` retains the stored file.
+- Hiding/archiving an application is reversible and must not purge its stored files.
+
+## UX operating principles
+
+The daily-use UI should optimize for the operator's job-search task, not expose JOLT's implementation history.
+
+- Primary paths use user language, not internal enums/contracts.
+- Advanced provenance, compatibility and diagnostics remain available but are secondary/collapsed.
+- Destructive/maintenance actions must not visually compete with the normal workflow.
+- Duplicate ways to perform the same lifecycle action should be minimized.
+- Empty/loading/error states should tell the operator what to do next.
+- Keyboard focus and dialog behavior are part of certification.
+- Do not weaken acceptance tests to preserve outdated labels or historical UI structure.
+
+UX stabilization phases 1–6 implementing these principles are merged through PR #452.
