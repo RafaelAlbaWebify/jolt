@@ -181,7 +181,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(targetPayload(target)),
       });
       if (!response.ok) throw await responseError(response, `Unable to capture ${target.name}.`);
-      setNotice(`${target.name} captured and stored as LinkedIn profile evidence.`);
+      setNotice(`${target.name} saved in LinkedIn Profile history.`);
       await load();
       switchView("overview");
     } catch (caught) {
@@ -200,7 +200,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
       });
       if (!response.ok) throw await responseError(response, "Unable to refresh LinkedIn profile evidence.");
       const result = await response.json() as { captured_count: number };
-      setNotice(`${result.captured_count} LinkedIn profile sections captured.`);
+      setNotice(`${result.captured_count} LinkedIn profile sections refreshed.`);
       await load();
       switchView("overview");
     } catch (caught) {
@@ -290,7 +290,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
             <article className="market-card"><span>Enabled sources</span><strong>{enabledTargets.length}</strong></article>
           </div>
           <div className="linkedin-overview-grid">
-            <div><h3>Latest evidence</h3>{!data?.captures.length ? <p>No LinkedIn profile evidence yet.</p> : captureCards(data.captures.slice(0, 1))}</div>
+            <div><h3>Latest evidence</h3>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : captureCards(data.captures.slice(0, 1))}</div>
             <div><h3>Next profile improvement</h3>{!data?.recommendations.length ? <p>No LinkedIn recommendations yet.</p> : recommendationCards(data.recommendations.slice(0, 1))}</div>
           </div>
         </section>
@@ -314,11 +314,11 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
       )}
 
       {view === "manual" && (
-        <section className="panel linkedin-manual-view"><h3>Add manually fallback</h3><form onSubmit={saveManual} className="form-grid"><label>Category<select value={manualCategory} onChange={(event) => setManualCategory(event.target.value as CaptureCategory)}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label>Title<input required value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} /></label><label className="full-width">Source URL<input value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} /></label><label className="full-width">Visible text<textarea required rows={5} value={manualText} onChange={(event) => setManualText(event.target.value)} /></label><label className="full-width">Notes<textarea rows={3} value={manualNotes} onChange={(event) => setManualNotes(event.target.value)} /></label><button type="submit" disabled={busy}>Save profile information</button></form></section>
+        <section className="panel linkedin-manual-view"><h3>Add manually</h3><form onSubmit={saveManual} className="form-grid"><label>Category<select value={manualCategory} onChange={(event) => setManualCategory(event.target.value as CaptureCategory)}>{CATEGORIES.map((item) => <option key={item} value={item}>{readable(item)}</option>)}</select></label><label>Title<input required value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} /></label><label className="full-width">Source URL<input value={manualUrl} onChange={(event) => setManualUrl(event.target.value)} /></label><label className="full-width">Visible text<textarea required rows={5} value={manualText} onChange={(event) => setManualText(event.target.value)} /></label><label className="full-width">Notes<textarea rows={3} value={manualNotes} onChange={(event) => setManualNotes(event.target.value)} /></label><button type="submit" disabled={busy}>Save profile information</button></form></section>
       )}
 
       {view === "evidence" && (
-        <section className="panel"><div className="section-heading"><div><h3>History</h3><p>{data?.capture_count ?? 0} retained snapshots.</p></div></div>{!data?.captures.length ? <p>No LinkedIn profile evidence yet.</p> : <div className="professional-source-grid">{captureCards(data.captures.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE))}</div>}<div className="pagination"><button type="button" className="secondary" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" className="secondary" disabled={currentPage >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div></section>
+        <section className="panel"><div className="section-heading"><div><h3>History</h3><p>{data?.capture_count ?? 0} saved snapshots.</p></div></div>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : <div className="professional-source-grid">{captureCards(data.captures.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE))}</div>}<div className="pagination"><button type="button" className="secondary" disabled={currentPage <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {currentPage} of {pageCount}</span><button type="button" className="secondary" disabled={currentPage >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button></div></section>
       )}
 
       {view === "recommendations" && (
