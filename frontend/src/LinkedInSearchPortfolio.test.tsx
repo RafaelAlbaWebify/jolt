@@ -338,8 +338,9 @@ it("shows deterministic search performance from capture through application outc
   expect(screen.getByText("2 completed runs · 65 unique jobs")).toBeInTheDocument();
   expect(screen.getByText("20%")).toBeInTheDocument();
   expect(screen.getByText(/Applied counts only applications that reached submitted/i)).toBeInTheDocument();
+});
 
-  it("moves focus into the saved-search editor and restores it on Escape", async () => {
+it("moves focus into the saved-search editor and restores it on Escape", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.endsWith("/api/linkedin-searches")) {
