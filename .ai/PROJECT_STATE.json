@@ -4,11 +4,11 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-24",
+  "last_update_date": "2026-09-29",
   "baseline_branch": "main",
-  "baseline_commit": "4bad4608adbc5cb44787dec8be4dd784a04e618d",
-  "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 complete and verified through normal JOLT UI: two saved LinkedIn searches completed sequentially, consolidated review exchange/import succeeded, and final release main is six-gate green.",
+  "baseline_commit": "7aafb28006b6d17ea792e0c6ab6105469f9b9f49",
+  "current_phase": "production_job_search_with_bounded_ux_stabilization",
+  "current_milestone": "JOLT is operational for the real job search. Search portfolio/funnel, restart recovery, document retention, and UX stabilization phases 1–4 are merged; only Applications-action and keyboard/focus finalization remain active.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -26,11 +26,18 @@
   ],
   "active_workstreams": [
     {
-      "id": "R-025",
-      "name": "LinkedIn Search Portfolio and Discovery Batch",
+      "id": "R-027",
+      "name": "Saved Search Performance Funnel",
       "status": "complete",
-      "roadmap": "docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md",
-      "current_phase": "COMPLETE — real multi-search acceptance and restart persistence passed"
+      "roadmap": ".ai/ROADMAP.md",
+      "current_phase": "COMPLETE — PR #439 merged; real outcomes should drive future search tuning"
+    },
+    {
+      "id": "R-028",
+      "name": "UX Stabilization",
+      "status": "active",
+      "roadmap": ".ai/ROADMAP.md",
+      "current_phase": "Final bounded pass — merged #442/#443/#447/#448/#449; #450 and #451 in exact-head certification"
     }
   ],
   "completed_milestones": [
@@ -71,13 +78,23 @@
     "2026-09-21 repository issue audit found zero open GitHub issues and no known unresolved P0/P1 release blocker.",
     "R-025 LinkedIn Search Portfolio and Discovery Batch completed with real authenticated multi-search acceptance, consolidated AI review/import, and restart persistence.",
     "2026-09-24 R-025 Phase 5 real acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709: Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515 ran two saved LinkedIn searches sequentially, captured/verified 50/50 jobs, materialized a 47-posting frozen review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved batch/review state across a full JOLT restart.",
-    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI."
+    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI.",
+    "2026-09-28 PR #437 merged restart recovery for stale scheduled/running discovery batches while preserving normal queued state and completed captures.",
+    "2026-09-28 PR #439 merged deterministic saved-search performance metrics from capture through AI/human/application outcomes without a schema migration.",
+    "2026-09-29 PR #443 merged real application-document save/retention semantics: filename-derived title, binary purge on non-success outcomes, retention on offer accepted, no purge on reversible hide/archive.",
+    "2026-09-29 UX stabilization Phases 1–4 merged via PRs #442/#447/#448/#449 after all six certification gates: operator language, safer destructive actions, single CV source-of-truth UX, simplified Preferences/Settings, streamlined Documents, and remaining internal-copy cleanup.",
+    "2026-09-29 superseded UX PRs #444/#445/#446 closed so only authoritative current work remains open."
   ],
-  "pending_milestones": [],
+  "pending_milestones": [
+    "R-028: certify and merge #450 (Applications action hierarchy) and #451 (keyboard/focus), then close the bounded UX stabilization workstream.",
+    "Synchronize .ai project control and PROJECT_MEMORY with the final merged UX baseline.",
+    "Return development priority to real operator use; add further changes only from observed friction or measured application/interview/offer outcomes."
+  ],
   "next_recommended_actions": [
-    "Replace the two acceptance-labelled saved searches with the real production search portfolio and use Saved LinkedIn Search Portfolio as the normal Capture Jobs workflow.",
-    "Tune saved-search labels/filters based on precision and actionable yield; keep each search within the certified 100 jobs / 10 pages ceiling unless separately revalidated.",
-    "After the real LinkedIn portfolio is stable, prioritize the next product workstream (for example another job-board adapter or another operator-efficiency improvement) without reopening R-025."
+    "Use JOLT normally for the real job search; do not restart broad search A/B experiments.",
+    "Keep human decisions, application stages, attached CVs, interviews and outcomes current so Search Performance has trustworthy data.",
+    "After R-028 closes, treat new UX/product work as evidence-driven rather than a standing redesign project.",
+    "Do not reimplement AI review export/import; it already exists in the UI."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
