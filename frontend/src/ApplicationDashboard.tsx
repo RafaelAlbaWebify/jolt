@@ -326,8 +326,6 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
   const [applicationDetail, setApplicationDetail] = useState<ApplicationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [draggedPostingId, setDraggedPostingId] = useState<string | null>(null);
-  const [dragOverLane, setDragOverLane] = useState<PipelineLane | null>(null);
   const [moveNotice, setMoveNotice] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [closingPostingId, setClosingPostingId] = useState<string | null>(null);
@@ -414,7 +412,6 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   );
   const selected = candidates.find((item) => item.posting_id === selectedPostingId) ?? null;
   const closingItem = activeCandidates.find((item) => item.posting_id === closingPostingId) ?? null;
-  const draggedItem = activeCandidates.find((item) => item.posting_id === draggedPostingId) ?? null;
 
   const loadApplicationDetail = useCallback(
     async (applicationId: string | null | undefined) => {
@@ -472,8 +469,6 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     const outcomes = closeOutcomesFor(item);
     setCloseOutcome(outcomes[0].value);
     setClosingPostingId(item.posting_id);
-    setDraggedPostingId(null);
-    setDragOverLane(null);
     setMoveNotice("");
     setError("");
   }
@@ -725,41 +720,15 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 grouped[lane.id].map((opportunity) => {
                   const currentLane = activeLaneFor(opportunity);
                   const targets = availableTargetLanes(opportunity);
-                  const canDrag = Boolean(opportunity.application_id && targets.length > 1 && !busy);
                   return (
                     <article
-                      className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}${draggedPostingId === opportunity.posting_id ? " application-card-dragging" : ""}`}
+                      className={`application-card${opportunity.overdue ? " application-card-overdue" : ""}`}
                       key={opportunityIdentity(opportunity)}
                       data-application-id={opportunity.application_id ?? undefined}
                       data-posting-id={opportunity.posting_id}
-                      draggable={false}
                     >
                       <ApplicationSummaryButton item={opportunity} onOpen={() => openWorkspace(opportunity.posting_id)} />
                       <div className="application-card-move">
-                        <button
-                          type="button"
-                          className="application-card-drag-handle"
-                          draggable={canDrag}
-                          disabled={!canDrag}
-                          aria-label={`Drag ${opportunity.title || "untitled opportunity"} to another stage`}
-                          title="Drag this handle to move the application"
-                          onDragStart={(event) => {
-                            if (!canDrag) {
-                              event.preventDefault();
-                              return;
-                            }
-                            event.dataTransfer.effectAllowed = "move";
-                            event.dataTransfer.setData("text/plain", opportunity.posting_id);
-                            setDraggedPostingId(opportunity.posting_id);
-                            setMoveNotice("");
-                          }}
-                          onDragEnd={() => {
-                            setDraggedPostingId(null);
-                            setDragOverLane(null);
-                          }}
-                        >
-                          Drag to move
-                        </button>
                         <label>
                           <span>Move stage</span>
                           <select
@@ -778,19 +747,19 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       <div className="application-card-links">
                         {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Source job</a>}
                         <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
-                        <button
-                          type="button"
-                          className="secondary application-card-archive"
-                          disabled={busy}
-                          onClick={() => void archiveCard(opportunity)}
-                        >
-                          Hide from board
-                        </button>
-                        {currentLane === "closed" && (
-                          <details className="application-card-more">
-                            <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
-                              More
-                            </summary>
+                        <details className="application-card-more">
+                          <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
+                            More
+                          </summary>
+                          <button
+                            type="button"
+                            className="secondary application-card-archive"
+                            disabled={busy}
+                            onClick={() => void archiveCard(opportunity)}
+                          >
+                            Hide from board
+                          </button>
+                          {currentLane === "closed" && (
                             <button
                               type="button"
                               className="danger application-card-delete"
@@ -799,8 +768,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                             >
                               Delete permanently
                             </button>
-                          </details>
-                        )}
+                          )}
+                        </details>
                       </div>
                     </article>
                   );
@@ -881,7 +850,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
           >
             <div>
               <p className="eyebrow">Final outcome</p>
-              <h3 id="application-close-title">Close {closingItem.title || "application"}</h3>
+              <h3 id="application-close-title">What happened with {closingItem.title || "this application"}?</h3>
               <p>{[closingItem.company, closingItem.location].filter(Boolean).join(" · ")}</p>
               <p className="application-close-current-stage">Current stage: {label(closingItem.application_status)}</p>
             </div>
@@ -889,7 +858,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             <label>
               <span>Final outcome</span>
               <select
-                aria-label={`Close ${closingItem.title || "untitled opportunity"} with outcome`}
+                aria-label={`Outcome for ${closingItem.title || "untitled opportunity"}`}
                 value={closeOutcome}
                 disabled={busy}
                 onChange={(event) => setCloseOutcome(event.target.value)}
@@ -900,8 +869,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
               </select>
             </label>
             <div className="application-close-actions">
-              <button type="button" className="danger" disabled={busy} onClick={() => void closeApplication(closingItem)}>
-                {busy ? "Closing…" : "Confirm close"}
+              <button type="button" disabled={busy} onClick={() => void closeApplication(closingItem)}>
+                {busy ? "Saving…" : "Save outcome"}
               </button>
               <button type="button" className="secondary" disabled={busy} onClick={() => setClosingPostingId(null)}>
                 Cancel
