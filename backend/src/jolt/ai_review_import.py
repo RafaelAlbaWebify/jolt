@@ -14,6 +14,7 @@ from jolt.database import (
     Application,
     CaptureItem,
     CaptureRun,
+    CompanyWatch,
     Posting,
     ReviewDecision,
     SourceDocument,
@@ -62,14 +63,59 @@ LanguageStatus = Literal[
 RequirementClassification = Literal["required", "preferred", "nice_to_have"]
 RequirementResult = Literal["met", "partial", "unmet", "unknown"]
 
+RemoteScope = Literal[
+    "worldwide",
+    "EMEA",
+    "Europe",
+    "Spain",
+    "specific_country",
+    "USA_only",
+    "region_bound",
+    "unknown",
+]
+WorkAuthorizationStatus = Literal["clear", "conditional", "blocked", "unknown"]
+ConditionsStatus = Literal["clear", "conditional", "blocked", "unknown"]
+OfficialSourceStatus = Literal["verified", "not_found", "unavailable", "not_checked"]
+ExperienceEvidenceStatus = Literal[
+    "confirmed_experience",
+    "not_in_profile_yet",
+    "unknown_ask_user",
+    "confirmed_gap",
+]
+PreApplicationDecision = Literal[
+    "APPLY_HIGH_FIT",
+    "APPLY_MEDIUM_FIT",
+    "SKIP_BY_LOCATION",
+    "SKIP_BY_WORK_AUTHORIZATION",
+    "SKIP_BY_SALARY_CONDITIONS",
+    "SKIP_BY_TECHNICAL_FIT",
+    "TARGET_COMPANY_WATCH",
+    "NEEDS_USER_CONFIRMATION",
+]
+
 
 class MandatoryRequirementResult(BaseModel):
     requirement: str = Field(min_length=1)
     source_text: str = Field(min_length=1)
     classification: RequirementClassification
     candidate_evidence: str = ""
+    candidate_evidence_status: ExperienceEvidenceStatus = "unknown_ask_user"
     result: RequirementResult
     hardline: bool
+
+
+class ExperienceEvidence(BaseModel):
+    skill: str = Field(min_length=1)
+    source_requirement: str = ""
+    status: ExperienceEvidenceStatus
+    evidence: str = ""
+
+
+class CVMasterRecommendation(BaseModel):
+    language: Literal["en", "es"]
+    family: Literal["application_support", "systems_automation"]
+    master_label: str = Field(min_length=1)
+    rationale: str = ""
 
 
 class AIReviewJob(BaseModel):
@@ -82,6 +128,24 @@ class AIReviewJob(BaseModel):
     clearance_status: ClearanceStatus
     language_status: LanguageStatus
     technical_fit: int | None = Field(default=None, ge=0, le=100)
+
+    pre_application_decision: PreApplicationDecision | None = None
+    remote_scope: RemoteScope = "unknown"
+    work_authorization_status: WorkAuthorizationStatus = "unknown"
+    conditions_status: ConditionsStatus = "unknown"
+    official_source_status: OfficialSourceStatus = "not_checked"
+    official_source_url: str = ""
+    official_source_location: str = ""
+    official_source_evidence: list[str] = Field(default_factory=list)
+    experience_evidence: list[ExperienceEvidence] = Field(default_factory=list)
+    questions_for_user: list[str] = Field(default_factory=list)
+    company_watch: bool = False
+    company_watch_reason: str = ""
+    company_watch_role_patterns: list[str] = Field(default_factory=list)
+    recommended_cv_master: CVMasterRecommendation | None = None
+    recommended_certifications: list[str] = Field(default_factory=list, max_length=6)
+    linkedin_skill_suggestions: list[str] = Field(default_factory=list)
+    certification_inventory_complete: bool = False
 
     hardline_status: HardlineStatus = "PASS"
     hardline_reasons: list[str] = Field(default_factory=list)
@@ -120,26 +184,15 @@ class AIReviewJob(BaseModel):
         if self.hardline_status == "REJECT":
             if final_decision != "reject":
                 raise ValueError("HARDLINE REJECT requires final_decision=reject")
-            if self.fit_analysis_allowed:
-                raise ValueError("HARDLINE REJECT must stop fit analysis")
-            if fit is not None:
-                raise ValueError("HARDLINE REJECT cannot carry a technical fit score")
             if not self.hardline_reasons:
                 raise ValueError("HARDLINE REJECT requires at least one hardline reason")
 
         if self.hardline_status == "MANUAL_REVIEW":
-            if self.fit_analysis_allowed:
-                raise ValueError("MANUAL_REVIEW must stop before fit analysis")
-            if fit is not None:
-                raise ValueError("MANUAL_REVIEW cannot carry a technical fit score")
             if final_decision not in {"conditional", "reject"}:
                 raise ValueError("MANUAL_REVIEW cannot recommend pursuing the job")
 
-        if self.hardline_status == "PASS" and not self.fit_analysis_allowed:
-            raise ValueError("PASS must allow Stage 2 fit analysis")
-
         if self.fit_analysis_allowed and fit is None:
-            raise ValueError("Stage 2 requires technical_fit_percent")
+            raise ValueError("fit_analysis_allowed=true requires technical_fit_percent")
 
         positive_decision = final_decision in {"strong_pursue", "pursue"}
         if positive_decision:
@@ -172,9 +225,92 @@ class AIReviewJob(BaseModel):
         return self
 
 
+def _validate_v12_job(job: AIReviewJob) -> None:
+    decision = job.pre_application_decision
+    if decision is None:
+        raise ValueError("AI review contract 1.2 requires pre_application_decision")
+
+    if job.official_source_status == "verified" and not job.official_source_url.strip():
+        raise ValueError("Verified official source requires official_source_url")
+
+    if job.remote_scope == "USA_only" and decision != "SKIP_BY_LOCATION":
+        raise ValueError("USA_only roles require SKIP_BY_LOCATION")
+
+    if decision in {"APPLY_HIGH_FIT", "APPLY_MEDIUM_FIT"}:
+        if job.final_decision not in {"strong_pursue", "pursue"}:
+            raise ValueError("APPLY decisions require a pursue final_decision")
+        if job.location_eligibility != "eligible" or job.geography_status != "eligible":
+            raise ValueError("APPLY decisions require eligible geography")
+        if job.work_authorization_status != "clear":
+            raise ValueError("APPLY decisions require clear work authorization")
+        if job.conditions_status == "blocked":
+            raise ValueError("APPLY decisions cannot have blocked salary/conditions")
+        if job.questions_for_user:
+            raise ValueError("APPLY decisions cannot have unresolved user questions")
+
+    if decision == "SKIP_BY_LOCATION":
+        if job.final_decision != "reject":
+            raise ValueError("SKIP_BY_LOCATION requires final_decision=reject")
+        if job.location_eligibility != "ineligible" and job.geography_status != "ineligible":
+            raise ValueError("SKIP_BY_LOCATION requires ineligible geography")
+
+    if decision == "SKIP_BY_WORK_AUTHORIZATION":
+        if job.final_decision != "reject" or job.work_authorization_status != "blocked":
+            raise ValueError(
+                "SKIP_BY_WORK_AUTHORIZATION requires reject and blocked work authorization"
+            )
+
+    if decision == "SKIP_BY_SALARY_CONDITIONS":
+        if job.final_decision != "reject" or job.conditions_status != "blocked":
+            raise ValueError(
+                "SKIP_BY_SALARY_CONDITIONS requires reject and blocked conditions"
+            )
+
+    if decision == "SKIP_BY_TECHNICAL_FIT":
+        if job.final_decision != "reject" or not job.fit_analysis_allowed:
+            raise ValueError("SKIP_BY_TECHNICAL_FIT requires reject with technical fit analysis")
+        confirmed_gaps = [
+            item for item in job.experience_evidence if item.status == "confirmed_gap"
+        ]
+        if not confirmed_gaps:
+            raise ValueError(
+                "SKIP_BY_TECHNICAL_FIT requires at least one confirmed_gap evidence item"
+            )
+
+    if decision == "NEEDS_USER_CONFIRMATION":
+        if job.final_decision != "conditional" or not job.questions_for_user:
+            raise ValueError(
+                "NEEDS_USER_CONFIRMATION requires conditional and questions_for_user"
+            )
+
+    for requirement in [
+        *job.mandatory_requirements,
+        *job.mandatory_requirement_results,
+    ]:
+        if requirement.candidate_evidence_status in {
+            "confirmed_experience",
+            "not_in_profile_yet",
+        } and requirement.result == "unmet":
+            raise ValueError(
+                "Confirmed experience cannot be classified as an unmet requirement"
+            )
+        if requirement.candidate_evidence_status == "unknown_ask_user" and requirement.result == "unmet":
+            raise ValueError(
+                "Unknown experience must trigger user confirmation, not an unmet penalty"
+            )
+
+    if not job.certification_inventory_complete and job.recommended_certifications:
+        raise ValueError(
+            "Certification recommendations require the complete credential inventory"
+        )
+
+    if job.company_watch and not job.company_watch_reason.strip():
+        raise ValueError("company_watch=true requires company_watch_reason")
+
+
 class AIReviewImportRequest(BaseModel):
     contract_type: Literal["jolt_ai_review"]
-    contract_version: Literal["1.0", "1.1"]
+    contract_version: Literal["1.0", "1.1", "1.2"]
     capture_run_id: str = Field(min_length=1)
     review_source: Literal["chatgpt_source_first"]
     review_version: str = Field(min_length=1, max_length=80)
@@ -183,7 +319,7 @@ class AIReviewImportRequest(BaseModel):
 
     @model_validator(mode="after")
     def require_v11_hardline_fields(self) -> AIReviewImportRequest:
-        if self.contract_version != "1.1":
+        if self.contract_version not in {"1.1", "1.2"}:
             return self
 
         required_fields = {
@@ -199,13 +335,43 @@ class AIReviewImportRequest(BaseModel):
             "final_decision",
             "decision_reason",
         }
+        if self.contract_version == "1.2":
+            required_fields |= {
+                "pre_application_decision",
+                "remote_scope",
+                "work_authorization_status",
+                "conditions_status",
+                "official_source_status",
+                "official_source_url",
+                "official_source_location",
+                "official_source_evidence",
+                "experience_evidence",
+                "questions_for_user",
+                "company_watch",
+                "company_watch_reason",
+                "company_watch_role_patterns",
+                "recommended_cv_master",
+                "recommended_certifications",
+                "linkedin_skill_suggestions",
+                "certification_inventory_complete",
+            }
+
         for job in self.jobs:
             missing = required_fields - job.model_fields_set
             if missing:
                 raise ValueError(
-                    "AI review contract 1.1 is missing hardline fields: "
+                    f"AI review contract {self.contract_version} is missing fields: "
                     + ", ".join(sorted(missing))
                 )
+
+            if self.contract_version == "1.1":
+                if job.hardline_status in {"REJECT", "MANUAL_REVIEW"}:
+                    if job.fit_analysis_allowed or job.technical_fit_percent is not None:
+                        raise ValueError(
+                            "AI review contract 1.1 requires REJECT/MANUAL_REVIEW to stop fit analysis"
+                        )
+                if job.hardline_status == "PASS" and not job.fit_analysis_allowed:
+                    raise ValueError("AI review contract 1.1 PASS must allow fit analysis")
 
             if job.final_decision in {"strong_pursue", "pursue"}:
                 if job.hardline_status != "PASS":
@@ -214,6 +380,9 @@ class AIReviewImportRequest(BaseModel):
                     raise ValueError(
                         "Positive decisions require location_eligibility=eligible; unresolved employment territory caps the decision at conditional"
                     )
+
+            if self.contract_version == "1.2":
+                _validate_v12_job(job)
 
         return self
 
@@ -335,6 +504,43 @@ def _requirement_json(items: list[MandatoryRequirementResult]) -> str:
     )
 
 
+def _company_key(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _upsert_company_watch(session: Session, posting: Posting, job: AIReviewJob) -> None:
+    if not job.company_watch or not posting.company.strip():
+        return
+    key = _company_key(posting.company)
+    watch = session.scalar(select(CompanyWatch).where(CompanyWatch.company_key == key))
+    now = utc_now()
+    if watch is None:
+        session.add(
+            CompanyWatch(
+                id=str(uuid4()),
+                company_name=posting.company.strip(),
+                company_key=key,
+                source_posting_id=posting.id,
+                reason=job.company_watch_reason,
+                role_patterns_json=json.dumps(
+                    job.company_watch_role_patterns, ensure_ascii=False
+                ),
+                active=True,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        return
+    watch.company_name = posting.company.strip()
+    watch.source_posting_id = posting.id
+    watch.reason = job.company_watch_reason
+    watch.role_patterns_json = json.dumps(
+        job.company_watch_role_patterns, ensure_ascii=False
+    )
+    watch.active = True
+    watch.updated_at = now
+
+
 def import_ai_review(
     session: Session,
     request: AIReviewImportRequest,
@@ -376,6 +582,10 @@ def import_ai_review(
 
     for job in request.jobs:
         review = existing_reviews.get(job.posting_id)
+        posting = session.get(Posting, job.posting_id)
+        if posting is None:
+            raise ValueError(f"AI review references unknown posting: {job.posting_id}")
+        _upsert_company_watch(session, posting, job)
         values = {
             "source_job_id": job.source_job_id,
             "review_version": request.review_version,
@@ -399,6 +609,39 @@ def import_ai_review(
             ),
             "fit_analysis_allowed": job.fit_analysis_allowed,
             "decision_reason": job.decision_reason,
+            "pre_application_decision": job.pre_application_decision or "",
+            "remote_scope": job.remote_scope,
+            "work_authorization_status": job.work_authorization_status,
+            "conditions_status": job.conditions_status,
+            "official_source_status": job.official_source_status,
+            "official_source_url": job.official_source_url,
+            "official_source_location": job.official_source_location,
+            "official_source_evidence_json": json.dumps(
+                job.official_source_evidence, ensure_ascii=False
+            ),
+            "experience_evidence_json": json.dumps(
+                [item.model_dump() for item in job.experience_evidence],
+                ensure_ascii=False,
+            ),
+            "questions_for_user_json": json.dumps(job.questions_for_user, ensure_ascii=False),
+            "company_watch": job.company_watch,
+            "company_watch_reason": job.company_watch_reason,
+            "company_watch_role_patterns_json": json.dumps(
+                job.company_watch_role_patterns, ensure_ascii=False
+            ),
+            "recommended_cv_master_json": json.dumps(
+                job.recommended_cv_master.model_dump()
+                if job.recommended_cv_master is not None
+                else {},
+                ensure_ascii=False,
+            ),
+            "recommended_certifications_json": json.dumps(
+                job.recommended_certifications, ensure_ascii=False
+            ),
+            "linkedin_skill_suggestions_json": json.dumps(
+                job.linkedin_skill_suggestions, ensure_ascii=False
+            ),
+            "certification_inventory_complete": job.certification_inventory_complete,
             "duplicate_of_posting_id": job.duplicate_of_posting_id,
             "summary": job.summary,
             "reasons_json": json.dumps(job.reasons, ensure_ascii=False),
