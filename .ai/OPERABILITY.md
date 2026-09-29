@@ -142,3 +142,15 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Repository issue audit: zero open issues on 2026-09-21.
 - Certified product boundary: local-first, single-user JOLT on supported Windows x64. Future Indeed/InfoJobs adapters and multi-user/SaaS architecture remain outside this production-readiness claim.
 - Operability promoted from **99% to 100%** when the exact final main release commit completes all main-push certification workflows.
+
+
+## 2026-09-29 current production-use update
+- JOLT is in normal real-job-search operation on the certified local-first single-user Windows boundary.
+- The production LinkedIn portfolio contains 12 active saved searches; broad V1/V2/V3 search experiments are complete and no longer the default workflow.
+- PR #437 closes the stale-discovery restart failure mode.
+- PR #439 adds saved-search performance metrics from capture through application outcomes.
+- PR #443 fixes application document saving and purges stored file bytes on non-success final outcomes while preserving metadata.
+- UX stabilization phases 1–6 (PRs #442, #447, #448, #449, #450, #452) are merged and individually certified.
+- Current main after PR #452 is `fc8966dcbd1ca07786b23c4ad7bce3352826abcd`.
+- No open pull request remains after #452 merge at the time of this update.
+- Operability remains **100%**; future work is product refinement/expansion, not readiness remediation.
