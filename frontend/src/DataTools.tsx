@@ -150,7 +150,7 @@ export function DataTools({ apiBase, onImported }: Props) {
           <div className="market-summary-grid">
             <article className="market-card"><span>File</span><strong>{lastImport.fileName}</strong></article>
             <article className="market-card"><span>Imported at</span><strong>{new Date(lastImport.importedAt).toLocaleString()}</strong></article>
-            <article className="market-card"><span>Intelligence sections</span><strong>{lastImport.importedSections.length}</strong></article>
+            <article className="market-card"><span>Updated sections</span><strong>{lastImport.importedSections.length}</strong></article>
             <article className="market-card"><span>Review Inbox</span><strong>{lastImport.reviewInboxImported ? "Updated" : "Not included"}</strong></article>
           </div>
         )}
@@ -175,7 +175,7 @@ export function DataTools({ apiBase, onImported }: Props) {
                 <a
                   href={`${apiBase}/api/ai-work-package/export`}
                   download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export JOLT's full AI context package: preferences, evidence, market intelligence, and current Review Inbox state. Use the discovery-batch export in Capture Jobs for a normal multi-search review."
+                  title="Export JOLT's full strategy context. For normal job review, use Export new jobs for review in Capture Jobs."
                 >
                   <strong>Export strategy update package</strong>
                 </a>
