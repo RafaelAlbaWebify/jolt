@@ -1,0 +1,866 @@
+/* Production UX density refresh
+   Presentation-only overrides for compact daily operation. */
+
+:root {
+  --jolt-surface: #ffffff;
+  --jolt-border: #dbe2ee;
+  --jolt-muted: #667085;
+  --jolt-blue: #315bd6;
+  --jolt-blue-soft: #edf2ff;
+}
+
+body {
+  overflow: hidden;
+}
+
+.shell.workspace-shell {
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  min-height: 100vh;
+}
+
+.workspace-sidebar {
+  top: 14px;
+  max-height: calc(100vh - 28px);
+  padding: 20px 16px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.workspace-header {
+  height: 100%;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 18px;
+}
+
+.workspace-header .hero {
+  gap: 0;
+}
+
+.workspace-header .hero h1 {
+  font-size: 3.25rem;
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.workspace-description {
+  display: none;
+}
+
+.workspace-nav {
+  gap: 6px;
+}
+
+.workspace-nav button,
+.workspace-sidebar > .workspace-header > button {
+  width: 100%;
+  min-height: 42px;
+  justify-content: flex-start;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.93rem;
+}
+
+.workspace-content {
+  height: calc(100vh - 28px);
+  overflow: hidden;
+}
+
+.workspace-view-stack,
+.workspace-view {
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-view {
+  overflow: hidden;
+}
+
+.workspace-view > main,
+.workspace-view > section,
+.workspace-view > .panel {
+  min-height: 0;
+}
+
+.panel {
+  margin-top: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  box-shadow: 0 5px 18px rgba(31, 41, 55, 0.045);
+}
+
+.section-heading {
+  gap: 16px;
+}
+
+.section-heading h2,
+.section-heading h3 {
+  margin-bottom: 3px;
+}
+
+.section-heading p {
+  max-width: 760px;
+  line-height: 1.35;
+}
+
+.eyebrow {
+  margin-bottom: 4px;
+  font-size: 0.68rem;
+}
+
+/* Capture Jobs */
+.professional-intelligence {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.professional-intelligence-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.professional-intelligence-overview h2 {
+  margin: 0 0 3px;
+}
+
+.professional-intelligence-overview p {
+  margin: 0;
+  color: var(--jolt-muted);
+}
+
+.professional-readonly-badge {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 7px 10px !important;
+  border: 1px solid #d6deee !important;
+  border-radius: 999px !important;
+  background: #f4f7fd !important;
+  color: #4c5d7c;
+}
+
+.professional-readonly-badge span {
+  font-size: 0.78rem;
+}
+
+.linkedin-search-portfolio {
+  gap: 10px;
+}
+
+.linkedin-search-portfolio .section-heading {
+  align-items: center;
+}
+
+.linkedin-search-portfolio .section-heading > div > p:last-child {
+  font-size: 0.88rem;
+}
+
+.search-portfolio-toolbar {
+  padding: 4px 0;
+}
+
+.active-searches-details > summary,
+.search-performance-details > summary,
+.batch-search-details > summary {
+  padding: 10px 12px;
+}
+
+.discovery-batch-status {
+  gap: 9px;
+  padding-top: 10px;
+}
+
+.discovery-batch-status .section-heading p {
+  font-size: 0.83rem;
+}
+
+.batch-review-actions-prominent {
+  padding: 10px 12px;
+}
+
+.search-performance-details:not([open]) {
+  background: #fbfcfe;
+}
+
+.professional-single-capture-fallback {
+  margin-top: 10px;
+  padding: 10px 14px;
+}
+
+.professional-single-capture-fallback > summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+/* Review Inbox */
+.opportunity-workspace {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.opportunity-toolbar {
+  align-items: center;
+}
+
+.opportunity-toolbar p {
+  max-width: 620px;
+  font-size: 0.88rem;
+}
+
+.queue-summary {
+  padding: 0 2px;
+  font-size: 0.86rem;
+}
+
+.review-inbox-maintenance {
+  width: fit-content;
+  font-size: 0.78rem;
+}
+
+.review-inbox-maintenance:not([open]) {
+  justify-self: end;
+}
+
+.review-inbox-maintenance > summary {
+  cursor: pointer;
+  color: #667085;
+  font-weight: 700;
+}
+
+.review-inbox-maintenance > p {
+  max-width: 620px;
+}
+
+.opportunity-query-tools {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.opportunity-list,
+.opportunity-table,
+.queue {
+  min-height: 0;
+}
+
+.opportunity-row {
+  min-height: 0;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.opportunity-row p {
+  line-height: 1.3;
+}
+
+.opportunity-row .score {
+  min-height: 66px;
+  padding: 7px 9px;
+}
+
+.pagination {
+  margin-top: 4px;
+}
+
+/* Applications: compact board with lane-owned scrolling */
+.application-workspace {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+
+.application-workspace-heading {
+  align-items: center;
+}
+
+.application-workspace-heading p {
+  font-size: 0.88rem;
+}
+
+.application-board-toolbar {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.application-search {
+  min-width: min(360px, 38vw);
+}
+
+.application-search span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.application-search input {
+  padding: 9px 11px;
+}
+
+.application-density-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #d9e0ec;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.application-density-toggle button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5a667a;
+  font-size: 0.76rem;
+}
+
+.application-density-toggle button.application-density-active {
+  background: var(--jolt-blue-soft);
+  color: #244fc5;
+  box-shadow: inset 0 0 0 1px #d6e1ff;
+}
+
+.application-archive-toggle {
+  display: flex !important;
+  grid-template-columns: auto auto;
+  gap: 7px !important;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.application-board {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: repeat(5, minmax(210px, 1fr));
+  align-items: stretch;
+  gap: 9px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 2px 2px;
+}
+
+.application-lane {
+  min-width: 210px;
+  min-height: 0;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.application-lane-header {
+  align-items: center;
+  padding: 1px 1px 7px;
+}
+
+.application-lane-header h3 {
+  font-size: 0.9rem;
+}
+
+.application-lane-header p {
+  display: none;
+}
+
+.application-lane-header > strong {
+  min-width: 26px;
+  padding: 4px 7px;
+  font-size: 0.74rem;
+}
+
+.application-lane-cards {
+  min-height: 0;
+  align-content: start;
+  gap: 7px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd4e2 transparent;
+}
+
+.application-lane-cards::-webkit-scrollbar {
+  width: 6px;
+}
+
+.application-lane-cards::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd4e2;
+}
+
+.application-card {
+  flex: 0 0 auto;
+  border-radius: 10px;
+}
+
+.application-board-compact .application-card-open {
+  gap: 3px;
+  padding: 9px 10px;
+}
+
+.application-board-compact .application-card-open > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  font-size: 0.83rem;
+}
+
+.application-board-compact .application-card-company,
+.application-board-compact .application-card-location {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-board-compact .application-card-company {
+  font-size: 0.73rem;
+}
+
+.application-board-compact .application-card-location {
+  font-size: 0.7rem;
+}
+
+.application-board-compact .application-card-stage,
+.application-board-compact .application-card-alert {
+  padding: 2px 6px;
+  font-size: 0.61rem;
+}
+
+.application-board-compact .application-card-signals,
+.application-board-compact .application-card-next {
+  display: none;
+}
+
+.application-board-compact .application-card-move {
+  padding: 6px 9px;
+}
+
+.application-board-compact .application-card-move label {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.application-board-compact .application-card-move label > span {
+  display: none;
+}
+
+.application-board-compact .application-card-move select {
+  width: 100%;
+  padding: 5px 7px;
+  font-size: 0.69rem;
+}
+
+.application-board-compact .application-card-links {
+  min-height: 28px;
+  justify-content: flex-end;
+  padding: 5px 8px;
+  font-size: 0.68rem;
+}
+
+.application-board-compact .application-card-links > a {
+  display: none;
+}
+
+.application-board-comfortable .application-card-open {
+  padding: 11px;
+}
+
+.application-board-comfortable .application-card-signals {
+  gap: 4px;
+  margin-top: 5px;
+  padding: 6px 0;
+}
+
+.application-board-comfortable .application-card-next {
+  font-size: 0.7rem;
+}
+
+.application-lane-empty {
+  padding: 20px 8px;
+}
+
+.application-archived-section {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* LinkedIn Profile */
+.workspace-view-linkedin {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.linkedin-command-center {
+  display: grid;
+  gap: 10px;
+}
+
+.linkedin-profile-header {
+  margin-top: 0;
+}
+
+.linkedin-profile-header .section-heading {
+  align-items: center;
+}
+
+.linkedin-profile-tabs {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.linkedin-profile-tabs button {
+  padding: 7px 10px;
+  font-size: 0.78rem;
+}
+
+.linkedin-profile-advanced-tab {
+  margin-left: auto;
+  opacity: 0.8;
+}
+
+.linkedin-overview {
+  display: grid;
+  gap: 12px;
+}
+
+.linkedin-overview .market-summary-grid {
+  gap: 9px;
+}
+
+.linkedin-overview .market-card {
+  padding: 11px 12px;
+}
+
+.linkedin-overview-grid {
+  gap: 12px;
+}
+
+.linkedin-overview-grid > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e1e6ef;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.linkedin-overview-grid h3 {
+  margin: 0 0 10px;
+}
+
+.linkedin-overview-grid .professional-source-card {
+  padding: 9px 0;
+  border: 0;
+  border-top: 1px solid #edf0f5;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.linkedin-overview-grid .professional-source-card:first-of-type {
+  border-top: 0;
+}
+
+.linkedin-overview-grid .linkedin-compact-card p {
+  margin: 2px 0;
+  font-size: 0.78rem;
+}
+
+.linkedin-analysis-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.linkedin-analysis-summary h3,
+.linkedin-analysis-summary p {
+  margin: 0;
+}
+
+.linkedin-analysis-summary p {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.83rem;
+}
+
+.linkedin-analysis-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 12px;
+  max-width: 620px;
+  color: #667085;
+  font-size: 0.74rem;
+}
+
+.linkedin-analysis-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eaf8ef;
+  color: #176c38;
+  font-weight: 800;
+}
+
+/* Market Insights */
+.market-intelligence-compact {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.market-intelligence-compact .market-control-panel {
+  margin-top: 0;
+}
+
+.market-intelligence-compact .market-heading-row {
+  align-items: center;
+}
+
+.market-summary-grid-compact {
+  gap: 9px;
+}
+
+.market-summary-grid-compact .market-card {
+  padding: 11px 13px;
+}
+
+.market-summary-grid-compact .market-card strong {
+  font-size: 1rem;
+}
+
+.market-update-notice {
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  border: 1px solid #f0d8a8;
+  border-radius: 11px;
+  background: #fff9ed;
+}
+
+.market-update-notice > div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.market-update-notice span {
+  color: #7b6740;
+  font-size: 0.78rem;
+}
+
+.market-insight-dashboard {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.market-insight-dashboard .market-card {
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 13px;
+  overflow: hidden;
+}
+
+.market-insight-dashboard h3 {
+  margin: 0 0 7px;
+  font-size: 0.9rem;
+}
+
+.market-insight-dashboard .market-ai-insights {
+  display: grid;
+  gap: 4px;
+}
+
+.market-insight-dashboard .market-ai-insight-row {
+  padding: 4px 0;
+}
+
+.market-insight-dashboard .market-ai-insight-row > dt {
+  font-size: 0.65rem;
+}
+
+.market-insight-dashboard .market-ai-insight-row > dd {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.market-insight-dashboard .market-ai-list {
+  gap: 3px;
+  padding-left: 15px;
+}
+
+.market-insight-dashboard .market-ai-list li {
+  font-size: 0.74rem;
+  line-height: 1.28;
+}
+
+.market-recommendation-summary ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.market-recommendation-summary li {
+  display: grid;
+  gap: 1px;
+  padding-top: 5px;
+  border-top: 1px solid #edf1f7;
+}
+
+.market-recommendation-summary li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.market-recommendation-summary li strong,
+.market-recommendation-summary li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-recommendation-summary li strong {
+  font-size: 0.76rem;
+}
+
+.market-recommendation-summary li span {
+  color: #667085;
+  font-size: 0.7rem;
+}
+
+.market-evidence-details {
+  border: 1px solid #dbe2ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.market-evidence-details > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.market-evidence-details > summary span {
+  color: #667085;
+  font-weight: 500;
+}
+
+.market-evidence-details > div {
+  padding: 0 12px 10px;
+  color: #667085;
+  font-size: 0.74rem;
+}
+
+.market-evidence-details p {
+  margin: 4px 0;
+}
+
+/* Settings & Data */
+.workspace-view-settings {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-view-settings > .panel {
+  margin-top: 10px;
+}
+
+.workspace-view-settings > .panel:first-child {
+  margin-top: 0;
+}
+
+.settings-preferences {
+  margin-top: 10px;
+}
+
+.settings-preferences > summary,
+.operations-root > summary,
+.runtime-identity > summary {
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+/* Responsive fallback */
+@media (max-width: 1180px) {
+  body {
+    overflow: auto;
+  }
+
+  .shell.workspace-shell {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+
+  .workspace-content,
+  .workspace-view,
+  .market-intelligence-compact,
+  .application-workspace {
+    height: auto;
+    overflow: visible;
+  }
+
+  .application-board {
+    min-height: 560px;
+  }
+
+  .market-insight-dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .shell.workspace-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-sidebar {
+    position: static;
+    max-height: none;
+  }
+
+  .market-insight-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .linkedin-analysis-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .linkedin-analysis-meta {
+    justify-content: flex-start;
+  }
+}
