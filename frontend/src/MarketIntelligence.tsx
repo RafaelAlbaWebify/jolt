@@ -44,6 +44,16 @@ function readable(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function isTechnicalKey(value: string) {
+  return /(^|_)(id|uuid|capture_run|source_job|processing_mode|evidence_refs?)($|_)/i.test(value);
+}
+
+function compactEntries(data: Record<string, unknown>, limit = 5) {
+  return Object.entries(data)
+    .filter(([key]) => !isTechnicalKey(key))
+    .slice(0, limit);
+}
+
 function primitiveValue(value: unknown): string {
   if (value == null) return "—";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
@@ -69,7 +79,7 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
   }
 
   if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>);
+    const entries = compactEntries(value as Record<string, unknown>, depth === 0 ? 5 : 4);
     if (entries.length === 0) return <span className="market-ai-empty">None</span>;
     return (
       <dl className={`market-ai-object market-ai-object-depth-${Math.min(depth, 2)}`}>
@@ -87,7 +97,7 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
 }
 
 function InsightSection({ title, data, empty }: { title: string; data: Record<string, unknown>; empty: string }) {
-  const entries = Object.entries(data);
+  const entries = compactEntries(data);
   return (
     <section className="market-card market-ranking-card">
       <h3>{title}</h3>
@@ -134,76 +144,83 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   }, [active, load]);
 
   return (
-    <main className="market-intelligence" aria-labelledby="market-insights-heading">
+    <main className="market-intelligence market-intelligence-compact" aria-labelledby="market-insights-heading">
       <section className="panel market-control-panel">
         <div className="section-heading market-heading-row">
           <div>
-            <p className="eyebrow">Job-market feedback</p>
+            <p className="eyebrow">Market feedback</p>
             <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Use what JOLT has learned from your job-search history to adjust search, applications, skills, and profile positioning.</p>
+            <p>Turn job-search evidence into clear opportunities and next actions.</p>
           </div>
-          <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh view"}</button>
+          <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>
+            {loading ? "Refreshing…" : "Refresh view"}
+          </button>
         </div>
         {error && <p className="error" role="alert">{error}</p>}
       </section>
 
-      {!data ? <section className="panel"><p role="status">{loading ? "Loading market intelligence…" : "No market intelligence loaded."}</p></section> : (
+      {!data ? (
+        <section className="panel"><p role="status">{loading ? "Loading market insights…" : "No market insights loaded."}</p></section>
+      ) : (
         <>
-          <section className="market-summary-grid" aria-label="Market intelligence status">
-            <article className="market-card"><span>Analysis by</span><strong>{data.authority === "chatgpt" ? "ChatGPT" : data.authority}</strong></article>
-            <article className="market-card"><span>Analysis status</span><strong>{readable(data.freshness.status)}</strong></article>
+          <section className="market-summary-grid market-summary-grid-compact" aria-label="Market intelligence status">
+            <article className="market-card"><span>Analysis</span><strong>{data.freshness.needs_analysis ? "Update available" : "Up to date"}</strong></article>
             <article className="market-card"><span>Jobs observed</span><strong>{data.evidence_provenance.observation_count}</strong></article>
             <article className="market-card"><span>Unique roles</span><strong>{data.evidence_provenance.canonical_role_count}</strong></article>
+            <article className="market-card"><span>Last updated</span><strong>{data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleDateString() : "Not yet"}</strong></article>
           </section>
 
-          <section className="panel market-card">
-            <h3>{data.freshness.needs_analysis ? "Market analysis needs refresh" : "Market analysis is current"}</h3>
-            <p>{data.freshness.reason}</p>
-            <p>
-              Latest job data: {data.freshness.latest_capture_at ? new Date(data.freshness.latest_capture_at).toLocaleString() : "None"}
-              {" · "}
-              Latest analysis: {data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleString() : "None"}
-            </p>
-            {data.freshness.needs_analysis && <p><strong>Next:</strong> open Settings & Data, export the strategy update, review it in ChatGPT, then import the returned file.</p>}
-          </section>
-
-          <section className="market-overview-grid">
-            <details className="market-card market-ranking-card">
-              <summary>Evidence details</summary>
-              <p>{data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} unique roles · {data.evidence_provenance.duplicate_observation_count} repeated observations · {data.evidence_provenance.capture_run_count} search runs</p>
-              <p>
-                Oldest: {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "None"}
-                {" · "}
-                Newest: {data.evidence_provenance.newest_evidence_at ? new Date(data.evidence_provenance.newest_evidence_at).toLocaleDateString() : "None"}
-              </p>
-            </details>
-            <InsightSection title="Market summary" data={data.market_summary} empty="No ChatGPT market summary has been imported yet." />
-          </section>
-
-          <section className="market-demand-grid">
-            <InsightSection title="Skills & experience gaps" data={data.skills_gap_summary} empty="No skills-gap summary is available." />
-            <InsightSection title="Search strategy" data={data.capture_strategy} empty="No search-strategy summary is available." />
-            <InsightSection title="Application strategy" data={data.application_strategy} empty="No application-strategy summary is available." />
-            <InsightSection title="Profile implications" data={data.profile_strategy} empty="No profile-strategy summary is available." />
-          </section>
-
-          <section className="panel market-card">
-            <h3>Pending market recommendations</h3>
-            {data.recommendations.length === 0 ? <p>No explicit recommendations in the latest market analysis.</p> : (
-              <div className="market-recommendations">
-                {data.recommendations.map((item) => (
-                  <article className="market-card" key={`${item.entity_type}-${item.entity_id}`}>
-                    <strong>{primitiveValue(item.payload.title ?? readable(item.feedback_type))}</strong>
-                    {item.payload.rationale != null && <p>{primitiveValue(item.payload.rationale)}</p>}
-                    {item.payload.proposed_action != null && <p><strong>Action:</strong> {primitiveValue(item.payload.proposed_action)}</p>}
-                    {item.confidence != null && <span>Confidence {item.confidence}%</span>}
-                  </article>
-                ))}
+          {data.freshness.needs_analysis && (
+            <section className="market-update-notice" role="status">
+              <div>
+                <strong>Market analysis needs an update</strong>
+                <span>New job evidence is available. Update the analysis from Settings & Data when convenient.</span>
               </div>
-            )}
+            </section>
+          )}
+
+          <section className="market-insight-dashboard">
+            <InsightSection title="What this means now" data={data.market_summary} empty="No market summary yet." />
+            <InsightSection title="Skills & gaps" data={data.skills_gap_summary} empty="No skills-gap summary yet." />
+            <InsightSection title="Search strategy" data={data.capture_strategy} empty="No search-strategy summary yet." />
+            <InsightSection title="Application strategy" data={data.application_strategy} empty="No application-strategy summary yet." />
+            <InsightSection title="Profile actions" data={data.profile_strategy} empty="No profile actions yet." />
+            <section className="market-card market-ranking-card market-recommendation-summary">
+              <h3>Recommendations</h3>
+              {data.recommendations.length === 0 ? (
+                <p>No pending market recommendations.</p>
+              ) : (
+                <ul>
+                  {data.recommendations.slice(0, 5).map((item) => (
+                    <li key={`${item.entity_type}-${item.entity_id}`}>
+                      <strong>{primitiveValue(item.payload.title ?? readable(item.feedback_type))}</strong>
+                      {item.payload.proposed_action != null && <span>{primitiveValue(item.payload.proposed_action)}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </section>
+
+          <details className="market-evidence-details">
+            <summary>
+              Evidence & provenance
+              <span>
+                {data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} roles
+              </span>
+            </summary>
+            <div>
+              <p>
+                {data.evidence_provenance.capture_run_count} search runs · {data.evidence_provenance.duplicate_observation_count} repeated observations
+              </p>
+              <p>
+                Oldest {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "—"}
+                {" · "}
+                Newest {data.evidence_provenance.newest_evidence_at ? new Date(data.evidence_provenance.newest_evidence_at).toLocaleDateString() : "—"}
+              </p>
+            </div>
+          </details>
         </>
       )}
     </main>
-  );
-}
+  );}
