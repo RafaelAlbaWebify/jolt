@@ -583,24 +583,29 @@ export function App({
             </button>
           </div>
         </div>
-        <div className="queue-summary">
-          <strong>{opportunities.length}</strong> jobs waiting for your decision
+        <div className="review-inbox-meta-row">
+          <div className="review-inbox-count">
+            <strong>{opportunities.length.toLocaleString()}</strong>
+            <span>jobs waiting</span>
+          </div>
+          <details className="review-inbox-maintenance">
+            <summary>Maintenance</summary>
+            <div className="review-inbox-maintenance-menu">
+              <p>
+                Remove unresolved inbox cards in bulk. Reviewed jobs, applications,
+                and captured evidence are preserved.
+              </p>
+              <button
+                type="button"
+                className="danger"
+                disabled={busy || opportunities.length === 0}
+                onClick={() => void clearPendingInbox()}
+              >
+                Clear unresolved inbox ({opportunities.length})
+              </button>
+            </div>
+          </details>
         </div>
-        <details className="review-inbox-maintenance">
-          <summary>Maintenance</summary>
-          <p>
-            Use this only to remove unresolved inbox cards in bulk. Reviewed jobs,
-            applications, and captured evidence are preserved.
-          </p>
-          <button
-            type="button"
-            className="danger"
-            disabled={busy || opportunities.length === 0}
-            onClick={() => void clearPendingInbox()}
-          >
-            Clear unresolved inbox ({opportunities.length})
-          </button>
-        </details>
         <div className="opportunity-query-tools">
           <label>
             <span>Search inbox</span>
@@ -629,7 +634,7 @@ export function App({
             </select>
           </label>
         </div>
-        <div className="queue-summary">
+        <div className="queue-summary queue-page-summary">
           <span>
             {hasLoaded
               ? `Showing ${pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of ${visibleOpportunities.length}`
