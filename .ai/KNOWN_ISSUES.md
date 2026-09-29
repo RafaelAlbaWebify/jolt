@@ -64,16 +64,16 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Resolution: PR #385 requires the returned posting-id set to equal the capture posting-id set for contract 1.1 and rejects omissions before any AI review rows are written. Legacy contract 1.0 behavior is preserved.
 - Verification: PR #385 head `528c921eeefe86ccaaaf38987cc5e9c6ad7f2d9d` passed CI run 1353, Playwright acceptance run 627 and full-cycle certification run 550 before merge.
 
-## KI-010 — P1 — LIVE ACCEPTANCE OPEN — LinkedIn profile detail false-complete on lazy-loaded sections
+## KI-010 — RESOLVED 2026-09-19 — LinkedIn profile detail false-complete on lazy-loaded sections
 - Module: LinkedIn Profile / candidate evidence
 - Description: a real fresh Licenses & certifications capture could be marked `stable_at_document_end` / complete while retaining only roughly the first ten credentials. The PR #389 collector jumped directly to the absolute footer, which can skip LinkedIn lazy-load triggers that fire only when intermediate content enters the viewport.
 - Runtime reproduction: capture `4d99d167-b6d9-4e88-aa05-9c7d84d860d3` on 2026-09-05 ended around IBM Project Manager and omitted known later credentials such as IBM Cybersecurity Analyst, AWS Cloud Solutions Architect, AWS Cloud Technology Consultant and Google Cybersecurity.
 - Bug class: evidence bug / completeness-contract bug. The synthetic bottom-triggered lazy-load regression was too weak to model the live site.
 - Implemented resolution: PR #390 starts profile-detail capture at the top, advances progressively through intermediate viewport thresholds, requires repeated stability at the true document end, records furthest scroll position/final document height, exposes recorder-owned `capture_metadata`, and fail-closes legacy LinkedIn `/details/` captures that predate progressive traversal.
 - Verification: PR #390 exact head `6db3e53cb0929e2ce70aa6ce865f0dbac424d7f0` passed CI run 1367, Playwright acceptance 636 and full-cycle certification 559; squash-merged as `e12f1befe0c1ff0d56d151b66215863a9595e60a`.
-- Status: code/test fix is complete, but live acceptance remains OPEN.
-- Blocking effect: blocks external-beta promotion and the second real AI cycle because candidate evidence must not be trusted until a fresh live profile-detail recapture demonstrates later credentials and `progressive_traversal_verified=true`.
-- Next action: update/restart local JOLT at current main, recapture Licenses & certifications, inspect the full list and exported capture metadata, then continue the second real capture/review/import cycle.
+- Status: RESOLVED. Live acceptance passed on 2026-09-19 after PR #393 reached later Licenses & certifications entries on the real profile, including credentials previously omitted.
+- Blocking effect: none within the certified product boundary.
+- Regression rule: keep progressive/nested-scroll completeness guards and fail-closed handling for legacy weak captures.
 
 ## Historical resolved issues that must retain regression coverage
 - Invalid LinkedIn authwall captures used as profile evidence — fixed by PR #374.
@@ -81,3 +81,18 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Capture cleanup could make Applications disappear — behavior invariant retained in `PROJECT_MEMORY.md`; keep mixed-batch/application-index regressions.
 - Settings & Data viewport overflow at 1680x945 — fix product layout, never weaken certification.
 - Structured AI import errors rendered `[object Object]` — fixed by PR #387; keep structured validation-path regression.
+
+
+## KI-011 — RESOLVED 2026-09-28 — Interrupted discovery batches could remain active after restart
+- Module: Capture Jobs / discovery lifecycle
+- Description: discovery workers are process-local while batch state is persisted. A backend/Windows stop during a scheduled/running batch could leave durable active state without a worker.
+- Resolution: PR #437 reconciles stale `scheduled/running` batches on backend startup, preserves completed search captures, marks interrupted running searches failed, marks not-yet-started searches inside that interrupted batch skipped, and leaves ordinary queued batches untouched.
+- Verification: PR #437 passed all six required workflows before merge.
+- Operator implication: manual SQLite repair should no longer be required for this restart failure mode.
+
+## KI-012 — RESOLVED 2026-09-29 — Daily-use UX exposed development-era concepts and duplicate actions
+- Module: Workbench / Review Inbox / Applications / Capture Jobs / LinkedIn Profile / Market Insights / Settings
+- Description: primary UI mixed operator tasks with internal terminology, duplicate application-stage controls, prominent destructive actions, generic document metadata and stale navigation audits.
+- Resolution: UX stabilization phases 1–6 via PRs #442, #447, #448, #449, #450 and #452 simplified operator language, demoted destructive/maintenance actions, made Documents the primary CV workflow, simplified stage/outcome actions, removed remaining internal primary-path copy and hardened keyboard/focus behavior.
+- Verification: each merged phase passed the required certification workflows on its exact PR head.
+- Residual rule: preserve advanced diagnostics and historical metadata, but keep them outside the primary daily workflow.
