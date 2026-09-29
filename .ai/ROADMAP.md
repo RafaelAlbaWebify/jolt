@@ -28,15 +28,19 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-022 | COMPLETE | Backup/restore active-schema rehearsal | R-014 | create, verify and restore a dated backup without modifying the live database; restored database passes integrity/schema verification | CLI output + manifest + restored test target evidence |
 | R-023 | COMPLETE | Unified release/version authority | R-001 | package, FastAPI health and runtime identity derive from one release-version source | tests + exact merge gates |
 | R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
+| R-025 | COMPLETE | LinkedIn Search Portfolio and Discovery Batch | R-002,R-021 | saved multi-search run, frozen review set/import and restart persistence work in normal operator flow | 2026-09-24 real acceptance + later 12-search production portfolio |
+| R-026 | COMPLETE | Restart recovery for interrupted discovery | R-025 | stale scheduled/running batches become terminal on restart without touching valid queued state or completed captures | PR #437 six green gates |
+| R-027 | COMPLETE | Saved-search performance funnel | R-025 | each saved search exposes deterministic capture -> AI -> human pursue -> submitted -> interview -> offer metrics without automatic decisions | PR #439 six green gates |
+| R-028 | ACTIVE | UX stabilization for daily operator use | R-027 | normal daily paths use operator language, safe action hierarchy, one CV source-of-truth, simpler application controls, current UX audits and keyboard/focus support | merged #442/#443/#447/#448/#449; exact-head green #450/#451 then close |
 
 ## Immediate sequence
 Production certification is complete for the supported local-first single-user Windows boundary.
 
-Future work is optional/product expansion rather than a blocker:
-1. Add Indeed adapter when prioritized.
-2. Add InfoJobs adapter when prioritized.
-3. Revisit multi-user/SaaS architecture only if the product boundary changes.
-4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
+1. Finish the bounded R-028 UX stabilization exact-head gates and merge only green heads.
+2. Return JOLT to normal job-search operation; new changes should come from real operator friction or measured funnel outcomes.
+3. Do not restart broad saved-search experiments without sustained production evidence.
+4. Keep Indeed/InfoJobs and multi-user/SaaS as later optional expansion.
+5. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
 
 
 ## R-025 — LinkedIn Search Portfolio and Discovery Batch — COMPLETE
