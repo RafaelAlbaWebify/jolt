@@ -19,6 +19,7 @@ import "./WorkflowRefinement.css";
 import "./ReleaseBlockingUx.css";
 import "./RuntimeIdentity.css";
 import "./JobPreferences.css";
+import "./ProductionUXRefresh.css";
 
 const rootElement = document.getElementById("root");
 
