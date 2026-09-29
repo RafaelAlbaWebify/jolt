@@ -1,41 +1,63 @@
 # JOLT AI Bootstrap Context
 
-JOLT is a local-first, single-user job-search evidence, review, application-tracking, LinkedIn-profile, and market-intelligence workbench. It captures and preserves source evidence, normalizes/deduplicates opportunities, exposes structured review data, persists durable user/application state, and exchanges judgment-heavy analysis with ChatGPT through validated JSON contracts.
+JOLT is a local-first, single-user job-search evidence, review, application-tracking, LinkedIn-profile, and market-intelligence workbench. It captures and preserves source evidence, normalizes/deduplicates opportunities, exposes structured review data, persists durable human/application state, and exchanges judgment-heavy analysis with ChatGPT through validated JSON contracts.
 
 ## Product direction
-Target user: the owner/operator conducting a real job search. Current use is personal production-like use rather than a multi-tenant SaaS. JOLT should reduce bad applications and repeated manual review while preserving provenance and human control.
+Target user: the owner/operator conducting a real job search.
 
-Core lifecycle:
-`capture/manual intake -> preserved evidence -> normalized posting -> Review Inbox -> human/AI-assisted decision -> durable Application -> outcome -> market/strategy feedback`.
+Current normal workflow:
+`Run saved searches -> export only new jobs -> ChatGPT review -> import reviewed jobs -> Review Inbox human decision -> Applications -> interview/outcome -> search performance feedback`.
 
-Major user modules: Capture Jobs, Review Inbox, Applications, LinkedIn Profile, Market Insights, Settings & Data.
+Major modules: Capture Jobs, Review Inbox, Applications, LinkedIn Profile, Market Insights, Settings & Data.
+
+## Current production state — 2026-09-29
+- Supported boundary: local-first, single-user JOLT on Windows x64.
+- Production operability remains 100% within that boundary.
+- 12 active production LinkedIn searches are in normal use after controlled V1/V2/V3 search experiments and portfolio consolidation.
+- Search Performance is merged and measures saved-search performance from capture through AI signal, human pursue, application, interview and offer outcomes.
+- Interrupted persisted `scheduled/running` discovery batches are reconciled safely on backend restart; normal queued batches remain untouched.
+- AI review export/import already exists in the UI. PowerShell/API use during the September audit was an analysis shortcut, not a missing product capability.
+- UX stabilization phases 1–6 are merged through PR #452:
+  - operator-facing language and safer destructive actions;
+  - simpler Applications and Settings workflows;
+  - simplified application document/CV attachment;
+  - remaining internal copy removed from primary paths;
+  - stage/outcome actions simplified;
+  - keyboard/focus behavior hardened.
+- Application documents are physically stored in JOLT. Non-success final outcomes purge stored file bytes; accepted offers retain them; hiding/archiving does not purge them.
+- New applications use Documents as the primary CV source. Legacy `resume_used` values remain read-only historical context.
+- Historical EXP/EXP2/EXP3/HIST searches remain disabled for provenance; do not casually reactivate/delete them.
+- Human Review Inbox decisions and Application state are durable/protected and must never be rewritten to simplify capture or cleanup.
 
 ## Architectural constraints
 - Repository + `.ai/` are authoritative project memory; chat is temporary.
-- Human review decisions and Application state are durable and outrank capture lifecycle.
+- Human review decisions and Application state outrank capture lifecycle.
 - Capture cleanup/archive must never erase pursued/reviewed/application state.
 - JOLT owns deterministic capture, provenance, validation, persistence and UI; ChatGPT owns judgment-heavy reasoning.
-- AI review order is source evidence -> Stage-1 hardlines -> candidate evidence -> fit -> recommendation.
-- Stage-1 REJECT/MANUAL_REVIEW stops fit analysis.
-- Positive decisions require resolved eligibility; duplicates cannot be positive.
+- AI review order is source evidence -> deterministic hardlines -> candidate evidence -> fit -> recommendation.
+- Positive recommendations require resolved eligibility; duplicates cannot be positive.
 - Missing candidate/profile evidence means unknown, not absent.
 - Labs/study/certifications must not be upgraded to production experience.
-- No credential storage, CAPTCHA bypass, unattended mass crawling, auto-apply, or recruiter messaging.
-- Required merge gates: CI + Playwright acceptance + full-cycle Playwright certification green for the exact PR head.
+- No credential storage, CAPTCHA bypass, unattended mass crawling, auto-apply, recruiter messaging, reactions, invitations, or account changes.
+- Required merge gates for production-affecting work: CI, Playwright acceptance, Full-cycle Playwright certification, Production clean-install certification, Migration recovery certification, and Reproducible release certification.
 
-## Current milestone
-Stabilize the end-to-end real job capture -> unified AI work package -> sequential per-job review -> validated import loop, then finish remaining LinkedIn/AI UX reliability work.
+## Product-development rule
+Use JOLT normally and let real workflow friction/outcomes drive changes.
 
-## Current blockers
-- PR #380 fixes a deterministic geography false-positive where lowercase words such as `de` could be interpreted as US state abbreviations. It is not yet on `main` at the time this control layer is created.
-- PR #376 AI round-trip UX and PR #377 LinkedIn Connections coverage remain open and require exact-CI verification before merge.
-- Fresh end-to-end acceptance must be repeated after geography-parser correction before declaring the review loop fully verified.
+Do not restart broad keyword experiments merely because theoretical precision can improve. Change a saved search only when:
+1. it fails operationally;
+2. repeated real runs show poor actionable yield; or
+3. real application/interview/offer outcomes justify the change.
+
+The qualitative feedback loop is:
+`search -> AI signal -> human pursue -> submitted application -> interview -> offer/outcome -> search performance`.
 
 ## Start here
-1. Read `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md`, `.ai/OPERABILITY.md`, `.ai/ROADMAP.md`.
-2. Inspect `git status`, branch and commit.
-3. Read `PROJECT_MEMORY.md` for durable historical invariants.
-4. Load only the contract/module files relevant to the active workstream.
+1. Read `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md`, `.ai/OPERABILITY.md`, and `.ai/ROADMAP.md`.
+2. Inspect current `main`, open PRs, and exact workflow status.
+3. Read `PROJECT_MEMORY.md` for durable invariants.
+4. Load only contract/module files relevant to the active workstream.
 5. Verify code/tests/runtime before changing behavior.
+6. Prefer problems observed during real job-search use over speculative feature work.
 
-Authoritative deeper references: `README.md`, `PROJECT_MEMORY.md`, `docs/domain-model.md`, `docs/jolt-architecture-audit-20260729.md`, `docs/automation-and-testing.md`, `.github/workflows/*`, backend `src/jolt/`, frontend `src/`.
+Authoritative deeper references: `README.md`, `PROJECT_MEMORY.md`, `docs/domain-model.md`, `docs/automation-and-testing.md`, `.github/workflows/*`, backend `src/jolt/`, frontend `src/`.
