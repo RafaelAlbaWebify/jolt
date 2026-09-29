@@ -513,8 +513,6 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     } finally {
       movingApplicationIds.current.delete(item.application_id);
       setBusy(false);
-      setDraggedPostingId(null);
-      setDragOverLane(null);
     }
   }
 
@@ -682,29 +680,9 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       <div className="application-board" aria-label="Application pipeline board">
         {LANES.map((lane) => (
           <section
-            className={`application-lane application-lane-${lane.id}${dragOverLane === lane.id ? " application-lane-drop-target" : ""}`}
+            className={`application-lane application-lane-${lane.id}`}
             key={lane.id}
             aria-labelledby={`lane-${lane.id}`}
-            onDragEnter={(event) => {
-              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && activeLaneFor(draggedItem) !== lane.id) {
-                event.preventDefault();
-                setDragOverLane(lane.id);
-              }
-            }}
-            onDragOver={(event) => {
-              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id) && activeLaneFor(draggedItem) !== lane.id) {
-                event.preventDefault();
-              }
-            }}
-            onDragLeave={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOverLane(null);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (draggedItem && availableTargetLanes(draggedItem).includes(lane.id)) {
-                void moveApplication(draggedItem, lane.id);
-              }
-            }}
           >
             <header className="application-lane-header">
               <div>
