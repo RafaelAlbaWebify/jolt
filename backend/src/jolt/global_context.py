@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput, AIExchangeScope
 from jolt.ai_review_pack import REVIEW_CONTRACT_VERSION
+from jolt.candidate_evidence_inventory import load_candidate_evidence_inventory
 from jolt.job_search_preferences import load_job_search_preferences
 
 _CONTEXT_FILE = "ai_context_overlay.json"
@@ -148,14 +149,17 @@ def _context_status(stored: GlobalAIContextOverlay) -> dict[str, Any]:
 
 def build_global_context_snapshot() -> dict[str, Any]:
     preferences = load_job_search_preferences()
+    candidate_inventory = load_candidate_evidence_inventory()
     stored = _load_stored_global_ai_context()
     active = load_global_ai_context()
     return {
         "job_search_preferences": preferences.model_dump(mode="json"),
+        "candidate_evidence_inventory": candidate_inventory.model_dump(mode="json"),
         "ai_context": active.model_dump(mode="json"),
         "ai_context_status": _context_status(stored),
         "ownership": {
             "job_search_preferences": "jolt_user_owned",
+            "candidate_evidence_inventory": "jolt_user_owned",
             "ai_context": "chatgpt_derived_user_reviewable_current_policy_only",
             "ai_context_history": "preserved_not_reasoning_authority",
             "human_review_decisions": "protected_not_patchable_here",
@@ -185,7 +189,12 @@ def build_global_context_exchange() -> AIExchangeInput:
         context=snapshot,
         protected_state={
             "patchable_namespaces": sorted(_ALLOWED_PATCH_KEYS),
-            "non_patchable": ["job_search_preferences", "human_review_decisions", "applications"],
+            "non_patchable": [
+                "job_search_preferences",
+                "candidate_evidence_inventory",
+                "human_review_decisions",
+                "applications",
+            ],
         },
         requested_output={
             "context_patch": "Return only changed AI-owned namespaces. Do not rewrite JOLT-owned facts.",
