@@ -25,7 +25,7 @@ describe("DataTools", () => {
     expect(exportLink).toHaveAttribute("download", "JOLT_AI_WORK_PACKAGE.json");
     expect(exportLink).toHaveAttribute(
       "title",
-      expect.stringContaining("full AI context package"),
+      expect.stringContaining("full strategy context"),
     );
     expect(screen.getByLabelText("Import reviewed strategy update")).toBeInTheDocument();
     expect(screen.getByText("Legacy compatibility exports")).toBeInTheDocument();

@@ -25,8 +25,8 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
           <p className="eyebrow">Job discovery</p>
           <h2 id="job-capture-heading">Capture Jobs</h2>
           <p>
-            Capture a LinkedIn job search in a visible browser. Verified jobs are deduplicated,
-            evaluated, and sent to Review Inbox and Market Insights.
+            Run your saved LinkedIn searches in a visible browser. JOLT keeps new jobs,
+            avoids repeats, and sends them to Review Inbox and Market Insights.
           </p>
         </div>
         <div className="professional-safety-boundary" role="note">

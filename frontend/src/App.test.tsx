@@ -485,7 +485,7 @@ describe("App AI review workflow", () => {
 
     expect(
       await screen.findByText(
-        /1 pending card cleared from 1 capture batch/,
+        /1 pending card cleared from 1 search run/,
       ),
     ).toBeInTheDocument();
   });
