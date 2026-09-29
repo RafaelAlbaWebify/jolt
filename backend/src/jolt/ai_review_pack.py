@@ -15,7 +15,7 @@ from jolt.hardline_evidence import analyze_location_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
 
 PACK_VERSION = "1.0"
-REVIEW_CONTRACT_VERSION = "1.1"
+REVIEW_CONTRACT_VERSION = "1.2"
 
 
 def _json_bytes(value: object) -> bytes:
@@ -184,6 +184,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                 "location": location,
                 "location_hardline_evidence": {
                     "location_eligibility": location_signals.location_eligibility,
+                    "remote_scope": location_signals.remote_scope,
                     "hardline_reject": location_signals.hardline_reject,
                     "positive_evidence": list(location_signals.positive_evidence),
                     "negative_evidence": list(location_signals.negative_evidence),
@@ -224,7 +225,14 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                 "hardline_status": "PASS|REJECT|MANUAL_REVIEW",
                 "hardline_reasons": [],
                 "location_eligibility": "eligible|conditional|ineligible|unknown",
+                "remote_scope": "worldwide|EMEA|Europe|Spain|specific_country|USA_only|region_bound|unknown",
                 "location_evidence": [],
+                "work_authorization_status": "clear|conditional|blocked|unknown",
+                "conditions_status": "clear|conditional|blocked|unknown",
+                "official_source_status": "verified|not_found|unavailable|not_checked",
+                "official_source_url": "",
+                "official_source_location": "",
+                "official_source_evidence": [],
                 "mandatory_requirements": [],
                 "mandatory_requirement_results": [
                     {
@@ -232,13 +240,24 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                         "source_text": "",
                         "classification": "required|preferred|nice_to_have",
                         "candidate_evidence": "",
+                        "candidate_evidence_status": "confirmed_experience|not_in_profile_yet|unknown_ask_user|confirmed_gap",
                         "result": "met|partial|unmet|unknown",
                         "hardline": False,
                     }
                 ],
+                "experience_evidence": [],
+                "questions_for_user": [],
                 "employment_constraints": [],
                 "fit_analysis_allowed": True,
                 "technical_fit_percent": None,
+                "pre_application_decision": "APPLY_HIGH_FIT|APPLY_MEDIUM_FIT|SKIP_BY_LOCATION|SKIP_BY_WORK_AUTHORIZATION|SKIP_BY_SALARY_CONDITIONS|SKIP_BY_TECHNICAL_FIT|TARGET_COMPANY_WATCH|NEEDS_USER_CONFIRMATION",
+                "company_watch": False,
+                "company_watch_reason": "",
+                "company_watch_role_patterns": [],
+                "recommended_cv_master": None,
+                "recommended_certifications": [],
+                "linkedin_skill_suggestions": [],
+                "certification_inventory_complete": False,
                 "final_decision": "strong_pursue|pursue|conditional|reject",
                 "decision_reason": "",
                 "decision": "strong_pursue|pursue|conditional|reject",
