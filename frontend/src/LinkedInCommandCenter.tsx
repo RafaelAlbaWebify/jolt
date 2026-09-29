@@ -278,7 +278,7 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
         <div className="professional-safety-boundary professional-readonly-badge" role="note"><strong>Read-only</strong><span>Evidence capture only</span></div>
         <nav className="linkedin-profile-tabs" aria-label="LinkedIn profile workspace">
           <button type="button" className={view === "overview" ? "active" : "secondary"} onClick={() => switchView("overview")}>Overview</button>
-          <button type="button" className={view === "targets" ? "active" : "secondary"} onClick={() => switchView("targets")}>Sources</button>
+          <button type="button" aria-label="Profile sources" className={view === "targets" ? "active" : "secondary"} onClick={() => switchView("targets")}>Sources</button>
           <button type="button" className={view === "recommendations" ? "active" : "secondary"} onClick={() => switchView("recommendations")}>Improvements</button>
           <button type="button" className={view === "evidence" ? "active" : "secondary"} onClick={() => switchView("evidence")}>History</button>
           <button type="button" className={view === "manual" ? "active" : "secondary linkedin-profile-advanced-tab"} onClick={() => switchView("manual")}>Add evidence</button>
