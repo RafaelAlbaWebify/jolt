@@ -553,7 +553,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   async function archiveCard(item: Opportunity) {
     if (!item.application_id || busy) return;
     const confirmed = window.confirm(
-      `Archive ${item.title || "this application"}? It will be removed from the active board, but its history stays in the database.`,
+      `Hide ${item.title || "this application"} from the board? You can restore it later. Its history and files will be kept.`,
     );
     if (!confirmed) return;
     setBusy(true);
@@ -624,7 +624,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       if (selectedPostingId === item.posting_id) setSelectedPostingId(null);
       await refresh();
       setMoveNotice(
-        `${item.title || "Application"} permanently deleted. The opportunity and capture evidence were preserved.`,
+        `${item.title || "Application"} permanently deleted. The job record and source history were preserved.`,
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The application could not be deleted.");
