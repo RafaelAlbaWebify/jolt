@@ -167,11 +167,11 @@ def audit(output_dir: Path) -> dict[str, Any]:
         card = page.locator(card_selector)
         card.wait_for(timeout=30_000)
         assert_true(page.locator(card_selector).count() == 1, "Application is not rendered exactly once")
-        drag_handle = card.get_by_role("button", name=f"Drag {title} to another stage", exact=True)
-        drag_handle.wait_for(timeout=30_000)
+        stage_control = card.get_by_label(f"Move {title} to stage")
+        stage_control.wait_for(timeout=30_000)
 
         with page.expect_response(lambda response: transition_url in response.url and response.request.method == "POST") as forward_info:
-            drag_handle.drag_to(page.locator("section.application-lane-interviewing"))
+            stage_control.select_option("interviewing")
         assert_response_complete(forward_info.value, "Forward application transition")
         page.get_by_text(f"{title} moved to Interviewing.", exact=True).wait_for(timeout=30_000)
 
