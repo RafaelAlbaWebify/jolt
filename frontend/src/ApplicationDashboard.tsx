@@ -328,6 +328,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [moveNotice, setMoveNotice] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const [closingPostingId, setClosingPostingId] = useState<string | null>(null);
   const [closeOutcome, setCloseOutcome] = useState("rejected_by_employer");
   const movingApplicationIds = useRef(new Set<string>());
@@ -653,7 +654,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
 
       <div className="application-board-toolbar">
         <label className="application-search">
-          <span>Search pipeline</span>
+          <span>Search</span>
           <input
             type="search"
             value={query}
@@ -661,23 +662,38 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <label className="professional-source-checkbox">
+        <div className="application-density-toggle" role="group" aria-label="Application card density">
+          <button
+            type="button"
+            className={density === "compact" ? "application-density-active" : "secondary"}
+            aria-pressed={density === "compact"}
+            onClick={() => setDensity("compact")}
+          >
+            Compact
+          </button>
+          <button
+            type="button"
+            className={density === "comfortable" ? "application-density-active" : "secondary"}
+            aria-pressed={density === "comfortable"}
+            onClick={() => setDensity("comfortable")}
+          >
+            Comfortable
+          </button>
+        </div>
+        <label className="professional-source-checkbox application-archive-toggle">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
-          Show hidden applications
+          Show hidden
         </label>
-        <p className="application-boundary">
-          Closed means the hiring process ended. Hidden applications stay out of the active board and can be restored later.
-        </p>
       </div>
 
       {error && <p className="error" role="alert">{error}</p>}
       {moveNotice && <p className="application-move-notice" role="status">{moveNotice}</p>}
 
-      <div className="application-board" aria-label="Application pipeline board">
+      <div className={`application-board application-board-${density}`} aria-label="Application pipeline board">
         {LANES.map((lane) => (
           <section
             className={`application-lane application-lane-${lane.id}`}
