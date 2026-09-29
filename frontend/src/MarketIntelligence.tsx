@@ -45,7 +45,7 @@ function readable(value: string) {
 }
 
 function isTechnicalKey(value: string) {
-  return /(^|_)(id|uuid|capture_run|source_job|processing_mode|evidence_refs?)($|_)/i.test(value);
+  return /(^|_)(id|ids|uuid|uuids|posting_id|posting_ids|capture_run|source_job|processing_mode|evidence_refs?)($|_)/i.test(value);
 }
 
 function compactEntries(data: Record<string, unknown>, limit = 5) {
@@ -61,7 +61,7 @@ function looksLikeTechnicalIdentifier(value: string) {
 
 function primitiveValue(value: unknown): string {
   if (value == null) return "—";
-  if (typeof value === "string") return looksLikeTechnicalIdentifier(value) ? "Internal reference hidden" : value;
+  if (typeof value === "string") return looksLikeTechnicalIdentifier(value) ? "—" : value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "—";
 }

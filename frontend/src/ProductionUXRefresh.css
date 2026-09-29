@@ -1039,3 +1039,21 @@ body {
   align-self: start;
   min-height: 0;
 }
+
+
+/* Live-audit corrections */
+.workspace-view-opportunities .opportunity-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-view-opportunities .opportunity-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
