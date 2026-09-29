@@ -95,7 +95,7 @@ describe("LinkedInCommandCenter", () => {
 
     render(<LinkedInCommandCenter apiBase="http://api" active />);
     expect(await screen.findByText("Clarify the headline")).toBeInTheDocument();
-    fireEvent.change(screen.getByDisplayValue("pending"), { target: { value: "implemented" } });
+    fireEvent.change(screen.getByDisplayValue("To review"), { target: { value: "implemented" } });
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/linkedin-command-center/recommendations/recommendation-1/status",
