@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SavedSearch = {
   id: string;
@@ -118,6 +118,8 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   const [batch, setBatch] = useState<DiscoveryBatch | null>(null);
   const [performance, setPerformance] = useState<SearchPerformance[]>([]);
   const [performanceError, setPerformanceError] = useState("");
+  const searchEditorNameRef = useRef<HTMLInputElement | null>(null);
+  const searchEditorReturnFocusRef = useRef<HTMLElement | null>(null);
   const [draft, setDraft] = useState<SearchDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -149,6 +151,26 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     const activeBatch = batches.find((item) => !terminalBatch(item.status));
     setBatch(activeBatch ?? batches[0] ?? null);
   }, [apiBase]);
+
+  const editorOpen = Boolean(draft);
+
+  useEffect(() => {
+    if (!editorOpen) return;
+
+    const timer = window.setTimeout(() => searchEditorNameRef.current?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) {
+        setDraft(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKeyDown);
+      searchEditorReturnFocusRef.current?.focus();
+    };
+  }, [editorOpen, busy]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -220,9 +242,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     });
   }
 
-  function beginEdit(search?: SavedSearch) {
+  function beginEdit(search?: SavedSearch, trigger?: HTMLElement | null) {
     if (!search) {
-      setDraft({ ...EMPTY_DRAFT });
+      searchEditorReturnFocusRef.current =
+      trigger ??
+      (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    setDraft({ ...EMPTY_DRAFT });
       return;
     }
     setDraft({
@@ -374,7 +399,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
             Choose the searches to run. JOLT checks them in one visible LinkedIn session, removes duplicates, and prepares only new jobs for review.
           </p>
         </div>
-        <button type="button" className="secondary" onClick={() => beginEdit()} disabled={busy}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={(event) => beginEdit(undefined, event.currentTarget)}
+          disabled={busy}
+        >
           Add search
         </button>
       </div>
@@ -388,6 +418,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
             <label>
               Name
               <input
+                ref={searchEditorNameRef}
                 value={draft.label}
                 onChange={(event) => setDraft({ ...draft, label: event.target.value })}
                 placeholder="LinkedIn IT Support"
@@ -521,7 +552,12 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 <details className="search-row-menu">
                   <summary aria-label={`Actions for ${search.label}`}>⋯</summary>
                   <div>
-                    <button type="button" className="secondary" onClick={() => beginEdit(search)} disabled={busy || batchIsActive}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={(event) => beginEdit(search, event.currentTarget)}
+                      disabled={busy || batchIsActive}
+                    >
                       Edit
                     </button>
                     <button type="button" className="danger" onClick={() => void deleteSearch(search)} disabled={busy || batchIsActive}>
