@@ -467,18 +467,31 @@ def _validate_capture_membership(
                 location=posting.location,
                 source_text=source_text,
             )
-            if deterministic_location.hardline_reject and (
-                job.hardline_status != "REJECT"
-                or job.location_eligibility != "ineligible"
-                or job.final_decision != "reject"
-                or job.fit_analysis_allowed
-                or job.technical_fit_percent is not None
+            if (
+                deterministic_location.hardline_reject
+                and job.official_source_status != "verified"
             ):
-                evidence = "; ".join(deterministic_location.negative_evidence)
-                raise ValueError(
-                    "AI review conflicts with deterministic source evidence for "
-                    f"{job.posting_id}: {evidence}"
-                )
+                if request.contract_version == "1.1":
+                    conflict = (
+                        job.hardline_status != "REJECT"
+                        or job.location_eligibility != "ineligible"
+                        or job.final_decision != "reject"
+                        or job.fit_analysis_allowed
+                        or job.technical_fit_percent is not None
+                    )
+                else:
+                    conflict = (
+                        job.hardline_status != "REJECT"
+                        or job.location_eligibility != "ineligible"
+                        or job.final_decision != "reject"
+                        or job.pre_application_decision != "SKIP_BY_LOCATION"
+                    )
+                if conflict:
+                    evidence = "; ".join(deterministic_location.negative_evidence)
+                    raise ValueError(
+                        "AI review conflicts with deterministic source evidence for "
+                        f"{job.posting_id}: {evidence}"
+                    )
 
         if job.duplicate_of_posting_id is not None:
             if job.duplicate_of_posting_id == job.posting_id:
