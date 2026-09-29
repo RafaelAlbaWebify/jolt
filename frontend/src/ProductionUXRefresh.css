@@ -388,6 +388,7 @@ body {
 .application-lane-cards {
   min-height: 0;
   align-content: start;
+  grid-auto-rows: max-content;
   gap: 7px;
   overflow-y: auto;
   overflow-x: hidden;
