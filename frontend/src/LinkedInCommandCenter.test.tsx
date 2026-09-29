@@ -84,6 +84,7 @@ describe("LinkedInCommandCenter", () => {
       expect.objectContaining({ method: "POST" }),
     ));
     expect(await screen.findByText("Profile saved in LinkedIn Profile history.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
     expect(screen.getByText("Application Support Engineer")).toBeInTheDocument();
   });
 
@@ -101,8 +102,8 @@ describe("LinkedInCommandCenter", () => {
       "http://api/api/linkedin-command-center/recommendations/recommendation-1/status",
       expect.objectContaining({ method: "POST" }),
     ));
-    expect(await screen.findByDisplayValue("implemented")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add manually" })).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Done")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add evidence" })).toBeInTheDocument();
   });
 
   it("sends the configured Connections capture limit", async () => {
