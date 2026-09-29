@@ -381,5 +381,3 @@ it("moves focus into the saved-search editor and restores it on Escape", async (
     );
     await waitFor(() => expect(addSearch).toHaveFocus());
   });
-
-});
