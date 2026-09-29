@@ -1060,3 +1060,183 @@ body {
   overflow: hidden;
 }
 
+
+
+/* Review Inbox visual polish */
+.workspace-view-opportunities .opportunity-workspace {
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  gap: 0;
+}
+
+.review-inbox-meta-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-top: 1px solid #e7ebf2;
+  border-bottom: 1px solid #e7ebf2;
+  background: #fafbfc;
+}
+
+.review-inbox-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: #667085;
+  font-size: 0.74rem;
+}
+
+.review-inbox-count strong {
+  color: #344054;
+  font-size: 0.78rem;
+}
+
+.review-inbox-maintenance {
+  position: relative;
+  margin: 0;
+  justify-self: auto !important;
+  font-size: 0.72rem;
+}
+
+.review-inbox-maintenance > summary {
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: #667085;
+}
+
+.review-inbox-maintenance > summary:hover {
+  background: #eef2f7;
+  color: #344054;
+}
+
+.review-inbox-maintenance-menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(360px, 70vw);
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(31, 41, 55, 0.12);
+}
+
+.review-inbox-maintenance-menu p {
+  margin: 0 0 10px;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.opportunity-query-tools {
+  grid-template-columns: minmax(320px, 1fr) minmax(190px, 340px);
+  gap: 12px;
+  padding: 8px 12px 9px;
+}
+
+.opportunity-query-tools label {
+  gap: 4px;
+  font-size: 0.7rem;
+}
+
+.opportunity-query-tools input,
+.opportunity-query-tools select {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
+.queue-page-summary {
+  min-height: 25px;
+  padding: 4px 2px !important;
+  border-top: 1px solid #eef1f5;
+  border-bottom: 1px solid #eef1f5;
+  background: #fafbfc;
+  font-size: 0.72rem !important;
+}
+
+.opportunity-row-primary {
+  grid-template-columns: minmax(320px, 1fr) 72px minmax(105px, 150px) minmax(190px, 260px) auto;
+  gap: 10px;
+  padding: 9px 18px;
+}
+
+.opportunity-row-title h3 {
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.opportunity-row-title p {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.opportunity-row .score {
+  min-width: 70px;
+  min-height: 54px;
+  padding: 5px 7px;
+  border-radius: 10px;
+}
+
+.opportunity-row .score strong {
+  font-size: 1.18rem;
+}
+
+.opportunity-row .score span {
+  margin-top: 2px;
+  font-size: 0.62rem;
+  line-height: 1.05;
+}
+
+.opportunity-state {
+  gap: 2px;
+}
+
+.opportunity-state strong {
+  font-size: 0.72rem;
+}
+
+.opportunity-state span {
+  font-size: 0.66rem;
+  line-height: 1.2;
+}
+
+.decision-control {
+  gap: 3px;
+  font-size: 0.66rem;
+}
+
+.decision-control select {
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 0.76rem;
+}
+
+.inspect-opportunity {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+}
+
+.pagination {
+  min-height: 48px;
+  gap: 10px;
+  margin-top: 0;
+  padding: 7px 12px;
+}
+
+.pagination button {
+  min-height: 34px;
+  padding: 6px 11px;
+  font-size: 0.76rem;
+}
+
+.pagination span {
+  font-size: 0.74rem;
+}
