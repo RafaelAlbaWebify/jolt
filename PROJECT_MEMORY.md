@@ -3,7 +3,7 @@
 This file records durable product contracts, project boundaries, and development rules.
 Review it before changing existing JOLT behavior.
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-29
 
 ## Product purpose
 
@@ -266,3 +266,68 @@ Update this file when:
 Do not fill this file with temporary debugging notes or transient implementation details.
 
 - Mixed-batch cleanup regression coverage must verify that the application index still contains any pursued/applied opportunity after the capture batch is archived.
+
+
+## 2026-09-28/29 — Production job-search mode
+
+JOLT is now used for the real job search rather than readiness testing.
+
+Normal loop:
+
+1. Run the production saved-search portfolio in Capture Jobs.
+2. Export only new jobs for review.
+3. Review with ChatGPT.
+4. Import the validated review file through JOLT.
+5. Make the final human decision in Review Inbox.
+6. Track the exact application, CV/document, interviews and outcome in Applications.
+7. Use Search Performance and Market Insights as feedback.
+
+PowerShell/API use during the September search audit was an analysis shortcut only. The product UI already implements the AI review exchange/import.
+
+### Search tuning boundary
+
+The V1/V2/V3 broad search experiments are complete. Do not resume broad A/B keyword experimentation by default.
+
+Change a production saved search only when real evidence shows one of:
+- repeated operational failure;
+- sustained low actionable yield;
+- materially different application/interview/offer outcomes;
+- or a deliberate target-role/geography change by the user.
+
+Capture volume alone is not success.
+
+### Application documents
+
+For new applications, Documents is the primary source of truth for the actual CV/supporting file used. Legacy `resume_used` text may remain as historical context but must not be reintroduced as a duplicate required input.
+
+Stored file retention:
+- active application: keep;
+- reversible hide/archive: keep;
+- `offer_accepted`: keep;
+- non-success final outcome: purge stored file bytes while preserving necessary record/timeline metadata.
+
+### UX development boundary
+
+The September UX stabilization work deliberately simplifies daily operator paths without changing backend enums/contracts solely for presentation.
+
+Rules:
+- operator-facing UI uses human language; internal enums remain implementation details;
+- destructive/maintenance actions do not compete with primary actions;
+- one normal interaction model should exist for a task unless a second one has a proven accessibility/operator need;
+- advanced diagnostics/provenance stay available but are collapsed away from daily use;
+- dialogs must support sensible keyboard/focus behavior;
+- acceptance audits must validate the current product journey, not historical labels.
+
+After the bounded UX pass closes, do not continue redesigning speculatively. Further UX work should start from observed operator friction.
+
+### Discovery restart recovery
+
+Discovery workers are process-local. On backend startup, stale persisted `scheduled/running` batches are reconciled to terminal state while completed search captures are preserved. Normal `queued` state remains valid and must not be failed merely because the backend restarted.
+
+PR #437 is the certified implementation of this invariant.
+
+### Saved-search performance attribution
+
+Search Performance uses existing durable lineage to describe which saved searches observed jobs that later became AI-positive, human-pursued, submitted, interviewed or offered.
+
+Overlapping saved searches may both receive multi-touch credit for the same canonical posting. This is discovery attribution, not exclusive causal attribution. JOLT must not auto-disable/rank searches from this metric.
