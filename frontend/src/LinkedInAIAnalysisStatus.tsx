@@ -91,49 +91,31 @@ export function LinkedInAIAnalysisStatus({ apiBase, active, importRevision = 0 }
 
   const statusLabel = {
     no_evidence: "No profile evidence yet",
-    not_analyzed: "Needs ChatGPT analysis",
-    stale: "Analysis outdated",
-    current: "Current",
+    not_analyzed: "Analysis needed",
+    stale: "Update available",
+    current: "Up to date",
   }[analysisState];
 
   const nextStep = {
-    no_evidence: "Capture your enabled LinkedIn profile sections first.",
-    not_analyzed: "Export the AI Work Package from Settings & Data, analyze it in ChatGPT, then import the returned update.",
-    stale: "Your LinkedIn evidence is newer than the latest ChatGPT review. Export a fresh AI Work Package and run the round trip again.",
-    current: "Your latest captured profile evidence has a ChatGPT review that is at least as recent.",
+    no_evidence: "Refresh your enabled profile sources first.",
+    not_analyzed: "Profile evidence is ready for analysis.",
+    stale: "New profile evidence is available since the last analysis.",
+    current: "Analysis reflects your latest profile evidence.",
   }[analysisState];
 
   return (
-    <section className="panel" aria-labelledby="linkedin-ai-analysis-heading">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">AI round trip</p>
-          <h3 id="linkedin-ai-analysis-heading">LinkedIn profile analysis</h3>
-          <p>{nextStep}</p>
-        </div>
-        <strong>{statusLabel}</strong>
+    <section className="panel linkedin-analysis-summary" aria-labelledby="linkedin-ai-analysis-heading">
+      <div>
+        <p className="eyebrow">Profile analysis</p>
+        <h3 id="linkedin-ai-analysis-heading">Analysis status</h3>
+        <p>{nextStep}</p>
       </div>
-
+      <div className="linkedin-analysis-meta">
+        <span className="linkedin-analysis-status">{statusLabel}</span>
+        <span>Latest profile: {formatDate(latestCaptureAt)}</span>
+        <span>Latest analysis: {formatDate(latestFeedback?.reviewed_at)}</span>
+      </div>
       {error && <p className="error" role="alert">{error}</p>}
-
-      <div className="market-summary-grid">
-        <article className="market-card">
-          <span>Profile snapshots</span>
-          <strong>{profile?.capture_count ?? 0}</strong>
-        </article>
-        <article className="market-card">
-          <span>Latest profile capture</span>
-          <strong>{formatDate(latestCaptureAt)}</strong>
-        </article>
-        <article className="market-card">
-          <span>Latest ChatGPT review</span>
-          <strong>{formatDate(latestFeedback?.reviewed_at)}</strong>
-        </article>
-        <article className="market-card">
-          <span>Imported into JOLT</span>
-          <strong>{formatDate(latestFeedback?.imported_at)}</strong>
-        </article>
-      </div>
     </section>
   );
 }
