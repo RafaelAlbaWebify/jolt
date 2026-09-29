@@ -9,6 +9,7 @@ from jolt.employment_geography import normalized_location_scope
 @dataclass(frozen=True)
 class LocationEvidenceResult:
     location_eligibility: str
+    remote_scope: str
     hardline_reject: bool
     positive_evidence: tuple[str, ...]
     negative_evidence: tuple[str, ...]
@@ -216,6 +217,54 @@ _US_LOCATION_PATTERN = re.compile(
     r"\b(?:united states(?: of america)?|usa|u\.s\.|u\.s\.a\.)\b", re.I
 )
 
+_REMOTE_SCOPE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "USA_only",
+        re.compile(
+            r"\bremote\s+(?:usa|u\.?s\.?|united states)(?:\s*[-–—]\s*(?:east|west)\s+coast)?\b|"
+            r"\b(?:usa|u\.?s\.?|united states)\s+(?:east|west)\s+coast\b|"
+            r"\b(?:u\.?s\.?|us)\s+east\s+coast\b|"
+            r"\bremote\s+usa\s*[-–—]\s*east\s+coast\b",
+            re.I,
+        ),
+    ),
+    (
+        "EMEA",
+        re.compile(r"\bremote\s+(?:in\s+)?emea\b|\bemea\s+remote\b", re.I),
+    ),
+    (
+        "Europe",
+        re.compile(
+            r"\bremote\s+(?:in\s+)?(?:europe|eu)\b|"
+            r"\b(?:europe|eu)\s+remote\b|"
+            r"\bwork\s+remotely\s+from\s+(?:europe|the\s+eu)\b",
+            re.I,
+        ),
+    ),
+    (
+        "Spain",
+        re.compile(
+            r"\bremote\s+(?:in\s+|from\s+)?spain\b|\bspain\s+remote\b",
+            re.I,
+        ),
+    ),
+    (
+        "worldwide",
+        re.compile(
+            r"\bremote\s+worldwide\b|\bworldwide\s+remote\b|"
+            r"\bwork\s+from\s+anywhere\b|\bglobal\s+remote\b",
+            re.I,
+        ),
+    ),
+)
+
+_REGION_BOUND_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bnorth\s+america\s+(?:region|customers?|market|coverage)\b", re.I),
+    re.compile(r"\b(?:support|responsible\s+for|cover)\b[^.\n]{0,80}\bnorth\s+america\b", re.I),
+)
+
+_COUNTERPART_EMEA_PATTERN = re.compile(r"\bcounterpart\s+in\s+emea\b", re.I)
+
 
 def _unique(values: list[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
@@ -251,6 +300,54 @@ def _uppercase_state_abbreviation_in_residency(source_text: str) -> str | None:
     return match.group(0) if match else None
 
 
+def classify_remote_scope(*, location: str, source_text: str) -> tuple[str, tuple[str, ...]]:
+    combined = "\n".join(part for part in (location, source_text) if part)
+    evidence: list[str] = []
+
+    # Restrictive US wording has precedence over generic remote labels.
+    for scope, pattern in _REMOTE_SCOPE_PATTERNS:
+        match = pattern.search(combined)
+        if match:
+            evidence.append(match.group(0))
+            if scope == "USA_only":
+                return scope, _unique(evidence)
+
+    region_matches = [
+        match.group(0)
+        for pattern in _REGION_BOUND_PATTERNS
+        if (match := pattern.search(combined))
+    ]
+    if region_matches:
+        evidence.extend(region_matches)
+        counterpart = _COUNTERPART_EMEA_PATTERN.search(combined)
+        if counterpart:
+            evidence.append(counterpart.group(0))
+        return "region_bound", _unique(evidence)
+
+    for scope, pattern in _REMOTE_SCOPE_PATTERNS:
+        if scope == "USA_only":
+            continue
+        match = pattern.search(combined)
+        if match:
+            return scope, _unique([match.group(0)])
+
+    location_scope = normalized_location_scope(location)
+    if location_scope == "spain":
+        return "Spain", _unique([location])
+    if location_scope == "broad":
+        lowered = location.casefold()
+        if "emea" in lowered:
+            return "EMEA", _unique([location])
+        if "europe" in lowered or "european union" in lowered or lowered.strip() == "eu":
+            return "Europe", _unique([location])
+    if location_scope == "foreign_country":
+        if _US_LOCATION_PATTERN.search(location):
+            return "USA_only", _unique([location])
+        return "specific_country", _unique([location])
+
+    return "unknown", ()
+
+
 def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvidenceResult:
     """Extract explicit hiring-geography evidence without performing fit analysis.
 
@@ -260,8 +357,15 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
     """
 
     combined = "\n".join(part for part in (location, source_text) if part)
+    remote_scope, remote_scope_evidence = classify_remote_scope(
+        location=location,
+        source_text=source_text,
+    )
     negative: list[str] = []
     positive: list[str] = []
+
+    if remote_scope in {"USA_only", "region_bound"}:
+        negative.extend(remote_scope_evidence)
 
     for label, pattern in _NEGATIVE_PATTERNS:
         match = pattern.search(combined)
@@ -303,6 +407,7 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
     if negative_evidence:
         return LocationEvidenceResult(
             location_eligibility="ineligible",
+            remote_scope=remote_scope,
             hardline_reject=True,
             positive_evidence=positive_evidence,
             negative_evidence=negative_evidence,
@@ -311,6 +416,7 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
     if positive_evidence:
         return LocationEvidenceResult(
             location_eligibility="eligible",
+            remote_scope=remote_scope,
             hardline_reject=False,
             positive_evidence=positive_evidence,
             negative_evidence=(),
@@ -318,6 +424,7 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
 
     return LocationEvidenceResult(
         location_eligibility="conditional",
+        remote_scope=remote_scope,
         hardline_reject=False,
         positive_evidence=(),
         negative_evidence=(),
