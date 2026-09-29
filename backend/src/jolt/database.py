@@ -290,6 +290,37 @@ class AIReview(Base):
     employment_constraints_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     fit_analysis_allowed: Mapped[bool] = mapped_column(default=True, nullable=False)
     decision_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    pre_application_decision: Mapped[str] = mapped_column(String(50), default="", nullable=False)
+    remote_scope: Mapped[str] = mapped_column(String(30), default="unknown", nullable=False)
+    work_authorization_status: Mapped[str] = mapped_column(
+        String(20), default="unknown", nullable=False
+    )
+    conditions_status: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    official_source_status: Mapped[str] = mapped_column(
+        String(20), default="not_checked", nullable=False
+    )
+    official_source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    official_source_location: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    official_source_evidence_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
+    experience_evidence_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    questions_for_user_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    company_watch: Mapped[bool] = mapped_column(default=False, nullable=False)
+    company_watch_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    company_watch_role_patterns_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
+    recommended_cv_master_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    recommended_certifications_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
+    linkedin_skill_suggestions_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
+    certification_inventory_complete: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
     duplicate_of_posting_id: Mapped[str | None] = mapped_column(
         ForeignKey("postings.id"),
         nullable=True,
@@ -305,6 +336,25 @@ class AIReview(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+
+
+class CompanyWatch(Base):
+    __tablename__ = "company_watch"
+    __table_args__ = (
+        UniqueConstraint("company_key", name="uq_company_watch_company_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    company_name: Mapped[str] = mapped_column(Text, nullable=False)
+    company_key: Mapped[str] = mapped_column(String(300), nullable=False, index=True)
+    source_posting_id: Mapped[str | None] = mapped_column(
+        ForeignKey("postings.id"), nullable=True, index=True
+    )
+    reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    role_patterns_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class ReviewDecision(Base):
