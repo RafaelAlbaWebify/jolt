@@ -489,4 +489,35 @@ describe("App AI review workflow", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("moves focus into the inspector and restores it when Escape closes the dialog", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([reviewedOpportunity]),
+    );
+
+    render(<App />);
+
+    await screen.findByText("Application Support Engineer");
+    const inspect = screen.getByRole("button", { name: "Inspect" });
+    inspect.focus();
+    fireEvent.click(inspect);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Application Support Engineer",
+    });
+    const close = screen.getByRole("button", { name: "Close" });
+
+    await waitFor(() => expect(close).toHaveFocus());
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Application Support Engineer" }),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(inspect).toHaveFocus());
+  });
+
 });
