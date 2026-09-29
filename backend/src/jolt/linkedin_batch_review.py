@@ -30,13 +30,13 @@ from jolt.preference_aware_evaluation import sanitize_capture_text
 
 BATCH_REVIEW_CONTRACT_TYPE = "jolt_ai_review_batch"
 BATCH_REVIEW_CONTRACT_VERSION = "1.0"
-AI_REVIEW_CONTRACT_VERSION = "1.1"
+AI_REVIEW_CONTRACT_VERSION = "1.2"
 
 
 class BatchAIReviewImportRequest(BaseModel):
     contract_type: Literal["jolt_ai_review_batch"]
     contract_version: Literal["1.0"]
-    ai_review_contract_version: Literal["1.1"]
+    ai_review_contract_version: Literal["1.1", "1.2"]
     discovery_batch_id: str = Field(min_length=1)
     review_source: Literal["chatgpt_source_first"]
     review_version: str = Field(min_length=1, max_length=80)
@@ -287,12 +287,29 @@ def _response_template(batch_id: str) -> dict[str, object]:
                 "hardline_status": "PASS|REJECT|MANUAL_REVIEW",
                 "hardline_reasons": [],
                 "location_eligibility": "eligible|conditional|ineligible|unknown",
+                "remote_scope": "worldwide|EMEA|Europe|Spain|specific_country|USA_only|region_bound|unknown",
                 "location_evidence": [],
+                "work_authorization_status": "clear|conditional|blocked|unknown",
+                "conditions_status": "clear|conditional|blocked|unknown",
+                "official_source_status": "verified|not_found|unavailable|not_checked",
+                "official_source_url": "",
+                "official_source_location": "",
+                "official_source_evidence": [],
                 "mandatory_requirements": [],
                 "mandatory_requirement_results": [],
+                "experience_evidence": [],
+                "questions_for_user": [],
                 "employment_constraints": [],
                 "fit_analysis_allowed": True,
                 "technical_fit_percent": None,
+                "pre_application_decision": "APPLY_HIGH_FIT|APPLY_MEDIUM_FIT|SKIP_BY_LOCATION|SKIP_BY_WORK_AUTHORIZATION|SKIP_BY_SALARY_CONDITIONS|SKIP_BY_TECHNICAL_FIT|TARGET_COMPANY_WATCH|NEEDS_USER_CONFIRMATION",
+                "company_watch": False,
+                "company_watch_reason": "",
+                "company_watch_role_patterns": [],
+                "recommended_cv_master": None,
+                "recommended_certifications": [],
+                "linkedin_skill_suggestions": [],
+                "certification_inventory_complete": False,
                 "final_decision": "strong_pursue|pursue|conditional|reject",
                 "decision_reason": "",
                 "decision": "strong_pursue|pursue|conditional|reject",
@@ -363,6 +380,7 @@ def build_batch_ai_review_document(session: Session, batch_id: str) -> dict[str,
                 "location": posting.location,
                 "location_hardline_evidence": {
                     "location_eligibility": location_signals.location_eligibility,
+                    "remote_scope": location_signals.remote_scope,
                     "hardline_reject": location_signals.hardline_reject,
                     "positive_evidence": list(location_signals.positive_evidence),
                     "negative_evidence": list(location_signals.negative_evidence),
