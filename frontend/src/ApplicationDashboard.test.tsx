@@ -126,19 +126,6 @@ const application: TestApplication = {
   ],
 };
 
-function currentDataTransfer() {
-  return {
-    effectAllowed: "",
-    setData: vi.fn(),
-    getData: vi.fn(),
-    clearData: vi.fn(),
-    dropEffect: "move",
-    files: [],
-    items: [],
-    types: [],
-    setDragImage: vi.fn(),
-  } as unknown as DataTransfer;
-}
 
 describe("ApplicationDashboard", () => {
   afterEach(() => {
@@ -249,14 +236,17 @@ describe("ApplicationDashboard", () => {
     expect(await screen.findByText("Application Support Engineer moved to Interviewing.")).toBeInTheDocument();
   });
 
-  it("isolates dragging to an explicit handle instead of the interactive card", async () => {
+  it("uses one explicit stage control per application card", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
-    const openButton = await screen.findByRole("button", { name: "Open Application Support Engineer" });
-    expect(openButton.closest("article")).toHaveAttribute("draggable", "false");
-    expect(screen.getByRole("button", { name: "Drag Application Support Engineer to another stage" })).toHaveAttribute("draggable", "true");
+    await screen.findByRole("button", { name: "Open Application Support Engineer" });
     expect(screen.getByLabelText("Move Application Support Engineer to stage")).toBeEnabled();
+    expect(
+      screen.queryByRole("button", {
+        name: "Drag Application Support Engineer to another stage",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([
@@ -269,12 +259,12 @@ describe("ApplicationDashboard", () => {
 
     fireEvent.change(await screen.findByLabelText(`Move ${title} to stage`), { target: { value: "closed" } });
 
-    const dialog = screen.getByRole("dialog", { name: `Close ${title}` });
+    const dialog = screen.getByRole("dialog", { name: `What happened with ${title}?` });
     expect(dialog.closest("article")).toBeNull();
     expect(dialog.closest(".application-lane")).toBeNull();
-    expect(screen.getByLabelText(`Close ${title} with outcome`)).toHaveValue("rejected_by_employer");
+    expect(screen.getByLabelText(`Outcome for ${title}`)).toHaveValue("rejected_by_employer");
     expect(screen.getByText(`Current stage: ${String(status).replaceAll("_", " ")}`)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm close" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save outcome" })).toBeInTheDocument();
   });
 
   it("uses offer-specific outcomes when closing an offer card", async () => {
@@ -284,7 +274,7 @@ describe("ApplicationDashboard", () => {
     fireEvent.change(await screen.findByLabelText("Move Technical Support Engineer to stage"), {
       target: { value: "closed" },
     });
-    const outcome = screen.getByLabelText("Close Technical Support Engineer with outcome");
+    const outcome = screen.getByLabelText("Outcome for Technical Support Engineer");
     expect(Array.from(outcome.querySelectorAll("option")).map((option) => option.value)).toEqual([
       "offer_accepted",
       "offer_declined",
@@ -300,26 +290,10 @@ describe("ApplicationDashboard", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(screen.queryByRole("dialog", { name: "Close Application Support Engineer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "What happened with Application Support Engineer?" })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
   });
 
-  it("routes drag-and-drop to Closed through the same close dialog", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
-    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
-
-    const handle = await screen.findByRole("button", { name: "Drag Application Support Engineer to another stage" });
-    const closedLane = screen.getByRole("heading", { name: "Closed" }).closest("section");
-    expect(closedLane).not.toBeNull();
-    const dataTransfer = currentDataTransfer();
-    fireEvent.dragStart(handle, { dataTransfer });
-    fireEvent.dragEnter(closedLane!, { dataTransfer });
-    fireEvent.dragOver(closedLane!, { dataTransfer });
-    fireEvent.drop(closedLane!, { dataTransfer });
-
-    expect(screen.getByRole("dialog", { name: "Close Application Support Engineer" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Close Application Support Engineer with outcome")).toBeInTheDocument();
-  });
 
   it("closes an applied card through an explicit final outcome", async () => {
     let currentPipeline: TestOpportunity[] = pipeline;
@@ -341,7 +315,7 @@ describe("ApplicationDashboard", () => {
     fireEvent.change(await screen.findByLabelText("Move Application Support Engineer to stage"), {
       target: { value: "closed" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save outcome" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/api/applications/application-1/outcomes",
@@ -503,4 +477,50 @@ describe("ApplicationDashboard", () => {
     expect(screen.queryByRole("button", { name: "Open Application Support Engineer" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Preparing count")).toHaveTextContent("0");
   });
+
+  it("keeps Hide from board behind the secondary More menu", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/application-index")) return jsonResponse(pipeline);
+      if (url.endsWith("/api/applications/application-1/archive") && init?.method === "POST") {
+        return jsonResponse({ ...application, status: "archived" });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+    await screen.findByRole("button", { name: "Open Application Support Engineer" });
+
+    expect(screen.queryByRole("button", { name: "Hide from board" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("More actions for Application Support Engineer"));
+    fireEvent.click(screen.getByRole("button", { name: "Hide from board" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Hide Application Support Engineer from the board? You can restore it later. Its history and files will be kept.",
+    );
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/archive",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+  });
+
+  it("treats an accepted offer as a neutral final outcome action", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    fireEvent.change(await screen.findByLabelText("Move Technical Support Engineer to stage"), {
+      target: { value: "closed" },
+    });
+
+    const outcome = screen.getByLabelText("Outcome for Technical Support Engineer");
+    expect(outcome).toHaveValue("offer_accepted");
+
+    const save = screen.getByRole("button", { name: "Save outcome" });
+    expect(save).not.toHaveClass("danger");
+  });
+
 });
