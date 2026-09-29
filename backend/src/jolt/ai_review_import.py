@@ -230,8 +230,11 @@ def _validate_v12_job(job: AIReviewJob) -> None:
     if decision is None:
         raise ValueError("AI review contract 1.2 requires pre_application_decision")
 
-    if job.official_source_status == "verified" and not job.official_source_url.strip():
-        raise ValueError("Verified official source requires official_source_url")
+    if job.official_source_status == "verified":
+        if not job.official_source_url.strip():
+            raise ValueError("Verified official source requires official_source_url")
+        if not job.official_source_evidence:
+            raise ValueError("Verified official source requires official_source_evidence")
 
     if job.remote_scope == "USA_only" and decision != "SKIP_BY_LOCATION":
         raise ValueError("USA_only roles require SKIP_BY_LOCATION")
