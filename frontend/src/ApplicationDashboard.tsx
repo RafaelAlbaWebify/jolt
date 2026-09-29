@@ -429,6 +429,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     ) as Record<PipelineLane, Opportunity[]>,
     [visibleActiveCandidates],
   );
+  const boardApplicationCount = LANES.reduce((total, lane) => total + grouped[lane.id].length, 0);
   const selected = candidates.find((item) => item.posting_id === selectedPostingId) ?? null;
   const closingItem = activeCandidates.find((item) => item.posting_id === closingPostingId) ?? null;
 
@@ -713,7 +714,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       {moveNotice && <p className="application-move-notice" role="status">{moveNotice}</p>}
 
       <div className={`application-board application-board-${density}`} aria-label="Application pipeline board">
-        {visibleActiveCandidates.length === 0 && (
+        {boardApplicationCount === 0 && (
           <div className="application-board-empty-state">
             <strong>No active applications yet</strong>
             <span>{query.trim() ? "No applications match this search." : "Move a suitable job from Review Inbox to start tracking it here."}</span>
