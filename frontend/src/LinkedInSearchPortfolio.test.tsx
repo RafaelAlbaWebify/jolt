@@ -232,7 +232,7 @@ it("keeps critical discovery controls visible when search and batch lists are lo
   );
 
   expect(await screen.findByText("Search settings (21)")).toBeInTheDocument();
-  expect(screen.getByText("Export new jobs for review")).toBeInTheDocument();
+  expect(screen.getByText("Download review package")).toBeInTheDocument();
   expect(screen.getByText("Import reviewed jobs")).toBeInTheDocument();
 
   const activeDetails = container.querySelector(".active-searches-details");
