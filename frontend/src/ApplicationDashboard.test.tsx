@@ -477,4 +477,50 @@ describe("ApplicationDashboard", () => {
     expect(screen.queryByRole("button", { name: "Open Application Support Engineer" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Preparing count")).toHaveTextContent("0");
   });
+
+  it("keeps Hide from board behind the secondary More menu", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/application-index")) return jsonResponse(pipeline);
+      if (url.endsWith("/api/applications/application-1/archive") && init?.method === "POST") {
+        return jsonResponse({ ...application, status: "archived" });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+    await screen.findByRole("button", { name: "Open Application Support Engineer" });
+
+    expect(screen.queryByRole("button", { name: "Hide from board" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("More actions for Application Support Engineer"));
+    fireEvent.click(screen.getByRole("button", { name: "Hide from board" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Hide Application Support Engineer from the board? You can restore it later. Its history and files will be kept.",
+    );
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/applications/application-1/archive",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+  });
+
+  it("treats an accepted offer as a neutral final outcome action", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    fireEvent.change(await screen.findByLabelText("Move Technical Support Engineer to stage"), {
+      target: { value: "closed" },
+    });
+
+    const outcome = screen.getByLabelText("Outcome for Technical Support Engineer");
+    expect(outcome).toHaveValue("offer_accepted");
+
+    const save = screen.getByRole("button", { name: "Save outcome" });
+    expect(save).not.toHaveClass("danger");
+  });
+
 });
