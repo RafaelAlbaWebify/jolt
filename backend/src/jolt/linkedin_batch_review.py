@@ -10,7 +10,12 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.ai_review_import import AIReviewJob, MandatoryRequirementResult
+from jolt.ai_review_import import (
+    AIReviewJob,
+    MandatoryRequirementResult,
+    _upsert_company_watch,
+    _validate_v12_job,
+)
 from jolt.ai_review_pack import _analysis_text
 from jolt.database import (
     AIReview,
@@ -58,12 +63,45 @@ class BatchAIReviewImportRequest(BaseModel):
             "final_decision",
             "decision_reason",
         }
+        if self.ai_review_contract_version == "1.2":
+            required_fields |= {
+                "pre_application_decision",
+                "remote_scope",
+                "work_authorization_status",
+                "conditions_status",
+                "official_source_status",
+                "official_source_url",
+                "official_source_location",
+                "official_source_evidence",
+                "experience_evidence",
+                "questions_for_user",
+                "company_watch",
+                "company_watch_reason",
+                "company_watch_role_patterns",
+                "recommended_cv_master",
+                "recommended_certifications",
+                "linkedin_skill_suggestions",
+                "certification_inventory_complete",
+            }
+
         for job in self.jobs:
             missing = required_fields - job.model_fields_set
             if missing:
                 raise ValueError(
-                    "Batch AI review is missing hardline fields: " + ", ".join(sorted(missing))
+                    "Batch AI review is missing fields: " + ", ".join(sorted(missing))
                 )
+
+            if self.ai_review_contract_version == "1.1":
+                if job.hardline_status in {"REJECT", "MANUAL_REVIEW"}:
+                    if job.fit_analysis_allowed or job.technical_fit_percent is not None:
+                        raise ValueError(
+                            "AI review contract 1.1 requires REJECT/MANUAL_REVIEW to stop fit analysis"
+                        )
+                if job.hardline_status == "PASS" and not job.fit_analysis_allowed:
+                    raise ValueError("AI review contract 1.1 PASS must allow fit analysis")
+            else:
+                _validate_v12_job(job)
+
             if job.final_decision in {"strong_pursue", "pursue"}:
                 if job.hardline_status != "PASS":
                     raise ValueError("Positive decisions require hardline_status=PASS")
@@ -481,18 +519,28 @@ def _validate_batch_membership(
             location=posting.location,
             source_text=source_text,
         )
-        if deterministic_location.hardline_reject and (
-            job.hardline_status != "REJECT"
-            or job.location_eligibility != "ineligible"
-            or job.final_decision != "reject"
-            or job.fit_analysis_allowed
-            or job.technical_fit_percent is not None
-        ):
-            evidence = "; ".join(deterministic_location.negative_evidence)
-            raise ValueError(
-                "AI review conflicts with deterministic source evidence for "
-                f"{job.posting_id}: {evidence}"
-            )
+        if deterministic_location.hardline_reject and job.official_source_status != "verified":
+            if request.ai_review_contract_version == "1.1":
+                conflict = (
+                    job.hardline_status != "REJECT"
+                    or job.location_eligibility != "ineligible"
+                    or job.final_decision != "reject"
+                    or job.fit_analysis_allowed
+                    or job.technical_fit_percent is not None
+                )
+            else:
+                conflict = (
+                    job.hardline_status != "REJECT"
+                    or job.location_eligibility != "ineligible"
+                    or job.final_decision != "reject"
+                    or job.pre_application_decision != "SKIP_BY_LOCATION"
+                )
+            if conflict:
+                evidence = "; ".join(deterministic_location.negative_evidence)
+                raise ValueError(
+                    "AI review conflicts with deterministic source evidence for "
+                    f"{job.posting_id}: {evidence}"
+                )
 
         if job.duplicate_of_posting_id is not None:
             if job.duplicate_of_posting_id == job.posting_id:
@@ -561,6 +609,10 @@ def import_batch_ai_review(
         review_item = expected[job.posting_id]
         key = (review_item.representative_capture_run_id, job.posting_id)
         review = existing_reviews.get(key)
+        posting = session.get(Posting, job.posting_id)
+        if posting is None:
+            raise ValueError(f"AI review references unknown posting: {job.posting_id}")
+        _upsert_company_watch(session, posting, job)
         values = {
             "source_job_id": job.source_job_id,
             "review_version": request.review_version,
@@ -584,6 +636,39 @@ def import_batch_ai_review(
             ),
             "fit_analysis_allowed": job.fit_analysis_allowed,
             "decision_reason": job.decision_reason,
+            "pre_application_decision": job.pre_application_decision or "",
+            "remote_scope": job.remote_scope,
+            "work_authorization_status": job.work_authorization_status,
+            "conditions_status": job.conditions_status,
+            "official_source_status": job.official_source_status,
+            "official_source_url": job.official_source_url,
+            "official_source_location": job.official_source_location,
+            "official_source_evidence_json": json.dumps(
+                job.official_source_evidence, ensure_ascii=False
+            ),
+            "experience_evidence_json": json.dumps(
+                [item.model_dump() for item in job.experience_evidence],
+                ensure_ascii=False,
+            ),
+            "questions_for_user_json": json.dumps(job.questions_for_user, ensure_ascii=False),
+            "company_watch": job.company_watch,
+            "company_watch_reason": job.company_watch_reason,
+            "company_watch_role_patterns_json": json.dumps(
+                job.company_watch_role_patterns, ensure_ascii=False
+            ),
+            "recommended_cv_master_json": json.dumps(
+                job.recommended_cv_master.model_dump()
+                if job.recommended_cv_master is not None
+                else {},
+                ensure_ascii=False,
+            ),
+            "recommended_certifications_json": json.dumps(
+                job.recommended_certifications, ensure_ascii=False
+            ),
+            "linkedin_skill_suggestions_json": json.dumps(
+                job.linkedin_skill_suggestions, ensure_ascii=False
+            ),
+            "certification_inventory_complete": job.certification_inventory_complete,
             "duplicate_of_posting_id": job.duplicate_of_posting_id,
             "summary": job.summary,
             "reasons_json": json.dumps(job.reasons, ensure_ascii=False),
