@@ -339,3 +339,48 @@ it("shows deterministic search performance from capture through application outc
   expect(screen.getByText("20%")).toBeInTheDocument();
   expect(screen.getByText(/Applied counts only applications that reached submitted/i)).toBeInTheDocument();
 });
+
+it("moves focus into the saved-search editor and restores it on Escape", async () => {
+  cleanup();
+  vi.restoreAllMocks();
+
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify(savedSearches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-search-performance")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  render(
+    <LinkedInSearchPortfolio
+      apiBase="http://127.0.0.1:8000"
+      active
+    />,
+  );
+
+  await screen.findByText("Search settings (2)");
+  const addSearch = screen.getByRole("button", { name: "Add search" });
+  addSearch.focus();
+  fireEvent.click(addSearch);
+
+  expect(
+    await screen.findByRole("dialog", { name: "Add saved search" }),
+  ).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText("Name")).toHaveFocus());
+
+  fireEvent.keyDown(window, { key: "Escape" });
+
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Add saved search" }),
+    ).not.toBeInTheDocument(),
+  );
+  await waitFor(() => expect(addSearch).toHaveFocus());
+});

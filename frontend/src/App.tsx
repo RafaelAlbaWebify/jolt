@@ -306,6 +306,30 @@ export function App({
     refreshOpportunities,
   ]);
 
+  useEffect(() => {
+    if (!selectedOpportunityId) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const trigger = inspectorTriggerRef.current;
+    const timer = window.setTimeout(() => inspectorCloseRef.current?.focus(), 0);
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedOpportunityId(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
+  }, [selectedOpportunityId]);
+
+
   const selectedOpportunity = useMemo(
     () =>
       opportunities.find(
@@ -673,7 +697,7 @@ export function App({
                       <option value="">Pending review</option>
                       {REVIEW_CHOICES.map((choice) => (
                         <option value={choice} key={choice}>
-                          {choice.replaceAll("_", " ")}
+                          {REVIEW_LABELS[choice]}
                         </option>
                       ))}
                     </select>
@@ -794,7 +818,7 @@ export function App({
 
                   {REVIEW_CHOICES.map((choice) => (
                     <option value={choice} key={choice}>
-                      {choice.replaceAll("_", " ")}
+                      {REVIEW_LABELS[choice]}
                     </option>
                   ))}
                 </select>
