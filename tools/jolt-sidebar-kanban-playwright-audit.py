@@ -36,9 +36,9 @@ def request_json(method: str, path: str, payload: dict[str, object] | None = Non
     return loaded
 
 
-def seed_application() -> dict[str, str]:
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    title = f"Playwright Sidebar Kanban Audit {stamp}"
+def seed_application(label: str = "Sidebar Kanban Audit") -> dict[str, str]:
+    stamp = str(time.time_ns())
+    title = f"Playwright {label} {stamp[-8:]}"
     intake = request_json(
         "POST",
         "/api/intake/manual",
@@ -129,6 +129,7 @@ def open_workspace(page: Page, label: str, heading: str) -> None:
 def audit(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     fixture = seed_application()
+    density_fixtures = [seed_application(f"Density {index}") for index in range(1, 7)]
     console_errors: list[str] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
@@ -151,6 +152,21 @@ def audit(output_dir: Path) -> dict[str, Any]:
             page.screenshot(path=output_dir / f"workspace-{label.lower().replace(' ', '-')}.png", full_page=True)
 
         open_workspace(page, "Applications", "Application Pipeline")
+        page.locator("section.application-lane-applied article.application-card").nth(5).wait_for(timeout=30_000)
+        applied_lane_metrics = page.locator("section.application-lane-applied .application-lane-cards").evaluate(
+            """lane => ({
+                clientHeight: lane.clientHeight,
+                scrollHeight: lane.scrollHeight,
+                overflowY: getComputedStyle(lane).overflowY,
+            })"""
+        )
+        assert_true(applied_lane_metrics["overflowY"] in {"auto", "scroll"}, "Applied lane does not own vertical scrolling")
+        assert_true(
+            int(applied_lane_metrics["scrollHeight"]) > int(applied_lane_metrics["clientHeight"]),
+            "Loaded Applied lane does not demonstrate contained vertical overflow",
+        )
+        page.screenshot(path=output_dir / "applications-loaded-compact-board.png", full_page=True)
+
         board_metrics = page.locator(".application-board").evaluate(
             """board => ({
                 overflowX: getComputedStyle(board).overflowX,
@@ -197,9 +213,11 @@ def audit(output_dir: Path) -> dict[str, Any]:
 
     summary = {
         "fixture": fixture,
+        "density_fixture_count": len(density_fixtures),
         "viewport": VIEWPORT,
         "workspace_metrics": workspace_metrics,
         "board_metrics": board_metrics,
+        "applied_lane_metrics": applied_lane_metrics,
         "console_errors": console_errors,
         "page_errors": page_errors,
         "failed_requests": failed_requests,
