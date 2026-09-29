@@ -131,7 +131,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="Capture Jobs", exact=True).click()
         page.get_by_role("heading", name="Capture Jobs", exact=True).wait_for(timeout=30_000)
 
-        page.get_by_role("heading", name="Run LinkedIn searches", exact=True).wait_for(
+        page.get_by_role("heading", name="Saved LinkedIn searches", exact=True).wait_for(
             timeout=30_000
         )
         add_search = page.get_by_role("button", name="Add search", exact=True)
@@ -142,8 +142,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         primary.wait_for(timeout=30_000)
         assert_true(primary.is_visible(), "Primary search action is not visible")
 
-        fallback = page.get_by_text("Run one LinkedIn search manually", exact=True)
-        assert_true(fallback.is_visible(), "Manual single-search option is not visible")
+        fallback = page.get_by_text("Advanced capture", exact=True)
+        assert_true(fallback.is_visible(), "Advanced capture option is not visible")
 
         add_search.click()
         editor = page.get_by_role("dialog", name="Add saved search", exact=True)
