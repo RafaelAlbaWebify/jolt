@@ -53,6 +53,13 @@ const TARGETS_STORAGE_KEY = "jolt.linkedin.profileTargets.v1";
 const LEGACY_STORAGE_KEY = "jolt.linkedin.captureTargets.v2";
 const CATEGORIES: CaptureCategory[] = ["profile", "public_profile", "analytics", "activity", "network_contact", "network_request", "target_company", "target_recruiter", "other"];
 const STATUSES: RecommendationStatus[] = ["pending", "accepted", "rejected", "implemented", "snoozed"];
+const STATUS_LABELS: Record<RecommendationStatus, string> = {
+  pending: "To review",
+  accepted: "Accepted",
+  rejected: "Dismissed",
+  implemented: "Done",
+  snoozed: "Later",
+};
 const PAGE_SIZE = 4;
 
 const DEFAULT_TARGETS: CaptureTarget[] = [
@@ -243,21 +250,21 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     }
   }
 
-  const captureCards = (items: LinkedInCapture[]) => items.map((capture) => (
+  const captureCards = (items: LinkedInCapture[], compact = false) => items.map((capture) => (
     <article key={capture.id} className="professional-source-card linkedin-compact-card">
       <strong>{capture.title}</strong>
       <p>{readable(capture.category)} · {new Date(capture.captured_at).toLocaleString()}</p>
       {capture.changed_since_previous && <span className="application-card-alert">Changed since previous capture</span>}
-      {capture.visible_text && <p>{capture.visible_text.slice(0, 180)}</p>}
+      {!compact && capture.visible_text && <p>{capture.visible_text.slice(0, 180)}</p>}
     </article>
   ));
 
-  const recommendationCards = (items: LinkedInRecommendation[]) => items.map((item) => (
+  const recommendationCards = (items: LinkedInRecommendation[], compact = false) => items.map((item) => (
     <article key={item.id} className="professional-source-card linkedin-compact-card">
       <div><strong>{item.title}</strong><p>{item.target_area} · {item.priority}</p></div>
-      <p>{item.rationale}</p>
+      {!compact && <p>{item.rationale}</p>}
       <p><b>Action:</b> {item.proposed_action}</p>
-      <label>Status<select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item.id, event.target.value as RecommendationStatus)}>{STATUSES.map((status) => <option key={status} value={status}>{readable(status)}</option>)}</select></label>
+      <label>Status<select value={item.status} disabled={busy} onChange={(event) => void updateStatus(item.id, event.target.value as RecommendationStatus)}>{STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}</select></label>
     </article>
   ));
 
@@ -265,17 +272,16 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
     <main className="linkedin-command-center" aria-labelledby="linkedin-profile-heading">
       <section className="panel linkedin-profile-header">
         <div className="section-heading">
-          <div><p className="eyebrow">Professional positioning</p><h2 id="linkedin-profile-heading">LinkedIn Profile</h2><p>Refresh your LinkedIn profile data and work through concrete improvement suggestions.</p></div>
+          <div><p className="eyebrow">Professional positioning</p><h2 id="linkedin-profile-heading">LinkedIn Profile</h2><p>Keep your profile evidence current and act on the highest-value improvements.</p></div>
           <button type="button" disabled={busy || enabledTargets.length === 0} onClick={() => void captureEnabled()}>{capturingId === "batch" ? "Refreshing profile…" : "Refresh profile data"}</button>
         </div>
-        <div className="professional-safety-boundary" role="note"><strong>Read-only boundary</strong><span>JOLT captures visible evidence. It does not message, react, connect, apply, or edit LinkedIn.</span></div>
+        <div className="professional-safety-boundary professional-readonly-badge" role="note"><strong>Read-only</strong><span>Evidence capture only</span></div>
         <nav className="linkedin-profile-tabs" aria-label="LinkedIn profile workspace">
           <button type="button" className={view === "overview" ? "active" : "secondary"} onClick={() => switchView("overview")}>Overview</button>
-          <button type="button" className={view === "targets" ? "active" : "secondary"} onClick={() => switchView("targets")}>Profile sources</button>
+          <button type="button" aria-label="Profile sources" className={view === "targets" ? "active" : "secondary"} onClick={() => switchView("targets")}>Sources</button>
+          <button type="button" className={view === "recommendations" ? "active" : "secondary"} onClick={() => switchView("recommendations")}>Improvements</button>
           <button type="button" className={view === "evidence" ? "active" : "secondary"} onClick={() => switchView("evidence")}>History</button>
-          <button type="button" className={view === "recommendations" ? "active" : "secondary"} onClick={() => switchView("recommendations")}>Profile improvements</button>
-          <button type="button" className={view === "manual" ? "active" : "secondary"} onClick={() => switchView("manual")}>Add manually</button>
-          <button type="button" className="secondary" onClick={() => void load()} disabled={busy}>Refresh view</button>
+          <button type="button" className={view === "manual" ? "active" : "secondary linkedin-profile-advanced-tab"} onClick={() => switchView("manual")}>Add evidence</button>
         </nav>
         {error && <p className="error" role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
@@ -290,8 +296,8 @@ export function LinkedInCommandCenter({ apiBase, active }: Props) {
             <article className="market-card"><span>Enabled sources</span><strong>{enabledTargets.length}</strong></article>
           </div>
           <div className="linkedin-overview-grid">
-            <div><h3>Latest evidence</h3>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : captureCards(data.captures.slice(0, 1))}</div>
-            <div><h3>Next profile improvement</h3>{!data?.recommendations.length ? <p>No LinkedIn recommendations yet.</p> : recommendationCards(data.recommendations.slice(0, 1))}</div>
+            <div><h3>Latest evidence</h3>{!data?.captures.length ? <p>No LinkedIn profile history yet.</p> : captureCards(data.captures.slice(0, 4), true)}</div>
+            <div><h3>Next profile improvement</h3>{!data?.recommendations.length ? <p>No LinkedIn recommendations yet.</p> : recommendationCards(data.recommendations.slice(0, 1), true)}</div>
           </div>
         </section>
       )}

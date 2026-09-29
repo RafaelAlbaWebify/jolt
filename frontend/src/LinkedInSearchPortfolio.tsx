@@ -400,11 +400,9 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     <section className="panel linkedin-search-portfolio" aria-labelledby="linkedin-search-portfolio-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Job search</p>
-          <h2 id="linkedin-search-portfolio-heading">Run LinkedIn searches</h2>
-          <p>
-            Choose the searches to run. JOLT checks them in one visible LinkedIn session, removes duplicates, and prepares only new jobs for review.
-          </p>
+          <p className="eyebrow">Saved searches</p>
+          <h2 id="linkedin-search-portfolio-heading">Saved LinkedIn searches</h2>
+          <p>Select searches, run them, then review only the new jobs.</p>
         </div>
         <button
           type="button"
@@ -612,7 +610,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         </>
       )}
 
-      <details className="search-performance-details" open>
+      <details className="search-performance-details">
         <summary>
           Search performance ({enabledPerformance.length})
           <span>Observed funnel from capture to real application outcomes</span>
@@ -673,7 +671,7 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
         <section className="discovery-batch-status" aria-labelledby="discovery-batch-status-heading">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Latest discovery batch</p>
+              <p className="eyebrow">Latest search run</p>
               <h3 id="discovery-batch-status-heading">{statusLabel(batch.status)}</h3>
               <p>
                 {batch.completed_search_count}/{batch.selected_search_count} searches completed · {batch.captured_count} captured ·{" "}
@@ -694,10 +692,10 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 rel="noreferrer"
                 title="Download only the new, deduplicated jobs from this search run for review in ChatGPT."
               >
-                Export new jobs for review
+                Download review package
               </a>
               <label className="batch-review-import">
-                Import reviewed jobs
+                Import AI review
                 <input
                   type="file"
                   accept="application/json,.json"

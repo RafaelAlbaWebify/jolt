@@ -24,21 +24,18 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
         <div>
           <p className="eyebrow">Job discovery</p>
           <h2 id="job-capture-heading">Capture Jobs</h2>
-          <p>
-            Run your saved LinkedIn searches in a visible browser. JOLT keeps new jobs,
-            avoids repeats, and sends them to Review Inbox and Market Insights.
-          </p>
+          <p>Run saved LinkedIn searches and send only new jobs to review.</p>
         </div>
-        <div className="professional-safety-boundary" role="note">
-          <strong>Read-only boundary</strong>
-          <span>No messages, reactions, applications, invitations, or account changes.</span>
+        <div className="professional-safety-boundary professional-readonly-badge" role="note">
+          <strong>Read-only</strong>
+          <span>Browser capture only</span>
         </div>
       </section>
 
       <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
 
       <details className="panel professional-single-capture-fallback">
-        <summary>Run one LinkedIn search manually</summary>
+        <summary>Advanced capture</summary>
         <LinkedInJobCaptureLauncher apiBase={apiBase} active={active} />
       </details>
     </main>

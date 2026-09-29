@@ -29,7 +29,7 @@ export function Workbench() {
   const [evaluationRevision, setEvaluationRevision] = useState(0);
   const [aiImportRevision, setAIImportRevision] = useState(0);
   const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
-  const description = primary?.description ?? "Preferences, data exchange, and advanced diagnostics.";
+  const description = primary?.description ?? "Preferences and data tools.";
   const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
@@ -37,9 +37,7 @@ export function Workbench() {
       <aside className="workspace-sidebar" aria-label="JOLT workspace navigation">
         <header className="workspace-header">
           <div className="hero">
-            <p className="eyebrow">Job Opportunity Learning & Tracking</p>
             <h1>JOLT</h1>
-            <p>Find suitable jobs, decide what to pursue, track applications, and improve your market positioning.</p>
           </div>
 
           <nav className="workspace-nav" aria-label="JOLT workspace views">
@@ -102,12 +100,9 @@ export function Workbench() {
             <section className="panel" aria-labelledby="settings-data-heading">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Job strategy</p>
+                  <p className="eyebrow">Preferences</p>
                   <h2 id="settings-data-heading">Settings & Data</h2>
-                  <p>
-                    Set your job-search preferences. JOLT refreshes job matching without changing
-                    your review decisions or application records.
-                  </p>
+                  <p>Configure job-search preferences and manage JOLT data.</p>
                 </div>
               </div>
               <details className="settings-preferences">
@@ -125,11 +120,9 @@ export function Workbench() {
             <section className="panel" aria-labelledby="operational-data-heading">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Advanced</p>
-                  <h2 id="operational-data-heading">Data & Diagnostics</h2>
-                  <p>
-                    AI exchange, compatibility tools, runtime checks, and technical diagnostics.
-                  </p>
+                  <p className="eyebrow">Utilities</p>
+                  <h2 id="operational-data-heading">Data tools</h2>
+                  <p>AI updates, exports, maintenance, and diagnostics.</p>
                 </div>
               </div>
               <DataTools
