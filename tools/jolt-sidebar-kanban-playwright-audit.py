@@ -129,7 +129,7 @@ def open_workspace(page: Page, label: str, heading: str) -> None:
 def audit(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     fixture = seed_application()
-    density_fixtures = [seed_application(f"Density {index}") for index in range(1, 7)]
+    density_fixtures = [seed_application(f"Density {index}") for index in range(1, 11)]
     console_errors: list[str] = []
     page_errors: list[str] = []
     failed_requests: list[str] = []
