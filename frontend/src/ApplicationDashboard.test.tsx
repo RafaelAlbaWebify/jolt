@@ -492,10 +492,22 @@ describe("ApplicationDashboard", () => {
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
     await screen.findByRole("button", { name: "Open Application Support Engineer" });
 
-    expect(screen.queryByRole("button", { name: "Hide from board" })).not.toBeInTheDocument();
+    const card = screen
+      .getByRole("button", { name: "Open Application Support Engineer" })
+      .closest("article");
+    expect(card).not.toBeNull();
 
-    fireEvent.click(screen.getByLabelText("More actions for Application Support Engineer"));
-    fireEvent.click(screen.getByRole("button", { name: "Hide from board" }));
+    const more = within(card!).getByLabelText(
+      "More actions for Application Support Engineer",
+    );
+    const details = more.closest("details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+
+    fireEvent.click(more);
+    fireEvent.click(
+      within(card!).getByRole("button", { name: "Hide from board" }),
+    );
 
     expect(window.confirm).toHaveBeenCalledWith(
       "Hide Application Support Engineer from the board? You can restore it later. Its history and files will be kept.",
