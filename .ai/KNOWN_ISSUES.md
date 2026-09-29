@@ -81,3 +81,22 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Capture cleanup could make Applications disappear — behavior invariant retained in `PROJECT_MEMORY.md`; keep mixed-batch/application-index regressions.
 - Settings & Data viewport overflow at 1680x945 — fix product layout, never weaken certification.
 - Structured AI import errors rendered `[object Object]` — fixed by PR #387; keep structured validation-path regression.
+
+
+## KI-008 — RESOLVED 2026-09-28 — Discovery state could survive backend restart without a worker
+- Module: Capture Jobs / saved-search runs
+- Resolution: PR #437 reconciles stale persisted `scheduled/running` batches at backend startup, preserves completed captures, and leaves normal `queued` state untouched.
+- Verification: all six exact-head certification gates passed before merge.
+
+## KI-009 — RESOLVED 2026-09-29 — Application document file could appear unsaveable and outlive a discarded application
+- Module: Applications / Documents
+- Observed in real operator use: selecting a CV left the required Title empty, so Add document remained unavailable; stored binaries also had no discard-time purge policy.
+- Resolution: PR #443 auto-fills Title from the filename and defines file retention by application outcome. PR #448 then simplifies the normal attachment path to File + Title with advanced metadata collapsed.
+- Retention invariant: non-success final outcomes purge stored bytes; offer accepted keeps them; reversible hide/archive keeps them.
+- Verification: all six exact-head gates passed for #443 and #448 before merge.
+
+## KI-010 — RESOLVED/FINALIZING 2026-09-29 — Daily UX exposed development-era terminology and duplicate action models
+- Module: all primary workspaces
+- Description: real operator use exposed internal terminology, prominent maintenance/destructive actions, duplicate CV/stage concepts, stale UX audits and incomplete keyboard behavior.
+- Resolution: bounded UX stabilization #442/#447/#448/#449/#450 plus final keyboard/focus pass #452.
+- Constraint: backend enums/contracts remain stable; presentation uses operator language. Further UX work should be evidence-driven after this bounded pass.
