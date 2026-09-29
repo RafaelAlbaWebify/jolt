@@ -44,9 +44,9 @@ describe("LinkedInAIAnalysisStatus", () => {
 
     render(<LinkedInAIAnalysisStatus apiBase="http://127.0.0.1:8000" active />);
 
-    expect(await screen.findByText("Analysis outdated")).toBeInTheDocument();
+    expect(await screen.findByText("Update available")).toBeInTheDocument();
     expect(
-      screen.getByText(/evidence is newer than the latest ChatGPT review/i),
+      screen.getByText(/New profile evidence is available since the last analysis/i),
     ).toBeInTheDocument();
   });
 
@@ -82,9 +82,9 @@ describe("LinkedInAIAnalysisStatus", () => {
 
     render(<LinkedInAIAnalysisStatus apiBase="http://127.0.0.1:8000" active />);
 
-    await waitFor(() => expect(screen.getByText("Current")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Up to date")).toBeInTheDocument());
     expect(
-      screen.getByText(/latest captured profile evidence has a ChatGPT review/i),
+      screen.getByText(/Analysis reflects your latest profile evidence/i),
     ).toBeInTheDocument();
   });
 });
