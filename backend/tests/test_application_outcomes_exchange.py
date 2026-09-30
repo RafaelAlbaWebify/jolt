@@ -133,16 +133,11 @@ def test_application_exchange_exports_lifecycle_and_outcome_without_local_scores
     assert '"confidence"' not in serialized
 
 
-def test_application_exchange_import_updates_strategy_and_persists_feedback(monkeypatch) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
+def test_application_exchange_import_preserves_context_and_persists_feedback(monkeypatch) -> None:
     saved_feedback: list[AIExchangeOutput] = []
     monkeypatch.setattr(
         "jolt.application_outcomes_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.application_outcomes_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
 
     def fake_feedback(output: AIExchangeOutput) -> AIExchangeFeedbackRecord:
@@ -181,17 +176,13 @@ def test_application_exchange_import_updates_strategy_and_persists_feedback(monk
                 evidence_refs=["application:1"],
             )
         ],
-        context_patch={
-            "application_strategy": {"focus": "stronger role-specific evidence"},
-            "outcome_strategy": {"track": ["stage_reached", "reason_code"]},
-        },
+        context_patch={},
         summary={"executive_summary": "Improve role-specific evidence before submission."},
     )
 
     response = import_application_outcomes_exchange(output)
 
-    assert saved_context[0].application_strategy["focus"] == "stronger role-specific evidence"
-    assert saved_context[0].outcome_strategy["track"] == ["stage_reached", "reason_code"]
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.feedback_record.exchange_id == "application-exchange-1"
 
