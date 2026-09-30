@@ -368,26 +368,33 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
     try {
       const payload = JSON.parse(await file.text()) as Record<string, unknown>;
       const response = await fetch(
-        `${apiBase}/api/linkedin-discovery-batches/${batch.id}/ai-review-import`,
+        `${apiBase}/api/ai-work-package/import`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
       );
-      if (!response.ok) throw await responseError(response, "The reviewed jobs could not be imported.");
+      if (!response.ok) throw await responseError(response, "The reviewed jobs and intelligence update could not be imported.");
       const result = (await response.json()) as {
-        received_count: number;
-        created_count: number;
-        updated_count: number;
+        imported_sections: string[];
+        review_inbox_imported: boolean;
+        section_results: Record<string, unknown>;
       };
+      const reviewResult = result.section_results.review_inbox as {
+        received_count?: number;
+        created_count?: number;
+        updated_count?: number;
+      } | undefined;
+      const reviewedCount = reviewResult?.received_count ?? 0;
+      const intelligenceCount = result.imported_sections.length;
       setNotice(
-        `Reviewed jobs imported: ${result.received_count} jobs · ${result.created_count} new · ${result.updated_count} updated.`,
+        `Review imported: ${reviewedCount} jobs · ${intelligenceCount} intelligence section${intelligenceCount === 1 ? "" : "s"} refreshed.`,
       );
       await loadPerformance();
       onAIImported?.();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The reviewed jobs could not be imported.");
+      setError(caught instanceof Error ? caught.message : "The reviewed jobs and intelligence update could not be imported.");
     } finally {
       setBusy(false);
     }
@@ -687,15 +694,15 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
             <div className="batch-review-actions batch-review-actions-prominent">
               <a
                 className="primary-link"
-                href={`${apiBase}/api/linkedin-discovery-batches/${batch.id}/ai-review-exchange`}
+                href={`${apiBase}/api/ai-work-package/export?discovery_batch_id=${encodeURIComponent(batch.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                title="Download only the new, deduplicated jobs from this search run for review in ChatGPT."
+                title="Download the new jobs from this search run plus the current intelligence context for one combined ChatGPT review."
               >
-                Download review package
+                Download review + intelligence package
               </a>
               <label className="batch-review-import">
-                Import AI review
+                Import reviewed update
                 <input
                   type="file"
                   accept="application/json,.json"
