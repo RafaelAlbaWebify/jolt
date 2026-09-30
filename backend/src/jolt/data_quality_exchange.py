@@ -19,7 +19,6 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
 )
 from jolt.market_preparation_import import (
     MarketPreparationAction,
@@ -28,6 +27,7 @@ from jolt.market_preparation_import import (
     import_market_preparation,
 )
 from jolt.preference_aware_evaluation import sanitize_capture_text
+from jolt.unified_context_policy import require_unified_context_authority
 
 _DATA_QUALITY_PATCH_KEYS = frozenset({"audit_summary", "capture_strategy"})
 _DATA_QUALITY_ACTION_TYPES = {
@@ -298,28 +298,22 @@ def build_data_quality_exchange(session: Session) -> AIExchangeInput:
                     "action_type must be one of data_quality_follow_up, recapture, identity_review, provenance_review, metadata_review, or cleanup_review."
                 ),
             },
-            "context_patch": "Return only changed audit_summary or capture_strategy namespaces.",
+            "context_patch": (
+                "For the unified work-package workflow, place durable audit_summary or "
+                "capture_strategy changes in the package top-level context_patch. Section-level "
+                "context_patch must remain empty."
+            ),
             "summary": "Include executive_summary, material_findings, benign_differences, repair_priorities, and evidence_gaps.",
         },
     )
 
 
 def _apply_data_quality_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
-    unknown = sorted(set(output.context_patch) - _DATA_QUALITY_PATCH_KEYS)
-    if unknown:
-        raise ValueError(
-            f"Data quality context patch contains non-patchable keys: {', '.join(unknown)}"
-        )
-    current = load_global_ai_context()
-    update = current.model_dump()
-    for key, value in output.context_patch.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"Data quality context namespace '{key}' must be an object")
-        update[key] = value
-    update["updated_at"] = output.reviewed_at
-    update["updated_by"] = f"chatgpt:{output.review_version}"
-    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
-
+    require_unified_context_authority(
+        output,
+        section_label="Data quality",
+    )
+    return load_global_ai_context()
 
 def _data_quality_actions(output: AIExchangeOutput) -> list[MarketPreparationAction]:
     actions: list[MarketPreparationAction] = []
