@@ -38,8 +38,7 @@ def _job(**overrides) -> dict[str, object]:
         "official_work_model": "hybrid",
         "authoritative_source": "official_ats",
         "official_source_url": (
-            "https://encamina.factorialhr.com/job_posting/"
-            "application-support-technician-324733"
+            "https://encamina.factorialhr.com/job_posting/application-support-technician-324733"
         ),
         "remote_status": "not_confirmed_remote",
         "location_verification_status": "conflict",
