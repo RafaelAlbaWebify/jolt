@@ -95,40 +95,60 @@ export function Workbench() {
             <MarketIntelligence apiBase={API_BASE} active={activeView === "market"} />
           </div>
           <div className="workspace-view workspace-view-settings" hidden={activeView !== "settings"}>
-            <section className="panel" aria-labelledby="settings-data-heading">
-              <div className="section-heading">
+            <section className="settings-workspace" aria-labelledby="settings-data-heading">
+              <header className="settings-workspace-header">
                 <div>
-                  <p className="eyebrow">Preferences</p>
+                  <p className="eyebrow">Preferences & maintenance</p>
                   <h2 id="settings-data-heading">Settings & Data</h2>
-                  <p>Configure job-search preferences and manage JOLT data.</p>
+                  <p>Keep your search preferences current. Open maintenance tools only when you need them.</p>
                 </div>
-              </div>
-              <details className="settings-preferences">
-                <summary>Job Search Preferences</summary>
-                <JobPreferences
+              </header>
+
+              <div className="settings-primary-grid">
+                <details className="settings-primary-card settings-preferences">
+                  <summary>
+                    <span>
+                      <strong>Job search</strong>
+                      <small>Roles, locations, work mode, salary and matching preferences</small>
+                    </span>
+                    <span>Edit preferences</span>
+                  </summary>
+                  <div className="settings-primary-card-body">
+                    <JobPreferences
+                      apiBase={API_BASE}
+                      active={activeView === "settings"}
+                      onEvaluationsRefreshed={() =>
+                        setEvaluationRevision((value) => value + 1)
+                      }
+                    />
+                  </div>
+                </details>
+
+                <DataTools
                   apiBase={API_BASE}
                   active={activeView === "settings"}
-                  onEvaluationsRefreshed={() =>
-                    setEvaluationRevision((value) => value + 1)
-                  }
+                  onImported={() => setAIImportRevision((value) => value + 1)}
                 />
-              </details>
-            </section>
-
-            <section className="panel" aria-labelledby="operational-data-heading">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Utilities</p>
-                  <h2 id="operational-data-heading">Data tools</h2>
-                  <p>AI updates, exports, maintenance, and diagnostics.</p>
-                </div>
               </div>
-              <DataTools
-                apiBase={API_BASE}
-                active={activeView === "settings"}
-                onImported={() => setAIImportRevision((value) => value + 1)}
-              />
-              <RuntimeIdentityPanel apiBase={API_BASE} />
+
+              <details className="settings-advanced">
+                <summary>
+                  <span>
+                    <strong>Advanced</strong>
+                    <small>Strategy refresh, reviewed decisions, capture history and developer diagnostics</small>
+                  </span>
+                  <span>Open tools</span>
+                </summary>
+                <div className="settings-advanced-body">
+                  <DataTools
+                    apiBase={API_BASE}
+                    active={activeView === "settings"}
+                    onImported={() => setAIImportRevision((value) => value + 1)}
+                    advancedOnly
+                  />
+                  <RuntimeIdentityPanel apiBase={API_BASE} />
+                </div>
+              </details>
             </section>
           </div>
         </div>
