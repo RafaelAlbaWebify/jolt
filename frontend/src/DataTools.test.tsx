@@ -3,6 +3,40 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DataTools } from "./DataTools";
 
+const EMPTY_STATUS = {
+  overall_status: "no_evidence",
+  last_intelligence_update_at: null,
+  context_updated_at: null,
+  current_sections: 0,
+  attention_sections: 0,
+  sections: {
+    review_inbox: {
+      state: "no_evidence",
+      evidence_at: null,
+      analyzed_at: null,
+      reason: "No captured job evidence is waiting for AI review.",
+      operator_relevant: true,
+    },
+  },
+};
+
+const CURRENT_STATUS = {
+  overall_status: "current",
+  last_intelligence_update_at: "2026-09-30T09:00:00Z",
+  context_updated_at: "2026-09-30T09:00:00Z",
+  current_sections: 6,
+  attention_sections: 0,
+  sections: {
+    review_inbox: {
+      state: "current",
+      evidence_at: "2026-09-30T08:00:00Z",
+      analyzed_at: "2026-09-30T09:00:00Z",
+      reason: "No pending Review Inbox job is waiting for AI analysis.",
+      operator_relevant: true,
+    },
+  },
+};
+
 describe("DataTools", () => {
   afterEach(() => {
     cleanup();
@@ -10,12 +44,19 @@ describe("DataTools", () => {
     vi.restoreAllMocks();
   });
 
-  it("presents strategy updates as an advanced workflow", () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify([]), { status: 200 }),
-    );
+  it("presents strategy updates as an advanced workflow and reads status from JOLT", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/ai-status")) {
+        return new Response(JSON.stringify(EMPTY_STATUS), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
 
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
+
+    expect(await screen.findByText("No analysis yet")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/ai-status");
 
     const exportLink = screen.getByRole("link", { name: "Export strategy update package" });
     expect(exportLink).toHaveAttribute(
@@ -30,25 +71,41 @@ describe("DataTools", () => {
     expect(screen.getByLabelText("Import reviewed strategy update")).toBeInTheDocument();
     expect(screen.getByText("Legacy compatibility exports")).toBeInTheDocument();
     expect(
-      screen.getByText(/For normal job review, use Export new jobs for review in Capture Jobs/i),
+      screen.getByText(/Normal discovery review now updates job review and intelligence together/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("No update yet")).toBeInTheDocument();
+    expect(window.localStorage.length).toBe(0);
   });
 
-  it("imports the returned unified update and shows a persistent receipt", async () => {
+  it("refreshes backend intelligence status after importing a unified update", async () => {
     const onImported = vi.fn();
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          imported_sections: ["market_insights", "skills_gaps"],
-          review_inbox_imported: true,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+    let statusReads = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/ai-status")) {
+        statusReads += 1;
+        return new Response(
+          JSON.stringify(statusReads === 1 ? EMPTY_STATUS : CURRENT_STATUS),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (url.endsWith("/api/ai-work-package/import") && method === "POST") {
+        return new Response(
+          JSON.stringify({
+            imported_sections: ["market_insights", "skills_gaps"],
+            review_inbox_imported: true,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
 
     const { unmount } = render(
       <DataTools
@@ -56,6 +113,8 @@ describe("DataTools", () => {
         onImported={onImported}
       />,
     );
+
+    expect(await screen.findByText("No analysis yet")).toBeInTheDocument();
 
     const file = new File(
       [
@@ -93,43 +152,52 @@ describe("DataTools", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Strategy update imported successfully. Review Inbox updated. 2 intelligence sections imported.",
     );
-    expect(screen.getByText("Imported")).toBeInTheDocument();
-    expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
-    expect(screen.getByText("market_insights, skills_gaps")).toBeInTheDocument();
-    expect(screen.getByText("Updated", { selector: "strong" })).toBeInTheDocument();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
+    expect(screen.getByText("6", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getByText("current", { selector: "strong" })).toBeInTheDocument();
     expect(onImported).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.length).toBe(0);
 
     unmount();
+
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
-    expect(screen.getByText("Imported")).toBeInTheDocument();
-    expect(screen.getByText("JOLT_AI_UPDATE.json")).toBeInTheDocument();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
+    expect(window.localStorage.length).toBe(0);
   });
 
   it("renders FastAPI validation details instead of object placeholders", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          detail: [
-            {
-              type: "model_attributes_type",
-              loc: ["body", "review_inbox", "jobs", 7, "mandatory_requirements", 0],
-              msg: "Input should be a valid dictionary or object to extract fields from",
-            },
-            {
-              type: "model_attributes_type",
-              loc: ["body", "review_inbox", "jobs", 24, "mandatory_requirements", 0],
-              msg: "Input should be a valid dictionary or object to extract fields from",
-            },
-          ],
-        }),
-        {
-          status: 422,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/ai-status")) {
+        return new Response(JSON.stringify(EMPTY_STATUS), { status: 200 });
+      }
+      if (url.endsWith("/api/ai-work-package/import") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            detail: [
+              {
+                type: "model_attributes_type",
+                loc: ["body", "review_inbox", "jobs", 7, "mandatory_requirements", 0],
+                msg: "Input should be a valid dictionary or object to extract fields from",
+              },
+              {
+                type: "model_attributes_type",
+                loc: ["body", "review_inbox", "jobs", 24, "mandatory_requirements", 0],
+                msg: "Input should be a valid dictionary or object to extract fields from",
+              },
+            ],
+          }),
+          {
+            status: 422,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
 
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
+    await screen.findByText("No analysis yet");
 
     const file = new File([JSON.stringify({ contract_type: "bad" })], "BAD.json", {
       type: "application/json",

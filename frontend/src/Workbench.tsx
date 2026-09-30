@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { App } from "./App";
 import { ApplicationDashboard } from "./ApplicationDashboard";
@@ -30,7 +30,6 @@ export function Workbench() {
   const [aiImportRevision, setAIImportRevision] = useState(0);
   const primary = PRIMARY_VIEWS.find((item) => item.id === activeView);
   const description = primary?.description ?? "Preferences and data tools.";
-  const hiddenReviewInboxToolsTarget = useMemo(() => document.createElement("div"), []);
 
   return (
     <div className="shell workspace-shell">
@@ -78,7 +77,6 @@ export function Workbench() {
           </div>
           <div className="workspace-view workspace-view-opportunities" hidden={activeView !== "opportunities"}>
             <App
-              sidebarToolsTarget={hiddenReviewInboxToolsTarget}
               evaluationRevision={evaluationRevision}
             />
           </div>
@@ -127,6 +125,7 @@ export function Workbench() {
               </div>
               <DataTools
                 apiBase={API_BASE}
+                active={activeView === "settings"}
                 onImported={() => setAIImportRevision((value) => value + 1)}
               />
               <RuntimeIdentityPanel apiBase={API_BASE} />

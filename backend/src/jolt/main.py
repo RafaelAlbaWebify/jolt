@@ -17,6 +17,7 @@ from jolt.ai_review_opportunity_index import (
     list_ai_review_opportunity_index,
 )
 from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
+from jolt.ai_status_api import build_ai_status_router
 from jolt.application_archival import (
     ApplicationArchiveRequest,
     ApplicationArchiveResponse,
@@ -148,6 +149,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         finally:
             session.close()
 
+    app.include_router(build_ai_status_router(get_session))
     app.include_router(build_application_work_items_router(get_session))
     app.include_router(build_professional_intelligence_plan_router(get_session))
     app.include_router(build_linkedin_search_portfolio_router(get_session))
