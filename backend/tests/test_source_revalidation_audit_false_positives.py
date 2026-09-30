@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import json
 import os
 import sqlite3
 import subprocess
 import sys
+from pathlib import Path
 
 
 SCHEMA = """
