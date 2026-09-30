@@ -10,6 +10,7 @@ type AIReviewDecision = "strong_pursue" | "pursue" | "conditional" | "reject";
 type AIReviewStatus = "reviewed" | "awaiting_ai_review";
 type SortOption = "ai_priority" | "title_asc" | "company_asc";
 type InboxFilter = "all" | "priority" | "pursue" | "hold" | "not_fit";
+type PreviewTab = "overview" | "fit" | "details";
 
 type OpportunityIndex = {
   posting_id: string;
@@ -280,6 +281,7 @@ export function App({
   const [sortOption, setSortOption] = useState<SortOption>("ai_priority");
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
   const [previewOpportunityId, setPreviewOpportunityId] = useState<string | null>(null);
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("overview");
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -408,6 +410,7 @@ export function App({
     }
     if (!previewOpportunityId || !pagedOpportunities.some((item) => item.posting_id === previewOpportunityId)) {
       setPreviewOpportunityId(pagedOpportunities[0].posting_id);
+      setPreviewTab("overview");
     }
   }, [pagedOpportunities, previewOpportunityId]);
 
@@ -721,7 +724,10 @@ export function App({
                         type="button"
                         className="review-inbox-card-main"
                         aria-pressed={active}
-                        onClick={() => setPreviewOpportunityId(opportunity.posting_id)}
+                        onClick={() => {
+                          setPreviewOpportunityId(opportunity.posting_id);
+                          setPreviewTab("overview");
+                        }}
                       >
                         <span className="review-company-mark" aria-hidden="true">{companyInitials(opportunity.company || "Unknown company")}</span>
                         <span className="review-inbox-card-copy">
@@ -794,49 +800,140 @@ export function App({
                     </div>
                   </header>
 
-                  <div className="review-preview-tabs" aria-label="Preview sections">
-                    <span className="active">Overview</span>
-                    <span>Fit analysis</span>
-                    <span>Job details</span>
+                  <div className="review-preview-tabs" role="tablist" aria-label="Preview sections">
+                    {([
+                      ["overview", "Overview"],
+                      ["fit", "Fit analysis"],
+                      ["details", "Job details"],
+                    ] as Array<[PreviewTab, string]>).map(([value, labelText]) => (
+                      <button
+                        type="button"
+                        role="tab"
+                        key={value}
+                        aria-selected={previewTab === value}
+                        className={previewTab === value ? "active" : ""}
+                        onClick={() => setPreviewTab(value)}
+                      >
+                        {labelText}
+                      </button>
+                    ))}
                   </div>
 
                   <div className="review-preview-body">
                     <div className="review-preview-primary">
-                      <section>
-                        <h4>Job summary</h4>
-                        <p>{previewOpportunity.summary || previewOpportunity.decision_reason || "No concise job summary is available yet."}</p>
-                      </section>
+                      {previewTab === "overview" && (
+                        <>
+                          <section>
+                            <h4>Job summary</h4>
+                            <p>{previewOpportunity.summary || previewOpportunity.decision_reason || "No concise job summary is available yet."}</p>
+                          </section>
 
-                      <div className="review-preview-evidence-grid">
-                        <section className="review-preview-signal-card">
-                          <h4>AI review reasons</h4>
-                          {previewOpportunity.reasons.length ? (
-                            <ul>{previewOpportunity.reasons.slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
-                          ) : (
-                            <p>No additional AI review reasons recorded.</p>
-                          )}
-                        </section>
-                        <section className="review-preview-risk-card">
-                          <h4>Requirements to check</h4>
-                          {hardlineStopped(previewOpportunity) && (
-                            <p>Fit score not shown because a required condition was not met.</p>
-                          )}
-                          {[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].length ? (
-                            <ul>{[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
-                          ) : (
-                            <p>No explicit blockers are recorded.</p>
-                          )}
-                        </section>
-                      </div>
+                          <div className="review-preview-evidence-grid">
+                            <section className="review-preview-signal-card">
+                              <h4>Why it looks promising</h4>
+                              {previewOpportunity.reasons.length ? (
+                                <ul>{previewOpportunity.reasons.slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                              ) : (
+                                <p>No additional positive signals are recorded.</p>
+                              )}
+                            </section>
+                            <section className="review-preview-risk-card">
+                              <h4>What to verify</h4>
+                              {hardlineStopped(previewOpportunity) && (
+                                <p>Fit score not shown because a required condition was not met.</p>
+                              )}
+                              {[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].length ? (
+                                <ul>{[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                              ) : (
+                                <p>No explicit blockers are recorded.</p>
+                              )}
+                            </section>
+                          </div>
 
-                      <div className="review-preview-meta">
-                        <div><span>Geography</span><strong>{previewOpportunity.geography_status ?? "unknown"}</strong></div>
-                        <div><span>Clearance</span><strong>{previewOpportunity.clearance_status ?? "unknown"}</strong></div>
-                        <div><span>Language</span><strong>{previewOpportunity.language_status ?? "unknown"}</strong></div>
-                        {!hardlineStopped(previewOpportunity) && (
-                          <div><span>Technical fit</span><strong>{previewOpportunity.technical_fit ?? "—"}</strong></div>
-                        )}
-                      </div>
+                          <div className="review-preview-meta">
+                            <div><span>Geography</span><strong>{previewOpportunity.geography_status ?? "unknown"}</strong></div>
+                            <div><span>Clearance</span><strong>{previewOpportunity.clearance_status ?? "unknown"}</strong></div>
+                            <div><span>Language</span><strong>{previewOpportunity.language_status ?? "unknown"}</strong></div>
+                            {!hardlineStopped(previewOpportunity) && (
+                              <div><span>Technical fit</span><strong>{previewOpportunity.technical_fit ?? "—"}</strong></div>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {previewTab === "fit" && (
+                        <>
+                          <section className="review-fit-summary">
+                            <h4>Fit assessment</h4>
+                            <p>{previewOpportunity.decision_reason || previewOpportunity.summary || "No fit rationale is available yet."}</p>
+                          </section>
+
+                          <div className="review-fit-score-grid">
+                            <div>
+                              <span>Priority score</span>
+                              <strong>{hardlineStopped(previewOpportunity) ? "Blocked" : previewOpportunity.priority_score ?? "—"}</strong>
+                            </div>
+                            <div>
+                              <span>Technical fit</span>
+                              <strong>{hardlineStopped(previewOpportunity) ? "—" : previewOpportunity.technical_fit ?? "—"}</strong>
+                            </div>
+                            <div>
+                              <span>Geography</span>
+                              <strong>{previewOpportunity.geography_status ?? "unknown"}</strong>
+                            </div>
+                            <div>
+                              <span>Language</span>
+                              <strong>{previewOpportunity.language_status ?? "unknown"}</strong>
+                            </div>
+                          </div>
+
+                          <div className="review-preview-evidence-grid">
+                            <section className="review-preview-signal-card">
+                              <h4>Evidence supporting the match</h4>
+                              {previewOpportunity.reasons.length ? (
+                                <ul>{previewOpportunity.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                              ) : (
+                                <p>No supporting reasons are recorded.</p>
+                              )}
+                            </section>
+                            <section className="review-preview-risk-card">
+                              <h4>Constraints and blockers</h4>
+                              {[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].length ? (
+                                <ul>{[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                              ) : (
+                                <p>No explicit constraints are recorded.</p>
+                              )}
+                            </section>
+                          </div>
+                        </>
+                      )}
+
+                      {previewTab === "details" && (
+                        <>
+                          <section className="review-job-details-grid">
+                            <div><span>Company</span><strong>{previewOpportunity.company || "Unknown company"}</strong></div>
+                            <div><span>Location</span><strong>{previewOpportunity.location || "Not recorded"}</strong></div>
+                            <div><span>AI review</span><strong>{previewOpportunity.ai_review_status === "reviewed" ? "Reviewed" : "Pending"}</strong></div>
+                            <div><span>Human decision</span><strong>{decisionLabel(previewOpportunity.review_decision)}</strong></div>
+                            <div><span>Location evidence</span><strong>{previewOpportunity.location_evidence.length}</strong></div>
+                            <div><span>Mandatory requirements</span><strong>{previewOpportunity.mandatory_requirements.length}</strong></div>
+                            <div><span>Employment constraints</span><strong>{previewOpportunity.employment_constraints.length}</strong></div>
+                            <div><span>Duplicate</span><strong>{previewOpportunity.duplicate_of_posting_id ? "Yes" : "No"}</strong></div>
+                          </section>
+
+                          {previewOpportunity.location_evidence.length > 0 && (
+                            <section className="review-detail-list">
+                              <h4>Location evidence</h4>
+                              <ul>{previewOpportunity.location_evidence.slice(0, 6).map((item) => <li key={item}>{item}</li>)}</ul>
+                            </section>
+                          )}
+
+                          <section className="review-detail-timestamps">
+                            <div><span>Imported</span><strong>{previewOpportunity.imported_at ? new Date(previewOpportunity.imported_at).toLocaleString() : "Not recorded"}</strong></div>
+                            <div><span>Reviewed</span><strong>{previewOpportunity.reviewed_at ? new Date(previewOpportunity.reviewed_at).toLocaleString() : "Not reviewed yet"}</strong></div>
+                          </section>
+                        </>
+                      )}
                     </div>
 
                     <aside className="review-preview-actions">
