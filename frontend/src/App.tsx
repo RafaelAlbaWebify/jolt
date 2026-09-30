@@ -1036,36 +1036,31 @@ export function App({
                 </span>
               </div>
 
-              <label className="decision-control">
+              <div className="inspector-review-actions" aria-label={`Review actions for ${selectedOpportunity.title}`}>
                 <span>Human decision</span>
-                <select
-                  value={selectedOpportunity.review_decision ?? ""}
-                  disabled={busy || !selectedOpportunity.ai_review_id}
-                  onChange={(event) => {
-                    const decision =
-                      event.target.value as ReviewChoice;
-
-                    if (decision) {
-                      void reviewOpportunity(
-                        selectedOpportunity,
-                        decision,
-                      );
-                    }
-                  }}
-                >
-                  <option value="">
-                    {selectedOpportunity.ai_review_id
-                      ? "Pending review"
-                      : "Needs AI review"}
-                  </option>
-
-                  {REVIEW_CHOICES.map((choice) => (
-                    <option value={choice} key={choice}>
-                      {REVIEW_LABELS[choice]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    onClick={() => void reviewOpportunity(selectedOpportunity, "pursue")}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary inspector-reject-action"
+                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    onClick={() => void reviewOpportunity(selectedOpportunity, "reject")}
+                  >
+                    Reject
+                  </button>
+                </div>
+                <small>
+                  {selectedOpportunity.ai_review_id
+                    ? "Leave untouched to keep pending."
+                    : "AI review required before deciding."}
+                </small>
+              </div>
 
               {selectedOpportunity.source_url && (
                 <a
