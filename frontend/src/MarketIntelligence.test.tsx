@@ -51,7 +51,7 @@ const APPLICATIONS = [
   { application_id: "app-2", application_status: "technical_interview", outcome_type: null },
 ];
 
-function mockApi(market = DATA, applications = APPLICATIONS) {
+function mockApi(market: unknown = DATA, applications = APPLICATIONS) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.includes("/api/ai-market/view")) {
