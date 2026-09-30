@@ -155,9 +155,11 @@ def test_contract_v12_rejects_ai_pass_for_nortal_language_blocker(
         _preferences,
     )
 
-    with factory() as session:
-        with pytest.raises(ValueError, match="deterministic language evidence"):
-            import_ai_review(session, _request(_job()))
+    with (
+        factory() as session,
+        pytest.raises(ValueError, match="deterministic language evidence"),
+    ):
+        import_ai_review(session, _request(_job()))
 
 
 def test_contract_v12_accepts_and_persists_language_hard_reject(
@@ -216,6 +218,8 @@ def test_contract_v12_rejects_ai_pass_for_unsupported_job_language(
         _preferences,
     )
 
-    with factory() as session:
-        with pytest.raises(ValueError, match="deterministic language evidence"):
-            import_ai_review(session, _request(_job()))
+    with (
+        factory() as session,
+        pytest.raises(ValueError, match="deterministic language evidence"),
+    ):
+        import_ai_review(session, _request(_job()))
