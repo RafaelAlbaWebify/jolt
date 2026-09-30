@@ -250,9 +250,7 @@ def build_ai_status(session: Session) -> AIStatusResponse:
     }
 
     relevant = [status for status in sections.values() if status.operator_relevant]
-    attention = [
-        status for status in relevant if status.state in {"not_analyzed", "stale"}
-    ]
+    attention = [status for status in relevant if status.state in {"not_analyzed", "stale"}]
     current = [status for status in relevant if status.state == "current"]
     if attention:
         overall_status: AIOverallState = "update_available"
