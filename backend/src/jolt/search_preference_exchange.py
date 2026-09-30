@@ -18,7 +18,7 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
+    save_global_ai_context,  # noqa: F401 - legacy monkeypatch compatibility
 )
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.market_preparation_import import (
