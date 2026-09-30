@@ -38,8 +38,8 @@ Normal product operation now follows one consolidated intelligence loop:
 3. Review the frozen new-job set with ChatGPT while refreshing stale aggregate intelligence in the same package.
 4. Import the reviewed update once; Review Inbox plus eligible Market/Search/Application/Profile intelligence are refreshed together.
 5. Use backend `/api/ai-status` as the freshness authority.
-6. Continue UI simplification from observed friction: Settings & Data next, Applications after that.
-7. Add Indeed/InfoJobs only when they materially improve the real workflow.
+6. Use the simplified Settings & Data and Applications surfaces in production and record concrete friction before changing them again.
+7. Add Indeed/InfoJobs only when they materially improve the real workflow; no additional product milestone is currently required for operability.
 
 ## R-025 — LinkedIn Search Portfolio and Discovery Batch — COMPLETE
 Goal: replace repeated one-search-at-a-time operator work with one saved multi-search discovery action while preserving per-search provenance and the certified capture engine.
@@ -78,3 +78,18 @@ PRs #464–#467 close the architecture-audit gaps:
 - individual exchanges and standalone legacy review/preparation routes are deprecated compatibility/diagnostic surfaces.
 
 Acceptance evidence: PR #467 exact head `57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6` passed backend, frontend rerun, Playwright/sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before merge as `98953f63f7e836f100a6ef5f00c3ac5399a649f6`.
+
+
+## R-033 — Project-control architecture synchronization — COMPLETE
+PR #468 synchronized the repository-authoritative control files with the unified intelligence architecture established by PRs #464–#467.
+
+## R-034 — Settings & Data daily-use simplification — COMPLETE
+PR #469 made backend-owned intelligence status the primary Settings surface and moved deliberate full-strategy refresh plus legacy compatibility exports/imports into Advanced.
+
+## R-035 — Applications operational views — COMPLETE
+PR #470 added the compact Active / Interviewing / Offers / Overdue scorecard and replaced the former density toggle with Board/List views while preserving application lifecycle, stage movement, documents, contacts, tasks, interviews and outcomes.
+
+Acceptance evidence: PR #470 exact head `8941ce34867ae2884f8a8f0917d288633c5c5ca3` passed backend, frontend, Playwright/sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before squash merge as `0f252f4ec7e17dc29e31bed71a0bd86e23d18da5`.
+
+## Current product-development posture
+There is no pending operability milestone inside the certified local-first single-user Windows boundary. Normal job-search use is the primary next activity. Further product work should be triggered by observed workflow friction, a demonstrated source-coverage need, or an explicit compatibility/removal decision rather than speculative feature expansion.
