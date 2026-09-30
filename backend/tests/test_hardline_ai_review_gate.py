@@ -423,4 +423,3 @@ def test_contract_v12_also_enforces_deterministic_location_hardline(tmp_path) ->
 
         with pytest.raises(ValueError, match="deterministic source evidence"):
             import_ai_review(session, request)
-
