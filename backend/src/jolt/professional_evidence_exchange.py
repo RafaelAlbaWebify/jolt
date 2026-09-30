@@ -199,6 +199,7 @@ def _apply_professional_context_patch(output: AIExchangeOutput) -> GlobalAIConte
     )
     return load_global_ai_context()
 
+
 def import_professional_evidence_exchange(
     output: AIExchangeOutput,
 ) -> ProfessionalEvidenceExchangeImportResponse:
