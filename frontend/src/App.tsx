@@ -9,6 +9,7 @@ type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_inf
 type AIReviewDecision = "strong_pursue" | "pursue" | "conditional" | "reject";
 type AIReviewStatus = "reviewed" | "awaiting_ai_review";
 type SortOption = "ai_priority" | "title_asc" | "company_asc";
+type InboxFilter = "all" | "priority" | "pursue" | "hold" | "not_fit";
 
 type OpportunityIndex = {
   posting_id: string;
@@ -173,6 +174,21 @@ function compareAIPriority(
   return left.title.localeCompare(right.title);
 }
 
+function companyInitials(company: string) {
+  const words = company.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+function inboxFilterMatches(opportunity: OpportunityIndex, filter: InboxFilter) {
+  if (filter === "all") return true;
+  if (filter === "priority") return opportunity.decision === "strong_pursue";
+  if (filter === "pursue") return opportunity.decision === "pursue" || opportunity.decision === "strong_pursue";
+  if (filter === "hold") return opportunity.decision === "conditional" || opportunity.review_decision === "defer";
+  return opportunity.decision === "reject" || hardlineStopped(opportunity);
+}
+
 function reviewNotice(decision: ReviewChoice, title: string) {
   const name = title || "Opportunity";
   if (decision === "pursue") return `${name} is ready in Applications.`;
@@ -262,6 +278,8 @@ export function App({
   const [showManualIntake, setShowManualIntake] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("ai_priority");
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
+  const [previewOpportunityId, setPreviewOpportunityId] = useState<string | null>(null);
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -338,9 +356,28 @@ export function App({
       ) ?? null,
     [opportunities, selectedOpportunityId],
   );
+
+  const previewOpportunity = useMemo(
+    () =>
+      opportunities.find(
+        (opportunity) => opportunity.posting_id === previewOpportunityId,
+      ) ?? null,
+    [opportunities, previewOpportunityId],
+  );
+
+  const inboxCounts = useMemo(() => ({
+    all: opportunities.length,
+    priority: opportunities.filter((item) => inboxFilterMatches(item, "priority")).length,
+    pursue: opportunities.filter((item) => inboxFilterMatches(item, "pursue")).length,
+    hold: opportunities.filter((item) => inboxFilterMatches(item, "hold")).length,
+    not_fit: opportunities.filter((item) => inboxFilterMatches(item, "not_fit")).length,
+    reviewed: opportunities.filter((item) => item.ai_review_status === "reviewed").length,
+  }), [opportunities]);
+
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
     const filtered = opportunities.filter((opportunity) => {
+      if (!inboxFilterMatches(opportunity, inboxFilter)) return false;
       if (!normalizedQuery) return true;
       return [opportunity.title, opportunity.company, opportunity.location]
         .join(" ")
@@ -358,11 +395,21 @@ export function App({
 
       return compareAIPriority(left, right);
     });
-  }, [opportunities, searchQuery, sortOption]);
+  }, [opportunities, searchQuery, sortOption, inboxFilter]);
 
   const pageCount = Math.max(1, Math.ceil(visibleOpportunities.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pagedOpportunities = visibleOpportunities.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    if (pagedOpportunities.length === 0) {
+      setPreviewOpportunityId(null);
+      return;
+    }
+    if (!previewOpportunityId || !pagedOpportunities.some((item) => item.posting_id === previewOpportunityId)) {
+      setPreviewOpportunityId(pagedOpportunities[0].posting_id);
+    }
+  }, [pagedOpportunities, previewOpportunityId]);
 
   async function apiAction(url: string, body: object) {
     setBusy(true);
