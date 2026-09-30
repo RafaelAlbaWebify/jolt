@@ -495,12 +495,14 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
 
 def _candidate_levels(preferences: JobSearchPreferences) -> dict[str, str]:
     allowed = {language.casefold() for language in preferences.languages}
-    levels: dict[str, str] = {}
-    for language in preferences.languages:
-        configured = preferences.language_levels.get(language)
-        if configured is None:
-            configured = preferences.language_levels.get(language.casefold())
-        levels[language.casefold()] = configured or "professional"
+    configured_levels = {
+        language.casefold(): level
+        for language, level in preferences.language_levels.items()
+    }
+    levels = {
+        language.casefold(): configured_levels.get(language.casefold(), "professional")
+        for language in preferences.languages
+    }
     return {language: level for language, level in levels.items() if language in allowed}
 
 
