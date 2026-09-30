@@ -1,16 +1,42 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { CaptureHistory } from "./CaptureHistory";
 import { ReviewedDecisions } from "./ReviewedDecisions";
 
-const AI_IMPORT_RECEIPT_KEY = "jolt.ai.lastImportReceipt.v1";
+type AISectionState = "no_evidence" | "not_analyzed" | "stale" | "current";
 
-type AIImportReceipt = {
-  fileName: string;
-  importedAt: string;
-  importedSections: string[];
-  reviewInboxImported: boolean;
+type AIStatus = {
+  overall_status: "no_evidence" | "update_available" | "current";
+  last_intelligence_update_at: string | null;
+  context_updated_at: string | null;
+  current_sections: number;
+  attention_sections: number;
+  sections: Record<string, {
+    state: AISectionState;
+    evidence_at: string | null;
+    analyzed_at: string | null;
+    reason: string;
+    operator_relevant: boolean;
+  }>;
 };
+
+function statusLabel(status: AIStatus | null) {
+  if (!status) return "Checking…";
+  if (status.overall_status === "current") return "Up to date";
+  if (status.overall_status === "update_available") return "Update available";
+  return "No analysis yet";
+}
+
+function statusDescription(status: AIStatus | null) {
+  if (!status) return "Reading JOLT's persisted intelligence state.";
+  if (status.overall_status === "current") {
+    return "Stored intelligence reflects the latest operator-relevant evidence.";
+  }
+  if (status.overall_status === "update_available") {
+    return "Some intelligence is older than the evidence currently stored in JOLT.";
+  }
+  return "JOLT does not have enough analyzed evidence yet.";
+}
 
 function readTextFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -25,24 +51,6 @@ function readTextFile(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("The strategy update file could not be read."));
     reader.readAsText(file);
   });
-}
-
-function loadImportReceipt(): AIImportReceipt | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(AI_IMPORT_RECEIPT_KEY);
-  if (!raw) return null;
-  try {
-    const value = JSON.parse(raw) as Partial<AIImportReceipt>;
-    if (!value.fileName || !value.importedAt || !Array.isArray(value.importedSections)) return null;
-    return {
-      fileName: value.fileName,
-      importedAt: value.importedAt,
-      importedSections: value.importedSections.map(String),
-      reviewInboxImported: Boolean(value.reviewInboxImported),
-    };
-  } catch {
-    return null;
-  }
 }
 
 function formatImportProblem(problem: unknown): string {
@@ -76,7 +84,19 @@ export function DataTools({ apiBase, onImported }: Props) {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState("");
-  const [lastImport, setLastImport] = useState<AIImportReceipt | null>(loadImportReceipt);
+  const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
+
+  const loadAIStatus = useCallback(async () => {
+    const response = await fetch(`${apiBase}/api/ai-status`);
+    if (!response.ok) throw new Error("Unable to read JOLT intelligence status.");
+    setAIStatus(await response.json() as AIStatus);
+  }, [apiBase]);
+
+  useEffect(() => {
+    void loadAIStatus().catch((caught) => {
+      setError(caught instanceof Error ? caught.message : "Unable to read JOLT intelligence status.");
+    });
+  }, [loadAIStatus]);
 
   async function importAIUpdate(file: File) {
     setImporting(true);
@@ -108,20 +128,12 @@ export function DataTools({ apiBase, onImported }: Props) {
         review_inbox_imported: boolean;
       };
 
-      const receipt: AIImportReceipt = {
-        fileName: file.name,
-        importedAt: new Date().toISOString(),
-        importedSections: result.imported_sections,
-        reviewInboxImported: result.review_inbox_imported,
-      };
-      window.localStorage.setItem(AI_IMPORT_RECEIPT_KEY, JSON.stringify(receipt));
-      setLastImport(receipt);
-
       const sectionCount = result.imported_sections.length;
       const reviewText = result.review_inbox_imported ? "Review Inbox updated. " : "";
       setImportNotice(
         `Strategy update imported successfully. ${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
       );
+      await loadAIStatus();
       await onImported?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The strategy update could not be imported.");
@@ -135,28 +147,46 @@ export function DataTools({ apiBase, onImported }: Props) {
       <section className="panel" aria-labelledby="ai-import-status-heading">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Strategy updates</p>
-            <h2 id="ai-import-status-heading">Strategy update status</h2>
-            <p>
-              {lastImport
-                ? "The most recent reviewed strategy update was accepted by JOLT. This receipt remains visible after navigation or reload."
-                : "No reviewed strategy update has been imported in this browser yet."}
-            </p>
+            <p className="eyebrow">Intelligence</p>
+            <h2 id="ai-import-status-heading">Intelligence status</h2>
+            <p>{statusDescription(aiStatus)}</p>
           </div>
-          <strong>{lastImport ? "Imported" : "No update yet"}</strong>
+          <strong>{statusLabel(aiStatus)}</strong>
         </div>
 
-        {lastImport && (
+        {aiStatus && (
           <div className="market-summary-grid">
-            <article className="market-card"><span>File</span><strong>{lastImport.fileName}</strong></article>
-            <article className="market-card"><span>Imported at</span><strong>{new Date(lastImport.importedAt).toLocaleString()}</strong></article>
-            <article className="market-card"><span>Updated sections</span><strong>{lastImport.importedSections.length}</strong></article>
-            <article className="market-card"><span>Review Inbox</span><strong>{lastImport.reviewInboxImported ? "Updated" : "Not included"}</strong></article>
+            <article className="market-card">
+              <span>Last intelligence update</span>
+              <strong>
+                {aiStatus.last_intelligence_update_at
+                  ? new Date(aiStatus.last_intelligence_update_at).toLocaleString()
+                  : "Not yet"}
+              </strong>
+            </article>
+            <article className="market-card">
+              <span>Current sections</span>
+              <strong>{aiStatus.current_sections}</strong>
+            </article>
+            <article className="market-card">
+              <span>Updates needed</span>
+              <strong>{aiStatus.attention_sections}</strong>
+            </article>
+            <article className="market-card">
+              <span>Review Inbox</span>
+              <strong>{aiStatus.sections.review_inbox?.state.replaceAll("_", " ") ?? "unknown"}</strong>
+            </article>
           </div>
         )}
-        {lastImport?.importedSections.length ? (
-          <p><strong>Updated:</strong> {lastImport.importedSections.join(", ")}</p>
-        ) : null}
+        {aiStatus && aiStatus.attention_sections > 0 && (
+          <p>
+            <strong>Needs attention:</strong>{" "}
+            {Object.entries(aiStatus.sections)
+              .filter(([, section]) => section.operator_relevant && ["stale", "not_analyzed"].includes(section.state))
+              .map(([name]) => name.replaceAll("_", " "))
+              .join(", ")}
+          </p>
+        )}
       </section>
 
       <details className="panel operations-tools workspace-sidebar-operations">
@@ -168,14 +198,14 @@ export function DataTools({ apiBase, onImported }: Props) {
           <section aria-labelledby="ai-exchange-heading">
             <h2 id="ai-exchange-heading">Strategy update exchange</h2>
             <p>
-              Use this only when you want ChatGPT to refresh broader search strategy, profile guidance, or market insights. For normal job review, use Export new jobs for review in Capture Jobs.
+              Use this only for a deliberate full-strategy refresh. Normal discovery review now updates job review and intelligence together from Capture Jobs.
             </p>
             <ol>
               <li>
                 <a
                   href={`${apiBase}/api/ai-work-package/export`}
                   download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export JOLT's full strategy context. For normal job review, use Export new jobs for review in Capture Jobs."
+                  title="Export JOLT's full strategy context for a deliberate broad refresh."
                 >
                   <strong>Export strategy update package</strong>
                 </a>
