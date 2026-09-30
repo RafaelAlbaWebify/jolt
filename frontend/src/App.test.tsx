@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   afterEach,
@@ -164,8 +165,8 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("High priority"),
-    ).toBeInTheDocument();
+      screen.getAllByText("High priority").length,
+    ).toBeGreaterThanOrEqual(1);
 
     expect(
       screen.getAllByText("Needs AI review").length,
@@ -209,20 +210,24 @@ describe("App AI review workflow", () => {
       }),
     );
 
+    const dialog = screen.getByRole("dialog", {
+      name: "Application Support Engineer",
+    });
+
     expect(
-      screen.getByText(
+      within(dialog).getByText(
         "Strong application support fit.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
+      within(dialog).getByText(
         "Spain-compatible employment.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("eligible"),
+      within(dialog).getByText("eligible"),
     ).toBeInTheDocument();
 
     expect(
@@ -245,7 +250,7 @@ describe("App AI review workflow", () => {
       screen.getAllByText("Required condition not met").length,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText("US-only remote: applicants must be anywhere in the US."),
+      await screen.findByText("US-only remote: applicants must be anywhere in the US."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Fit score not shown because a required condition was not met."),
