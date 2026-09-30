@@ -12,6 +12,6 @@ def require_unified_context_authority(
 
     if output.context_patch:
         raise ValueError(
-            f"{section_label} section context_patch must be empty; "
+            f"{section_label} section context_patch is non-patchable on legacy section imports; "
             "use the unified work package top-level context_patch"
         )
