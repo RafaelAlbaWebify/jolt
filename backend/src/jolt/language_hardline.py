@@ -232,6 +232,39 @@ _UNSUPPORTED_WORDS: dict[str, frozenset[str]] = {
     "Norwegian": frozenset({"og", "at", "i", "en", "et", "som", "for", "med", "på", "pa", "du", "vi", "er", "erfaring"}),
     "Finnish": frozenset({"ja", "on", "että", "etta", "se", "ei", "työ", "tyo", "kokemus", "tehtävä", "tehtava", "me", "sinä", "sina"}),
     "Polish": frozenset({"i", "w", "na", "z", "do", "dla", "oraz", "jest", "są", "sa", "praca", "doświadczenie", "doswiadczenie", "zespół", "zespol"}),
+    "Catalan": frozenset(
+        {"el", "la", "els", "les", "de", "del", "i", "en", "per", "amb", "que", "una", "un", "és", "es", "com", "aquesta", "aquest", "feina", "lloc", "equip", "experiència", "experiencia", "requisits"}
+    ),
+    "Galician": frozenset(
+        {"o", "a", "os", "as", "de", "do", "da", "e", "en", "para", "con", "que", "un", "unha", "é", "son", "como", "traballo", "posto", "equipo", "experiencia", "requisitos"}
+    ),
+    "Czech": frozenset(
+        {"a", "v", "na", "se", "pro", "s", "je", "jsme", "jste", "práce", "prace", "pozice", "tým", "tym", "zkušenosti", "zkusenosti", "požadavky", "pozadavky"}
+    ),
+    "Slovak": frozenset(
+        {"a", "v", "na", "sa", "pre", "s", "je", "sme", "ste", "práca", "praca", "pozícia", "pozicia", "tím", "tim", "skúsenosti", "skusenosti", "požiadavky", "poziadavky"}
+    ),
+    "Romanian": frozenset(
+        {"și", "si", "în", "in", "de", "la", "cu", "pentru", "este", "sunt", "un", "o", "pe", "care", "echipă", "echipa", "experiență", "experienta", "cerințe", "cerinte"}
+    ),
+    "Hungarian": frozenset(
+        {"és", "es", "a", "az", "egy", "hogy", "van", "lesz", "számára", "szamara", "munkakör", "munkakor", "csapat", "tapasztalat", "követelmények", "kovetelmenyek"}
+    ),
+    "Croatian": frozenset(
+        {"i", "u", "na", "za", "s", "sa", "je", "su", "koji", "rad", "posao", "tim", "iskustvo", "zahtjevi", "potrebno"}
+    ),
+    "Slovenian": frozenset(
+        {"in", "v", "na", "za", "z", "s", "je", "so", "ki", "delo", "delovno", "ekipa", "izkušnje", "izkusnje", "zahteve"}
+    ),
+    "Lithuanian": frozenset(
+        {"ir", "į", "i", "su", "už", "uz", "yra", "mes", "jūs", "jus", "darbas", "pozicija", "komanda", "patirtis", "reikalavimai"}
+    ),
+    "Latvian": frozenset(
+        {"un", "ar", "par", "ir", "mēs", "mes", "jūs", "jus", "darbs", "amats", "komanda", "pieredze", "prasības", "prasibas"}
+    ),
+    "Estonian": frozenset(
+        {"ja", "on", "et", "ning", "meie", "teie", "töö", "too", "roll", "meeskond", "kogemus", "nõuded", "nouded"}
+    ),
 }
 
 _LEVEL_ORDER = {
