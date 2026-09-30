@@ -77,10 +77,11 @@ function formatImportProblem(problem: unknown): string {
 
 type Props = {
   apiBase: string;
+  active?: boolean;
   onImported?: () => void | Promise<void>;
 };
 
-export function DataTools({ apiBase, onImported }: Props) {
+export function DataTools({ apiBase, active = true, onImported }: Props) {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState("");
@@ -93,10 +94,11 @@ export function DataTools({ apiBase, onImported }: Props) {
   }, [apiBase]);
 
   useEffect(() => {
+    if (!active) return;
     void loadAIStatus().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "Unable to read JOLT intelligence status.");
     });
-  }, [loadAIStatus]);
+  }, [active, loadAIStatus]);
 
   async function importAIUpdate(file: File) {
     setImporting(true);
