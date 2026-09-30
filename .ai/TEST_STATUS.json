@@ -1,119 +1,117 @@
 {
-  "last_updated": "2026-09-06",
-  "baseline_commit": "e12f1befe0c1ff0d56d151b66215863a9595e60a",
-  "status_note": "Merge-gate verification is fresh through PR #390. One corrected real 79-job AI round trip and restart persistence are verified. The current open runtime acceptance is live LinkedIn profile-detail completeness after the progressive-scroll fix; code-level green gates do not substitute for that external-site proof.",
-  "testing_percentage": 97,
+  "last_updated": "2026-09-30",
+  "baseline_commit": "98953f63f7e836f100a6ef5f00c3ac5399a649f6",
+  "status_note": "Current architecture and UX are verified through PR #467. Production certification remains 100% within the local-first single-user Windows boundary. PR #467 exact head passed all required gates; one unrelated ApplicationDashboard frontend test failed once and passed unchanged on isolated rerun, so monitor for recurrence without weakening the test.",
+  "testing_percentage": 100,
   "test_suites": [
     {
-      "name": "backend pytest",
-      "command": "cd backend && uv run pytest",
-      "latest_state": "verified green in PR #390 CI run 1367, including progressive profile-section and fail-closed legacy-detail regressions",
+      "name": "backend pytest + Ruff + Pyright",
+      "command": "cd backend && uv run pytest / ruff / pyright",
+      "latest_state": "PR #467 exact head backend success after unified-context regression migration",
       "verified": true
     },
     {
-      "name": "backend ruff lint",
-      "command": "cd backend && uv run ruff check .",
-      "latest_state": "verified green in PR #390 CI run 1367",
+      "name": "frontend unit/component + production build",
+      "command": "cd frontend && npm test && npm run build",
+      "latest_state": "PR #467 exact head success on isolated rerun; prior single ApplicationDashboard alert test failure did not reproduce",
       "verified": true
     },
     {
-      "name": "backend ruff format",
-      "command": "cd backend && uv run ruff format --check --diff .",
-      "latest_state": "verified green in PR #390 CI run 1367",
-      "verified": true
-    },
-    {
-      "name": "backend pyright",
-      "command": "cd backend && uv run pyright",
-      "latest_state": "verified green in PR #390 CI run 1367",
-      "verified": true
-    },
-    {
-      "name": "frontend unit/component tests",
-      "command": "cd frontend && npm test",
-      "latest_state": "verified green in PR #390 CI run 1367",
-      "verified": true
-    },
-    {
-      "name": "frontend build",
-      "command": "cd frontend && npm run build",
-      "latest_state": "verified green in PR #390 CI run 1367",
-      "verified": true
-    },
-    {
-      "name": "Playwright acceptance",
+      "name": "Playwright acceptance / sidebar-kanban",
       "workflow": ".github/workflows/playwright-acceptance.yml",
-      "latest_state": "PR #390 run 636 success",
+      "latest_state": "PR #467 exact head success",
       "verified": true
     },
     {
-      "name": "Full-cycle Playwright certification",
+      "name": "Full-cycle Playwright + viewport certification",
       "workflow": ".github/workflows/full-cycle-playwright-certification.yml",
-      "latest_state": "PR #390 run 559 success",
+      "latest_state": "PR #467 exact head success at certified production viewport",
       "verified": true
     },
     {
-      "name": "Windows launcher contract",
-      "latest_state": "windows-scripts job passed in PR #390 CI run 1367",
+      "name": "Production clean-install Windows",
+      "workflow": ".github/workflows/clean-install-windows.yml",
+      "latest_state": "PR #467 exact head success",
+      "verified": true
+    },
+    {
+      "name": "Migration recovery",
+      "workflow": ".github/workflows/migration-recovery.yml",
+      "latest_state": "PR #467 exact head success",
+      "verified": true
+    },
+    {
+      "name": "Reproducible release",
+      "workflow": ".github/workflows/reproducible-release.yml",
+      "latest_state": "PR #467 exact head success",
+      "verified": true
+    },
+    {
+      "name": "Windows scripts",
+      "latest_state": "PR #467 exact head success",
       "verified": true
     }
   ],
   "recent_exact_head_gates": [
     {
-      "pull_request": 387,
-      "purpose": "structured AI import validation rendering",
-      "result": "CI + Playwright acceptance + full-cycle certification passed before merge"
+      "pull_request": 454,
+      "purpose": "read-only live UI Playwright audit",
+      "result": "merged after green exact-head gates"
     },
     {
-      "pull_request": 388,
-      "purpose": "backend package/API/runtime version parity at 0.8.0",
-      "result": "CI + Playwright acceptance + full-cycle certification passed before merge"
+      "pull_request": 460,
+      "purpose": "Review Inbox split-view workspace",
+      "result": "all required exact-head gates passed"
     },
     {
-      "pull_request": 389,
-      "purpose": "newest-per-profile-section candidate evidence and explicit profile-section completeness semantics",
-      "result": "CI + Playwright acceptance + full-cycle certification passed before merge; subsequent live Certifications acceptance exposed an absolute-footer false-complete edge case"
+      "pull_request": 462,
+      "purpose": "simplified Review Inbox human decisions",
+      "result": "all required exact-head gates passed"
     },
     {
-      "pull_request": 390,
-      "head_sha": "6db3e53cb0929e2ce70aa6ce865f0dbac424d7f0",
-      "merge_sha": "e12f1befe0c1ff0d56d151b66215863a9595e60a",
-      "purpose": "progressive LinkedIn profile-detail traversal, recorder-owned completeness metadata and fail-closed legacy detail evidence",
-      "result": "CI run 1367 + Playwright acceptance 636 + full-cycle certification 559 passed before squash merge"
+      "pull_request": 463,
+      "purpose": "Market Insights professional dashboard",
+      "result": "all required exact-head gates passed"
+    },
+    {
+      "pull_request": 464,
+      "purpose": "unified discovery review + intelligence refresh",
+      "result": "all required exact-head gates passed"
+    },
+    {
+      "pull_request": 465,
+      "purpose": "backend-owned AI freshness status",
+      "result": "all required exact-head gates passed"
+    },
+    {
+      "pull_request": 466,
+      "purpose": "Applications decoupled from legacy Evaluation",
+      "result": "all required exact-head gates passed"
+    },
+    {
+      "pull_request": 467,
+      "head_sha": "57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6",
+      "merge_sha": "98953f63f7e836f100a6ef5f00c3ac5399a649f6",
+      "purpose": "Unified Work Package sole durable context authority + deprecated legacy AI mutation paths",
+      "result": "backend, frontend isolated rerun, Playwright/sidebar-kanban, full-cycle, clean-install, migration-recovery, reproducible-release and Windows scripts all passed before merge"
     }
   ],
   "latest_real_world_external_validation": {
-    "first_corrected_cycle_date": "2026-09-05",
-    "capture_run_id": "7a105d99-a81a-4486-a435-7db9a07eb0ab",
-    "capture_result": "79 captured / 79 verified / 4 pages / no warnings / no_next_page",
-    "ai_package_id": "2ebeeeca-42bb-473f-a220-7d3b1bc0e860",
-    "sequential_review": "79 jobs reviewed exactly once under contract 1.1 strict_sequential_per_job; 76 reject / 1 strong_pursue / 1 pursue / 1 conditional",
-    "import_result": "corrected V2 update imported successfully; Settings & Data showed Imported, seven intelligence sections updated and Review Inbox updated",
-    "restart_persistence": "full local restart preserved import receipt, Market Insights and Review Inbox decisions with no stale-runtime warning",
-    "second_cycle_profile_preparation": "fresh newest-per-section profile capture worked, but real Licenses & certifications capture 4d99d167-b6d9-4e88-aa05-9c7d84d860d3 stopped around the first ten credentials while being marked complete; this exposed the profile false-complete bug fixed in PR #390",
-    "next_required_result": "fresh live post-PR #390 LinkedIn profile-detail recapture must show later certifications and progressive_traversal_verified=true before the second AI cycle is trusted"
+    "linkedin_profile_detail": "2026-09-19 fresh live profile-detail capture reached later Licenses & certifications and closed the false-complete acceptance gap.",
+    "job_capture": "2026-09-19 live LinkedIn jobs capture completed 100 requested / 100 captured / 100 verified over four pages with no warnings.",
+    "ai_round_trip": "2026-09-19 second real 100-job strict sequential review/import completed and persisted after restart.",
+    "real_prospect_acceptance": "2026-09-20 backup/verify/restore plus guarded retention rehearsal passed without modifying the active database.",
+    "linkedin_failure_recovery": "2026-09-21 real-site authwall, authenticated access, forced-offline failure and connectivity recovery acceptance passed.",
+    "saved_search_portfolio": "2026-09-24 real multi-search discovery batch acceptance passed; subsequent production search portfolio/search-performance work merged through 2026-09-28."
   },
-  "known_flaky_tests": [],
+  "known_flaky_tests": [
+    "2026-09-30 PR #467: ApplicationDashboard workflow mutation alert test failed once while no frontend code changed; isolated GitHub Actions rerun passed unchanged. Treat as monitor-only unless it recurs."
+  ],
   "untested_or_not_freshly_verified_areas": [
-    "Live LinkedIn profile-detail completeness after PR #390 progressive traversal.",
-    "Second consecutive real capture/review/import cycle without internal repair.",
-    "Dated backup/restore rehearsal on the active local schema.",
-    "Real capture cleanup/archive rehearsal proving pursued applications survive.",
-    "Clean install/restore rehearsal on a second or clean environment.",
-    "Real LinkedIn login/checkpoint/network failure and recovery behavior.",
-    "Final privacy/security review and reproducible release/deployment procedure.",
-    "Exact final release-commit certification after all remaining gates close."
+    "No release-blocking area within the certified local-first single-user Windows boundary.",
+    "Future Indeed/InfoJobs adapters require their own supervised real-site acceptance before entering the certified boundary."
   ],
-  "manual_acceptance_tests": [
-    "Pull current main and fully restart JOLT; confirm loaded backend SHA equals repository checkout and no runtime-staleness guard is shown.",
-    "Recapture LinkedIn Licenses & certifications through the normal JOLT profile flow.",
-    "Verify known later credentials are present rather than relying only on stable_at_document_end.",
-    "Export/generate the candidate evidence surface and confirm capture_metadata.progressive_traversal_verified=true with completeness=complete.",
-    "Only then run the second real job capture -> strict sequential review -> validated import cycle and source-audit the top survivors.",
-    "Restart JOLT and confirm second-cycle decisions/applications/import receipt persist.",
-    "Exercise backup create/verify/restore on the active schema and record dated evidence."
-  ],
-  "e2e_status": "merge-gate E2E is fresh and green through PR #390; live post-fix LinkedIn profile-detail acceptance remains pending",
-  "browser_ui_status": "latest Playwright acceptance and full-cycle certification are green through PR #390; real external-site lazy-load behavior must still be reverified",
-  "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when the relevant exact-head test and, where applicable, real runtime/external-site evidence passes."
+  "e2e_status": "Fresh and green through PR #467 exact head.",
+  "browser_ui_status": "Fresh and green through PR #467; live UI audit infrastructure remains available for production-data checks.",
+  "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when relevant exact-head automated gates and, where applicable, real runtime/external-site evidence pass."
 }
