@@ -26,7 +26,9 @@ def build_application_outcomes_exchange_router(get_session: SessionProvider) -> 
     ) -> AIExchangeInput:
         return build_application_outcomes_exchange(session)
 
-    @router.post("/import", deprecated=True, response_model=ApplicationOutcomesExchangeImportResponse)
+    @router.post(
+        "/import", deprecated=True, response_model=ApplicationOutcomesExchangeImportResponse
+    )
     def import_application_outcomes(
         output: AIExchangeOutput,
     ) -> ApplicationOutcomesExchangeImportResponse:
