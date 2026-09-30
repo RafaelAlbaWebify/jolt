@@ -111,6 +111,11 @@ from jolt.schemas import (
     ReviewRequest,
     ReviewResponse,
 )
+from jolt.source_revalidation import (
+    SourceRevalidationImportRequest,
+    SourceRevalidationImportResponse,
+    import_source_revalidation,
+)
 from jolt.strategy_runtime import (
     ENGINE_VERSION,
     ensure_strategy_reviews,
@@ -653,6 +658,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> AIReviewImportResponse:
         try:
             return import_ai_review(session, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/ai-review/source-revalidation/import",
+        response_model=SourceRevalidationImportResponse,
+        tags=["ai-review"],
+    )
+    def source_revalidation_import(
+        request: SourceRevalidationImportRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> SourceRevalidationImportResponse:
+        try:
+            return import_source_revalidation(session, request)
         except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
