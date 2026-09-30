@@ -67,9 +67,7 @@ def import_hardline_revalidation(
     posting_ids = {item.posting_id for item in request.items}
     protected_human_state = set(
         session.scalars(
-            select(ReviewDecision.posting_id).where(
-                ReviewDecision.posting_id.in_(posting_ids)
-            )
+            select(ReviewDecision.posting_id).where(ReviewDecision.posting_id.in_(posting_ids))
         ).all()
     ) | set(
         session.scalars(
@@ -101,9 +99,7 @@ def import_hardline_revalidation(
         if item.hardline_type == "language":
             review.language_status = "blocked" if item.resolution == "reject" else "conditional"
         elif item.hardline_type in {"clearance", "certification"}:
-            review.clearance_status = (
-                "blocked" if item.resolution == "reject" else "conditional"
-            )
+            review.clearance_status = "blocked" if item.resolution == "reject" else "conditional"
         elif item.hardline_type in {"employment", "work_authorization"}:
             if item.resolution == "reject":
                 review.geography_status = "ineligible"
