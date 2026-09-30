@@ -446,7 +446,6 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
 
             if len(alternatives) > 1:
                 consumed.update(alternative_indexes)
-                midpoint = (start + mentions[alternative_indexes[-1]][2]) // 2
                 kinds = [_nearest_kind(segment, mentions[i][1]) for i in alternative_indexes]
                 if all(kind is None for kind in kinds):
                     continue
