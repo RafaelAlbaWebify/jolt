@@ -19,11 +19,14 @@ This is a compact navigation map, not a file inventory.
 - `backend/src/jolt/review_inbox_exchange.py` — current sequential reasoning protocol embedded in exported package.
 - `backend/src/jolt/ai_review_import.py` — AI review schema/import validator and deterministic conflict gate.
 - `backend/src/jolt/hardline_evidence.py`, `employment_geography.py` — deterministic eligibility evidence; high-impact, regression-sensitive.
-- `backend/src/jolt/unified_ai_work_package.py` and `*_exchange.py` — unified ChatGPT round-trip system.
+- `backend/src/jolt/unified_ai_work_package.py` — supported Unified AI Work Package composition/import and sole durable AI context authority.
+- `backend/src/jolt/ai_status.py` — backend-owned intelligence freshness status used by Settings & Data and other UI surfaces.
+- `backend/src/jolt/unified_context_policy.py` — rejects durable context patches on deprecated section-level AI imports.
+- `backend/src/jolt/*_exchange.py` — section evidence/feedback compatibility exchanges; deprecated for durable context mutation.
 - `backend/src/jolt/market_*` — Market Intelligence.
 - `backend/src/jolt/linkedin_command_center.py` and related capture files — LinkedIn Profile/Connections/activity intelligence.
 - `backend/tests/` — backend regression/contract tests. Inspect neighboring tests before changing behavior.
-- `backend/pyproject.toml` — Python dependencies/tooling; note package version currently differs from FastAPI app version.
+- `backend/pyproject.toml` — Python dependencies/tooling; package/API/runtime version parity is enforced at 0.8.0.
 
 ## Frontend
 - `frontend/src/Workbench.tsx` — top-level section orchestration/navigation where present.
@@ -47,6 +50,7 @@ This is a compact navigation map, not a file inventory.
 - `.github/workflows/playwright-acceptance.yml` — browser acceptance gate.
 - `.github/workflows/full-cycle-playwright-certification.yml` — full-cycle supported UI/workflow gate.
 - `.github/workflows/windows-launcher-contract.yml` — launcher validation.
+- `.github/workflows/clean-install*.yml`, migration-recovery and reproducible-release workflows — production certification gates.
 
 ## High-value docs
 - `docs/domain-model.md`
