@@ -125,6 +125,7 @@ export function Workbench() {
                 </details>
 
                 <DataTools
+                  key={`settings-intelligence-${aiImportRevision}`}
                   apiBase={API_BASE}
                   active={activeView === "settings"}
                   onImported={() => setAIImportRevision((value) => value + 1)}
