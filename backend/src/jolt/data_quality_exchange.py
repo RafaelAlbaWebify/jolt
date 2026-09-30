@@ -19,6 +19,7 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
+    save_global_ai_context,
 )
 from jolt.market_preparation_import import (
     MarketPreparationAction,
