@@ -64,16 +64,15 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Resolution: PR #385 requires the returned posting-id set to equal the capture posting-id set for contract 1.1 and rejects omissions before any AI review rows are written. Legacy contract 1.0 behavior is preserved.
 - Verification: PR #385 head `528c921eeefe86ccaaaf38987cc5e9c6ad7f2d9d` passed CI run 1353, Playwright acceptance run 627 and full-cycle certification run 550 before merge.
 
-## KI-010 — P1 — LIVE ACCEPTANCE OPEN — LinkedIn profile detail false-complete on lazy-loaded sections
+## KI-010 — RESOLVED 2026-09-19 — LinkedIn profile detail false-complete on lazy-loaded sections
 - Module: LinkedIn Profile / candidate evidence
 - Description: a real fresh Licenses & certifications capture could be marked `stable_at_document_end` / complete while retaining only roughly the first ten credentials. The PR #389 collector jumped directly to the absolute footer, which can skip LinkedIn lazy-load triggers that fire only when intermediate content enters the viewport.
 - Runtime reproduction: capture `4d99d167-b6d9-4e88-aa05-9c7d84d860d3` on 2026-09-05 ended around IBM Project Manager and omitted known later credentials such as IBM Cybersecurity Analyst, AWS Cloud Solutions Architect, AWS Cloud Technology Consultant and Google Cybersecurity.
 - Bug class: evidence bug / completeness-contract bug. The synthetic bottom-triggered lazy-load regression was too weak to model the live site.
 - Implemented resolution: PR #390 starts profile-detail capture at the top, advances progressively through intermediate viewport thresholds, requires repeated stability at the true document end, records furthest scroll position/final document height, exposes recorder-owned `capture_metadata`, and fail-closes legacy LinkedIn `/details/` captures that predate progressive traversal.
 - Verification: PR #390 exact head `6db3e53cb0929e2ce70aa6ce865f0dbac424d7f0` passed CI run 1367, Playwright acceptance 636 and full-cycle certification 559; squash-merged as `e12f1befe0c1ff0d56d151b66215863a9595e60a`.
-- Status: code/test fix is complete, but live acceptance remains OPEN.
-- Blocking effect: blocks external-beta promotion and the second real AI cycle because candidate evidence must not be trusted until a fresh live profile-detail recapture demonstrates later credentials and `progressive_traversal_verified=true`.
-- Next action: update/restart local JOLT at current main, recapture Licenses & certifications, inspect the full list and exported capture metadata, then continue the second real capture/review/import cycle.
+- Resolution evidence: fresh live 2026-09-19 LinkedIn profile-detail capture reached later Licenses & certifications that the earlier collector missed; the external-beta/profile acceptance gate passed and subsequent real job-review cycles proceeded.
+- Blocking effect: none. Keep progressive-traversal and fail-closed legacy-detail regression coverage.
 
 ## Historical resolved issues that must retain regression coverage
 - Invalid LinkedIn authwall captures used as profile evidence — fixed by PR #374.
@@ -81,3 +80,31 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Capture cleanup could make Applications disappear — behavior invariant retained in `PROJECT_MEMORY.md`; keep mixed-batch/application-index regressions.
 - Settings & Data viewport overflow at 1680x945 — fix product layout, never weaken certification.
 - Structured AI import errors rendered `[object Object]` — fixed by PR #387; keep structured validation-path regression.
+
+
+## KI-011 — RESOLVED 2026-09-28 — Interrupted discovery batches could remain in non-terminal state after backend restart
+- Module: Capture Jobs / saved-search discovery.
+- Resolution: PR #437 reconciles interrupted scheduled/running work on startup while preserving queued work.
+- Blocking effect: none.
+
+## KI-012 — RESOLVED 2026-09-30 — Daily UX exposed development-era terminology, duplicate actions and excessive vertical growth
+- Module: Review Inbox / Applications / Settings / Market Insights.
+- Resolution: UX stabilization PRs #442/#447/#448/#449/#450/#452, live audit #454, production density #455–#459, Review Inbox redesign #460–#462 and Market Insights dashboard #463.
+- Verification: exact-head automated gates plus real operator screenshots/live audit at the certified viewport.
+- Blocking effect: none; future UX changes should be friction-driven rather than broad speculative redesign.
+
+## KI-013 — RESOLVED 2026-09-30 — AI workflows had multiple durable-context authorities and disconnected freshness loops
+- Module: AI exchange / Market Insights / Applications / Settings & Data.
+- Description: daily discovery review, market/strategy refresh, browser-local import receipts, legacy Evaluation dependencies and section-level context patches could diverge.
+- Resolution:
+  - PR #464: one batch-scoped Unified AI Work Package carries frozen new-job review plus aggregate intelligence context;
+  - PR #465: backend `/api/ai-status` owns freshness;
+  - PR #466: Applications no longer require legacy Evaluation;
+  - PR #467: Unified AI Work Package is the sole durable context authority; section/legacy routes are deprecated compatibility surfaces.
+- Verification: PR #467 exact head passed backend, frontend rerun, Playwright/sidebar-kanban, full-cycle, clean-install, migration recovery, reproducible release and Windows scripts.
+- Blocking effect: none.
+- Residual rule: do not add new product workflows to deprecated individual exchange/import routes.
+
+## Current open issue state
+- No open GitHub product issues as of 2026-09-30 after issue #441 was closed completed.
+- No known unresolved P0/P1 blocker.

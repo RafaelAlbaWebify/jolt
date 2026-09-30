@@ -9,7 +9,7 @@
 
 Current conservative operability estimate: **100%**.
 
-This is not a release claim. JOLT now has one successful corrected real 79-job capture -> strict sequential AI review -> validated import cycle, durable restart persistence, readable structured import validation, unified backend/API version parity, live-validated LinkedIn profile-detail traversal, and a live-validated Capture Jobs path after the asyncio/Playwright regression fix in PR #396. The second consecutive real capture -> strict sequential review -> validated import cycle has now completed and persisted across a full restart. Both remaining real-prospect runtime gates passed on 2026-09-20 through the non-destructive acceptance rehearsal on a restored copy of the active database. Production hardening remains before a 100%/Production-ready claim.
+This is a bounded production-readiness claim for the supported local-first single-user Windows x64 product boundary. The dated real capture/review, profile-detail, backup/restore, retention, LinkedIn failure/recovery, clean-install, migration and reproducible-release acceptances remain valid. Subsequent production UX and architecture changes through PR #467 retained the full exact-head certification suite.
 
 ## 1. Development usable — PASS
 Required:
@@ -77,7 +77,7 @@ All real-prospect criteria plus:
 - [x] failure/recovery behavior for LinkedIn login/checkpoint/network errors is validated on the real site — 2026-09-21 acceptance PASS;
 - [x] release/package/API version parity is enforced at 0.8.0 by PR #388;
 - [x] release artifact or deployment procedure is reproducible — PR #408 Reproducible release certification #1;
-- [x] regression and E2E suites are required on the exact release commit through main-push production certification workflows; final release candidate enables this invariant;
+- [x] production-affecting changes are certified through backend/frontend, Playwright/sidebar-kanban, full-cycle viewport, clean-install Windows, migration recovery, reproducible release and Windows-script gates;
 - [x] no unresolved P0/P1 release blocker — repository issue audit on 2026-09-21 found zero open issues.
 
 ## Operability progression
@@ -95,6 +95,8 @@ All real-prospect criteria plus:
 - 2026-09-19: **97%** after PR #393's live profile-detail completeness acceptance and PR #396's live Capture Jobs acceptance both passed on the active runtime.
 - 2026-09-19: **98%** after the second real 100-job review/import cycle persisted through restart and the promoted Hired/Synthires jobs passed manual source audit with no hardline-ineligible evidence.
 - 2026-09-20: **99%** after the active-database backup→verify→restore rehearsal passed and guarded retention cleanup on the restored production-shaped copy preserved an application-owned posting/application while safely purging superseded capture state; PRs #400 and #401 hardened the retention graph based on failures found by the rehearsal.
+- 2026-09-21: **100%** after production environment, migration/recovery, privacy/security, LinkedIn failure/recovery and reproducible-release gates completed.
+- 2026-09-30: **100% retained** after production UX redesign and architecture remediation through PR #467: unified discovery/intelligence round trip, backend-owned AI freshness, Applications independent from legacy Evaluation and one durable AI context authority.
 
 ## Evidence policy
 A gate may pass only from directly verified runtime/test evidence or an exact green CI/acceptance result for the relevant commit. Code existence is not verification. Historical success does not automatically prove the current commit. When evidence expires because behavior changes, move the criterion back to FAIL until reverified. A failed live acceptance can reveal that a previously green synthetic test modeled the external site too weakly; the response must be a stronger deterministic guard plus a new regression, not a lowered standard.
@@ -142,3 +144,12 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Repository issue audit: zero open issues on 2026-09-21.
 - Certified product boundary: local-first, single-user JOLT on supported Windows x64. Future Indeed/InfoJobs adapters and multi-user/SaaS architecture remain outside this production-readiness claim.
 - Operability promoted from **99% to 100%** when the exact final main release commit completes all main-push certification workflows.
+
+
+## 2026-09-30 architecture/UX recertification
+- Review Inbox split-view, simplified Apply/Reject/pending decisions and Market Insights dashboard are merged and certified.
+- Discovery review now uses a batch-scoped Unified AI Work Package that can refresh stale aggregate intelligence in the same validated round trip.
+- `GET /api/ai-status` is the backend-owned freshness authority; browser-local receipts are not status authority.
+- Durable Applications remain visible without legacy Evaluation rows.
+- The Unified AI Work Package top-level `context_patch` is the sole durable global AI context mutation path. Individual exchanges/legacy review-preparation routes are deprecated compatibility/diagnostic surfaces.
+- PR #467 exact head `57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6` passed backend, frontend isolated rerun, Playwright/sidebar-kanban, full-cycle, clean-install, migration recovery, reproducible release and Windows scripts before merge as `98953f63f7e836f100a6ef5f00c3ac5399a649f6`.
