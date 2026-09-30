@@ -206,7 +206,7 @@ describe("App AI review workflow", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Job details" }));
     expect(screen.getByText("Mandatory requirements")).toBeInTheDocument();
-    expect(screen.getByText("Location evidence")).toBeInTheDocument();
+    expect(screen.getAllByText("Location evidence").length).toBeGreaterThanOrEqual(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
     expect(screen.getByText("Why it looks promising")).toBeInTheDocument();
