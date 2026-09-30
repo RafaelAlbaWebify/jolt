@@ -345,7 +345,7 @@ def preference_blockers(text: str) -> list[str]:
     ]
 
     language_evidence = analyze_language_evidence(
-        source_text=sanitized,
+        source_text=text,
         preferences=preferences,
     )
     allowed_languages = {language.casefold() for language in preferences.languages}
