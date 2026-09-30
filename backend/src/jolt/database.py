@@ -7,7 +7,16 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, create_engine, event
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+    event,
+)
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -279,6 +288,16 @@ class AIReview(Base):
     clearance_status: Mapped[str] = mapped_column(String(20), nullable=False)
     language_status: Mapped[str] = mapped_column(String(20), nullable=False)
     technical_fit: Mapped[int | None] = mapped_column(nullable=True)
+    source_conflict: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    linkedin_work_model: Mapped[str] = mapped_column(String(24), default="unknown", nullable=False)
+    official_work_model: Mapped[str] = mapped_column(String(24), default="unknown", nullable=False)
+    authoritative_source: Mapped[str] = mapped_column(String(32), default="unknown", nullable=False)
+    official_source_url: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    remote_status: Mapped[str] = mapped_column(String(32), default="unknown", nullable=False)
+    location_verification_status: Mapped[str] = mapped_column(
+        String(32), default="unverified", nullable=False
+    )
+    source_confidence: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
     hardline_status: Mapped[str] = mapped_column(String(20), default="PASS", nullable=False)
     hardline_reasons_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     location_eligibility: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)

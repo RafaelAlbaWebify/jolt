@@ -15,7 +15,7 @@ from jolt.hardline_evidence import analyze_location_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
 
 PACK_VERSION = "1.0"
-REVIEW_CONTRACT_VERSION = "1.1"
+REVIEW_CONTRACT_VERSION = "1.2"
 
 
 def _json_bytes(value: object) -> bytes:
@@ -241,6 +241,14 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                 "technical_fit_percent": None,
                 "final_decision": "strong_pursue|pursue|conditional|reject",
                 "decision_reason": "",
+                "source_conflict": False,
+                "linkedin_work_model": "remote|hybrid|on_site|unknown",
+                "official_work_model": "remote|hybrid|on_site|unknown",
+                "authoritative_source": "official_ats|official_careers|company_site|linkedin|unknown",
+                "official_source_url": "",
+                "remote_status": "confirmed_remote|not_confirmed_remote|not_remote|unknown",
+                "location_verification_status": "verified|conflict|unverified|not_found",
+                "source_confidence": "high|medium|low|unknown",
                 "decision": "strong_pursue|pursue|conditional|reject",
                 "priority_score": 0,
                 "geography_status": "eligible|conditional|ineligible|unknown",

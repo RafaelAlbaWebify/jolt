@@ -61,6 +61,27 @@ LanguageStatus = Literal[
 
 RequirementClassification = Literal["required", "preferred", "nice_to_have"]
 RequirementResult = Literal["met", "partial", "unmet", "unknown"]
+WorkModel = Literal["remote", "hybrid", "on_site", "unknown"]
+AuthoritativeSource = Literal[
+    "official_ats",
+    "official_careers",
+    "company_site",
+    "linkedin",
+    "unknown",
+]
+RemoteStatus = Literal[
+    "confirmed_remote",
+    "not_confirmed_remote",
+    "not_remote",
+    "unknown",
+]
+LocationVerificationStatus = Literal[
+    "verified",
+    "conflict",
+    "unverified",
+    "not_found",
+]
+SourceConfidence = Literal["high", "medium", "low", "unknown"]
 
 
 class MandatoryRequirementResult(BaseModel):
@@ -94,6 +115,15 @@ class AIReviewJob(BaseModel):
     technical_fit_percent: int | None = Field(default=None, ge=0, le=100)
     final_decision: AIReviewDecision | None = None
     decision_reason: str = ""
+
+    source_conflict: bool = False
+    linkedin_work_model: WorkModel = "unknown"
+    official_work_model: WorkModel = "unknown"
+    authoritative_source: AuthoritativeSource = "unknown"
+    official_source_url: str = ""
+    remote_status: RemoteStatus = "unknown"
+    location_verification_status: LocationVerificationStatus = "unverified"
+    source_confidence: SourceConfidence = "unknown"
 
     duplicate_of_posting_id: str | None = None
     summary: str = ""
@@ -174,7 +204,7 @@ class AIReviewJob(BaseModel):
 
 class AIReviewImportRequest(BaseModel):
     contract_type: Literal["jolt_ai_review"]
-    contract_version: Literal["1.0", "1.1"]
+    contract_version: Literal["1.0", "1.1", "1.2"]
     capture_run_id: str = Field(min_length=1)
     review_source: Literal["chatgpt_source_first"]
     review_version: str = Field(min_length=1, max_length=80)
@@ -182,8 +212,8 @@ class AIReviewImportRequest(BaseModel):
     jobs: list[AIReviewJob]
 
     @model_validator(mode="after")
-    def require_v11_hardline_fields(self) -> AIReviewImportRequest:
-        if self.contract_version != "1.1":
+    def require_current_review_fields(self) -> AIReviewImportRequest:
+        if self.contract_version == "1.0":
             return self
 
         required_fields = {
@@ -199,13 +229,33 @@ class AIReviewImportRequest(BaseModel):
             "final_decision",
             "decision_reason",
         }
+        source_fields = {
+            "source_conflict",
+            "linkedin_work_model",
+            "official_work_model",
+            "authoritative_source",
+            "official_source_url",
+            "remote_status",
+            "location_verification_status",
+            "source_confidence",
+        }
+
         for job in self.jobs:
             missing = required_fields - job.model_fields_set
             if missing:
                 raise ValueError(
-                    "AI review contract 1.1 is missing hardline fields: "
+                    f"AI review contract {self.contract_version} is missing hardline fields: "
                     + ", ".join(sorted(missing))
                 )
+
+            if self.contract_version == "1.2":
+                missing_source = source_fields - job.model_fields_set
+                if missing_source:
+                    raise ValueError(
+                        "AI review contract 1.2 is missing source-verification fields: "
+                        + ", ".join(sorted(missing_source))
+                    )
+                self._validate_source_verification(job)
 
             if job.final_decision in {"strong_pursue", "pursue"}:
                 if job.hardline_status != "PASS":
@@ -216,6 +266,67 @@ class AIReviewImportRequest(BaseModel):
                     )
 
         return self
+
+    @staticmethod
+    def _validate_source_verification(job: AIReviewJob) -> None:
+        official_sources = {"official_ats", "official_careers", "company_site"}
+        known_linkedin = job.linkedin_work_model != "unknown"
+        known_official = job.official_work_model != "unknown"
+
+        if (
+            known_linkedin
+            and known_official
+            and job.linkedin_work_model != job.official_work_model
+            and not job.source_conflict
+        ):
+            raise ValueError(
+                "LinkedIn and official work models diverge; source_conflict must be true"
+            )
+
+        if job.source_conflict:
+            if job.location_verification_status != "conflict":
+                raise ValueError("source_conflict requires location_verification_status=conflict")
+            if job.location_eligibility == "eligible" or job.geography_status == "eligible":
+                raise ValueError(
+                    "A source conflict cannot be treated as verified eligible geography"
+                )
+            if job.final_decision in {"strong_pursue", "pursue"}:
+                raise ValueError(
+                    "A source conflict caps the decision at conditional until location/work model is verified"
+                )
+
+        if (
+            job.official_work_model in {"hybrid", "on_site"}
+            and job.remote_status == "confirmed_remote"
+        ):
+            raise ValueError(
+                "Official hybrid/on-site evidence cannot be stored as confirmed_remote"
+            )
+
+        if job.linkedin_work_model == "remote" and job.final_decision in {
+            "strong_pursue",
+            "pursue",
+        }:
+            if job.remote_status != "confirmed_remote":
+                raise ValueError(
+                    "LinkedIn Remote cannot support a positive decision until remote_status=confirmed_remote"
+                )
+            if job.location_verification_status != "verified":
+                raise ValueError(
+                    "LinkedIn Remote cannot support a positive decision until official location verification is complete"
+                )
+            if job.authoritative_source not in official_sources:
+                raise ValueError(
+                    "LinkedIn Remote requires an official ATS/careers/company source before a positive decision"
+                )
+            if job.official_work_model != "remote":
+                raise ValueError(
+                    "LinkedIn Remote requires the authoritative official source to confirm remote work"
+                )
+            if job.source_conflict:
+                raise ValueError(
+                    "LinkedIn Remote with conflicting official evidence cannot produce a positive decision"
+                )
 
 
 class AIReviewImportResponse(BaseModel):
@@ -386,6 +497,14 @@ def import_ai_review(
             "clearance_status": job.clearance_status,
             "language_status": job.language_status,
             "technical_fit": job.technical_fit_percent,
+            "source_conflict": job.source_conflict,
+            "linkedin_work_model": job.linkedin_work_model,
+            "official_work_model": job.official_work_model,
+            "authoritative_source": job.authoritative_source,
+            "official_source_url": job.official_source_url,
+            "remote_status": job.remote_status,
+            "location_verification_status": job.location_verification_status,
+            "source_confidence": job.source_confidence,
             "hardline_status": job.hardline_status,
             "hardline_reasons_json": json.dumps(job.hardline_reasons, ensure_ascii=False),
             "location_eligibility": job.location_eligibility,

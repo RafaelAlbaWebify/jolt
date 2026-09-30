@@ -154,7 +154,7 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
 
         assert document["pack_type"] == "jolt_ai_review_input"
         assert document["pack_version"] == "1.0"
-        assert document["review_contract_version"] == "1.1"
+        assert document["review_contract_version"] == "1.2"
         assert document["jobs"][0]["location_hardline_evidence"]["location_eligibility"] in {
             "eligible",
             "conditional",
