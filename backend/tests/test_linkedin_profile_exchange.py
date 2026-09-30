@@ -129,19 +129,14 @@ def test_linkedin_exchange_exposes_partial_network_capture_quality(tmp_path, mon
     assert "never infer" in exchange.evidence["authority_notes"]["network_contacts"].lower()
 
 
-def test_linkedin_exchange_import_updates_context_and_creates_pending_recommendation(
+def test_linkedin_exchange_import_preserves_context_and_creates_pending_recommendation(
     monkeypatch,
 ) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported_requests = []
     monkeypatch.setattr(
         "jolt.linkedin_profile_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.linkedin_profile_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
     monkeypatch.setattr(
         "jolt.linkedin_profile_exchange.save_ai_exchange_feedback",
@@ -196,7 +191,7 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
                 confidence=90,
             )
         ],
-        context_patch={"profile_strategy": {"headline_focus": "Application Support"}},
+        context_patch={},
     )
     session_mock = MagicMock(spec=Session)
     session_mock.get.return_value = object()
@@ -204,7 +199,7 @@ def test_linkedin_exchange_import_updates_context_and_creates_pending_recommenda
 
     response = import_linkedin_profile_exchange(mock_session, output)
 
-    assert saved_context[0].profile_strategy["headline_focus"] == "Application Support"
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.recommendations.imported_count == 1
     recommendation = imported_requests[0].recommendations[0]
