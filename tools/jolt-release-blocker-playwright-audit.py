@@ -61,7 +61,7 @@ def seed_pending_opportunity() -> str:
 
 
 def score_badge_metrics(page: Page) -> list[dict[str, Any]]:
-    return page.locator(".opportunity-row .score").evaluate_all(
+    return page.locator(".review-inbox-card-score").evaluate_all(
         """badges => badges.map(badge => {
             const span = badge.querySelector('span');
             const box = badge.getBoundingClientRect();
@@ -69,7 +69,7 @@ def score_badge_metrics(page: Page) -> list[dict[str, Any]]:
             return {
                 className: badge.className,
                 rawText: span?.textContent ?? '',
-                visibleLabel: span ? getComputedStyle(span, '::after').content.replaceAll('"', '') : '',
+                visibleLabel: span?.textContent ?? '',
                 clientWidth: badge.clientWidth,
                 scrollWidth: badge.scrollWidth,
                 boxWidth: box.width,
@@ -105,7 +105,7 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="Review Inbox", exact=True).click()
         page.get_by_role("heading", name="Review Inbox", exact=True).wait_for(timeout=30_000)
         page.get_by_label("Jobs awaiting review").get_by_text(fixture_title, exact=True).wait_for(timeout=30_000)
-        page.locator(".opportunity-row .score").first.wait_for(timeout=30_000)
+        page.locator(".review-inbox-card-score").first.wait_for(timeout=30_000)
 
         badge_metrics = score_badge_metrics(page)
         assert_true(bool(badge_metrics), "No opportunity score badges were rendered")
