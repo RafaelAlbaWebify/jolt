@@ -356,13 +356,10 @@ def preference_blockers(text: str) -> list[str]:
         if any(language.casefold() in allowed_languages for language in requirement.languages):
             continue
         for language in requirement.languages:
-            blockers.append(
-                f"required language outside current preferences: {language.casefold()}"
-            )
+            blockers.append(f"required language outside current preferences: {language.casefold()}")
     if language_evidence.document_language_status == "unsupported":
         blockers.append(
-            "unsupported job-ad language: "
-            f"{language_evidence.document_language.casefold()}"
+            f"unsupported job-ad language: {language_evidence.document_language.casefold()}"
         )
 
     for shift in preferences.excluded_shifts:
