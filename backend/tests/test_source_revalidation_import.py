@@ -173,3 +173,37 @@ def test_preserve_remote_requires_official_remote_confirmation(tmp_path):
 
     with pytest.raises(ValueError, match="verified official remote evidence"):
         import_source_revalidation(session, request)
+
+
+def test_preserve_keeps_existing_decision_rationale(tmp_path):
+    session, review = _seed(tmp_path)
+    request = SourceRevalidationImportRequest.model_validate(
+        {
+            "review_version": "source-revalidation-1",
+            "items": [
+                {
+                    "ai_review_id": review.id,
+                    "posting_id": review.posting_id,
+                    "source_conflict": False,
+                    "linkedin_work_model": "remote",
+                    "official_work_model": "remote",
+                    "authoritative_source": "official_ats",
+                    "official_source_url": "https://example.test/official-remote",
+                    "remote_status": "confirmed_remote",
+                    "location_verification_status": "verified",
+                    "source_confidence": "high",
+                    "location_evidence": ["Official ATS confirms remote."],
+                    "resolution": "preserve",
+                    "reason": "Source verification note should not replace the fit rationale.",
+                }
+            ],
+        }
+    )
+
+    import_source_revalidation(session, request)
+    session.refresh(review)
+
+    assert review.decision == "pursue"
+    assert review.decision_reason == "old reason"
+    assert review.priority_score == 91
+    assert review.technical_fit == 88
