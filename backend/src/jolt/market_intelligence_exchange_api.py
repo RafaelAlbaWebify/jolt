@@ -32,7 +32,9 @@ def build_market_intelligence_exchange_router(get_session: SessionProvider) -> A
     ) -> AIExchangeInput:
         return build_market_intelligence_exchange(session)
 
-    @router.post("/import", deprecated=True, response_model=MarketIntelligenceExchangeImportResponse)
+    @router.post(
+        "/import", deprecated=True, response_model=MarketIntelligenceExchangeImportResponse
+    )
     def import_market_intelligence(
         output: AIExchangeOutput,
     ) -> MarketIntelligenceExchangeImportResponse:
