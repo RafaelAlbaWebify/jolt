@@ -76,7 +76,6 @@ type AppProps = {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const PAGE_SIZE = 5;
-const REVIEW_CHOICES: ReviewChoice[] = ["pursue", "consider", "defer", "reject", "needs_more_information"];
 
 const REVIEW_LABELS: Record<ReviewChoice, string> = {
   pursue: "Apply",
@@ -185,18 +184,16 @@ function companyInitials(company: string) {
 function inboxFilterMatches(opportunity: OpportunityIndex, filter: InboxFilter) {
   if (filter === "all") return true;
   if (filter === "priority") return opportunity.decision === "strong_pursue";
-  if (filter === "pursue") return opportunity.decision === "pursue" || opportunity.decision === "strong_pursue";
-  if (filter === "hold") return opportunity.decision === "conditional" || opportunity.review_decision === "defer";
+  if (filter === "pursue") return opportunity.decision === "pursue";
+  if (filter === "hold") return opportunity.decision === "conditional";
   return opportunity.decision === "reject" || hardlineStopped(opportunity);
 }
 
 function reviewNotice(decision: ReviewChoice, title: string) {
   const name = title || "Opportunity";
   if (decision === "pursue") return `${name} is ready in Applications.`;
-  if (decision === "needs_more_information") return `${name} saved as needing more information.`;
-  if (decision === "defer") return `${name} saved for later.`;
   if (decision === "reject") return `${name} rejected.`;
-  return `${name} saved as maybe.`;
+  return `${name} review updated.`;
 }
 
 async function errorFromResponse(response: Response, fallback: string) {
@@ -669,10 +666,10 @@ export function App({
           <div className="review-inbox-filterchips" role="group" aria-label="Review Inbox filters">
             {([
               ["all", "All", inboxCounts.all],
-              ["priority", "Priority", inboxCounts.priority],
-              ["pursue", "Pursue", inboxCounts.pursue],
-              ["hold", "Hold", inboxCounts.hold],
-              ["not_fit", "Not a fit", inboxCounts.not_fit],
+              ["priority", "High priority", inboxCounts.priority],
+              ["pursue", "Good match", inboxCounts.pursue],
+              ["hold", "Check", inboxCounts.hold],
+              ["not_fit", "Not a match", inboxCounts.not_fit],
             ] as Array<[InboxFilter, string, number]>).map(([value, labelText, count]) => (
               <button
                 type="button"
@@ -744,21 +741,24 @@ export function App({
                         <strong>{opportunity.ai_review_status === "reviewed" ? "AI reviewed" : "Needs AI review"}</strong>
                         <span>{hardlineStopped(opportunity) ? hardlineLabel(opportunity) : `Technical fit ${opportunity.technical_fit ?? "—"}`}</span>
                       </div>
-                      <label className="review-inbox-card-decision">
-                        <span className="sr-only">Decision</span>
-                        <select
-                          aria-label={`Decision for ${opportunity.title}`}
-                          value={opportunity.review_decision ?? ""}
+                      <div className="review-inbox-card-actions" aria-label={`Actions for ${opportunity.title}`}>
+                        <button
+                          type="button"
+                          className="review-inbox-apply"
                           disabled={busy || !opportunity.ai_review_id}
-                          onChange={(event) => {
-                            const decision = event.target.value as ReviewChoice;
-                            if (decision) void reviewOpportunity(opportunity, decision);
-                          }}
+                          onClick={() => void reviewOpportunity(opportunity, "pursue")}
                         >
-                          <option value="">Pending review</option>
-                          {REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{REVIEW_LABELS[choice]}</option>)}
-                        </select>
-                      </label>
+                          Apply
+                        </button>
+                        <button
+                          type="button"
+                          className="review-inbox-reject"
+                          disabled={busy || !opportunity.ai_review_id}
+                          onClick={() => void reviewOpportunity(opportunity, "reject")}
+                        >
+                          Reject
+                        </button>
+                      </div>
                       <button
                         type="button"
                         className="review-inbox-card-open"
@@ -938,37 +938,32 @@ export function App({
 
                     <aside className="review-preview-actions">
                       <h4>Your decision</h4>
-                      <label>
-                        <span className="sr-only">Decision for selected job</span>
-                        <select
-                          aria-label={`Decision for ${previewOpportunity.title} preview`}
-                          value={previewOpportunity.review_decision ?? ""}
-                          disabled={busy || !previewOpportunity.ai_review_id}
-                          onChange={(event) => {
-                            const decision = event.target.value as ReviewChoice;
-                            if (decision) void reviewOpportunity(previewOpportunity, decision);
-                          }}
-                        >
-                          <option value="">Pending review</option>
-                          {REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{REVIEW_LABELS[choice]}</option>)}
-                        </select>
-                      </label>
+                      <p className="review-preview-pending-note">Leave untouched to keep this job pending.</p>
                       <button
                         type="button"
+                        className="review-preview-apply"
+                        disabled={busy || !previewOpportunity.ai_review_id}
+                        onClick={() => void reviewOpportunity(previewOpportunity, "pursue")}
+                      >
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        className="review-preview-reject"
+                        disabled={busy || !previewOpportunity.ai_review_id}
+                        onClick={() => void reviewOpportunity(previewOpportunity, "reject")}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
                         onClick={(event) => {
                           inspectorTriggerRef.current = event.currentTarget;
                           setSelectedOpportunityId(previewOpportunity.posting_id);
                         }}
                       >
                         Inspect full details
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        disabled={busy || !previewOpportunity.ai_review_id}
-                        onClick={() => void reviewOpportunity(previewOpportunity, "pursue")}
-                      >
-                        Move to Applications
                       </button>
                       {previewOpportunity.source_url && (
                         <a className="review-preview-source-link" href={externalSourceUrl(previewOpportunity.source_url)} target="_blank" rel="noreferrer">
@@ -1041,36 +1036,31 @@ export function App({
                 </span>
               </div>
 
-              <label className="decision-control">
+              <div className="inspector-review-actions" aria-label={`Review actions for ${selectedOpportunity.title}`}>
                 <span>Human decision</span>
-                <select
-                  value={selectedOpportunity.review_decision ?? ""}
-                  disabled={busy || !selectedOpportunity.ai_review_id}
-                  onChange={(event) => {
-                    const decision =
-                      event.target.value as ReviewChoice;
-
-                    if (decision) {
-                      void reviewOpportunity(
-                        selectedOpportunity,
-                        decision,
-                      );
-                    }
-                  }}
-                >
-                  <option value="">
-                    {selectedOpportunity.ai_review_id
-                      ? "Pending review"
-                      : "Needs AI review"}
-                  </option>
-
-                  {REVIEW_CHOICES.map((choice) => (
-                    <option value={choice} key={choice}>
-                      {REVIEW_LABELS[choice]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <div>
+                  <button
+                    type="button"
+                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    onClick={() => void reviewOpportunity(selectedOpportunity, "pursue")}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary inspector-reject-action"
+                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    onClick={() => void reviewOpportunity(selectedOpportunity, "reject")}
+                  >
+                    Reject
+                  </button>
+                </div>
+                <small>
+                  {selectedOpportunity.ai_review_id
+                    ? "Leave untouched to keep pending."
+                    : "AI review required before deciding."}
+                </small>
+              </div>
 
               {selectedOpportunity.source_url && (
                 <a

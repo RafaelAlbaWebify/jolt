@@ -356,15 +356,12 @@ describe("App AI review workflow", () => {
       ),
     ).toBeInTheDocument();
 
-    fireEvent.change(
-      screen.getByLabelText(
-        "Decision for Application Support Engineer",
-      ),
-      {
-        target: {
-          value: "pursue",
-        },
-      },
+    fireEvent.click(
+      within(
+        screen.getByLabelText(
+          "Actions for Application Support Engineer",
+        ),
+      ).getByRole("button", { name: "Apply" }),
     );
 
     await waitFor(() =>
@@ -399,11 +396,40 @@ describe("App AI review workflow", () => {
       ),
     ).toBeInTheDocument();
 
+    const actions = screen.getByLabelText(
+      "Actions for Cloud Operations Analyst",
+    );
+
     expect(
-      screen.getByLabelText(
-        "Decision for Cloud Operations Analyst",
-      ),
+      within(actions).getByRole("button", { name: "Apply" }),
     ).toBeDisabled();
+    expect(
+      within(actions).getByRole("button", { name: "Reject" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps Review Inbox decisions to Apply or Reject and labels AI filters clearly", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([reviewedOpportunity]),
+    );
+
+    render(<App />);
+
+    await screen.findByText("Application Support Engineer");
+
+    const actions = screen.getByLabelText(
+      "Actions for Application Support Engineer",
+    );
+    expect(within(actions).getByRole("button", { name: "Apply" })).toBeInTheDocument();
+    expect(within(actions).getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(screen.queryByText("Maybe")).not.toBeInTheDocument();
+    expect(screen.queryByText("Save for later")).not.toBeInTheDocument();
+    expect(screen.queryByText("Need information")).not.toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /High priority/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Good match/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Check/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Not a match/ })).toBeInTheDocument();
   });
 
   it("sorts strong pursue before awaiting and reject", async () => {
