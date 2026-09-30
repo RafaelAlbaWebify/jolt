@@ -285,9 +285,7 @@ class AIReviewImportRequest(BaseModel):
 
         if job.source_conflict:
             if job.location_verification_status != "conflict":
-                raise ValueError(
-                    "source_conflict requires location_verification_status=conflict"
-                )
+                raise ValueError("source_conflict requires location_verification_status=conflict")
             if job.location_eligibility == "eligible" or job.geography_status == "eligible":
                 raise ValueError(
                     "A source conflict cannot be treated as verified eligible geography"
