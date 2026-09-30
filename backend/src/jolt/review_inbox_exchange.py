@@ -42,6 +42,7 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
             "Do not compare, rank, shortlist, or aggregate vacancies until every jobs[] entry has one completed review result.",
         ],
         "per_job_stage_1_order": [
+            "official ATS/careers source verification for location and work model",
             "location and hiring territory",
             "employment and work-authorization constraints",
             "onsite, commute, travel, and field constraints",
@@ -69,9 +70,22 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
             "source evidence that eligibility may be possible but one decisive fact remains unresolved. A foreign-local "
             "requisition with no affirmative Spain/cross-border hiring evidence is not automatically conditional."
         ),
+        "source_verification_rule": (
+            "LinkedIn is a discovery source, not the final authority for work model or hiring location. "
+            "Before treating a LinkedIn Remote label as confirmed, locate the employer's official ATS, "
+            "official careers page, or company job page when one exists. Record linkedin_work_model, "
+            "official_work_model, authoritative_source, official_source_url, source_conflict, "
+            "remote_status, location_verification_status and source_confidence. Official ATS/careers "
+            "evidence outranks LinkedIn. If sources diverge, set source_conflict=true, "
+            "location_verification_status=conflict and remote_status=not_confirmed_remote; geography "
+            "must remain conditional/unknown and the final decision cannot be pursue/strong_pursue "
+            "until the conflict is resolved. If no official source can be found, do not convert a "
+            "LinkedIn Remote label into confirmed_remote."
+        ),
         "remote_rule": (
             "Remote is not global remote. Explicit US-only, US Remote, anywhere-in-US, residency, "
-            "work-authorization, E-Verify, or state restrictions override a generic Remote label."
+            "work-authorization, E-Verify, or state restrictions override a generic Remote label. "
+            "A LinkedIn Remote badge alone is insufficient evidence for REMOTE_ELIGIBLE."
         ),
         "schedule_rule": (
             "Shift pattern, night work, weekends, maintenance windows, and on-call participation are "
@@ -102,6 +116,8 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
             "Confirm every deterministic hardline_reject=true vacancy is REJECT.",
             "Confirm every REJECT or MANUAL_REVIEW has fit_analysis_allowed=false and no technical-fit score.",
             "Confirm every pursue or strong_pursue passed Stage 1 and has location_eligibility=eligible.",
+            "Confirm every LinkedIn-Remote pursue/strong_pursue has official-source verification, confirmed_remote, and no source conflict.",
+            "Confirm every source conflict remains conditional/unknown geography and is not recommended for pursuit.",
             "Confirm duplicates are not recommended for pursuit.",
             "Only after these checks pass may results be ranked or summarized across the capture.",
         ],
