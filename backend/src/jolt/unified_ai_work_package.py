@@ -220,6 +220,8 @@ def _review_inbox_payload(
         else:
             payload = json.loads(build_review_inbox_exchange_json(session))
     except JoltNotFoundError:
+        if discovery_batch_id:
+            raise
         return None
     payload.pop("reasoning_context", None)
     payload["context_location"] = "global_context"
@@ -249,9 +251,10 @@ def build_unified_ai_work_package(
         context_version=global_context_version(context),
         global_context=context,
         candidate_evidence=candidate_evidence,
-        review_inbox=_review_inbox_payload(
-            session,
-            discovery_batch_id=discovery_batch_id,
+        review_inbox=(
+            _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
+            if discovery_batch_id
+            else _review_inbox_payload(session)
         ),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
