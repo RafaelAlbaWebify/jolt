@@ -14,6 +14,9 @@ _REMOTE_SIGNAL = re.compile(
     re.IGNORECASE,
 )
 _REVIEW_DECISIONS = {"strong_pursue", "pursue", "conditional"}
+_POSITIVE_DECISIONS = {"strong_pursue", "pursue"}
+_OFFICIAL_AUTHORITIES = {"official_ats", "official_careers", "company_site"}
+_LOCAL_GALICIA = re.compile(r"\b(?:vigo|pontevedra|galicia)\b", re.IGNORECASE)
 
 
 def _database_path() -> Path:
@@ -51,7 +54,33 @@ def main() -> int:
         )
     )
     parser.add_argument("--days", type=int, default=30)
-    parser.add_argument("--match", default="", help="Optional case-insensitive title/company/location filter.")
+    parser.add_argument(
+        "--match",
+        default="",
+        help="Optional case-insensitive title/company/location filter.",
+    )
+    parser.add_argument(
+        "--revalidation-pack",
+        type=Path,
+        default=None,
+        help=(
+            "Write a focused JSON pack for source revalidation instead of printing the full audit. "
+            "The pack includes positive historical reviews, prioritizes explicit Remote signals, and "
+            "keeps source evidence needed for an AI review 1.2 correction."
+        ),
+    )
+    parser.add_argument(
+        "--max-jobs",
+        type=int,
+        default=25,
+        help="Maximum jobs in --revalidation-pack output (default: 25).",
+    )
+    parser.add_argument(
+        "--include-posting-id",
+        action="append",
+        default=[],
+        help="Force a posting_id into the revalidation pack even if it falls below the normal risk cut.",
+    )
     args = parser.parse_args()
 
     path = _database_path().resolve()
@@ -86,7 +115,9 @@ def main() -> int:
         """
         SELECT
             ar.id AS ai_review_id,
+            ar.capture_run_id,
             ar.posting_id,
+            ar.source_job_id,
             ar.decision,
             ar.geography_status,
             ar.location_eligibility,
@@ -162,7 +193,9 @@ def main() -> int:
         findings.append(
             {
                 "ai_review_id": row["ai_review_id"],
+                "capture_run_id": row["capture_run_id"],
                 "posting_id": row["posting_id"],
+                "source_job_id": row["source_job_id"],
                 "title": row["title"],
                 "company": row["company"],
                 "location": row["location"],
@@ -171,6 +204,7 @@ def main() -> int:
                 "location_eligibility": row["location_eligibility"],
                 "technical_fit": row["technical_fit"],
                 "linkedin_source_url": row["source_url"] or row["canonical_url"],
+                "source_text": raw_text,
                 "text_remote_signal": remote_signal,
                 "source_conflict": conflict,
                 "linkedin_work_model": row["linkedin_work_model"],
@@ -187,6 +221,166 @@ def main() -> int:
                 ),
             }
         )
+
+    if args.revalidation_pack is not None:
+        forced = {str(value).strip() for value in args.include_posting_id if str(value).strip()}
+
+        def risk_key(item: dict[str, object]) -> tuple[int, str, str]:
+            posting_id = str(item.get("posting_id") or "")
+            decision = str(item.get("decision") or "")
+            remote_signal = bool(item.get("text_remote_signal"))
+            location = str(item.get("location") or "")
+            authority = str(item.get("authoritative_source") or "")
+            verification = str(item.get("location_verification_status") or "")
+            conflict = bool(item.get("source_conflict"))
+
+            if posting_id in forced:
+                level = 0
+            elif conflict:
+                level = 1
+            elif decision in _POSITIVE_DECISIONS and remote_signal:
+                level = 2
+            elif (
+                decision in _POSITIVE_DECISIONS
+                and authority not in _OFFICIAL_AUTHORITIES
+                and verification != "verified"
+                and not _LOCAL_GALICIA.search(location)
+            ):
+                level = 3
+            elif decision in _POSITIVE_DECISIONS:
+                level = 4
+            else:
+                level = 9
+
+            reviewed_at = str(item.get("reviewed_at") or "")
+            return (level, reviewed_at, posting_id)
+
+        candidates = [
+            item
+            for item in findings
+            if str(item.get("decision") or "") in _POSITIVE_DECISIONS
+            or str(item.get("posting_id") or "") in forced
+        ]
+        candidates.sort(key=risk_key)
+
+        max_jobs = max(1, args.max_jobs)
+        selected = candidates[:max_jobs]
+        selected_ids = {str(item["posting_id"]) for item in selected}
+
+        # A forced posting must never disappear because of the max limit.
+        for item in candidates[max_jobs:]:
+            posting_id = str(item["posting_id"])
+            if posting_id in forced and posting_id not in selected_ids:
+                selected.append(item)
+                selected_ids.add(posting_id)
+
+        jobs: list[dict[str, object]] = []
+        for position, item in enumerate(selected, start=1):
+            jobs.append(
+                {
+                    "position": position,
+                    "risk_tier": risk_key(item)[0],
+                    "capture_run_id": item["capture_run_id"],
+                    "ai_review_id": item["ai_review_id"],
+                    "posting_id": item["posting_id"],
+                    "source_job_id": item["source_job_id"],
+                    "title": item["title"],
+                    "company": item["company"],
+                    "location": item["location"],
+                    "linkedin_source_url": item["linkedin_source_url"],
+                    "source_text": item["source_text"],
+                    "previous_review": {
+                        "decision": item["decision"],
+                        "geography_status": item["geography_status"],
+                        "location_eligibility": item["location_eligibility"],
+                        "technical_fit": item["technical_fit"],
+                        "reviewed_at": item["reviewed_at"],
+                    },
+                    "source_verification_before_revalidation": {
+                        "source_conflict": item["source_conflict"],
+                        "linkedin_work_model": item["linkedin_work_model"],
+                        "official_work_model": item["official_work_model"],
+                        "authoritative_source": item["authoritative_source"],
+                        "official_source_url": item["official_source_url"],
+                        "remote_status": item["remote_status"],
+                        "location_verification_status": item[
+                            "location_verification_status"
+                        ],
+                        "source_confidence": item["source_confidence"],
+                    },
+                }
+            )
+
+        pack = {
+            "pack_type": "jolt_source_revalidation_input",
+            "pack_version": "1.0",
+            "ai_review_contract_version": "1.2",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "database_read_only": True,
+            "selection": {
+                "window_days": args.days,
+                "audit_findings": len(findings),
+                "positive_candidates": len(candidates),
+                "selected_jobs": len(jobs),
+                "max_jobs": max_jobs,
+                "forced_posting_ids": sorted(forced),
+                "risk_tiers": {
+                    "0": "explicitly forced into this pack",
+                    "1": "existing source conflict",
+                    "2": "positive decision plus explicit Remote signal",
+                    "3": "positive decision, non-local location, no authoritative verification",
+                    "4": "other positive historical review lacking authoritative verification",
+                },
+            },
+            "workflow": [
+                "Treat LinkedIn only as discovery evidence.",
+                "Locate the employer-controlled ATS/careers/company job page when available.",
+                "Verify work model, hiring geography, and cross-border/work-authorization constraints.",
+                "Record both LinkedIn and official work models separately.",
+                "If sources diverge, official employer-controlled evidence has priority and source_conflict must be true.",
+                "A LinkedIn Remote label alone cannot produce confirmed_remote or a positive final decision.",
+                "Do not force SKIP_BY_LOCATION when flexibility remains genuinely unresolved; use conditional/HOLD-VERIFY.",
+                "Return AI review 1.2 corrections grouped by capture_run_id so they can be imported through /api/ai-review/import.",
+            ],
+            "jobs": jobs,
+            "return_contract": {
+                "type": "array_of_jolt_ai_review_imports",
+                "group_by": "capture_run_id",
+                "contract_type": "jolt_ai_review",
+                "contract_version": "1.2",
+                "review_source": "chatgpt_source_first",
+                "required_source_fields": [
+                    "source_conflict",
+                    "linkedin_work_model",
+                    "official_work_model",
+                    "authoritative_source",
+                    "official_source_url",
+                    "remote_status",
+                    "location_verification_status",
+                    "source_confidence",
+                ],
+            },
+        }
+
+        output_path = args.revalidation_pack.resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(pack, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(output_path),
+                    "selected_jobs": len(jobs),
+                    "audit_findings": len(findings),
+                    "positive_candidates": len(candidates),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
 
     print(
         json.dumps(
