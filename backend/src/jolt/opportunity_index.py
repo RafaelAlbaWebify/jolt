@@ -27,14 +27,14 @@ from jolt.semantic_duplicates import group_semantic_duplicates
 
 class OpportunityIndexItem(BaseModel):
     posting_id: str
-    evaluation_id: str
+    evaluation_id: str | None = None
     source_url: str
     title: str
     company: str
     location: str
-    recommendation: str
-    confidence: str
-    ranking_score: int
+    recommendation: str = ""
+    confidence: str = ""
+    ranking_score: int = 0
     review_decision: str | None = None
     application_id: str | None = None
     application_status: str | None = None
@@ -208,10 +208,11 @@ def list_opportunity_index(
     results: list[OpportunityIndexItem] = []
     for posting in postings:
         evaluation = latest_evaluations.get(posting.id)
-        if evaluation is None:
-            continue
         application = applications.get(posting.id)
-        if include_applied and application is None:
+        if include_applied:
+            if application is None:
+                continue
+        elif evaluation is None:
             continue
         if (
             application is not None
@@ -256,7 +257,7 @@ def list_opportunity_index(
         results.append(
             OpportunityIndexItem(
                 posting_id=posting.id,
-                evaluation_id=evaluation.id,
+                evaluation_id=evaluation.id if evaluation else None,
                 source_url=_display_source_url(
                     source_document,
                     posting.canonical_url,
@@ -264,9 +265,9 @@ def list_opportunity_index(
                 title=posting.title,
                 company=posting.company,
                 location=posting.location,
-                recommendation=evaluation.recommendation,
-                confidence=evaluation.confidence,
-                ranking_score=evaluation.ranking_score,
+                recommendation=evaluation.recommendation if evaluation else "",
+                confidence=evaluation.confidence if evaluation else "",
+                ranking_score=evaluation.ranking_score if evaluation else 0,
                 review_decision=review.decision if review else None,
                 application_id=application.id if application else None,
                 application_status=application.status if application else None,
