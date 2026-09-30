@@ -95,7 +95,7 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
   }, [apiBase]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || advancedOnly) return;
     void loadAIStatus().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "Unable to read JOLT intelligence status.");
     });
@@ -136,7 +136,9 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
       setImportNotice(
         `Strategy update imported successfully. ${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
       );
-      await loadAIStatus();
+      if (!advancedOnly) {
+        await loadAIStatus();
+      }
       await onImported?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The strategy update could not be imported.");
