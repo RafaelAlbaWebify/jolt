@@ -20,13 +20,13 @@ def build_data_quality_exchange_router(get_session: SessionProvider) -> APIRoute
     router = APIRouter(prefix="/api/ai-data-quality", tags=["data-quality", "ai-exchange"])
     session_dependency = Depends(get_session)
 
-    @router.get("/export", response_model=AIExchangeInput)
+    @router.get("/export", response_model=AIExchangeInput, deprecated=True)
     def export_data_quality(
         session: Session = session_dependency,
     ) -> AIExchangeInput:
         return build_data_quality_exchange(session)
 
-    @router.post("/import", response_model=DataQualityExchangeImportResponse)
+    @router.post("/import", deprecated=True, response_model=DataQualityExchangeImportResponse)
     def import_data_quality(
         output: AIExchangeOutput,
     ) -> DataQualityExchangeImportResponse:
@@ -35,7 +35,7 @@ def build_data_quality_exchange_router(get_session: SessionProvider) -> APIRoute
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    @router.get("/feedback", response_model=AIExchangeFeedbackIndex)
+    @router.get("/feedback", deprecated=True, response_model=AIExchangeFeedbackIndex)
     def data_quality_feedback() -> AIExchangeFeedbackIndex:
         return list_ai_exchange_feedback(section="data_quality")
 
