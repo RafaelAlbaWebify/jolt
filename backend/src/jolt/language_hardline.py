@@ -14,49 +14,49 @@ REASON_LANGUAGE_UNMET = "LANGUAGE_REQUIREMENT_UNMET"
 REASON_LANGUAGE_UNCERTAIN = "LANGUAGE_REQUIREMENT_UNCERTAIN"
 REASON_UNSUPPORTED_DOCUMENT_LANGUAGE = "UNSUPPORTED_JOB_LANGUAGE"
 
+def _aliases(value: str) -> tuple[str, ...]:
+    return tuple(value.split())
+
+
+def _word_set(value: str) -> frozenset[str]:
+    return frozenset(value.split())
+
+
 _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
-    "English": ("english", "inglés", "ingles", "englisch", "englischkenntnisse", "anglais", "inglese"),
-    "Spanish": (
-        "spanish",
-        "español",
-        "espanol",
-        "castellano",
-        "spanisch",
-        "espagnol",
-        "spagnolo",
-    ),
-    "German": ("german", "deutsch", "deutschkenntnisse", "alemán", "aleman", "allemand", "tedesco"),
-    "French": ("french", "français", "francais", "französisch", "franzoesisch", "francés", "frances"),
-    "Dutch": ("dutch", "nederlands", "niederländisch", "niederlaendisch", "neerlandés", "neerlandes"),
-    "Italian": ("italian", "italiano", "italienisch", "italien", "italiano"),
-    "Portuguese": ("portuguese", "português", "portugues", "portugiesisch"),
-    "Swedish": ("swedish", "svenska", "schwedisch"),
-    "Danish": ("danish", "dansk", "dänisch", "daenisch"),
-    "Norwegian": ("norwegian", "norsk", "norwegisch"),
-    "Finnish": ("finnish", "suomi", "finnisch"),
-    "Polish": ("polish", "polski", "polnisch"),
-    "Czech": ("czech", "čeština", "cestina", "tschechisch"),
-    "Slovak": ("slovak", "slovenčina", "slovencina", "slowakisch"),
-    "Romanian": ("romanian", "română", "romana", "rumänisch", "rumaenisch"),
-    "Hungarian": ("hungarian", "magyar", "ungarisch"),
-    "Bulgarian": ("bulgarian", "български"),
-    "Croatian": ("croatian", "hrvatski"),
-    "Serbian": ("serbian", "srpski", "српски"),
-    "Slovenian": ("slovenian", "slovenščina", "slovenscina"),
-    "Lithuanian": ("lithuanian", "lietuvių", "lietuviu"),
-    "Latvian": ("latvian", "latviešu", "latviesu"),
-    "Estonian": ("estonian", "eesti"),
-    "Ukrainian": ("ukrainian", "українська"),
-    "Russian": ("russian", "русский"),
-    "Catalan": ("catalan", "catalán", "català", "catala"),
-    "Galician": ("galician", "galego", "gallego"),
-    "Basque": ("basque", "euskara", "vasco"),
-    "Arabic": ("arabic", "العربية"),
-    "Hebrew": ("hebrew", "עברית"),
-    "Chinese": ("chinese", "mandarin", "中文", "普通话"),
-    "Japanese": ("japanese", "日本語"),
-    "Korean": ("korean", "한국어"),
-    "Hindi": ("hindi", "हिन्दी", "हिंदी"),
+    "English": _aliases("english inglés ingles englisch englischkenntnisse anglais inglese"),
+    "Spanish": _aliases("spanish español espanol castellano spanisch espagnol spagnolo"),
+    "German": _aliases("german deutsch deutschkenntnisse alemán aleman allemand tedesco"),
+    "French": _aliases("french français francais französisch franzoesisch francés frances"),
+    "Dutch": _aliases("dutch nederlands niederländisch niederlaendisch neerlandés neerlandes"),
+    "Italian": _aliases("italian italiano italienisch italien"),
+    "Portuguese": _aliases("portuguese português portugues portugiesisch"),
+    "Swedish": _aliases("swedish svenska schwedisch"),
+    "Danish": _aliases("danish dansk dänisch daenisch"),
+    "Norwegian": _aliases("norwegian norsk norwegisch"),
+    "Finnish": _aliases("finnish suomi finnisch"),
+    "Polish": _aliases("polish polski polnisch"),
+    "Czech": _aliases("czech čeština cestina tschechisch"),
+    "Slovak": _aliases("slovak slovenčina slovencina slowakisch"),
+    "Romanian": _aliases("romanian română romana rumänisch rumaenisch"),
+    "Hungarian": _aliases("hungarian magyar ungarisch"),
+    "Bulgarian": _aliases("bulgarian български"),
+    "Croatian": _aliases("croatian hrvatski"),
+    "Serbian": _aliases("serbian srpski српски"),
+    "Slovenian": _aliases("slovenian slovenščina slovenscina"),
+    "Lithuanian": _aliases("lithuanian lietuvių lietuviu"),
+    "Latvian": _aliases("latvian latviešu latviesu"),
+    "Estonian": _aliases("estonian eesti"),
+    "Ukrainian": _aliases("ukrainian українська"),
+    "Russian": _aliases("russian русский"),
+    "Catalan": _aliases("catalan catalán català catala"),
+    "Galician": _aliases("galician galego gallego"),
+    "Basque": _aliases("basque euskara vasco"),
+    "Arabic": _aliases("arabic العربية"),
+    "Hebrew": _aliases("hebrew עברית"),
+    "Chinese": _aliases("chinese mandarin 中文 普通话"),
+    "Japanese": _aliases("japanese 日本語"),
+    "Korean": _aliases("korean 한국어"),
+    "Hindi": _aliases("hindi हिन्दी हिंदी"),
 }
 
 _REQUIRED_MARKERS = (
@@ -176,95 +176,67 @@ _LEVEL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _SUPPORTED_WORDS: dict[str, frozenset[str]] = {
-    "English": frozenset(
-        {
-            "the", "and", "to", "of", "in", "for", "with", "you", "we", "our", "a", "an",
-            "is", "are", "as", "will", "this", "that", "from", "your", "on", "be", "have",
-            "work", "role", "team", "experience", "support", "skills", "job", "about",
-        }
+    "English": _word_set(
+        "the and to of in for with you we our a an is are as will this that from your on be have "
+        "work role team experience support skills job about"
     ),
-    "Spanish": frozenset(
-        {
-            "el", "la", "los", "las", "y", "de", "en", "para", "con", "que", "un", "una",
-            "por", "como", "se", "del", "al", "es", "son", "tu", "tus", "nuestro", "nuestra",
-            "trabajo", "puesto", "equipo", "experiencia", "soporte", "requisitos", "sobre",
-        }
+    "Spanish": _word_set(
+        "el la los las y de en para con que un una por como se del al es son tu tus nuestro nuestra "
+        "trabajo puesto equipo experiencia soporte requisitos sobre"
     ),
 }
 
 _UNSUPPORTED_WORDS: dict[str, frozenset[str]] = {
-    "German": frozenset(
-        {
-            "der", "die", "das", "und", "zu", "den", "von", "mit", "für", "fuer", "auf", "im",
-            "ist", "wir", "sie", "du", "eine", "einer", "unser", "ihre", "als", "bei", "sowie",
-            "kenntnisse", "erfahrung", "aufgaben", "anforderungen", "arbeit", "team",
-        }
+    "German": _word_set(
+        "der die das und zu den von mit für fuer auf im ist wir sie du eine einer unser ihre als bei "
+        "sowie kenntnisse erfahrung aufgaben anforderungen arbeit team"
     ),
-    "French": frozenset(
-        {
-            "le", "la", "les", "de", "des", "du", "et", "à", "a", "en", "pour", "avec", "vous",
-            "nous", "une", "un", "est", "sont", "sur", "dans", "votre", "expérience", "experience",
-            "poste", "équipe", "equipe", "compétences", "competences",
-        }
+    "French": _word_set(
+        "le la les de des du et à a en pour avec vous nous une un est sont sur dans votre expérience "
+        "experience poste équipe equipe compétences competences"
     ),
-    "Italian": frozenset(
-        {
-            "il", "lo", "la", "gli", "le", "di", "del", "della", "e", "a", "in", "per", "con",
-            "che", "un", "una", "si", "sono", "è", "nostro", "vostro", "esperienza",
-            "ruolo", "team", "requisiti",
-        }
+    "Italian": _word_set(
+        "il lo la gli le di del della e a in per con che un una si sono è nostro vostro esperienza ruolo "
+        "team requisiti"
     ),
-    "Dutch": frozenset(
-        {
-            "de", "het", "een", "en", "van", "voor", "met", "op", "in", "je", "jij", "wij", "we",
-            "ons", "is", "zijn", "als", "bij", "naar", "ervaring", "functie", "team", "vereisten",
-        }
+    "Dutch": _word_set(
+        "de het een en van voor met op in je jij wij we ons is zijn als bij naar ervaring functie team vereisten"
     ),
-    "Portuguese": frozenset(
-        {
-            "o", "a", "os", "as", "de", "do", "da", "e", "em", "para", "com", "que", "um", "uma",
-            "por", "como", "se", "é", "são", "sao", "nosso", "sua", "experiência", "experiencia",
-            "vaga", "equipe", "requisitos",
-        }
+    "Portuguese": _word_set(
+        "o a os as de do da e em para com que um uma por como se é são sao nosso sua experiência experiencia "
+        "vaga equipe requisitos"
     ),
-    "Swedish": frozenset({"och", "att", "i", "en", "ett", "som", "för", "for", "med", "på", "pa", "du", "vi", "är", "ar", "erfarenhet"}),
-    "Danish": frozenset({"og", "at", "i", "en", "et", "som", "for", "med", "på", "pa", "du", "vi", "er", "erfaring"}),
-    "Norwegian": frozenset({"og", "at", "i", "en", "et", "som", "for", "med", "på", "pa", "du", "vi", "er", "erfaring"}),
-    "Finnish": frozenset({"ja", "on", "että", "etta", "se", "ei", "työ", "tyo", "kokemus", "tehtävä", "tehtava", "me", "sinä", "sina"}),
-    "Polish": frozenset({"i", "w", "na", "z", "do", "dla", "oraz", "jest", "są", "sa", "praca", "doświadczenie", "doswiadczenie", "zespół", "zespol"}),
-    "Catalan": frozenset(
-        {"el", "la", "els", "les", "de", "del", "i", "en", "per", "amb", "que", "una", "un", "és", "es", "com", "aquesta", "aquest", "feina", "lloc", "equip", "experiència", "experiencia", "requisits"}
+    "Swedish": _word_set("och att i en ett som för for med på pa du vi är ar erfarenhet"),
+    "Danish": _word_set("og at i en et som for med på pa du vi er erfaring"),
+    "Norwegian": _word_set("og at i en et som for med på pa du vi er erfaring"),
+    "Finnish": _word_set("ja on että etta se ei työ tyo kokemus tehtävä tehtava me sinä sina"),
+    "Polish": _word_set(
+        "i w na z do dla oraz jest są sa praca doświadczenie doswiadczenie zespół zespol"
     ),
-    "Galician": frozenset(
-        {"o", "a", "os", "as", "de", "do", "da", "e", "en", "para", "con", "que", "un", "unha", "é", "son", "como", "traballo", "posto", "equipo", "experiencia", "requisitos"}
+    "Catalan": _word_set(
+        "el la els les de del i en per amb que una un és es com aquesta aquest feina lloc equip experiència "
+        "experiencia requisits"
     ),
-    "Czech": frozenset(
-        {"a", "v", "na", "se", "pro", "s", "je", "jsme", "jste", "práce", "prace", "pozice", "tým", "tym", "zkušenosti", "zkusenosti", "požadavky", "pozadavky"}
+    "Galician": _word_set(
+        "o a os as de do da e en para con que un unha é son como traballo posto equipo experiencia requisitos"
     ),
-    "Slovak": frozenset(
-        {"a", "v", "na", "sa", "pre", "s", "je", "sme", "ste", "práca", "praca", "pozícia", "pozicia", "tím", "tim", "skúsenosti", "skusenosti", "požiadavky", "poziadavky"}
+    "Czech": _word_set(
+        "a v na se pro s je jsme jste práce prace pozice tým tym zkušenosti zkusenosti požadavky pozadavky"
     ),
-    "Romanian": frozenset(
-        {"și", "si", "în", "in", "de", "la", "cu", "pentru", "este", "sunt", "un", "o", "pe", "care", "echipă", "echipa", "experiență", "experienta", "cerințe", "cerinte"}
+    "Slovak": _word_set(
+        "a v na sa pre s je sme ste práca praca pozícia pozicia tím tim skúsenosti skusenosti požiadavky poziadavky"
     ),
-    "Hungarian": frozenset(
-        {"és", "es", "a", "az", "egy", "hogy", "van", "lesz", "számára", "szamara", "munkakör", "munkakor", "csapat", "tapasztalat", "követelmények", "kovetelmenyek"}
+    "Romanian": _word_set(
+        "și si în in de la cu pentru este sunt un o pe care echipă echipa experiență experienta cerințe cerinte"
     ),
-    "Croatian": frozenset(
-        {"i", "u", "na", "za", "s", "sa", "je", "su", "koji", "rad", "posao", "tim", "iskustvo", "zahtjevi", "potrebno"}
+    "Hungarian": _word_set(
+        "és es a az egy hogy van lesz számára szamara munkakör munkakor csapat tapasztalat követelmények kovetelmenyek"
     ),
-    "Slovenian": frozenset(
-        {"in", "v", "na", "za", "z", "s", "je", "so", "ki", "delo", "delovno", "ekipa", "izkušnje", "izkusnje", "zahteve"}
-    ),
-    "Lithuanian": frozenset(
-        {"ir", "į", "i", "su", "už", "uz", "yra", "mes", "jūs", "jus", "darbas", "pozicija", "komanda", "patirtis", "reikalavimai"}
-    ),
-    "Latvian": frozenset(
-        {"un", "ar", "par", "ir", "mēs", "mes", "jūs", "jus", "darbs", "amats", "komanda", "pieredze", "prasības", "prasibas"}
-    ),
-    "Estonian": frozenset(
-        {"ja", "on", "et", "ning", "meie", "teie", "töö", "too", "roll", "meeskond", "kogemus", "nõuded", "nouded"}
-    ),
+    "Croatian": _word_set("i u na za s sa je su koji rad posao tim iskustvo zahtjevi potrebno"),
+    "Slovenian": _word_set("in v na za z s je so ki delo delovno ekipa izkušnje izkusnje zahteve"),
+    "Lithuanian": _word_set("ir į i su už uz yra mes jūs jus darbas pozicija komanda patirtis reikalavimai"),
+    "Latvian": _word_set("un ar par ir mēs mes jūs jus darbs amats komanda pieredze prasības prasibas"),
+    "Estonian": _word_set("ja on et ning meie teie töö too roll meeskond kogemus nõuded nouded"),
 }
 
 _LEVEL_ORDER = {
@@ -355,8 +327,7 @@ def detect_document_language(text: str) -> tuple[str, DocumentLanguageStatus, fl
         return "other_non_latin", "unsupported", min(1.0, 0.75 + non_latin)
 
     supported_scores = {
-        language: _profile_score(tokens, profile)
-        for language, profile in _SUPPORTED_WORDS.items()
+        language: _profile_score(tokens, profile) for language, profile in _SUPPORTED_WORDS.items()
     }
     unsupported_scores = {
         language: _profile_score(tokens, profile)
@@ -384,11 +355,7 @@ def detect_document_language(text: str) -> tuple[str, DocumentLanguageStatus, fl
 
 
 def _segments(text: str) -> list[str]:
-    return [
-        part.strip()
-        for part in re.split(r"[\n\r]+|(?<=[.!?;])\s+", text)
-        if part.strip()
-    ]
+    return [part.strip() for part in re.split(r"[\n\r]+|(?<=[.!?;])\s+", text) if part.strip()]
 
 
 def _marker_positions(segment: str, markers: tuple[str, ...]) -> list[tuple[int, int]]:
@@ -532,8 +499,7 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
 def _candidate_levels(preferences: JobSearchPreferences) -> dict[str, str]:
     allowed = {language.casefold() for language in preferences.languages}
     configured_levels = {
-        language.casefold(): level
-        for language, level in preferences.language_levels.items()
+        language.casefold(): level for language, level in preferences.language_levels.items()
     }
     levels = {
         language.casefold(): configured_levels.get(language.casefold(), "professional")
