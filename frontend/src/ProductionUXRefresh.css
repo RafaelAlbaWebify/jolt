@@ -1918,3 +1918,13 @@ body {
     display: none;
   }
 }
+
+.review-inbox-card-copy h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
