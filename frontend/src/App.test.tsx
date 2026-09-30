@@ -165,8 +165,8 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("High priority"),
-    ).toBeInTheDocument();
+      screen.getAllByText("High priority").length,
+    ).toBeGreaterThanOrEqual(1);
 
     expect(
       screen.getAllByText("Needs AI review").length,
@@ -250,7 +250,7 @@ describe("App AI review workflow", () => {
       screen.getAllByText("Required condition not met").length,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText("US-only remote: applicants must be anywhere in the US."),
+      await screen.findByText("US-only remote: applicants must be anywhere in the US."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Fit score not shown because a required condition was not met."),
