@@ -56,6 +56,15 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
             "fit_analysis_allowed=false, and technical_fit_percent/technical_fit=null. Do not reinterpret "
             "or soften deterministic hardline evidence in the AI review; JOLT will reject a contradictory return payload."
         ),
+        "deterministic_language_authority": (
+            "Treat jobs[].language_hardline_evidence as deterministic Stage 1 evidence. If hardline_reject=true, "
+            "return hardline_status=REJECT, language_status=blocked, final_decision=reject, "
+            "fit_analysis_allowed=false, and no technical-fit score. Preserve the supplied reason code/evidence, "
+            "including LANGUAGE_REQUIREMENT_UNMET or UNSUPPORTED_JOB_LANGUAGE. If manual_review=true, return "
+            "hardline_status=MANUAL_REVIEW and language_status=conditional; do not score fit. A preferred/nice-to-have "
+            "language must not cause rejection. Explicit OR alternatives are satisfied when the candidate has any one "
+            "of the permitted languages."
+        ),
         "stage_1_hardline_gate": (
             "Evaluate location/hiring geography, mandatory experience, employment/legal constraints, "
             "language/certification/clearance and other explicit non-negotiables before fit. "
@@ -113,7 +122,9 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
         "post_review_self_audit": [
             "Confirm every current jobs[] posting_id appears exactly once in the returned review payload.",
             "Confirm no returned posting_id falls outside this capture.",
-            "Confirm every deterministic hardline_reject=true vacancy is REJECT.",
+            "Confirm every deterministic location hardline_reject=true vacancy is REJECT.",
+            "Confirm every deterministic language hardline_reject=true vacancy is REJECT with language_status=blocked.",
+            "Confirm every deterministic language manual_review=true vacancy is MANUAL_REVIEW with language_status=conditional.",
             "Confirm every REJECT or MANUAL_REVIEW has fit_analysis_allowed=false and no technical-fit score.",
             "Confirm every pursue or strong_pursue passed Stage 1 and has location_eligibility=eligible.",
             "Confirm every LinkedIn-Remote pursue/strong_pursue has official-source verification, confirmed_remote, and no source conflict.",
