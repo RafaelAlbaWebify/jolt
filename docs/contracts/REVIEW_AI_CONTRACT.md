@@ -10,14 +10,18 @@ Posting/source evidence, current job-search preferences, candidate evidence, det
 Pending Review Inbox, validated AI review metadata, separate human ReviewDecision state, strategy/context updates that do not overwrite protected state.
 
 ## Guarantees
-- process order: source evidence -> Stage 1 hardlines -> candidate evidence -> Stage 2 fit -> recommendation;
+- process order: LinkedIn discovery -> official ATS/careers verification -> Stage 1 hardlines -> candidate evidence -> Stage 2 fit -> recommendation;
 - strict sequential per-job review for bulk packages;
 - REJECT/MANUAL_REVIEW stops fit;
 - deterministic hardline contradictions are rejected on import;
 - pursue/strong_pursue require resolved eligible geography and clear language/clearance;
 - duplicates cannot be positive;
 - every imported posting ID/source ID must belong to the intended capture;
-- source evidence and human decisions remain authoritative.
+- source evidence and human decisions remain authoritative;
+- LinkedIn is discovery evidence, not final authority for work model/location when an official ATS/careers source exists;
+- official ATS/careers/company job evidence outranks LinkedIn for work model and location;
+- a LinkedIn Remote label cannot support automatic positive geography until official-source verification confirms it;
+- conflicting work-model/location sources remain conditional and cannot become pursue/strong_pursue until resolved.
 
 ## Dependencies
 Capture/evidence records, hardline parsers, candidate evidence, unified AI exchange/import contracts.
