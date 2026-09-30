@@ -143,7 +143,7 @@ def import_source_revalidation(
                 item.location_evidence,
                 ensure_ascii=False,
             )
-        if item.reason:
+        if item.reason and item.resolution != "preserve":
             review.decision_reason = item.reason
 
         if item.resolution == "hold_verify_location":
