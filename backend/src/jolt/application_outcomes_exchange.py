@@ -158,6 +158,7 @@ def _apply_application_context_patch(output: AIExchangeOutput) -> GlobalAIContex
     )
     return load_global_ai_context()
 
+
 def import_application_outcomes_exchange(
     output: AIExchangeOutput,
 ) -> ApplicationOutcomesExchangeImportResponse:
