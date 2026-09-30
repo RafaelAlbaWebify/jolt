@@ -16,7 +16,6 @@ from jolt.database import (
     CaptureRun,
     LinkedInDiscoveryBatch,
     LinkedInPresenceCapture,
-    MarketIntelligenceObservation,
     Outcome,
     Posting,
 )
