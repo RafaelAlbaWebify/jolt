@@ -21,13 +21,13 @@ def build_linkedin_profile_exchange_router(get_session: SessionProvider) -> APIR
     router = APIRouter(prefix="/api/ai-linkedin", tags=["linkedin-command-center", "ai-exchange"])
     session_dependency = Depends(get_session)
 
-    @router.get("/export", response_model=AIExchangeInput)
+    @router.get("/export", response_model=AIExchangeInput, deprecated=True)
     def export_linkedin_profile(
         session: Session = session_dependency,
     ) -> AIExchangeInput:
         return build_linkedin_profile_exchange(session)
 
-    @router.post("/import", response_model=LinkedInProfileExchangeImportResponse)
+    @router.post("/import", deprecated=True, response_model=LinkedInProfileExchangeImportResponse)
     def import_linkedin_profile(
         output: AIExchangeOutput,
         session: Session = session_dependency,
@@ -39,7 +39,7 @@ def build_linkedin_profile_exchange_router(get_session: SessionProvider) -> APIR
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    @router.get("/feedback", response_model=AIExchangeFeedbackIndex)
+    @router.get("/feedback", deprecated=True, response_model=AIExchangeFeedbackIndex)
     def linkedin_profile_feedback() -> AIExchangeFeedbackIndex:
         return list_ai_exchange_feedback(section="linkedin_profile")
 
