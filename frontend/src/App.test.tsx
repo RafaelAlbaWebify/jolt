@@ -227,7 +227,7 @@ describe("App AI review workflow", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("eligible"),
+      within(dialog).getByText("eligible"),
     ).toBeInTheDocument();
 
     expect(
