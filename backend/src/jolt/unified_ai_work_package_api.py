@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from jolt.errors import JoltNotFoundError
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
     build_unified_ai_work_package_json,
@@ -21,12 +22,26 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
     session_dependency = Depends(get_session)
 
     @router.get("/api/ai-work-package/export")
-    def export_ai_work_package(session: Session = session_dependency) -> StreamingResponse:
-        content = build_unified_ai_work_package_json(session)
+    def export_ai_work_package(
+        discovery_batch_id: str | None = None,
+        session: Session = session_dependency,
+    ) -> StreamingResponse:
+        try:
+            content = build_unified_ai_work_package_json(
+                session,
+                discovery_batch_id=discovery_batch_id,
+            )
+        except (ValueError, JoltNotFoundError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        filename = (
+            f"JOLT_DISCOVERY_BATCH_{discovery_batch_id}_AI_WORK_PACKAGE.json"
+            if discovery_batch_id
+            else "JOLT_AI_WORK_PACKAGE.json"
+        )
         return StreamingResponse(
             BytesIO(content),
             media_type="application/json",
-            headers={"Content-Disposition": "attachment; filename=JOLT_AI_WORK_PACKAGE.json"},
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     @router.post("/api/ai-work-package/import")

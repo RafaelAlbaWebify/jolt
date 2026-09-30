@@ -232,8 +232,8 @@ it("keeps critical discovery controls visible when search and batch lists are lo
   );
 
   expect(await screen.findByText("Search settings (21)")).toBeInTheDocument();
-  expect(screen.getByText("Download review package")).toBeInTheDocument();
-  expect(screen.getByText("Import AI review")).toBeInTheDocument();
+  expect(screen.getByText("Download review + intelligence package")).toBeInTheDocument();
+  expect(screen.getByText("Import reviewed update")).toBeInTheDocument();
 
   const activeDetails = container.querySelector(".active-searches-details");
   const batchDetails = container.querySelector(".batch-search-details");

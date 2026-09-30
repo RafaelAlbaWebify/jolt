@@ -22,6 +22,11 @@ from jolt.linkedin_batch_review import (
     build_batch_ai_review_document,
     import_batch_ai_review,
 )
+from jolt.unified_ai_work_package import (
+    UnifiedAIUpdate,
+    build_unified_ai_work_package,
+    import_unified_ai_update,
+)
 
 
 def _factory(tmp_path: Path):
@@ -472,5 +477,68 @@ def test_batch_review_excludes_postings_with_applications(tmp_path: Path) -> Non
             "already_reviewed_excluded": 1,
             "review_set": 1,
         }
+    finally:
+        session.close()
+
+
+def test_unified_work_package_can_scope_review_to_discovery_batch(tmp_path: Path) -> None:
+    factory = _factory(tmp_path)
+    session = factory()
+    try:
+        batch_id = _seed_completed_batch(session)
+        package = build_unified_ai_work_package(
+            session,
+            discovery_batch_id=batch_id,
+        )
+
+        assert package.review_inbox is not None
+        assert package.review_inbox["discovery_batch_id"] == batch_id
+        assert package.review_inbox["counts"]["review_set"] == 2
+        assert [job["posting_id"] for job in package.review_inbox["jobs"]] == [
+            "posting-1",
+            "posting-2",
+        ]
+        assert {exchange.scope.section for exchange in package.exchanges} == {
+            "market_insights",
+            "applications",
+            "linkedin_profile",
+            "skills_gaps",
+            "professional_evidence",
+            "search_preferences",
+            "data_quality",
+        }
+
+        update_payload = UnifiedAIUpdate.model_validate(
+            {
+                "contract_type": "jolt_ai_work_package_update",
+                "contract_version": "1.0",
+                "package_id": package.package_id,
+                "source_context_version": package.context_version,
+                "reviewed_at": _now().isoformat(),
+                "review_source": "chatgpt",
+                "review_version": "unified-batch-v1",
+                "review_inbox": {
+                    "contract_type": "jolt_ai_review_batch",
+                    "contract_version": "1.0",
+                    "ai_review_contract_version": "1.1",
+                    "discovery_batch_id": batch_id,
+                    "review_source": "chatgpt_source_first",
+                    "review_version": "batch-v1",
+                    "reviewed_at": _now().isoformat(),
+                    "jobs": [
+                        _review_job("posting-1", "job-1"),
+                        _review_job("posting-2", "job-2"),
+                    ],
+                },
+                "exchanges": [],
+                "context_patch": {},
+                "summary": {},
+            }
+        )
+
+        result = import_unified_ai_update(session, update_payload)
+
+        assert result.review_inbox_imported is True
+        assert result.section_results["review_inbox"]["received_count"] == 2
     finally:
         session.close()

@@ -34,3 +34,15 @@ def test_main_app_exposes_unified_ai_work_package(tmp_path: Path) -> None:
     assert imported.status_code == 200
     assert imported.json()["package_id"] == payload["package_id"]
     assert imported.json()["imported_sections"] == []
+
+
+def test_batch_scoped_unified_export_rejects_unknown_batch(tmp_path: Path) -> None:
+    client = TestClient(create_app(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"))
+
+    response = client.get(
+        "/api/ai-work-package/export",
+        params={"discovery_batch_id": "missing-batch"},
+    )
+
+    assert response.status_code == 409
+    assert "not found" in response.json()["detail"].lower()

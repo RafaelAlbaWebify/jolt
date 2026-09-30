@@ -28,6 +28,11 @@ from jolt.global_context import (
     load_global_ai_context,
     save_global_ai_context,
 )
+from jolt.linkedin_batch_review import (
+    BatchAIReviewImportRequest,
+    build_batch_ai_review_document,
+    import_batch_ai_review,
+)
 from jolt.linkedin_profile_exchange import (
     build_linkedin_profile_exchange,
     import_linkedin_profile_exchange,
@@ -40,7 +45,10 @@ from jolt.professional_evidence_exchange import (
     build_professional_evidence_exchange,
     import_professional_evidence_exchange,
 )
-from jolt.review_inbox_exchange import build_review_inbox_exchange_json
+from jolt.review_inbox_exchange import (
+    build_review_inbox_exchange_json,
+    enrich_review_inbox_document,
+)
 from jolt.search_preference_exchange import (
     build_search_preference_exchange,
     import_search_preference_exchange,
@@ -98,7 +106,7 @@ class UnifiedAIUpdate(BaseModel):
     reviewed_at: datetime
     review_source: Literal["chatgpt"] = "chatgpt"
     review_version: str = Field(min_length=1, max_length=80)
-    review_inbox: AIReviewImportRequest | None = None
+    review_inbox: AIReviewImportRequest | BatchAIReviewImportRequest | None = None
     exchanges: list[AIExchangeOutput] = Field(default_factory=list)
     context_patch: dict[str, Any] = Field(default_factory=dict)
     summary: dict[str, Any] = Field(default_factory=dict)
@@ -199,10 +207,21 @@ def _compact_exchange_for_unified(exchange: AIExchangeInput) -> AIExchangeInput:
     return compact.model_copy(update={"evidence": evidence})
 
 
-def _review_inbox_payload(session: Session) -> dict[str, Any] | None:
+def _review_inbox_payload(
+    session: Session,
+    *,
+    discovery_batch_id: str | None = None,
+) -> dict[str, Any] | None:
     try:
-        payload = json.loads(build_review_inbox_exchange_json(session))
+        if discovery_batch_id:
+            payload = enrich_review_inbox_document(
+                build_batch_ai_review_document(session, discovery_batch_id)
+            )
+        else:
+            payload = json.loads(build_review_inbox_exchange_json(session))
     except JoltNotFoundError:
+        if discovery_batch_id:
+            raise
         return None
     payload.pop("reasoning_context", None)
     payload["context_location"] = "global_context"
@@ -210,7 +229,11 @@ def _review_inbox_payload(session: Session) -> dict[str, Any] | None:
     return _compact_review_inbox_payload(payload)
 
 
-def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
+def build_unified_ai_work_package(
+    session: Session,
+    *,
+    discovery_batch_id: str | None = None,
+) -> UnifiedAIWorkPackage:
     context = build_global_context_snapshot()
     candidate_evidence = build_candidate_evidence_ledger(session)
     exchanges = [
@@ -228,11 +251,17 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
         context_version=global_context_version(context),
         global_context=context,
         candidate_evidence=candidate_evidence,
-        review_inbox=_review_inbox_payload(session),
+        review_inbox=(
+            _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
+            if discovery_batch_id
+            else _review_inbox_payload(session)
+        ),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
             "workflow": (
-                "Analyze this one file and return one jolt_ai_work_package_update JSON file."
+                "Analyze this one file and return one jolt_ai_work_package_update JSON file. "
+                "When review_inbox contains a discovery_batch_id, review only that frozen batch "
+                "while using the supplied exchanges to refresh stale aggregate intelligence."
             ),
             "reasoning_authority": (
                 "ChatGPT performs semantic reasoning; JOLT provides evidence, deterministic facts, "
@@ -258,8 +287,9 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
             ),
             "review_inbox": (
                 "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
-                "its jolt_ai_review payload in review_inbox using its response_template exactly. "
-                "Every current job is present; use jobs[].analysis_text as the authoritative vacancy body."
+                "the payload described by review_inbox.response_template exactly inside review_inbox. "
+                "For a discovery batch, every job in the frozen batch review set is present and no other "
+                "pending Review Inbox jobs are required. Use jobs[].analysis_text as the authoritative vacancy body."
             ),
             "package_bounds": (
                 "Read each section's corpus_policy, evidence_compaction, or unified_compaction metadata. "
@@ -284,8 +314,15 @@ def build_unified_ai_work_package(session: Session) -> UnifiedAIWorkPackage:
     )
 
 
-def build_unified_ai_work_package_json(session: Session) -> bytes:
-    package = build_unified_ai_work_package(session)
+def build_unified_ai_work_package_json(
+    session: Session,
+    *,
+    discovery_batch_id: str | None = None,
+) -> bytes:
+    package = build_unified_ai_work_package(
+        session,
+        discovery_batch_id=discovery_batch_id,
+    )
     return package.model_dump_json(indent=2).encode("utf-8")
 
 
@@ -371,7 +408,10 @@ def import_unified_ai_update(
     review_inbox_imported = False
 
     if update.review_inbox is not None:
-        review_result = import_ai_review(session, update.review_inbox)
+        if isinstance(update.review_inbox, BatchAIReviewImportRequest):
+            review_result = import_batch_ai_review(session, update.review_inbox)
+        else:
+            review_result = import_ai_review(session, update.review_inbox)
         section_results["review_inbox"] = review_result.model_dump(mode="json")
         review_inbox_imported = True
 
