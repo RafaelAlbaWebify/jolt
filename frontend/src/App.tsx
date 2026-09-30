@@ -833,7 +833,9 @@ export function App({
                         <div><span>Geography</span><strong>{previewOpportunity.geography_status ?? "unknown"}</strong></div>
                         <div><span>Clearance</span><strong>{previewOpportunity.clearance_status ?? "unknown"}</strong></div>
                         <div><span>Language</span><strong>{previewOpportunity.language_status ?? "unknown"}</strong></div>
-                        <div><span>Technical fit</span><strong>{previewOpportunity.technical_fit ?? "—"}</strong></div>
+                        {!hardlineStopped(previewOpportunity) && (
+                          <div><span>Technical fit</span><strong>{previewOpportunity.technical_fit ?? "—"}</strong></div>
+                        )}
                       </div>
                     </div>
 
