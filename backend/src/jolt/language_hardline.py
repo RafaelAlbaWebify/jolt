@@ -373,7 +373,7 @@ def _distance(position: int, marker: tuple[int, int]) -> int:
     return min(abs(position - start), abs(position - end))
 
 
-def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind:
+def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None:
     preferred = _marker_positions(segment, _PREFERRED_MARKERS)
     required = _marker_positions(segment, _REQUIRED_MARKERS)
     cefr = [(match.start(), match.end()) for match in re.finditer(r"\b[ABC][12]\b", segment, re.I)]
@@ -390,7 +390,7 @@ def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind:
     folded = segment.casefold()
     if any(marker in folded for marker in _LANGUAGE_SKILL_MARKERS):
         return "ambiguous"
-    return "ambiguous"
+    return None
 
 
 def _minimum_level(segment: str, position: int) -> str:
@@ -448,6 +448,8 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
                 consumed.update(alternative_indexes)
                 midpoint = (start + mentions[alternative_indexes[-1]][2]) // 2
                 kinds = [_nearest_kind(segment, mentions[i][1]) for i in alternative_indexes]
+                if all(kind is None for kind in kinds):
+                    continue
                 classification: LanguageRequirementKind = (
                     "preferred"
                     if all(kind == "preferred" for kind in kinds)
@@ -470,6 +472,8 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
                 continue
 
             classification = _nearest_kind(segment, start)
+            if classification is None:
+                continue
             level = _minimum_level(segment, start)
             confidence = 0.95 if classification != "ambiguous" else 0.62
             results.append(
