@@ -273,11 +273,15 @@ class AIReviewImportRequest(BaseModel):
         known_linkedin = job.linkedin_work_model != "unknown"
         known_official = job.official_work_model != "unknown"
 
-        if known_linkedin and known_official and job.linkedin_work_model != job.official_work_model:
-            if not job.source_conflict:
-                raise ValueError(
-                    "LinkedIn and official work models diverge; source_conflict must be true"
-                )
+        if (
+            known_linkedin
+            and known_official
+            and job.linkedin_work_model != job.official_work_model
+            and not job.source_conflict
+        ):
+            raise ValueError(
+                "LinkedIn and official work models diverge; source_conflict must be true"
+            )
 
         if job.source_conflict:
             if job.location_verification_status != "conflict":
