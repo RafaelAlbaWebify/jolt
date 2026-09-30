@@ -14,6 +14,7 @@ REASON_LANGUAGE_UNMET = "LANGUAGE_REQUIREMENT_UNMET"
 REASON_LANGUAGE_UNCERTAIN = "LANGUAGE_REQUIREMENT_UNCERTAIN"
 REASON_UNSUPPORTED_DOCUMENT_LANGUAGE = "UNSUPPORTED_JOB_LANGUAGE"
 
+
 def _aliases(value: str) -> tuple[str, ...]:
     return tuple(value.split())
 
@@ -234,8 +235,12 @@ _UNSUPPORTED_WORDS: dict[str, frozenset[str]] = {
     ),
     "Croatian": _word_set("i u na za s sa je su koji rad posao tim iskustvo zahtjevi potrebno"),
     "Slovenian": _word_set("in v na za z s je so ki delo delovno ekipa izkušnje izkusnje zahteve"),
-    "Lithuanian": _word_set("ir į i su už uz yra mes jūs jus darbas pozicija komanda patirtis reikalavimai"),
-    "Latvian": _word_set("un ar par ir mēs mes jūs jus darbs amats komanda pieredze prasības prasibas"),
+    "Lithuanian": _word_set(
+        "ir į i su už uz yra mes jūs jus darbas pozicija komanda patirtis reikalavimai"
+    ),
+    "Latvian": _word_set(
+        "un ar par ir mēs mes jūs jus darbs amats komanda pieredze prasības prasibas"
+    ),
     "Estonian": _word_set("ja on et ning meie teie töö too roll meeskond kogemus nõuded nouded"),
 }
 
