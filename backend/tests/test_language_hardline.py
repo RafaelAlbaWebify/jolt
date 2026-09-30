@@ -138,9 +138,7 @@ def test_multiple_language_alternatives_pass_when_one_is_available() -> None:
 
     assert result.hardline_reject is False
     matching = [
-        item
-        for item in result.requirements
-        if item.languages == ("German", "French", "Spanish")
+        item for item in result.requirements if item.languages == ("German", "French", "Spanish")
     ]
     assert matching
     assert matching[0].classification == "required"
@@ -168,8 +166,7 @@ def test_nortal_wording_is_detected_as_mandatory_german() -> None:
     assert result.hardline_reject is True
     assert REASON_LANGUAGE_UNMET in result.reason_codes
     assert any(
-        "German" in requirement.languages
-        and requirement.classification == "required"
+        "German" in requirement.languages and requirement.classification == "required"
         for requirement in result.requirements
     )
 
@@ -204,6 +201,7 @@ def test_spanish_document_is_supported() -> None:
     assert language == "Spanish"
     assert status == "supported"
     assert confidence >= 0.7
+
 
 def test_plain_german_market_reference_is_not_a_language_requirement() -> None:
     result = analyze_language_evidence(
@@ -243,4 +241,3 @@ def test_catalan_written_job_is_not_treated_as_spanish() -> None:
     assert language == "Catalan"
     assert status == "unsupported"
     assert confidence >= 0.7
-
