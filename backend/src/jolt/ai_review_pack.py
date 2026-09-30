@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
 from jolt.errors import JoltNotFoundError
 from jolt.hardline_evidence import analyze_location_evidence
+from jolt.job_search_preferences import load_job_search_preferences
+from jolt.language_hardline import analyze_language_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
 
 PACK_VERSION = "1.0"
@@ -153,6 +155,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         for page in pages
     ]
 
+    preferences = load_job_search_preferences()
     jobs_payload: list[dict[str, object]] = []
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
@@ -166,9 +169,14 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         location = posting.location if posting is not None else item.location
         description = posting.description if posting is not None else ""
         source_raw_text = source.raw_text if source is not None else ""
+        evidence_text = source_raw_text or description
         location_signals = analyze_location_evidence(
             location=location,
-            source_text=source_raw_text or description,
+            source_text=evidence_text,
+        )
+        language_signals = analyze_language_evidence(
+            source_text=evidence_text,
+            preferences=preferences,
         )
 
         jobs_payload.append(
@@ -188,6 +196,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
                     "positive_evidence": list(location_signals.positive_evidence),
                     "negative_evidence": list(location_signals.negative_evidence),
                 },
+                "language_hardline_evidence": language_signals.as_dict(),
                 "identity_status": posting.identity_status if posting is not None else "",
                 "detail_status": item.detail_status,
                 "verification_reasons": _json_list(item.verification_reasons_json),
