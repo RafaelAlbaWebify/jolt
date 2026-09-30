@@ -170,6 +170,7 @@ def _apply_skills_context_patch(output: AIExchangeOutput) -> GlobalAIContextOver
     )
     return load_global_ai_context()
 
+
 def _preparation_actions(output: AIExchangeOutput) -> list[MarketPreparationAction]:
     actions: list[MarketPreparationAction] = []
     for feedback in output.feedback:
