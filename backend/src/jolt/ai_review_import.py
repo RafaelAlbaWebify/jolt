@@ -23,6 +23,7 @@ from jolt.errors import JoltNotFoundError
 from jolt.hardline_evidence import analyze_location_evidence
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.language_hardline import analyze_language_evidence
+from jolt.preference_aware_evaluation import sanitize_capture_text
 
 AIReviewDecision = Literal[
     "strong_pursue",
@@ -425,7 +426,7 @@ def _validate_capture_membership(
                 )
 
             deterministic_language = analyze_language_evidence(
-                source_text=source_text,
+                source_text=sanitize_capture_text(source_text),
                 preferences=load_job_search_preferences(),
             )
             if deterministic_language.hardline_reject and (
@@ -530,7 +531,7 @@ def import_ai_review(
             else ""
         )
         deterministic_language = analyze_language_evidence(
-            source_text=source_text,
+            source_text=sanitize_capture_text(source_text),
             preferences=load_job_search_preferences(),
         )
         stored_hardline_reasons = list(job.hardline_reasons)
