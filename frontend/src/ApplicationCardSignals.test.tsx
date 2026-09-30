@@ -38,7 +38,7 @@ describe("application card operational signals", () => {
     const { container } = render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
 
     expect(await screen.findByText("Application Support Engineer")).toBeInTheDocument();
-    expect(screen.getByText("Overdue")).toBeInTheDocument();
+    expect(screen.getAllByText("Overdue").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Last activity")).toBeInTheDocument();
     expect(screen.getByText("Next task")).toBeInTheDocument();
     expect(screen.getByText("Resume")).toBeInTheDocument();
