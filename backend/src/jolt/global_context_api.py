@@ -20,8 +20,8 @@ def build_global_context_router() -> APIRouter:
             status_code=409,
             detail=(
                 "Direct global AI context imports are deprecated. "
-                "Use /api/ai-work-package/import so all durable AI strategy changes "
-                "are validated and applied atomically."
+                "Use the unified work package at /api/ai-work-package/import so all durable "
+                "AI strategy changes are validated and applied atomically."
             ),
         )
 
