@@ -17,12 +17,12 @@ from jolt.global_context import (
     global_context_version,
     load_global_ai_context,
 )
-from jolt.unified_context_policy import require_unified_context_authority
 from jolt.professional_intelligence_evidence_review import (
     ProfessionalEvidenceRunReview,
     review_professional_capture_evidence,
 )
 from jolt.professional_intelligence_records import ProfessionalCaptureRun
+from jolt.unified_context_policy import require_unified_context_authority
 
 _PROFESSIONAL_PATCH_KEYS = frozenset(
     {"professional_evidence_summary", "profile_strategy", "audit_summary"}
