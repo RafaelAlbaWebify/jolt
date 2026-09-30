@@ -328,6 +328,7 @@ def test_import_rejects_ai_pass_when_source_evidence_is_deterministically_us_onl
         with pytest.raises(ValueError, match="deterministic source evidence"):
             import_ai_review(session, request)
 
+
 def test_contract_v12_also_enforces_deterministic_location_hardline(tmp_path) -> None:
     database_url = f"sqlite:///{(tmp_path / 'jolt-v12.db').as_posix()}"
     factory = create_session_factory(database_url)
