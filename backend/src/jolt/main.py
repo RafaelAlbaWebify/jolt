@@ -40,6 +40,11 @@ from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linked
 from jolt.database import create_session_factory
 from jolt.errors import JoltNotFoundError
 from jolt.global_context_api import build_global_context_router
+from jolt.hardline_revalidation import (
+    HardlineRevalidationImportRequest,
+    HardlineRevalidationImportResponse,
+    import_hardline_revalidation,
+)
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.job_search_preferences import (
     JobSearchPreferences,
@@ -658,6 +663,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
     ) -> AIReviewImportResponse:
         try:
             return import_ai_review(session, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post(
+        "/api/ai-review/hardline-revalidation/import",
+        response_model=HardlineRevalidationImportResponse,
+        tags=["ai-review"],
+    )
+    def hardline_revalidation_import(
+        request: HardlineRevalidationImportRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> HardlineRevalidationImportResponse:
+        try:
+            return import_hardline_revalidation(session, request)
         except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
