@@ -78,16 +78,11 @@ def test_search_exchange_exports_preferences_as_protected_evidence(tmp_path, mon
 def test_search_exchange_import_creates_pending_search_improvement_without_saving_preferences(
     monkeypatch,
 ) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported = []
     monkeypatch.setattr(
         "jolt.search_preference_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.search_preference_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
     monkeypatch.setattr(
         "jolt.search_preference_exchange.save_ai_exchange_feedback",
@@ -144,9 +139,7 @@ def test_search_exchange_import_creates_pending_search_improvement_without_savin
                 evidence_refs=["posting:1", "posting:2"],
             )
         ],
-        context_patch={
-            "capture_strategy": {"title_expansion_candidate": "Application Support Analyst"}
-        },
+        context_patch={},
         summary={
             "executive_summary": "Broaden title coverage without changing preferences automatically."
         },
@@ -154,9 +147,7 @@ def test_search_exchange_import_creates_pending_search_improvement_without_savin
 
     response = import_search_preference_exchange(output)
 
-    assert saved_context[0].capture_strategy["title_expansion_candidate"] == (
-        "Application Support Analyst"
-    )
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.preparation.imported_count == 1
     action = imported[0].search_filter_improvements[0]
