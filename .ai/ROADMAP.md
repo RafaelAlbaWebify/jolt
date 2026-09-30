@@ -30,14 +30,16 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
 
 ## Immediate sequence
-Production certification is complete for the supported local-first single-user Windows boundary.
+Production certification remains complete for the supported local-first single-user Windows boundary.
 
-Future work is optional/product expansion rather than a blocker:
-1. Add Indeed adapter when prioritized.
-2. Add InfoJobs adapter when prioritized.
-3. Revisit multi-user/SaaS architecture only if the product boundary changes.
-4. Re-run the production certification suite for every release that changes runtime support, migrations, LinkedIn capture behavior, or release packaging.
-
+Normal product operation now follows one consolidated intelligence loop:
+1. Run the production saved-search portfolio in Capture Jobs.
+2. Download the batch-scoped Unified AI Work Package.
+3. Review the frozen new-job set with ChatGPT while refreshing stale aggregate intelligence in the same package.
+4. Import the reviewed update once; Review Inbox plus eligible Market/Search/Application/Profile intelligence are refreshed together.
+5. Use backend `/api/ai-status` as the freshness authority.
+6. Continue UI simplification from observed friction: Settings & Data next, Applications after that.
+7. Add Indeed/InfoJobs only when they materially improve the real workflow.
 
 ## R-025 — LinkedIn Search Portfolio and Discovery Batch — COMPLETE
 Goal: replace repeated one-search-at-a-time operator work with one saved multi-search discovery action while preserving per-search provenance and the certified capture engine.
@@ -47,3 +49,32 @@ Authoritative implementation roadmap: `docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md
 Current phase: COMPLETE. Phases 1–5 are merged and the real authenticated Windows acceptance passed on 2026-09-24.
 
 Completion evidence: main `1157942fec504b3d41c6371046ae04afc8111709` passed all six push certification workflows. Real Discovery Batch `02c529d0-bae8-4cc1-8288-a7575146b515` completed 2/2 saved searches sequentially, captured/verified 50/50 jobs, produced a frozen 47-posting review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved state across a full JOLT restart.
+
+
+## R-026 — Discovery restart recovery — COMPLETE
+PR #437 safely reconciles scheduled/running discovery work after backend restart while leaving queued work untouched.
+
+## R-027 — Saved-search performance funnel — COMPLETE
+PR #439 links saved searches to captured jobs, AI signal, human decision, application, interview and offer outcomes so search tuning can use real conversion evidence.
+
+## R-028 — Daily operator UX stabilization — COMPLETE
+PRs #442, #447, #448, #449, #450 and #452 simplified operator language, dangerous actions, Applications/document handling, stage/outcome actions and keyboard/focus behavior. Issue #441 closed completed on 2026-09-30.
+
+## R-029 — Production density + live UI audit — COMPLETE
+PRs #454–#459 added the read-only live Playwright audit and fixed real viewport density/scroll behavior without weakening the 1680x945 certification.
+
+## R-030 — Review Inbox decision workspace — COMPLETE
+PRs #460–#462 introduced split-view review, functional Overview/Fit/Details panes and the simplified human decision model: Apply, Reject, or leave pending.
+
+## R-031 — Market Insights operator dashboard — COMPLETE
+PR #463 reorganized Market Insights around current KPIs, market signals, next actions and drill-down tabs while preserving evidence/freshness semantics.
+
+## R-032 — Unified intelligence architecture remediation — COMPLETE
+PRs #464–#467 close the architecture-audit gaps:
+- discovery-batch review and aggregate intelligence refresh share one Unified AI Work Package;
+- backend `/api/ai-status` owns intelligence freshness;
+- Applications remain visible without legacy Evaluation rows;
+- only the Unified AI Work Package may persist durable global AI context;
+- individual exchanges and standalone legacy review/preparation routes are deprecated compatibility/diagnostic surfaces.
+
+Acceptance evidence: PR #467 exact head `57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6` passed backend, frontend rerun, Playwright/sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before merge as `98953f63f7e836f100a6ef5f00c3ac5399a649f6`.
