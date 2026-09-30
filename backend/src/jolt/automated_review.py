@@ -9,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jolt.database import Evaluation, Posting, ProfileVersion, utc_now
+from jolt.job_search_preferences import load_job_search_preferences
+from jolt.language_hardline import analyze_language_evidence
 
 PROFILE_ID = "rafael-job-search"
 PROFILE_VERSION_ID = "rafael-job-search:v2"
@@ -142,7 +144,15 @@ def _dimension_score(text: str, terms: list[str], weight: int) -> tuple[int, lis
 
 def analyze_posting(title: str, location: str, description: str) -> ReviewAnalysis:
     text = "\n".join([title, location, description]).lower()
-    blockers = _contains_any(text, PROFILE_CONFIGURATION["hard_blockers"])
+    legacy_blockers = _contains_any(text, PROFILE_CONFIGURATION["hard_blockers"])
+    language_evidence = analyze_language_evidence(
+        source_text="\n".join([title, location, description]),
+        preferences=load_job_search_preferences(),
+    )
+    blockers = [
+        *[f"legacy language phrase: {item}" for item in legacy_blockers],
+        *language_evidence.reasons,
+    ]
     dimensions: dict[str, int] = {}
     strengths: list[str] = []
     weights = {
@@ -239,7 +249,7 @@ def analyze_posting(title: str, location: str, description: str) -> ReviewAnalys
         summary=summary,
         strengths=strengths,
         gaps=gaps,
-        blockers=[f"Verified phrase: {item}." for item in blockers],
+        blockers=[f"Verified blocker: {item}" for item in blockers],
         uncertainties=uncertainties,
         dimensions=dimensions,
     )
