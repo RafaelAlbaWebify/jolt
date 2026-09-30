@@ -189,6 +189,29 @@ describe("App AI review workflow", () => {
     );
   });
 
+  it("switches the selected-job preview between overview, fit analysis, and job details", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([reviewedOpportunity]),
+    );
+
+    render(<App />);
+
+    await screen.findByText("Application Support Engineer");
+
+    expect(screen.getByText("Why it looks promising")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Fit analysis" }));
+    expect(screen.getByText("Fit assessment")).toBeInTheDocument();
+    expect(screen.getByText("Evidence supporting the match")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Job details" }));
+    expect(screen.getByText("Mandatory requirements")).toBeInTheDocument();
+    expect(screen.getByText("Location evidence")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(screen.getByText("Why it looks promising")).toBeInTheDocument();
+  });
+
   it("shows imported AI reasoning in the inspector without fetching Python analysis", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
