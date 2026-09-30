@@ -19,7 +19,6 @@ from jolt.global_context import (
     global_context_version,
     load_global_ai_context,
 )
-from jolt.unified_context_policy import require_unified_context_authority
 from jolt.linkedin_command_center import (
     LinkedInRecommendationImportItem,
     LinkedInRecommendationImportRequest,
