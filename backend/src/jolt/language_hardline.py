@@ -210,7 +210,7 @@ _UNSUPPORTED_WORDS: dict[str, frozenset[str]] = {
     "Italian": frozenset(
         {
             "il", "lo", "la", "gli", "le", "di", "del", "della", "e", "a", "in", "per", "con",
-            "che", "un", "una", "si", "sono", "è", "e", "nostro", "vostro", "esperienza",
+            "che", "un", "una", "si", "sono", "è", "nostro", "vostro", "esperienza",
             "ruolo", "team", "requisiti",
         }
     ),
@@ -429,7 +429,7 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
             continue
 
         consumed: set[int] = set()
-        for index, (language, start, end) in enumerate(mentions):
+        for index, (language, start, _end) in enumerate(mentions):
             if index in consumed:
                 continue
 
