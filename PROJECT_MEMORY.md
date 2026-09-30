@@ -311,3 +311,14 @@ The architecture audit identified disconnected/duplicated AI update paths. The r
 - PR #467: only the Unified AI Work Package may mutate durable global AI context; legacy/section routes are deprecated.
 
 Do not reintroduce section-level durable `context_patch` writes or new product flows on deprecated AI routes.
+
+
+## 2026-09-30 planned UX simplification complete
+
+The post-architecture simplification sequence is complete:
+
+- PR #468 synchronized repository project control with the unified intelligence architecture;
+- PR #469 simplified Settings & Data around backend-owned intelligence status, with deliberate strategy refresh and legacy compatibility tooling kept in Advanced;
+- PR #470 made Applications operationally denser with an Active / Interviewing / Offers / Overdue scorecard and Board/List views while preserving lifecycle semantics.
+
+The product-development posture is now **production use first**. Do not invent another UI or architecture program merely because no milestone is active. Record concrete operator friction during real job-search work and change JOLT only when that evidence, a demonstrated source-coverage need, or an explicit compatibility decision justifies it.
