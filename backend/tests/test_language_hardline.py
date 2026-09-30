@@ -204,3 +204,43 @@ def test_spanish_document_is_supported() -> None:
     assert language == "Spanish"
     assert status == "supported"
     assert confidence >= 0.7
+
+def test_plain_german_market_reference_is_not_a_language_requirement() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "This English-language support role serves the German market and German customers. "
+            "All internal and customer communication for this position is conducted in English."
+        ),
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+    assert not any("German" in item.languages for item in result.requirements)
+
+
+def test_english_c1_is_satisfied_by_professional_english_profile() -> None:
+    result = analyze_language_evidence(
+        source_text="English C1 is required for written and spoken customer communication.",
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+
+
+def test_catalan_written_job_is_not_treated_as_spanish() -> None:
+    text = (
+        "Busquem una persona per incorporar-se al nostre equip de suport tècnic. "
+        "El lloc de treball inclou la resolució d'incidències, l'atenció als usuaris "
+        "i la documentació de solucions. Treballaràs amb l'equip per analitzar problemes "
+        "i millorar processos. Es valora experiència amb Windows, xarxes i sistemes de "
+        "ticketing, així com capacitat per treballar de manera autònoma."
+    )
+
+    language, status, confidence = detect_document_language(text)
+
+    assert language == "Catalan"
+    assert status == "unsupported"
+    assert confidence >= 0.7
+
