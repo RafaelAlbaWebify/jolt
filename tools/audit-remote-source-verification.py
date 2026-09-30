@@ -11,7 +11,8 @@ from urllib.parse import unquote, urlparse
 
 _REMOTE_SIGNAL = re.compile(
     r"\b(?:fully\s+remote|100%\s+remote|work\s+from\s+anywhere|"
-    r"remote[- ]first|remote\s+(?:role|position|job)|work(?:ing)?\s+remotely|"
+    r"remote[- ]first|remote\s+(?:role|position|job)|(?:role|position|job)\s+is\s+remote|"
+    r"this\s+is\s+(?:a\s+)?remote\s+(?:role|position|job)|work(?:ing)?\s+remotely|"
     r"location\s*:\s*remote|teletrabajo)\b",
     re.IGNORECASE,
 )
