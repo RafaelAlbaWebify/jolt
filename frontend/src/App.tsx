@@ -725,7 +725,7 @@ export function App({
                       >
                         <span className="review-company-mark" aria-hidden="true">{companyInitials(opportunity.company || "Unknown company")}</span>
                         <span className="review-inbox-card-copy">
-                          <strong>{opportunity.title || "Untitled opportunity"}</strong>
+                          <h3>{opportunity.title || "Untitled opportunity"}</h3>
                           <span>{opportunity.company || "Unknown company"}</span>
                           <small>{[opportunity.location, opportunity.imported_at ? new Date(opportunity.imported_at).toLocaleDateString() : ""].filter(Boolean).join(" · ")}</small>
                         </span>
@@ -818,6 +818,9 @@ export function App({
                         </section>
                         <section className="review-preview-risk-card">
                           <h4>Requirements to check</h4>
+                          {hardlineStopped(previewOpportunity) && (
+                            <p>Fit score not shown because a required condition was not met.</p>
+                          )}
                           {[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].length ? (
                             <ul>{[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
                           ) : (
