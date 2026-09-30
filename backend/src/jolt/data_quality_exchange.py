@@ -315,6 +315,7 @@ def _apply_data_quality_context_patch(output: AIExchangeOutput) -> GlobalAIConte
     )
     return load_global_ai_context()
 
+
 def _data_quality_actions(output: AIExchangeOutput) -> list[MarketPreparationAction]:
     actions: list[MarketPreparationAction] = []
     for feedback in output.feedback:
