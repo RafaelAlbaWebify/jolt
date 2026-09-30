@@ -289,7 +289,13 @@ def build_unified_ai_work_package(
                 "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
                 "the payload described by review_inbox.response_template exactly inside review_inbox. "
                 "For a discovery batch, every job in the frozen batch review set is present and no other "
-                "pending Review Inbox jobs are required. Use jobs[].analysis_text as the authoritative vacancy body."
+                "pending Review Inbox jobs are required. Use jobs[].analysis_text as the authoritative "
+                "captured LinkedIn vacancy body, but do not treat LinkedIn as the final authority for "
+                "work model or hiring location. For LinkedIn-origin jobs, locate and verify the employer's "
+                "official ATS/careers/company job page when available, record the structured source-"
+                "verification fields, and resolve contradictions in favor of the employer-controlled "
+                "source. If official verification cannot be completed, a LinkedIn Remote label must not "
+                "be promoted to confirmed remote eligibility."
             ),
             "package_bounds": (
                 "Read each section's corpus_policy, evidence_compaction, or unified_compaction metadata. "
