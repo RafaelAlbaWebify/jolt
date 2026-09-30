@@ -160,14 +160,6 @@ describe("DataTools", () => {
 
     unmount();
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/api/ai-status")) {
-        return new Response(JSON.stringify(CURRENT_STATUS), { status: 200 });
-      }
-      return new Response(JSON.stringify([]), { status: 200 });
-    });
-
     render(<DataTools apiBase="http://127.0.0.1:8000" />);
     expect(await screen.findByText("Up to date")).toBeInTheDocument();
     expect(window.localStorage.length).toBe(0);
