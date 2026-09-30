@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import sqlite3
 import subprocess
 import sys
-from pathlib import Path
 
 
 SCHEMA = """
