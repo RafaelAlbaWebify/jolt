@@ -64,11 +64,13 @@ class SourceRevalidationItem(BaseModel):
             )
         if self.resolution == "preserve" and self.source_conflict:
             raise ValueError("A source conflict cannot use resolution=preserve")
-        if self.resolution == "reject_location":
-            if self.location_verification_status != "verified":
-                raise ValueError(
-                    "reject_location requires verified authoritative location evidence"
-                )
+        if (
+            self.resolution == "reject_location"
+            and self.location_verification_status != "verified"
+        ):
+            raise ValueError(
+                "reject_location requires verified authoritative location evidence"
+            )
         return self
 
 
@@ -123,18 +125,21 @@ def import_source_revalidation(
                 f"AI review {item.ai_review_id} does not belong to posting {item.posting_id}"
             )
 
-        if item.linkedin_work_model == "remote" and item.resolution == "preserve":
-            if (
+        if (
+            item.linkedin_work_model == "remote"
+            and item.resolution == "preserve"
+            and (
                 item.remote_status != "confirmed_remote"
                 or item.location_verification_status != "verified"
                 or item.authoritative_source
                 not in {"official_ats", "official_careers", "company_site"}
                 or item.official_work_model != "remote"
                 or item.source_conflict
-            ):
-                raise ValueError(
-                    "Preserving a positive LinkedIn-Remote review requires verified official remote evidence"
-                )
+            )
+        ):
+            raise ValueError(
+                "Preserving a positive LinkedIn-Remote review requires verified official remote evidence"
+            )
 
         review.source_conflict = item.source_conflict
         review.linkedin_work_model = item.linkedin_work_model
