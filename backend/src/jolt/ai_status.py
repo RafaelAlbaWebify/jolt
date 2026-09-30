@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -74,7 +74,11 @@ def _latest_application_evidence_at(session: Session) -> datetime | None:
         session.scalar(select(func.max(ApplicationEvent.occurred_at))),
         session.scalar(select(func.max(Outcome.recorded_at))),
     ]
-    normalized = [_as_utc(value) for value in values if value is not None]
+    normalized: list[datetime] = []
+    for value in values:
+        converted = _as_utc(value)
+        if converted is not None:
+            normalized.append(converted)
     return max(normalized) if normalized else None
 
 
@@ -183,10 +187,13 @@ def build_ai_status(session: Session) -> AIStatusResponse:
             reason="No retained market evidence is available yet.",
         )
     else:
-        market_status = AISectionStatus(
-            state=market_view.freshness.status
+        market_state = (
+            market_view.freshness.status
             if market_view.freshness.status in {"not_analyzed", "stale", "current"}
-            else "not_analyzed",
+            else "not_analyzed"
+        )
+        market_status = AISectionStatus(
+            state=cast(AISectionState, market_state),
             evidence_at=_as_utc(market_view.freshness.latest_capture_at),
             analyzed_at=_as_utc(market_view.freshness.ai_updated_at),
             reason=market_view.freshness.reason,
