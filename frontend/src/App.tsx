@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { createPortal } from "react-dom";
-
 import type { ApplicationStatus } from "./ApplicationWorkflow";
-import { DataTools } from "./DataTools";
 
 type ReviewChoice = "pursue" | "consider" | "defer" | "reject" | "needs_more_information";
 type AIReviewDecision = "strong_pursue" | "pursue" | "conditional" | "reject";
@@ -70,7 +67,6 @@ type SourceEvidence = {
 };
 
 type AppProps = {
-  sidebarToolsTarget?: HTMLDivElement | null;
   evaluationRevision?: number;
 };
 
@@ -264,7 +260,6 @@ function Sources({ postingId }: { postingId: string }) {
 }
 
 export function App({
-  sidebarToolsTarget = null,
   evaluationRevision = 0,
 }: AppProps) {
   const [sourceUrl, setSourceUrl] = useState("");
@@ -582,11 +577,8 @@ export function App({
     </section>
   );
 
-  const operationsTools = <DataTools apiBase={API_BASE} onImported={refreshOpportunities} />;
-
   return (
     <main className="opportunity-main">
-      {sidebarToolsTarget ? createPortal(operationsTools, sidebarToolsTarget) : operationsTools}
       {error && (
         <p className="error" role="alert">
           {error}
