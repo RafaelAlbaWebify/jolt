@@ -17,6 +17,9 @@ type TestOpportunity = {
   application_status: TestApplicationStatus | null;
   outcome_type: string | null;
   last_activity_at?: string | null;
+  next_due_at?: string | null;
+  next_due_kind?: string | null;
+  overdue?: boolean;
 };
 
 type TestApplication = {
@@ -144,6 +147,37 @@ describe("ApplicationDashboard", () => {
     expect(screen.getByLabelText("Interviewing count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Offer count")).toHaveTextContent("1");
     expect(screen.getByLabelText("Closed count")).toHaveTextContent("1");
+  });
+
+  it("shows a compact pipeline scorecard and switches between Board and List", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([
+        { ...preparingOpportunity, overdue: true },
+        submittedOpportunity,
+        interviewOpportunity,
+        offerOpportunity,
+        closedOpportunity,
+      ]),
+    );
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    await screen.findByRole("heading", { name: "Application Pipeline" });
+
+    const metrics = screen.getByLabelText("Application pipeline metrics");
+    expect(within(metrics).getByText("Active")).toBeInTheDocument();
+    expect(within(metrics).getByText("4")).toBeInTheDocument();
+    expect(within(metrics).getByText("Interviewing")).toBeInTheDocument();
+    expect(within(metrics).getByText("Offers")).toBeInTheDocument();
+    expect(within(metrics).getByText("Overdue")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "List" }));
+
+    expect(screen.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("region", { name: "Application pipeline list" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Application pipeline board")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Cloud Support Engineer" })).toBeInTheDocument();
   });
 
   it("sorts each application lane from newest activity to oldest", async () => {
