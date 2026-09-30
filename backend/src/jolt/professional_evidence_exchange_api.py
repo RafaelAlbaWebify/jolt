@@ -29,7 +29,9 @@ def build_professional_evidence_exchange_router(get_session: SessionProvider) ->
     ) -> AIExchangeInput:
         return build_professional_evidence_exchange(session)
 
-    @router.post("/import", deprecated=True, response_model=ProfessionalEvidenceExchangeImportResponse)
+    @router.post(
+        "/import", deprecated=True, response_model=ProfessionalEvidenceExchangeImportResponse
+    )
     def import_professional_evidence(
         output: AIExchangeOutput,
     ) -> ProfessionalEvidenceExchangeImportResponse:
