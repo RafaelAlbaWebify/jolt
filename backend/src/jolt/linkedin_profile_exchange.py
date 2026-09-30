@@ -245,6 +245,7 @@ def _apply_linkedin_context_patch(output: AIExchangeOutput) -> GlobalAIContextOv
     )
     return load_global_ai_context()
 
+
 def _recommendation_items(output: AIExchangeOutput) -> list[LinkedInRecommendationImportItem]:
     items: list[LinkedInRecommendationImportItem] = []
     for feedback in output.feedback:
