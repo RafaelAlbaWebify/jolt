@@ -8,7 +8,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
-
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
     build_unified_ai_work_package_json,
