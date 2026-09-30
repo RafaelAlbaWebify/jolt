@@ -17,6 +17,7 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
+    save_global_ai_context,
 )
 from jolt.preference_aware_evaluation import sanitize_capture_text
 from jolt.unified_context_policy import require_unified_context_authority
