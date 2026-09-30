@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MarketIntelligence } from "./MarketIntelligence";
@@ -9,6 +9,7 @@ const DATA = {
   market_summary: {
     executive_summary: "Application support and modern workplace roles remain strong targets.",
     high_confidence_signals: ["SQL and API troubleshooting recur", "M365 and identity remain common"],
+    decision_counts: { reject: 98, strong_pursue: 1, pursue: 2, conditional: 1 },
   },
   skills_gap_summary: { highest_leverage: ["API troubleshooting", "SQL/log analysis"] },
   capture_strategy: { rule: "Resolve remote eligibility from vacancy body evidence" },
@@ -45,72 +46,80 @@ const DATA = {
   }],
 };
 
+const APPLICATIONS = [
+  { application_id: "app-1", application_status: "applied", outcome_type: null },
+  { application_id: "app-2", application_status: "technical_interview", outcome_type: null },
+];
+
+function mockApi(market: unknown = DATA, applications = APPLICATIONS) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes("/api/ai-market/view")) {
+      return new Response(JSON.stringify(market), { status: 200 });
+    }
+    if (url.includes("/api/application-index")) {
+      return new Response(JSON.stringify(applications), { status: 200 });
+    }
+    return new Response("Not found", { status: 404 });
+  });
+}
+
 describe("MarketIntelligence", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it("renders ChatGPT-derived intelligence and deterministic provenance", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
+  it("renders action-oriented market intelligence with real pipeline metrics", async () => {
+    mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByRole("heading", { name: "Market Insights" })).toBeInTheDocument();
-    expect(screen.getByText("What this means now")).toBeInTheDocument();
-    expect(screen.getByText("Evidence & provenance")).toBeInTheDocument();
-    expect(screen.getByText(/120 observations · 90 roles/)).toBeInTheDocument();
-    expect(screen.getByText(/3 search runs · 30 repeated observations/)).toBeInTheDocument();
+    expect(screen.getByText("What the market is telling you")).toBeInTheDocument();
+    expect(screen.getByText("What to do next")).toBeInTheDocument();
     expect(screen.getByText("Application support and modern workplace roles remain strong targets.")).toBeInTheDocument();
     expect(screen.getByText("Strengthen API troubleshooting evidence")).toBeInTheDocument();
-    expect(screen.queryByText(/Fit shortfall/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Evidence indicator/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Adaptive market baseline/i)).not.toBeInTheDocument();
+
+    const metrics = screen.getByLabelText("Market overview metrics");
+    expect(within(metrics).getByText("Jobs analyzed")).toBeInTheDocument();
+    expect(within(metrics).getByText("120")).toBeInTheDocument();
+    expect(within(metrics).getByText("Good matches")).toBeInTheDocument();
+    expect(within(metrics).getByText("3")).toBeInTheDocument();
+    expect(within(metrics).getByText("Applications")).toBeInTheDocument();
+    expect(within(metrics).getByText("Interviewing")).toBeInTheDocument();
   });
 
-  it("renders nested market records as readable fields instead of raw JSON", async () => {
-    const structured = {
-      ...DATA,
-      market_summary: {
-        ...DATA.market_summary,
-        decision_counts: { reject: 98, strong_pursue: 1, conditional: 1 },
-        actionable_opportunities: [{
-          posting_id: "332ad157-58c2-4c98-894c-c55eef902483",
-          source_job_id: "4463716166",
-          company: "Quik Hire Staffing",
-          title: "Support Engineer (Remote)",
-          decision: "strong_pursue",
-        }],
-        eligibility_verification_queue: [{
-          posting_id: "caff118a-95f3-4bbf-88ea-782878dc88ce",
-          source_job_id: "4461172850",
-          company: "Dash0",
-          title: "Junior IT Administrator, EMEA",
-          reason: "Verify Spain hiring eligibility",
-        }],
-      },
-    };
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(structured), { status: 200 }));
+  it("switches between skills, search, application, and evidence views", async () => {
+    mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
+    await screen.findByRole("heading", { name: "Market Insights" });
 
-    expect(await screen.findByText("decision counts")).toBeInTheDocument();
-    expect(screen.getByText("reject")).toBeInTheDocument();
-    expect(screen.getByText("98")).toBeInTheDocument();
-    expect(screen.getByText("strong pursue")).toBeInTheDocument();
-    expect(screen.getByText("Quik Hire Staffing")).toBeInTheDocument();
-    expect(screen.getByText("Support Engineer (Remote)")).toBeInTheDocument();
-    expect(screen.getByText("Dash0")).toBeInTheDocument();
-    expect(screen.getByText("Verify Spain hiring eligibility")).toBeInTheDocument();
-    expect(screen.queryByText('{"reject":98,"strong_pursue":1,"conditional":1}')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\{"posting_id":"332ad157/)).not.toBeInTheDocument();
+    expect(screen.getByText("Skills & demand signals")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search performance" }));
+    expect(screen.getByText("Search strategy")).toBeInTheDocument();
+    expect(screen.getByText("Search evidence")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Application performance" }));
+    expect(screen.getByText("Application strategy")).toBeInTheDocument();
+    expect(screen.getByText("Current pipeline")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Evidence" }));
+    expect(screen.getByText("Evidence & provenance")).toBeInTheDocument();
+    expect(screen.getByText("90")).toBeInTheDocument();
   });
 
-  it("loads only the authoritative AI market view endpoint", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
+  it("loads authoritative market intelligence plus the read-only application index", async () => {
+    const fetchMock = mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByRole("heading", { name: "What this means now" });
+    await screen.findByRole("heading", { name: "Market Insights" });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api/api/ai-market/view",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api/api/application-index",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/market-intelligence?"))).toBe(false);
@@ -127,19 +136,34 @@ describe("MarketIntelligence", () => {
         reason: "New captured market evidence is newer than the latest ChatGPT analysis.",
       },
     };
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(stale), { status: 200 }));
+    mockApi(stale);
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByText("Market analysis needs an update")).toBeInTheDocument();
     expect(screen.getByText(/Update the analysis from Settings & Data/i)).toBeInTheDocument();
   });
 
-  it("refreshes the persisted view without recomputing local intelligence", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(DATA), { status: 200 }));
+  it("refreshes both persisted views without recomputing local intelligence", async () => {
+    const fetchMock = mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByRole("heading", { name: "What this means now" });
+    await screen.findByRole("heading", { name: "Market Insights" });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh view" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  });
+
+  it("falls back safely when decision counts or application metrics are unavailable", async () => {
+    mockApi({
+      ...DATA,
+      market_summary: {
+        executive_summary: "Support demand remains stable.",
+      },
+    }, []);
+
+    render(<MarketIntelligence apiBase="http://api" active />);
+
+    expect(await screen.findByText("Good matches")).toBeInTheDocument();
+    expect(screen.getByText("Awaiting decision counts")).toBeInTheDocument();
+    expect(screen.getByText("Support demand remains stable.")).toBeInTheDocument();
   });
 });

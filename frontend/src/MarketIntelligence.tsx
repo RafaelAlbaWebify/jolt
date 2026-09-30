@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type FeedbackItem = {
   feedback_type: string;
@@ -38,7 +37,22 @@ type MarketData = {
   recommendations: FeedbackItem[];
 };
 
+type ApplicationIndexItem = {
+  application_id?: string | null;
+  application_status?: string | null;
+  outcome_type?: string | null;
+};
+
+type MarketTab = "skills" | "search" | "applications" | "evidence";
+
 type Props = { apiBase: string; active: boolean };
+
+const INTERVIEW_STATUSES = new Set([
+  "recruiter_screen",
+  "technical_interview",
+  "hiring_manager_interview",
+  "final_interview",
+]);
 
 function readable(value: string) {
   return value.replaceAll("_", " ");
@@ -48,81 +62,92 @@ function isTechnicalKey(value: string) {
   return /(^|_)(id|ids|uuid|uuids|posting_id|posting_ids|capture_run|source_job|processing_mode|evidence_refs?)($|_)/i.test(value);
 }
 
-function compactEntries(data: Record<string, unknown>, limit = 5) {
-  return Object.entries(data)
+function primitive(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function collectNarrativeSignals(source: unknown, limit: number, result: string[] = []): string[] {
+  if (result.length >= limit || source == null) return result;
+
+  if (typeof source === "string") {
+    const text = source.trim();
+    if (text && !result.includes(text)) result.push(text);
+    return result;
+  }
+
+  if (Array.isArray(source)) {
+    for (const item of source) {
+      collectNarrativeSignals(item, limit, result);
+      if (result.length >= limit) break;
+    }
+    return result;
+  }
+
+  if (typeof source === "object") {
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (isTechnicalKey(key) || /^(analyzed_at|reviewed_at|generated_at|as_of)$/i.test(key)) continue;
+      collectNarrativeSignals(value, limit, result);
+      if (result.length >= limit) break;
+    }
+  }
+
+  return result;
+}
+
+function numericDecisionCount(data: Record<string, unknown>, key: string): number | null {
+  const direct = data.decision_counts;
+  if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+    const value = (direct as Record<string, unknown>)[key];
+    return typeof value === "number" ? value : null;
+  }
+  return null;
+}
+
+function recommendationTitle(item: FeedbackItem) {
+  return primitive(item.payload.title) || readable(item.feedback_type);
+}
+
+function recommendationAction(item: FeedbackItem) {
+  return primitive(item.payload.proposed_action) || primitive(item.payload.rationale);
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Not yet";
+  return new Date(value).toLocaleDateString();
+}
+
+function StrategyRows({ data, empty }: { data: Record<string, unknown>; empty: string }) {
+  const entries = Object.entries(data)
     .filter(([key]) => !isTechnicalKey(key))
-    .slice(0, limit);
-}
+    .slice(0, 6);
 
-function looksLikeTechnicalIdentifier(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-    || /^[0-9a-f]{24,}$/i.test(value);
-}
+  if (entries.length === 0) return <p>{empty}</p>;
 
-function primitiveValue(value: unknown): string {
-  if (value == null) return "—";
-  if (typeof value === "string") return looksLikeTechnicalIdentifier(value) ? "—" : value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return "—";
-}
-
-function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number }): ReactNode {
-  if (value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return <span className="market-ai-primitive">{primitiveValue(value)}</span>;
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="market-ai-empty">None</span>;
-    return (
-      <ul className={`market-ai-list market-ai-list-depth-${Math.min(depth, 2)}`}>
-        {value.map((item, index) => (
-          <li key={index} className={typeof item === "object" && item !== null ? "market-ai-record-item" : undefined}>
-            <StructuredValue value={item} depth={depth + 1} />
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (typeof value === "object") {
-    const entries = compactEntries(value as Record<string, unknown>, depth === 0 ? 5 : 4);
-    if (entries.length === 0) return <span className="market-ai-empty">None</span>;
-    return (
-      <dl className={`market-ai-object market-ai-object-depth-${Math.min(depth, 2)}`}>
-        {entries.map(([key, item]) => (
-          <div key={key} className="market-ai-object-row">
-            <dt>{readable(key)}</dt>
-            <dd><StructuredValue value={item} depth={depth + 1} /></dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
-
-  return <span className="market-ai-primitive">{String(value)}</span>;
-}
-
-function InsightSection({ title, data, empty }: { title: string; data: Record<string, unknown>; empty: string }) {
-  const entries = compactEntries(data);
   return (
-    <section className="market-card market-ranking-card">
-      <h3>{title}</h3>
-      {entries.length === 0 ? <p>{empty}</p> : (
-        <dl className="market-ai-insights">
-          {entries.map(([key, value]) => (
-            <div key={key} className="market-ai-insight-row">
-              <dt>{readable(key)}</dt>
-              <dd><StructuredValue value={value} /></dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </section>
+    <div className="market-pro-strategy-list">
+      {entries.map(([key, value]) => {
+        const text = Array.isArray(value)
+          ? value.map(primitive).filter(Boolean).join(" · ")
+          : typeof value === "object" && value !== null
+            ? collectNarrativeSignals(value, 3).join(" · ")
+            : primitive(value);
+        return (
+          <div key={key}>
+            <span>{readable(key)}</span>
+            <strong>{text || "—"}</strong>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
+  const [applications, setApplications] = useState<ApplicationIndexItem[]>([]);
+  const [activeTab, setActiveTab] = useState<MarketTab>("skills");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -131,9 +156,17 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${apiBase}/api/ai-market/view`, { signal });
-      if (!response.ok) throw new Error("Unable to load market intelligence.");
-      setData(await response.json() as MarketData);
+      const [marketResponse, applicationResponse] = await Promise.all([
+        fetch(`${apiBase}/api/ai-market/view`, { signal }),
+        fetch(`${apiBase}/api/application-index`, { signal }),
+      ]);
+      if (!marketResponse.ok) throw new Error("Unable to load market intelligence.");
+      setData(await marketResponse.json() as MarketData);
+      if (applicationResponse.ok) {
+        setApplications(await applicationResponse.json() as ApplicationIndexItem[]);
+      } else {
+        setApplications([]);
+      }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(caught instanceof Error ? caught.message : "Market intelligence failed.");
@@ -149,84 +182,213 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     return () => controller.abort();
   }, [active, load]);
 
+  const metrics = useMemo(() => {
+    if (!data) return null;
+    const strong = numericDecisionCount(data.market_summary, "strong_pursue") ?? 0;
+    const pursue = numericDecisionCount(data.market_summary, "pursue") ?? 0;
+    const hasDecisionCounts = data.market_summary.decision_counts != null;
+    const activeApplications = applications.filter((item) => Boolean(item.application_id));
+    const interviewing = activeApplications.filter((item) =>
+      item.application_status ? INTERVIEW_STATUSES.has(item.application_status) : false
+    );
+    return {
+      goodMatches: hasDecisionCounts ? strong + pursue : null,
+      applications: activeApplications.length,
+      interviewing: interviewing.length,
+    };
+  }, [applications, data]);
+
+  const marketSignals = useMemo(
+    () => data ? collectNarrativeSignals(data.market_summary, 3) : [],
+    [data],
+  );
+
+  const nextActions = useMemo(() => {
+    if (!data) return [];
+    if (data.recommendations.length > 0) {
+      return data.recommendations.slice(0, 3).map((item) => ({
+        title: recommendationTitle(item),
+        detail: recommendationAction(item),
+      }));
+    }
+
+    return [
+      ...collectNarrativeSignals(data.application_strategy, 1),
+      ...collectNarrativeSignals(data.capture_strategy, 1),
+      ...collectNarrativeSignals(data.profile_strategy, 1),
+    ].slice(0, 3).map((text) => ({ title: text, detail: "" }));
+  }, [data]);
+
   return (
-    <main className="market-intelligence market-intelligence-compact" aria-labelledby="market-insights-heading">
-      <section className="panel market-control-panel">
-        <div className="section-heading market-heading-row">
-          <div>
-            <p className="eyebrow">Market feedback</p>
-            <h2 id="market-insights-heading">Market Insights</h2>
-            <p>Turn job-search evidence into clear opportunities and next actions.</p>
-          </div>
+    <main className="market-pro" aria-labelledby="market-insights-heading">
+      <section className="market-pro-header">
+        <div>
+          <p className="eyebrow">Market feedback</p>
+          <h2 id="market-insights-heading">Market Insights</h2>
+          <p>What is working in your job search — and what to change next.</p>
+        </div>
+        <div className="market-pro-header-actions">
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>
             {loading ? "Refreshing…" : "Refresh view"}
           </button>
+          <span>Last updated: {formatDate(data?.freshness.ai_updated_at ?? null)}</span>
         </div>
-        {error && <p className="error" role="alert">{error}</p>}
       </section>
 
+      {error && <p className="error" role="alert">{error}</p>}
+
       {!data ? (
-        <section className="panel"><p role="status">{loading ? "Loading market insights…" : "No market insights loaded."}</p></section>
+        <section className="panel">
+          <p role="status">{loading ? "Loading market insights…" : "No market insights loaded."}</p>
+        </section>
       ) : (
         <>
-          <section className="market-summary-grid market-summary-grid-compact" aria-label="Market intelligence status">
-            <article className="market-card"><span>Analysis</span><strong>{data.freshness.needs_analysis ? "Update available" : "Up to date"}</strong></article>
-            <article className="market-card"><span>Jobs observed</span><strong>{data.evidence_provenance.observation_count}</strong></article>
-            <article className="market-card"><span>Unique roles</span><strong>{data.evidence_provenance.canonical_role_count}</strong></article>
-            <article className="market-card"><span>Last updated</span><strong>{data.freshness.ai_updated_at ? new Date(data.freshness.ai_updated_at).toLocaleDateString() : "Not yet"}</strong></article>
+          <section className="market-pro-kpis" aria-label="Market overview metrics">
+            <article>
+              <span className="market-pro-kpi-icon">▤</span>
+              <div><span>Jobs analyzed</span><strong>{data.evidence_provenance.observation_count.toLocaleString()}</strong><small>Total captured observations</small></div>
+            </article>
+            <article>
+              <span className="market-pro-kpi-icon market-pro-kpi-good">◎</span>
+              <div><span>Good matches</span><strong>{metrics?.goodMatches ?? "—"}</strong><small>{metrics?.goodMatches == null ? "Awaiting decision counts" : "Strong + good fit"}</small></div>
+            </article>
+            <article>
+              <span className="market-pro-kpi-icon market-pro-kpi-apps">▣</span>
+              <div><span>Applications</span><strong>{metrics?.applications ?? 0}</strong><small>Tracked in Applications</small></div>
+            </article>
+            <article>
+              <span className="market-pro-kpi-icon market-pro-kpi-interview">●</span>
+              <div><span>Interviewing</span><strong>{metrics?.interviewing ?? 0}</strong><small>Currently in interview stages</small></div>
+            </article>
           </section>
 
           {data.freshness.needs_analysis && (
-            <section className="market-update-notice" role="status">
-              <div>
-                <strong>Market analysis needs an update</strong>
-                <span>New job evidence is available. Update the analysis from Settings & Data when convenient.</span>
-              </div>
+            <section className="market-pro-update" role="status">
+              <strong>Market analysis needs an update</strong>
+              <span>New job evidence is available. Update the analysis from Settings & Data when convenient.</span>
             </section>
           )}
 
-          <section className="market-insight-dashboard">
-            <InsightSection title="What this means now" data={data.market_summary} empty="No market summary yet." />
-            <InsightSection title="Skills & gaps" data={data.skills_gap_summary} empty="No skills-gap summary yet." />
-            <InsightSection title="Search strategy" data={data.capture_strategy} empty="No search-strategy summary yet." />
-            <InsightSection title="Application strategy" data={data.application_strategy} empty="No application-strategy summary yet." />
-            <InsightSection title="Profile actions" data={data.profile_strategy} empty="No profile actions yet." />
-            <section className="market-card market-ranking-card market-recommendation-summary">
-              <h3>Recommendations</h3>
-              {data.recommendations.length === 0 ? (
-                <p>No pending market recommendations.</p>
+          <section className="market-pro-main-grid">
+            <article className="market-pro-panel market-pro-signals">
+              <header><span>▥</span><h3>What the market is telling you</h3></header>
+              {marketSignals.length === 0 ? (
+                <p>No market signals are stored yet.</p>
               ) : (
-                <ul>
-                  {data.recommendations.slice(0, 5).map((item) => (
-                    <li key={`${item.entity_type}-${item.entity_id}`}>
-                      <strong>{primitiveValue(item.payload.title ?? readable(item.feedback_type))}</strong>
-                      {item.payload.proposed_action != null && <span>{primitiveValue(item.payload.proposed_action)}</span>}
-                    </li>
+                <div className="market-pro-signal-list">
+                  {marketSignals.map((signal, index) => (
+                    <div key={signal}>
+                      <span className="market-pro-signal-number">{index + 1}</span>
+                      <strong>{signal}</strong>
+                      <small>Market signal</small>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
-            </section>
+            </article>
+
+            <article className="market-pro-panel market-pro-actions">
+              <header><span>☷</span><h3>What to do next</h3></header>
+              {nextActions.length === 0 ? (
+                <p>No pending recommendations.</p>
+              ) : (
+                <div className="market-pro-action-list">
+                  {nextActions.map((action, index) => (
+                    <div key={`${action.title}-${index}`}>
+                      <span>{index + 1}</span>
+                      <div><strong>{action.title}</strong>{action.detail && <small>{action.detail}</small>}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
           </section>
 
-          <details className="market-evidence-details">
-            <summary>
-              Evidence & provenance
-              <span>
-                {data.evidence_provenance.observation_count} observations · {data.evidence_provenance.canonical_role_count} roles
-              </span>
-            </summary>
-            <div>
-              <p>
-                {data.evidence_provenance.capture_run_count} search runs · {data.evidence_provenance.duplicate_observation_count} repeated observations
-              </p>
-              <p>
-                Oldest {data.evidence_provenance.oldest_evidence_at ? new Date(data.evidence_provenance.oldest_evidence_at).toLocaleDateString() : "—"}
-                {" · "}
-                Newest {data.evidence_provenance.newest_evidence_at ? new Date(data.evidence_provenance.newest_evidence_at).toLocaleDateString() : "—"}
-              </p>
-            </div>
-          </details>
+          <nav className="market-pro-tabs" aria-label="Market insight sections">
+            {([
+              ["skills", "Skills & demand"],
+              ["search", "Search performance"],
+              ["applications", "Application performance"],
+              ["evidence", "Evidence"],
+            ] as Array<[MarketTab, string]>).map(([value, label]) => (
+              <button
+                type="button"
+                key={value}
+                className={activeTab === value ? "active" : ""}
+                aria-pressed={activeTab === value}
+                onClick={() => setActiveTab(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <section className="market-pro-detail">
+            {activeTab === "skills" && (
+              <div className="market-pro-detail-grid">
+                <article className="market-pro-detail-card">
+                  <header><span>▥</span><h3>Skills & demand signals</h3></header>
+                  <StrategyRows data={data.skills_gap_summary} empty="No skills-gap analysis is stored yet." />
+                </article>
+                <article className="market-pro-detail-card">
+                  <header><span>!</span><h3>Profile actions</h3></header>
+                  <StrategyRows data={data.profile_strategy} empty="No profile actions are stored yet." />
+                </article>
+              </div>
+            )}
+
+            {activeTab === "search" && (
+              <div className="market-pro-detail-grid">
+                <article className="market-pro-detail-card">
+                  <header><span>⌕</span><h3>Search strategy</h3></header>
+                  <StrategyRows data={data.capture_strategy} empty="No search-strategy guidance is stored yet." />
+                </article>
+                <article className="market-pro-detail-card market-pro-evidence-summary">
+                  <header><span>▤</span><h3>Search evidence</h3></header>
+                  <dl>
+                    <div><dt>Observations</dt><dd>{data.evidence_provenance.observation_count.toLocaleString()}</dd></div>
+                    <div><dt>Unique roles</dt><dd>{data.evidence_provenance.canonical_role_count.toLocaleString()}</dd></div>
+                    <div><dt>Search runs</dt><dd>{data.evidence_provenance.capture_run_count.toLocaleString()}</dd></div>
+                    <div><dt>Repeated observations</dt><dd>{data.evidence_provenance.duplicate_observation_count.toLocaleString()}</dd></div>
+                  </dl>
+                </article>
+              </div>
+            )}
+
+            {activeTab === "applications" && (
+              <div className="market-pro-detail-grid">
+                <article className="market-pro-detail-card">
+                  <header><span>▣</span><h3>Application strategy</h3></header>
+                  <StrategyRows data={data.application_strategy} empty="No application-strategy guidance is stored yet." />
+                </article>
+                <article className="market-pro-detail-card market-pro-evidence-summary">
+                  <header><span>◎</span><h3>Current pipeline</h3></header>
+                  <dl>
+                    <div><dt>Applications</dt><dd>{metrics?.applications ?? 0}</dd></div>
+                    <div><dt>Interviewing</dt><dd>{metrics?.interviewing ?? 0}</dd></div>
+                    <div><dt>Good matches</dt><dd>{metrics?.goodMatches ?? "—"}</dd></div>
+                    <div><dt>Analysis</dt><dd>{data.freshness.needs_analysis ? "Update available" : "Up to date"}</dd></div>
+                  </dl>
+                </article>
+              </div>
+            )}
+
+            {activeTab === "evidence" && (
+              <article className="market-pro-detail-card market-pro-evidence-wide">
+                <header><span>▤</span><h3>Evidence & provenance</h3></header>
+                <div className="market-pro-evidence-strip">
+                  <div><strong>{data.evidence_provenance.observation_count.toLocaleString()}</strong><span>observations</span></div>
+                  <div><strong>{data.evidence_provenance.canonical_role_count.toLocaleString()}</strong><span>unique roles</span></div>
+                  <div><strong>{data.evidence_provenance.capture_run_count.toLocaleString()}</strong><span>search runs</span></div>
+                  <div><strong>{formatDate(data.evidence_provenance.oldest_evidence_at)}</strong><span>oldest evidence</span></div>
+                  <div><strong>{formatDate(data.evidence_provenance.newest_evidence_at)}</strong><span>newest evidence</span></div>
+                </div>
+                <p>{data.freshness.reason}</p>
+              </article>
+            )}
+          </section>
         </>
       )}
     </main>
-  );}
+  );
+}
