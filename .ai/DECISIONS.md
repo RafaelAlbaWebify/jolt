@@ -74,13 +74,45 @@ This file records accepted durable decisions. `PROJECT_MEMORY.md` remains a deep
 - Status: active.
 
 ## D-012 — Merge gates are product gates
-- Decision: CI, Playwright acceptance and full-cycle Playwright certification must all be green for the exact PR head before merge.
-- Reason: prior UI/functionality regressions escaped narrower tests.
-- Consequence: do not weaken tests merely to merge.
+- Decision: production-affecting changes require exact-head backend, frontend, Playwright/sidebar-kanban, full-cycle viewport, clean-install Windows, migration recovery, reproducible-release and Windows-script gates.
+- Reason: prior UI/functionality/recovery regressions escaped narrower tests.
+- Consequence: do not weaken tests merely to merge; a transient failure must be understood or pass an unchanged isolated rerun.
 - Status: active.
 
 ## D-013 — Search strategy should improve recall/precision without weakening hardlines
 - Date: 2026-09-04
 - Decision: broad Worldwide/Remote capture may remain useful for recall, but actionable recommendations require affirmative eligibility evidence; improve query/source targeting rather than relaxing eligibility rules.
 - Reason: real 79-job capture produced many country-local false positives.
+- Status: active.
+
+## D-014 — Unified Work Package is the sole durable AI context authority
+- Date: 2026-09-30
+- Decision: durable global AI strategy/context changes may be applied only from the Unified AI Work Package top-level `context_patch`.
+- Reason: section exchanges had overlapping patch authority and could silently overwrite each other's strategy namespaces.
+- Consequence: section-level context patches must be empty; individual exchanges and direct global-context import are deprecated compatibility/diagnostic surfaces.
+- Evidence: PR #467.
+- Status: active.
+
+## D-015 — Normal discovery review refreshes stale intelligence in the same round trip
+- Date: 2026-09-30
+- Decision: a frozen discovery batch review uses a batch-scoped Unified AI Work Package carrying the new job set plus bounded aggregate intelligence context.
+- Reason: per-job review and Market/Search/Application/Profile intelligence had become operationally disconnected.
+- Consequence: one reviewed import can update job reviews and stale aggregate intelligence; a separate strategy-update ritual is not required after normal batches.
+- Evidence: PR #464.
+- Status: active.
+
+## D-016 — Backend owns AI freshness
+- Date: 2026-09-30
+- Decision: `GET /api/ai-status` is the freshness authority; browser localStorage receipts are not product state.
+- Reason: browser-local status could disagree with the actual database, backup or runtime.
+- Consequence: UI freshness/status surfaces must derive from backend evidence/import timestamps.
+- Evidence: PR #465.
+- Status: active.
+
+## D-017 — Applications do not depend on legacy Evaluation
+- Date: 2026-09-30
+- Decision: an existing durable Application must remain visible/operable from Application + Posting/workflow state even without a legacy Python Evaluation row.
+- Reason: Evaluation is not the current user-facing reasoning authority and was an unnecessary hidden prerequisite.
+- Consequence: include-applied/application indexes must preserve Applications independently; legacy Evaluation may remain only for compatible deterministic/capture support.
+- Evidence: PR #466.
 - Status: active.
