@@ -26,6 +26,7 @@ from jolt.linkedin_command_center import (
     import_linkedin_recommendations,
     list_linkedin_command_center,
 )
+from jolt.unified_context_policy import require_unified_context_authority
 
 _LINKEDIN_PATCH_KEYS = frozenset({"profile_strategy", "capture_strategy", "audit_summary"})
 _LINKEDIN_RECOMMENDATION_TYPES = {
