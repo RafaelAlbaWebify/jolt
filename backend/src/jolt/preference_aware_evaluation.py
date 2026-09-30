@@ -336,7 +336,8 @@ def _foreign_onsite_requirement(text: str) -> bool:
 def preference_blockers(text: str) -> list[str]:
     """Return deterministic blockers from the saved job-search preferences."""
     preferences = load_job_search_preferences()
-    lowered = " ".join(sanitize_capture_text(text).casefold().split())
+    sanitized = sanitize_capture_text(text)
+    lowered = " ".join(sanitized.casefold().split())
 
     blockers = [
         f"excluded keyword: {phrase}"
@@ -345,7 +346,7 @@ def preference_blockers(text: str) -> list[str]:
     ]
 
     language_evidence = analyze_language_evidence(
-        source_text=text,
+        source_text=sanitized,
         preferences=preferences,
     )
     allowed_languages = {language.casefold() for language in preferences.languages}
