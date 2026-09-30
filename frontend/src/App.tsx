@@ -609,8 +609,8 @@ export function App({
         </section>
       )}
       {showManualIntake && manualIntakeForm}
-      <section className="panel opportunity-workspace" aria-labelledby="queue-heading">
-        <div className="section-heading opportunity-toolbar">
+      <section className="panel opportunity-workspace review-inbox-redesign" aria-labelledby="queue-heading">
+        <div className="section-heading opportunity-toolbar review-inbox-header">
           <div>
             <p className="eyebrow">Pending review inbox</p>
             <h2 id="queue-heading">Review Inbox</h2>
@@ -620,54 +620,73 @@ export function App({
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually
             </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={refreshing}
-              onClick={() => void refreshOpportunities()}
-            >
+            <button type="button" className="secondary" disabled={refreshing} onClick={() => void refreshOpportunities()}>
               {refreshing ? "Refreshing…" : "Refresh list"}
             </button>
           </div>
         </div>
-        <div className="review-inbox-meta-row">
-          <div className="review-inbox-count">
-            <strong>{opportunities.length.toLocaleString()}</strong>
-            <span>jobs waiting</span>
+
+        <div className="review-inbox-summary-bar">
+          <div className="review-inbox-stat">
+            <span className="review-inbox-stat-icon">▤</span>
+            <span><strong>{inboxCounts.all.toLocaleString()}</strong><small>waiting</small></span>
+          </div>
+          <div className="review-inbox-stat review-inbox-stat-priority">
+            <span className="review-inbox-stat-icon">◆</span>
+            <span><strong>{inboxCounts.priority.toLocaleString()}</strong><small>high priority</small></span>
+          </div>
+          <div className="review-inbox-stat review-inbox-stat-reviewed">
+            <span className="review-inbox-stat-icon">✓</span>
+            <span><strong>{inboxCounts.reviewed.toLocaleString()}</strong><small>AI reviewed</small></span>
           </div>
           <details className="review-inbox-maintenance">
             <summary>Maintenance</summary>
             <div className="review-inbox-maintenance-menu">
-              <p>
-                Remove unresolved inbox cards in bulk. Reviewed jobs, applications,
-                and captured evidence are preserved.
-              </p>
-              <button
-                type="button"
-                className="danger"
-                disabled={busy || opportunities.length === 0}
-                onClick={() => void clearPendingInbox()}
-              >
+              <p>Remove unresolved inbox cards in bulk. Reviewed jobs, applications, and captured evidence are preserved.</p>
+              <button type="button" className="danger" disabled={busy || opportunities.length === 0} onClick={() => void clearPendingInbox()}>
                 Clear unresolved inbox ({opportunities.length})
               </button>
             </div>
           </details>
         </div>
-        <div className="opportunity-query-tools">
-          <label>
+
+        <div className="review-inbox-filterbar">
+          <label className="review-inbox-search">
             <span>Search inbox</span>
             <input
               type="search"
               value={searchQuery}
-              placeholder="Title, company, or location"
+              placeholder="Search jobs by title, company, or location…"
               onChange={(event) => {
                 setSearchQuery(event.target.value);
                 setPage(1);
               }}
             />
           </label>
-          <label>
-            <span>Sort</span>
+          <div className="review-inbox-filterchips" role="group" aria-label="Review Inbox filters">
+            {([
+              ["all", "All", inboxCounts.all],
+              ["priority", "Priority", inboxCounts.priority],
+              ["pursue", "Pursue", inboxCounts.pursue],
+              ["hold", "Hold", inboxCounts.hold],
+              ["not_fit", "Not a fit", inboxCounts.not_fit],
+            ] as Array<[InboxFilter, string, number]>).map(([value, labelText, count]) => (
+              <button
+                type="button"
+                key={value}
+                className={inboxFilter === value ? "review-inbox-filterchip active" : "review-inbox-filterchip"}
+                aria-pressed={inboxFilter === value}
+                onClick={() => {
+                  setInboxFilter(value);
+                  setPage(1);
+                }}
+              >
+                {labelText} <span>{count.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+          <label className="review-inbox-sort">
+            <span>Sort by</span>
             <select
               value={sortOption}
               onChange={(event) => {
@@ -681,116 +700,191 @@ export function App({
             </select>
           </label>
         </div>
-        <div className="queue-summary queue-page-summary">
-          <span>
-            {hasLoaded
-              ? `Showing ${pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of ${visibleOpportunities.length}`
-              : "Loading review inbox…"}
-          </span>
-          <span>{hasLoaded ? `Page ${currentPage} of ${pageCount}` : ""}</span>
-        </div>
+
         {hasLoaded && visibleOpportunities.length === 0 ? (
           <p className="empty-queue">No pending review items match this view.</p>
         ) : (
-          <div className="opportunity-list">
-            {pagedOpportunities.map((opportunity) => (
-              <article className="opportunity-row" key={opportunity.posting_id}>
-                <div className="opportunity-row-primary">
-                  <div className="opportunity-row-title">
-                    <h3>{opportunity.title || "Untitled opportunity"}</h3>
-                    <p>{[opportunity.company, opportunity.location].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  <div className={`score score-${opportunity.decision ?? "awaiting"}`}>
-                    <strong>
-                      {hardlineStopped(opportunity)
-                        ? hardlineIcon(opportunity)
-                        : opportunity.priority_score ?? "—"}
-                    </strong>
-                    <span>
-                      {hardlineStopped(opportunity)
-                        ? hardlineLabel(opportunity)
-                        : aiDecisionLabel(opportunity)}
+          <div className="review-inbox-split">
+            <section className="review-inbox-list-pane" aria-label="Jobs awaiting review">
+              <div className="review-inbox-list-header">
+                <span>
+                  Showing {pagedOpportunities.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, visibleOpportunities.length)} of {visibleOpportunities.length}
+                </span>
+                <span>Page {currentPage} of {pageCount}</span>
+              </div>
+              <div className="review-inbox-card-list">
+                {pagedOpportunities.map((opportunity) => {
+                  const active = previewOpportunity?.posting_id === opportunity.posting_id;
+                  return (
+                    <article className={active ? "review-inbox-card active" : "review-inbox-card"} key={opportunity.posting_id}>
+                      <button
+                        type="button"
+                        className="review-inbox-card-main"
+                        aria-pressed={active}
+                        onClick={() => setPreviewOpportunityId(opportunity.posting_id)}
+                      >
+                        <span className="review-company-mark" aria-hidden="true">{companyInitials(opportunity.company || "Unknown company")}</span>
+                        <span className="review-inbox-card-copy">
+                          <strong>{opportunity.title || "Untitled opportunity"}</strong>
+                          <span>{opportunity.company || "Unknown company"}</span>
+                          <small>{[opportunity.location, opportunity.imported_at ? new Date(opportunity.imported_at).toLocaleDateString() : ""].filter(Boolean).join(" · ")}</small>
+                        </span>
+                      </button>
+                      <div className="review-inbox-card-score">
+                        <strong>{hardlineStopped(opportunity) ? hardlineIcon(opportunity) : opportunity.priority_score ?? "—"}</strong>
+                        <span>{hardlineStopped(opportunity) ? "Check" : aiDecisionLabel(opportunity)}</span>
+                      </div>
+                      <div className="review-inbox-card-ai">
+                        <strong>{opportunity.ai_review_status === "reviewed" ? "AI reviewed" : "Needs AI review"}</strong>
+                        <span>{hardlineStopped(opportunity) ? hardlineLabel(opportunity) : `Technical fit ${opportunity.technical_fit ?? "—"}`}</span>
+                      </div>
+                      <label className="review-inbox-card-decision">
+                        <span className="sr-only">Decision</span>
+                        <select
+                          aria-label={`Decision for ${opportunity.title}`}
+                          value={opportunity.review_decision ?? ""}
+                          disabled={busy || !opportunity.ai_review_id}
+                          onChange={(event) => {
+                            const decision = event.target.value as ReviewChoice;
+                            if (decision) void reviewOpportunity(opportunity, decision);
+                          }}
+                        >
+                          <option value="">Pending review</option>
+                          {REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{REVIEW_LABELS[choice]}</option>)}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        className="review-inbox-card-open"
+                        aria-label="Inspect"
+                        title="Inspect full details"
+                        onClick={(event) => {
+                          inspectorTriggerRef.current = event.currentTarget;
+                          setSelectedOpportunityId(opportunity.posting_id);
+                        }}
+                      >
+                        ›
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="review-inbox-list-pagination">
+                <button type="button" className="secondary" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>‹</button>
+                <span>Page {currentPage} of {pageCount}</span>
+                <button type="button" className="secondary" aria-label="Next page" disabled={currentPage >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>›</button>
+              </div>
+            </section>
+
+            <section className="review-inbox-preview-pane" aria-label="Selected job preview">
+              {previewOpportunity ? (
+                <>
+                  <header className="review-preview-header">
+                    <span className="review-company-mark review-company-mark-large" aria-hidden="true">
+                      {companyInitials(previewOpportunity.company || "Unknown company")}
                     </span>
+                    <div className="review-preview-title">
+                      <h3>{previewOpportunity.title || "Untitled opportunity"}</h3>
+                      <p>{previewOpportunity.company || "Unknown company"}</p>
+                      <span>{previewOpportunity.location || "Location not recorded"}</span>
+                    </div>
+                    <div className="review-preview-score">
+                      <strong>{hardlineStopped(previewOpportunity) ? hardlineIcon(previewOpportunity) : previewOpportunity.priority_score ?? "—"}</strong>
+                      <span>{hardlineStopped(previewOpportunity) ? hardlineLabel(previewOpportunity) : aiDecisionLabel(previewOpportunity)}</span>
+                    </div>
+                  </header>
+
+                  <div className="review-preview-tabs" aria-label="Preview sections">
+                    <span className="active">Overview</span>
+                    <span>Fit analysis</span>
+                    <span>Job details</span>
                   </div>
-                  <div className="opportunity-state">
-                    <strong>
-                      {opportunity.ai_review_status !== "reviewed"
-                        ? "Needs AI review"
-                        : hardlineStopped(opportunity)
-                          ? hardlineLabel(opportunity)
-                          : "AI reviewed"}
-                    </strong>
-                    <span>
-                      {opportunity.ai_review_status !== "reviewed"
-                        ? "Export from Capture Jobs → review in ChatGPT → import results"
-                        : hardlineStopped(opportunity)
-                          ? "Fit score not shown because a required condition was not met."
-                          : `Technical fit ${opportunity.technical_fit ?? "—"}`}
-                    </span>
+
+                  <div className="review-preview-body">
+                    <div className="review-preview-primary">
+                      <section>
+                        <h4>Job summary</h4>
+                        <p>{previewOpportunity.summary || previewOpportunity.decision_reason || "No concise job summary is available yet."}</p>
+                      </section>
+
+                      <div className="review-preview-evidence-grid">
+                        <section className="review-preview-signal-card">
+                          <h4>AI review reasons</h4>
+                          {previewOpportunity.reasons.length ? (
+                            <ul>{previewOpportunity.reasons.slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                          ) : (
+                            <p>No additional AI review reasons recorded.</p>
+                          )}
+                        </section>
+                        <section className="review-preview-risk-card">
+                          <h4>Requirements to check</h4>
+                          {[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].length ? (
+                            <ul>{[...previewOpportunity.hardline_reasons, ...previewOpportunity.employment_constraints].slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                          ) : (
+                            <p>No explicit blockers are recorded.</p>
+                          )}
+                        </section>
+                      </div>
+
+                      <div className="review-preview-meta">
+                        <div><span>Geography</span><strong>{previewOpportunity.geography_status ?? "unknown"}</strong></div>
+                        <div><span>Clearance</span><strong>{previewOpportunity.clearance_status ?? "unknown"}</strong></div>
+                        <div><span>Language</span><strong>{previewOpportunity.language_status ?? "unknown"}</strong></div>
+                        <div><span>Technical fit</span><strong>{previewOpportunity.technical_fit ?? "—"}</strong></div>
+                      </div>
+                    </div>
+
+                    <aside className="review-preview-actions">
+                      <h4>Your decision</h4>
+                      <label>
+                        <span className="sr-only">Decision for selected job</span>
+                        <select
+                          aria-label={`Decision for ${previewOpportunity.title} preview`}
+                          value={previewOpportunity.review_decision ?? ""}
+                          disabled={busy || !previewOpportunity.ai_review_id}
+                          onChange={(event) => {
+                            const decision = event.target.value as ReviewChoice;
+                            if (decision) void reviewOpportunity(previewOpportunity, decision);
+                          }}
+                        >
+                          <option value="">Pending review</option>
+                          {REVIEW_CHOICES.map((choice) => <option value={choice} key={choice}>{REVIEW_LABELS[choice]}</option>)}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          inspectorTriggerRef.current = event.currentTarget;
+                          setSelectedOpportunityId(previewOpportunity.posting_id);
+                        }}
+                      >
+                        Inspect full details
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busy || !previewOpportunity.ai_review_id}
+                        onClick={() => void reviewOpportunity(previewOpportunity, "pursue")}
+                      >
+                        Move to Applications
+                      </button>
+                      {previewOpportunity.source_url && (
+                        <a className="review-preview-source-link" href={externalSourceUrl(previewOpportunity.source_url)} target="_blank" rel="noreferrer">
+                          Open source job ↗
+                        </a>
+                      )}
+                    </aside>
                   </div>
-                  {hardlineStopped(opportunity) && (
-                    <p className="hardline-reason">
-                      <strong>Reason:</strong> {hardlineReason(opportunity)}
-                    </p>
-                  )}
-                  <label className="decision-control">
-                    <span>Decision</span>
-                    <select
-                      aria-label={`Decision for ${opportunity.title}`}
-                      value={opportunity.review_decision ?? ""}
-                      disabled={busy || !opportunity.ai_review_id}
-                      onChange={(event) => {
-                        const decision = event.target.value as ReviewChoice;
-                        if (decision) {
-                          void reviewOpportunity(opportunity, decision);
-                        }
-                      }}
-                    >
-                      <option value="">Pending review</option>
-                      {REVIEW_CHOICES.map((choice) => (
-                        <option value={choice} key={choice}>
-                          {REVIEW_LABELS[choice]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary inspect-opportunity"
-                    aria-haspopup="dialog"
-                    onClick={(event) => {
-                      inspectorTriggerRef.current = event.currentTarget;
-                      setSelectedOpportunityId(opportunity.posting_id);
-                    }}
-                  >
-                    Inspect
-                  </button>
+                </>
+              ) : (
+                <div className="review-preview-empty">
+                  <strong>Select a job to review</strong>
+                  <span>Choose an item from the list to see its AI review and evidence.</span>
                 </div>
-              </article>
-            ))}
+              )}
+            </section>
           </div>
         )}
-        <div className="pagination">
-          <button
-            type="button"
-            className="secondary"
-            disabled={currentPage <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} of {pageCount}
-          </span>
-          <button
-            type="button"
-            className="secondary"
-            disabled={currentPage >= pageCount}
-            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
-          >
-            Next
-          </button>
-        </div>
       </section>
       {selectedOpportunityId && selectedOpportunity && (
         <div
