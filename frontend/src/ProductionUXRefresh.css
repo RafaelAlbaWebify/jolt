@@ -1928,3 +1928,108 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+/* Review Inbox phase 2: functional preview tabs */
+.review-preview-tabs button {
+  padding: 8px 1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.review-preview-tabs button:hover {
+  color: #315bd6;
+}
+
+.review-preview-tabs button.active {
+  border-bottom-color: #315bd6;
+  color: #315bd6;
+  font-weight: 800;
+}
+
+.review-fit-summary {
+  padding: 10px 11px;
+  border: 1px solid #dfe5ef;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.review-fit-score-grid,
+.review-job-details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.review-fit-score-grid > div,
+.review-job-details-grid > div,
+.review-detail-timestamps > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #e1e6ef;
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+
+.review-fit-score-grid span,
+.review-job-details-grid span,
+.review-detail-timestamps span {
+  color: #8791a3;
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.review-fit-score-grid strong,
+.review-job-details-grid strong,
+.review-detail-timestamps strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #344054;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-fit-score-grid > div:first-child strong,
+.review-fit-score-grid > div:nth-child(2) strong {
+  color: #176c38;
+  font-size: 0.86rem;
+}
+
+.review-detail-list {
+  padding: 10px 11px;
+  border: 1px solid #e1e6ef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.review-detail-list ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 16px;
+  color: #536178;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.review-detail-timestamps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 1320px) {
+  .review-fit-score-grid,
+  .review-job-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
