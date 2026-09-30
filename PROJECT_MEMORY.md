@@ -322,3 +322,16 @@ The post-architecture simplification sequence is complete:
 - PR #470 made Applications operationally denser with an Active / Interviewing / Offers / Overdue scorecard and Board/List views while preserving lifecycle semantics.
 
 The product-development posture is now **production use first**. Do not invent another UI or architecture program merely because no milestone is active. Record concrete operator friction during real job-search work and change JOLT only when that evidence, a demonstrated source-coverage need, or an explicit compatibility decision justifies it.
+
+
+## 2026-09-30 official-source work-model authority
+
+A production classification review found a real source conflict: LinkedIn can label a vacancy Remote while the employer's official ATS classifies the same vacancy Hybrid.
+
+Durable rule:
+- LinkedIn is discovery evidence, not final authority for work model or hiring location when an employer-controlled source exists.
+- Official ATS/careers/company job pages outrank LinkedIn for location and work model.
+- A LinkedIn Remote label alone must never become confirmed remote eligibility.
+- Review contract 1.2 records linkedin_work_model, official_work_model, authoritative_source, official_source_url, source_conflict, remote_status, location_verification_status and source_confidence.
+- When LinkedIn and the official source diverge, keep technical fit available but cap geography at conditional/unknown and the AI decision at conditional until the conflict is resolved.
+- Do not convert a conflict directly into SKIP_BY_LOCATION unless authoritative evidence proves the candidate is ineligible; unresolved flexibility remains a verification task.
