@@ -160,6 +160,12 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
             "conditional",
             "ineligible",
         }
+        assert "language_hardline_evidence" in document["jobs"][0]
+        assert document["jobs"][0]["language_hardline_evidence"]["hardline_reject"] is False
+        assert document["jobs"][0]["language_hardline_evidence"]["document_language_status"] in {
+            "supported",
+            "unknown",
+        }
         assert (
             document["response_template"]["jobs"][0]["hardline_status"]
             == "PASS|REJECT|MANUAL_REVIEW"
