@@ -9,7 +9,11 @@ vi.mock("./App", () => ({
   ),
 }));
 vi.mock("./ApplicationDashboard", () => ({ ApplicationDashboard: () => <section>Application tracking content</section> }));
-vi.mock("./DataTools", () => ({ DataTools: () => <section>Capture history, reviewed decisions, and exports</section> }));
+vi.mock("./DataTools", () => ({
+  DataTools: ({ advancedOnly = false }: { advancedOnly?: boolean }) => (
+    <section>{advancedOnly ? "Advanced settings tools" : "JOLT intelligence"}</section>
+  ),
+}));
 vi.mock("./JobPreferences", () => ({
   JobPreferences: ({
     onEvaluationsRefreshed,
@@ -53,17 +57,20 @@ describe("Workbench", () => {
     expect(screen.getByRole("button", { name: "Market Insights" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings & Data" })).toBeInTheDocument();
     expect(screen.getByText("Runtime freshness guard")).toBeVisible();
-    expect(screen.queryByText("Capture history, reviewed decisions, and exports")).not.toBeVisible();
+    expect(screen.queryByText("JOLT intelligence")).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
     expect(screen.getByRole("heading", { name: "Settings & Data" })).toBeInTheDocument();
-    expect(screen.getByText("Capture history, reviewed decisions, and exports")).toBeVisible();
-    expect(screen.getByText("Job Search Preferences")).toBeVisible();
+    expect(screen.getByText("JOLT intelligence")).toBeVisible();
+    expect(screen.getByText("Job search")).toBeVisible();
     expect(screen.getByText("Job search preferences")).not.toBeVisible();
+    expect(screen.getByText("Advanced settings tools")).not.toBeVisible();
 
-    fireEvent.click(screen.getByText("Job Search Preferences"));
-
+    fireEvent.click(screen.getByText("Edit preferences"));
     expect(screen.getByText("Job search preferences")).toBeVisible();
+
+    fireEvent.click(screen.getByText("Open tools"));
+    expect(screen.getByText("Advanced settings tools")).toBeVisible();
     expect(screen.getByText("Developer diagnostics")).toBeVisible();
   });
 
@@ -71,7 +78,7 @@ describe("Workbench", () => {
     render(<Workbench />);
 
     fireEvent.click(screen.getByRole("button", { name: "Settings & Data" }));
-    fireEvent.click(screen.getByText("Job Search Preferences"));
+    fireEvent.click(screen.getByText("Edit preferences"));
     fireEvent.click(screen.getByRole("button", { name: "Apply preference refresh" }));
     fireEvent.click(screen.getByRole("button", { name: "Review Inbox" }));
 

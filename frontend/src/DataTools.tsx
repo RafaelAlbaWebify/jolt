@@ -79,9 +79,10 @@ type Props = {
   apiBase: string;
   active?: boolean;
   onImported?: () => void | Promise<void>;
+  advancedOnly?: boolean;
 };
 
-export function DataTools({ apiBase, active = true, onImported }: Props) {
+export function DataTools({ apiBase, active = true, onImported, advancedOnly = false }: Props) {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState("");
@@ -94,7 +95,7 @@ export function DataTools({ apiBase, active = true, onImported }: Props) {
   }, [apiBase]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || advancedOnly) return;
     void loadAIStatus().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "Unable to read JOLT intelligence status.");
     });
@@ -135,7 +136,9 @@ export function DataTools({ apiBase, active = true, onImported }: Props) {
       setImportNotice(
         `Strategy update imported successfully. ${reviewText}${sectionCount} intelligence section${sectionCount === 1 ? "" : "s"} imported.`,
       );
-      await loadAIStatus();
+      if (!advancedOnly) {
+        await loadAIStatus();
+      }
       await onImported?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The strategy update could not be imported.");
@@ -144,107 +147,116 @@ export function DataTools({ apiBase, active = true, onImported }: Props) {
     }
   }
 
-  return (
-    <>
-      <section className="panel" aria-labelledby="ai-import-status-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Intelligence</p>
-            <h2 id="ai-import-status-heading">Intelligence status</h2>
-            <p>{statusDescription(aiStatus)}</p>
-          </div>
-          <strong>{statusLabel(aiStatus)}</strong>
-        </div>
+  if (advancedOnly) {
+    return (
+      <div className="settings-advanced-tools">
+        {error && <p className="error" role="alert" style={{ whiteSpace: "pre-line" }}>{error}</p>}
+        {importNotice && <p role="status">{importNotice}</p>}
 
-        {aiStatus && (
-          <div className="market-summary-grid">
-            <article className="market-card">
-              <span>Last intelligence update</span>
-              <strong>
-                {aiStatus.last_intelligence_update_at
-                  ? new Date(aiStatus.last_intelligence_update_at).toLocaleString()
-                  : "Not yet"}
-              </strong>
-            </article>
-            <article className="market-card">
-              <span>Current sections</span>
-              <strong>{aiStatus.current_sections}</strong>
-            </article>
-            <article className="market-card">
-              <span>Updates needed</span>
-              <strong>{aiStatus.attention_sections}</strong>
-            </article>
-            <article className="market-card">
-              <span>Review Inbox</span>
-              <strong>{aiStatus.sections.review_inbox?.state.replaceAll("_", " ") ?? "unknown"}</strong>
-            </article>
+        <section className="settings-tool-group" aria-labelledby="ai-exchange-heading">
+          <div>
+            <p className="eyebrow">Intelligence maintenance</p>
+            <h3 id="ai-exchange-heading">Full strategy refresh</h3>
+            <p>Normal discovery review already refreshes job review and stale intelligence together. Use this only for a deliberate broad re-analysis.</p>
           </div>
-        )}
-        {aiStatus && aiStatus.attention_sections > 0 && (
-          <p>
-            <strong>Needs attention:</strong>{" "}
+          <div className="settings-tool-actions">
+            <a
+              href={`${apiBase}/api/ai-work-package/export`}
+              download="JOLT_AI_WORK_PACKAGE.json"
+              title="Export JOLT's full strategy context for a deliberate broad refresh."
+            >
+              Export strategy package
+            </a>
+            <label className="secondary">
+              Import reviewed update
+              <input
+                aria-label="Import reviewed strategy update"
+                type="file"
+                accept=".json,application/json"
+                disabled={importing}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importAIUpdate(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+          </div>
+          <p>{importing ? "Importing strategy update…" : "JOLT validates the returned file before applying the reviewed update."}</p>
+
+          <details className="settings-legacy-tools">
+            <summary>Legacy compatibility exports</summary>
+            <p>Older formats remain only for troubleshooting or archive compatibility.</p>
+            <ul>
+              <li><a href={`${apiBase}/api/exports/ai-review-json`} download="JOLT_AI_REVIEW_INPUT.json">Legacy AI review JSON</a></li>
+              <li><a href={`${apiBase}/api/exports/ai-review-pack`} download="JOLT_AI_REVIEW_INPUT.zip">Legacy full review ZIP</a></li>
+            </ul>
+          </details>
+        </section>
+
+        <ReviewedDecisions apiBase={apiBase} onError={setError} />
+        <CaptureHistory apiBase={apiBase} onError={setError} />
+      </div>
+    );
+  }
+
+  return (
+    <section className="settings-primary-card settings-intelligence-card" aria-labelledby="ai-import-status-heading">
+      <div className="settings-intelligence-heading">
+        <div>
+          <p className="eyebrow">Intelligence</p>
+          <h3 id="ai-import-status-heading">JOLT intelligence</h3>
+          <p>{statusDescription(aiStatus)}</p>
+        </div>
+        <strong className={
+          aiStatus?.overall_status === "current"
+            ? "settings-status-chip current"
+            : aiStatus?.overall_status === "update_available"
+              ? "settings-status-chip attention"
+              : "settings-status-chip"
+        }>
+          {statusLabel(aiStatus)}
+        </strong>
+      </div>
+
+      {error && <p className="error" role="alert">{error}</p>}
+
+      {aiStatus && (
+        <div className="settings-intelligence-metrics">
+          <div>
+            <span>Last update</span>
+            <strong>
+              {aiStatus.last_intelligence_update_at
+                ? new Date(aiStatus.last_intelligence_update_at).toLocaleString()
+                : "Not yet"}
+            </strong>
+          </div>
+          <div>
+            <span>Current</span>
+            <strong>{aiStatus.current_sections}</strong>
+          </div>
+          <div>
+            <span>Need update</span>
+            <strong>{aiStatus.attention_sections}</strong>
+          </div>
+        </div>
+      )}
+
+      {aiStatus && aiStatus.attention_sections > 0 ? (
+        <div className="settings-intelligence-attention">
+          <strong>Needs attention</strong>
+          <span>
             {Object.entries(aiStatus.sections)
               .filter(([, section]) => section.operator_relevant && ["stale", "not_analyzed"].includes(section.state))
               .map(([name]) => name.replaceAll("_", " "))
               .join(", ")}
-          </p>
-        )}
-      </section>
-
-      <details className="panel operations-tools workspace-sidebar-operations">
-        <summary>Advanced data & diagnostics</summary>
-        {error && <p className="error" role="alert" style={{ whiteSpace: "pre-line" }}>{error}</p>}
-        {importNotice && <p role="status">{importNotice}</p>}
-
-        <div className="operations-grid">
-          <section aria-labelledby="ai-exchange-heading">
-            <h2 id="ai-exchange-heading">Strategy update exchange</h2>
-            <p>
-              Use this only for a deliberate full-strategy refresh. Normal discovery review now updates job review and intelligence together from Capture Jobs.
-            </p>
-            <ol>
-              <li>
-                <a
-                  href={`${apiBase}/api/ai-work-package/export`}
-                  download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export JOLT's full strategy context for a deliberate broad refresh."
-                >
-                  <strong>Export strategy update package</strong>
-                </a>
-              </li>
-              <li>
-                <label>
-                  <strong>Import reviewed strategy update</strong>
-                  <input
-                    aria-label="Import reviewed strategy update"
-                    type="file"
-                    accept=".json,application/json"
-                    disabled={importing}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void importAIUpdate(file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
-              </li>
-            </ol>
-            <p>{importing ? "Importing strategy update…" : "JOLT validates the returned file before applying the reviewed update."}</p>
-            <details>
-              <summary>Legacy compatibility exports</summary>
-              <p>
-                Older export formats remain available only for troubleshooting or archive compatibility.
-              </p>
-              <ul>
-                <li><a href={`${apiBase}/api/exports/ai-review-json`} download="JOLT_AI_REVIEW_INPUT.json">Legacy AI review JSON</a></li>
-                <li><a href={`${apiBase}/api/exports/ai-review-pack`} download="JOLT_AI_REVIEW_INPUT.zip">Legacy full review ZIP</a></li>
-              </ul>
-            </details>
-          </section>
+          </span>
         </div>
-        <ReviewedDecisions apiBase={apiBase} onError={setError} />
-        <CaptureHistory apiBase={apiBase} onError={setError} />
-      </details>
-    </>
+      ) : (
+        <p className="settings-intelligence-footnote">
+          Discovery reviews keep normal intelligence updates in sync automatically.
+        </p>
+      )}
+    </section>
   );
 }
