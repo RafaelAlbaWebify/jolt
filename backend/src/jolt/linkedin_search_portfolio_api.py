@@ -182,7 +182,7 @@ def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIR
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    @router.get("/api/linkedin-discovery-batches/{batch_id}/ai-review-exchange")
+    @router.get("/api/linkedin-discovery-batches/{batch_id}/ai-review-exchange", deprecated=True)
     def discovery_batch_ai_review_exchange(
         batch_id: str,
         session: Session = session_dependency,
@@ -206,6 +206,7 @@ def build_linkedin_search_portfolio_router(get_session: SessionProvider) -> APIR
     @router.post(
         "/api/linkedin-discovery-batches/{batch_id}/ai-review-import",
         response_model=BatchAIReviewImportResponse,
+        deprecated=True,
     )
     def discovery_batch_ai_review_import(
         batch_id: str,
