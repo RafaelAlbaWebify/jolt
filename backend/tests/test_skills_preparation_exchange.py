@@ -90,19 +90,14 @@ def test_skills_exchange_exports_raw_evidence_without_local_gap_judgments(
     assert '"gap_count"' not in serialized
 
 
-def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
+def test_skills_exchange_import_preserves_context_and_creates_preparation_actions(
     monkeypatch,
 ) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported = []
     monkeypatch.setattr(
         "jolt.skills_preparation_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.skills_preparation_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
     monkeypatch.setattr(
         "jolt.skills_preparation_exchange.save_ai_exchange_feedback",
@@ -159,13 +154,13 @@ def test_skills_exchange_import_updates_context_and_creates_preparation_actions(
                 evidence_refs=["posting:1", "posting:2"],
             )
         ],
-        context_patch={"skills_gap_summary": {"highest_leverage": ["REST API"]}},
+        context_patch={},
         summary={"executive_summary": "Prioritize API troubleshooting evidence."},
     )
 
     response = import_skills_preparation_exchange(output)
 
-    assert saved_context[0].skills_gap_summary["highest_leverage"] == ["REST API"]
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.preparation.imported_count == 1
     assert imported[0].preparation_plan[0].action_type == "practice"

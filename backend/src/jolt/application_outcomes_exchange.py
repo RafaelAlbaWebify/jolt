@@ -17,9 +17,10 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
+    save_global_ai_context,  # noqa: F401 - legacy monkeypatch compatibility
 )
 from jolt.preference_aware_evaluation import sanitize_capture_text
+from jolt.unified_context_policy import require_unified_context_authority
 
 _APPLICATION_PATCH_KEYS = frozenset(
     {
@@ -142,7 +143,9 @@ def build_application_outcomes_exchange(session: Session) -> AIExchangeInput:
                 "recommendation": "Suggest concrete application-process or positioning changes; do not mutate workflow state.",
             },
             "context_patch": (
-                "Return only changed application_strategy, outcome_strategy, or audit_summary namespaces."
+                "For the unified work-package workflow, place durable application_strategy, "
+                "outcome_strategy, or audit_summary changes in the package top-level context_patch. "
+                "Section-level context_patch must remain empty."
             ),
             "summary": "Include executive_summary, high_confidence_patterns, and insufficient_evidence notes.",
         },
@@ -150,21 +153,11 @@ def build_application_outcomes_exchange(session: Session) -> AIExchangeInput:
 
 
 def _apply_application_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
-    unknown = sorted(set(output.context_patch) - _APPLICATION_PATCH_KEYS)
-    if unknown:
-        raise ValueError(
-            f"Applications context patch contains non-patchable keys: {', '.join(unknown)}"
-        )
-
-    current = load_global_ai_context()
-    update = current.model_dump()
-    for key, value in output.context_patch.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"Applications context namespace '{key}' must be an object")
-        update[key] = value
-    update["updated_at"] = output.reviewed_at
-    update["updated_by"] = f"chatgpt:{output.review_version}"
-    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
+    require_unified_context_authority(
+        output,
+        section_label="Applications",
+    )
+    return load_global_ai_context()
 
 
 def import_application_outcomes_exchange(

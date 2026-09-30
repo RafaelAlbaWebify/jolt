@@ -48,5 +48,5 @@ def test_global_context_import_rejects_non_patchable_namespace() -> None:
         },
     )
 
-    assert response.status_code == 400
-    assert "non-patchable" in response.json()["detail"]
+    assert response.status_code == 409
+    assert "unified work package" in response.json()["detail"].lower()

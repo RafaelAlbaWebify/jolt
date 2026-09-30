@@ -123,16 +123,11 @@ def test_professional_exchange_exports_only_integrity_verified_reviewable_eviden
     )
 
 
-def test_professional_exchange_import_updates_evidence_context_and_feedback(monkeypatch) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
+def test_professional_exchange_import_preserves_context_and_feedback(monkeypatch) -> None:
     saved_feedback: list[AIExchangeOutput] = []
     monkeypatch.setattr(
         "jolt.professional_evidence_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.professional_evidence_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
     monkeypatch.setattr(
         "jolt.professional_evidence_exchange.save_ai_exchange_feedback",
@@ -167,21 +162,12 @@ def test_professional_exchange_import_updates_evidence_context_and_feedback(monk
                 confidence=95,
             )
         ],
-        context_patch={
-            "professional_evidence_summary": {
-                "explicit_strengths": ["PowerShell", "Windows support"]
-            },
-            "profile_strategy": {"lead_with": "Application Support and IT Operations"},
-        },
+        context_patch={},
     )
 
     response = import_professional_evidence_exchange(output)
 
-    assert saved_context[0].professional_evidence_summary["explicit_strengths"] == [
-        "PowerShell",
-        "Windows support",
-    ]
-    assert saved_context[0].profile_strategy["lead_with"] == "Application Support and IT Operations"
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.feedback_record.exchange_id == "professional-exchange-1"
 

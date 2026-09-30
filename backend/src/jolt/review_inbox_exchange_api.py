@@ -33,7 +33,7 @@ def build_review_inbox_exchange_router(get_session: SessionProvider) -> APIRoute
     router.include_router(build_unified_ai_work_package_router(get_session))
     session_dependency = Depends(get_session)
 
-    @router.get("/api/exports/review-inbox-ai-exchange")
+    @router.get("/api/exports/review-inbox-ai-exchange", deprecated=True)
     def review_inbox_ai_exchange(
         session: Session = session_dependency,
     ) -> StreamingResponse:

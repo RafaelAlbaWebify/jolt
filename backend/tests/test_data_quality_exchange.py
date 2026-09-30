@@ -132,19 +132,14 @@ def test_data_quality_exchange_surfaces_structural_mismatch_without_semantic_dec
     assert "does not decide whether" in exchange.evidence["authority_notes"]["semantic_authority"]
 
 
-def test_data_quality_import_updates_audit_context_and_creates_pending_follow_up(
+def test_data_quality_import_preserves_context_and_creates_pending_follow_up(
     monkeypatch,
 ) -> None:
-    saved_context: list[GlobalAIContextOverlay] = []
     saved_feedback: list[AIExchangeOutput] = []
     imported = []
     monkeypatch.setattr(
         "jolt.data_quality_exchange.load_global_ai_context",
         lambda: GlobalAIContextOverlay(),
-    )
-    monkeypatch.setattr(
-        "jolt.data_quality_exchange.save_global_ai_context",
-        lambda context: saved_context.append(context) or context,
     )
     monkeypatch.setattr(
         "jolt.data_quality_exchange.save_ai_exchange_feedback",
@@ -201,13 +196,13 @@ def test_data_quality_import_updates_audit_context_and_creates_pending_follow_up
                 evidence_refs=["capture:dq-run-1"],
             )
         ],
-        context_patch={"audit_summary": {"material_issue_count": 1}},
+        context_patch={},
         summary={"executive_summary": "One evidence refresh is warranted."},
     )
 
     response = import_data_quality_exchange(output)
 
-    assert saved_context[0].audit_summary["material_issue_count"] == 1
+    assert response.context == GlobalAIContextOverlay()
     assert saved_feedback == [output]
     assert response.actions.imported_count == 1
     assert imported[0].market_recommendations[0].status == "pending"

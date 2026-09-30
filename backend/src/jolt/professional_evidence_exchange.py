@@ -16,13 +16,14 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
+    save_global_ai_context,  # noqa: F401 - legacy monkeypatch compatibility
 )
 from jolt.professional_intelligence_evidence_review import (
     ProfessionalEvidenceRunReview,
     review_professional_capture_evidence,
 )
 from jolt.professional_intelligence_records import ProfessionalCaptureRun
+from jolt.unified_context_policy import require_unified_context_authority
 
 _PROFESSIONAL_PATCH_KEYS = frozenset(
     {"professional_evidence_summary", "profile_strategy", "audit_summary"}
@@ -183,7 +184,9 @@ def build_professional_evidence_exchange(session: Session) -> AIExchangeInput:
                 ),
             },
             "context_patch": (
-                "Return only changed professional_evidence_summary, profile_strategy, or audit_summary namespaces."
+                "For the unified work-package workflow, place durable professional_evidence_summary, "
+                "profile_strategy, or audit_summary changes in the package top-level context_patch. "
+                "Section-level context_patch must remain empty."
             ),
             "summary": "Include executive_summary, strongest_evidence, credibility_boundaries, and evidence_gaps.",
         },
@@ -191,20 +194,11 @@ def build_professional_evidence_exchange(session: Session) -> AIExchangeInput:
 
 
 def _apply_professional_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
-    unknown = sorted(set(output.context_patch) - _PROFESSIONAL_PATCH_KEYS)
-    if unknown:
-        raise ValueError(
-            f"Professional evidence context patch contains non-patchable keys: {', '.join(unknown)}"
-        )
-    current = load_global_ai_context()
-    update = current.model_dump()
-    for key, value in output.context_patch.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"Professional evidence context namespace '{key}' must be an object")
-        update[key] = value
-    update["updated_at"] = output.reviewed_at
-    update["updated_by"] = f"chatgpt:{output.review_version}"
-    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
+    require_unified_context_authority(
+        output,
+        section_label="Professional evidence",
+    )
+    return load_global_ai_context()
 
 
 def import_professional_evidence_exchange(

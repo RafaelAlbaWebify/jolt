@@ -39,6 +39,7 @@ from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.errors import JoltNotFoundError
+from jolt.global_context_api import build_global_context_router
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.job_search_preferences import (
     JobSearchPreferences,
@@ -92,6 +93,7 @@ from jolt.retention_ownership import (
     RetentionOwnershipPreview,
     build_retention_ownership_preview,
 )
+from jolt.review_inbox_exchange_api import build_review_inbox_exchange_router
 from jolt.review_pack import build_review_pack
 from jolt.runtime_identity import RuntimeIdentityResponse, build_runtime_identity
 from jolt.schemas import (
@@ -150,6 +152,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
             session.close()
 
     app.include_router(build_ai_status_router(get_session))
+    app.include_router(build_global_context_router())
+    app.include_router(build_review_inbox_exchange_router(get_session))
     app.include_router(build_application_work_items_router(get_session))
     app.include_router(build_professional_intelligence_plan_router(get_session))
     app.include_router(build_linkedin_search_portfolio_router(get_session))
@@ -485,6 +489,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.get(
         "/api/market-intelligence/preparation-pack",
         tags=["exports"],
+        deprecated=True,
     )
     def market_preparation_pack(
         session: Annotated[Session, Depends(get_session)],
@@ -502,6 +507,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/market-intelligence/preparation-import",
         response_model=MarketPreparationImportIndex,
         tags=["analysis"],
+        deprecated=True,
     )
     def market_preparation_imports() -> MarketPreparationImportIndex:
         return list_market_preparation_imports()
@@ -510,6 +516,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/market-intelligence/preparation-import",
         response_model=MarketPreparationImportResponse,
         tags=["analysis"],
+        deprecated=True,
     )
     def import_market_preparation_result(
         request: MarketPreparationImportRequest,
@@ -638,6 +645,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/ai-review/import",
         response_model=AIReviewImportResponse,
         tags=["ai-review"],
+        deprecated=True,
     )
     def ai_review_import(
         request: AIReviewImportRequest,
@@ -650,7 +658,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    @app.get("/api/exports/ai-review-pack", tags=["exports"])
+    @app.get("/api/exports/ai-review-pack", tags=["exports"], deprecated=True)
     def ai_review_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -664,7 +672,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": ("attachment; filename=JOLT_AI_REVIEW_INPUT.zip")},
         )
 
-    @app.get("/api/exports/ai-review-json", tags=["exports"])
+    @app.get("/api/exports/ai-review-json", tags=["exports"], deprecated=True)
     def ai_review_json(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -678,7 +686,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": "attachment; filename=JOLT_AI_REVIEW_INPUT.json"},
         )
 
-    @app.get("/api/exports/review-pack", tags=["exports"])
+    @app.get("/api/exports/review-pack", tags=["exports"], deprecated=True)
     def review_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -692,7 +700,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": "attachment; filename=JOLT_REVIEW_PACK.zip"},
         )
 
-    @app.get("/api/exports/analysis-pack", tags=["exports"])
+    @app.get("/api/exports/analysis-pack", tags=["exports"], deprecated=True)
     def analysis_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:

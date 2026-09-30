@@ -18,7 +18,7 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
+    save_global_ai_context,  # noqa: F401 - legacy monkeypatch compatibility
 )
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.market_preparation_import import (
@@ -28,6 +28,7 @@ from jolt.market_preparation_import import (
     import_market_preparation,
 )
 from jolt.preference_aware_evaluation import sanitize_capture_text
+from jolt.unified_context_policy import require_unified_context_authority
 
 _SEARCH_PATCH_KEYS = frozenset({"capture_strategy", "audit_summary"})
 _SEARCH_ACTION_TYPES = {
@@ -148,27 +149,22 @@ def build_search_preference_exchange(session: Session) -> AIExchangeInput:
                 ),
                 "audit_result": "Flag preference/search assumptions that are unsupported, stale, internally inconsistent, or causing poor capture yield.",
             },
-            "context_patch": "Return only changed capture_strategy or audit_summary namespaces.",
+            "context_patch": (
+                "For the unified work-package workflow, place durable capture_strategy or "
+                "audit_summary changes in the package top-level context_patch. Section-level "
+                "context_patch must remain empty."
+            ),
             "summary": "Include executive_summary, keep_preferences, proposed_changes, and evidence_gaps.",
         },
     )
 
 
 def _apply_search_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
-    unknown = sorted(set(output.context_patch) - _SEARCH_PATCH_KEYS)
-    if unknown:
-        raise ValueError(
-            f"Search preference context patch contains non-patchable keys: {', '.join(unknown)}"
-        )
-    current = load_global_ai_context()
-    update = current.model_dump()
-    for key, value in output.context_patch.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"Search preference context namespace '{key}' must be an object")
-        update[key] = value
-    update["updated_at"] = output.reviewed_at
-    update["updated_by"] = f"chatgpt:{output.review_version}"
-    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
+    require_unified_context_authority(
+        output,
+        section_label="Search preference",
+    )
+    return load_global_ai_context()
 
 
 def _search_actions(output: AIExchangeOutput) -> list[MarketPreparationAction]:
