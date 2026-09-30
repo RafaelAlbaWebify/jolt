@@ -16,61 +16,68 @@ depends_on = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("ai_reviews") as batch:
-        batch.add_column(
-            sa.Column("source_conflict", sa.Boolean(), nullable=False, server_default=sa.false())
-        )
-        batch.add_column(
-            sa.Column(
-                "linkedin_work_model",
-                sa.String(length=24),
-                nullable=False,
-                server_default="unknown",
-            )
-        )
-        batch.add_column(
-            sa.Column(
-                "official_work_model",
-                sa.String(length=24),
-                nullable=False,
-                server_default="unknown",
-            )
-        )
-        batch.add_column(
-            sa.Column(
-                "authoritative_source",
-                sa.String(length=32),
-                nullable=False,
-                server_default="unknown",
-            )
-        )
-        batch.add_column(
-            sa.Column("official_source_url", sa.Text(), nullable=False, server_default="")
-        )
-        batch.add_column(
-            sa.Column(
-                "remote_status",
-                sa.String(length=32),
-                nullable=False,
-                server_default="unknown",
-            )
-        )
-        batch.add_column(
-            sa.Column(
-                "location_verification_status",
-                sa.String(length=32),
-                nullable=False,
-                server_default="unverified",
-            )
-        )
-        batch.add_column(
-            sa.Column(
-                "source_confidence",
-                sa.String(length=20),
-                nullable=False,
-                server_default="unknown",
-            )
-        )
+    op.add_column(
+        "ai_reviews",
+        sa.Column("source_conflict", sa.Boolean(), nullable=False, server_default=sa.false()),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "linkedin_work_model",
+            sa.String(length=24),
+            nullable=False,
+            server_default="unknown",
+        ),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "official_work_model",
+            sa.String(length=24),
+            nullable=False,
+            server_default="unknown",
+        ),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "authoritative_source",
+            sa.String(length=32),
+            nullable=False,
+            server_default="unknown",
+        ),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column("official_source_url", sa.Text(), nullable=False, server_default=""),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "remote_status",
+            sa.String(length=32),
+            nullable=False,
+            server_default="unknown",
+        ),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "location_verification_status",
+            sa.String(length=32),
+            nullable=False,
+            server_default="unverified",
+        ),
+    )
+    op.add_column(
+        "ai_reviews",
+        sa.Column(
+            "source_confidence",
+            sa.String(length=20),
+            nullable=False,
+            server_default="unknown",
+        ),
+    )
 
 
 def downgrade() -> None:
