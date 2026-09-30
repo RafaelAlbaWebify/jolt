@@ -3,7 +3,7 @@
 This file records durable product contracts, project boundaries, and development rules.
 Review it before changing existing JOLT behavior.
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-30
 
 ## Product purpose
 
@@ -36,17 +36,18 @@ Do not merge these lifecycle boundaries merely because records share source evid
 JOLT is the local capture, storage, provenance, workflow and presentation layer.
 ChatGPT is the reasoning layer for judgment-heavy analysis.
 
-The normal feedback loop is:
+The normal product feedback loop is:
 
-1. JOLT exports current context plus relevant evidence.
-2. ChatGPT performs classification, extraction, market analysis, gap analysis,
-   prioritization, recommendations, corrections or other requested reasoning.
-3. ChatGPT returns compact structured feedback and context updates.
-4. JOLT validates, imports, stores and presents those results.
-5. Human review decisions and durable application state remain authoritative.
+1. JOLT freezes the relevant evidence scope (for normal discovery, only the new/deduplicated jobs in that batch).
+2. JOLT exports one Unified AI Work Package containing that review scope plus bounded aggregate evidence/context sections.
+3. ChatGPT performs source-first per-job hardline/fit review and the requested market/gap/strategy reasoning.
+4. ChatGPT returns one schema-valid reviewed work-package update.
+5. JOLT validates and imports the update atomically: per-job AI review and section feedback/recommendations may be persisted, while durable global AI context may change only through the package top-level `context_patch`.
+6. Human review decisions and durable application state remain authoritative.
 
-This feedback workflow must be available across all major JOLT sections rather than
-being limited to Review Inbox.
+The Unified AI Work Package is the supported product workflow for durable AI strategy/context changes.
+Individual section exchanges and standalone legacy review/preparation routes are compatibility/diagnostic
+surfaces only and must not become alternate durable-context authorities.
 
 Local deterministic code should handle schema validation, IDs, provenance, hashing,
 basic cleaning, persistence and UI calculations. Do not build separate local Python
@@ -174,6 +175,32 @@ Do not describe the two-request workflow as atomic.
 Preference-based machine re-evaluation must not overwrite human review decisions
 or application records.
 
+## Current review decision contract
+
+Review Inbox presents only two explicit human actions:
+
+- **Apply** — creates/retains durable Application state;
+- **Reject** — records durable human rejection.
+
+Taking no action means the opportunity remains pending. Historical `consider`, `defer`, and
+`needs_more_information` records remain readable for compatibility but are not normal new UI decisions.
+
+AI recommendation and human decision are separate concepts. Human state outranks AI recommendation.
+
+## Intelligence freshness contract
+
+`GET /api/ai-status` is the product freshness authority for AI/intelligence domains.
+Browser localStorage receipts are not authoritative state and must not be used to decide whether intelligence is current.
+
+Normal discovery review should refresh stale intelligence in the same Unified AI Work Package round trip.
+A separate full strategy exchange is an advanced/diagnostic operation, not a required ritual after every batch.
+
+## Applications / legacy Evaluation boundary
+
+Durable Applications must remain visible and operable from Application + Posting/workflow state even if no
+legacy Python `Evaluation` row exists. `Evaluation` may remain for legacy deterministic/capture support but
+must not be a hidden prerequisite for Applications or a second user-facing reasoning authority.
+
 ## Classifier contract
 
 Current certified source-first classifier baseline:
@@ -211,13 +238,19 @@ Rules:
 - squash merge;
 - verify resulting main commit.
 
-Required merge gates:
+Required production-affecting merge gates:
 
-1. CI
-2. Playwright acceptance
-3. Full-cycle Playwright certification
+1. backend CI (pytest/Ruff/Pyright)
+2. frontend tests/build
+3. Playwright acceptance / sidebar-kanban
+4. Full-cycle Playwright + viewport certification
+5. Windows clean-install certification
+6. Migration recovery certification
+7. Reproducible release certification
+8. Windows script contract
 
-All three must be green for the exact PR head.
+All applicable gates must be green for the exact PR head. A transient/flaky failure must either be
+reproduced and fixed or pass an unchanged isolated rerun before merge; do not weaken the test.
 
 ## UI certification
 
@@ -266,3 +299,15 @@ Update this file when:
 Do not fill this file with temporary debugging notes or transient implementation details.
 
 - Mixed-batch cleanup regression coverage must verify that the application index still contains any pursued/applied opportunity after the capture batch is archived.
+
+
+## 2026-09-30 architecture consolidation
+
+The architecture audit identified disconnected/duplicated AI update paths. The remediation is now durable product policy:
+
+- PR #464: discovery batch review + aggregate intelligence refresh share one Unified AI Work Package;
+- PR #465: backend-owned AI freshness status replaces browser-local import receipt authority;
+- PR #466: Applications are independent from legacy Evaluation;
+- PR #467: only the Unified AI Work Package may mutate durable global AI context; legacy/section routes are deprecated.
+
+Do not reintroduce section-level durable `context_patch` writes or new product flows on deprecated AI routes.
