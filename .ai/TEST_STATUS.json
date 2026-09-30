@@ -1,54 +1,54 @@
 {
   "last_updated": "2026-09-30",
-  "baseline_commit": "98953f63f7e836f100a6ef5f00c3ac5399a649f6",
-  "status_note": "Current architecture and UX are verified through PR #467. Production certification remains 100% within the local-first single-user Windows boundary. PR #467 exact head passed all required gates; one unrelated ApplicationDashboard frontend test failed once and passed unchanged on isolated rerun, so monitor for recurrence without weakening the test.",
+  "baseline_commit": "0f252f4ec7e17dc29e31bed71a0bd86e23d18da5",
+  "status_note": "Current architecture and planned UX simplification are verified through PR #470. Production certification remains 100% within the local-first single-user Windows boundary. PR #470 exact head passed all eight required gates before squash merge; post-merge main workflows are tracked independently and do not replace exact-head PR certification.",
   "testing_percentage": 100,
   "test_suites": [
     {
       "name": "backend pytest + Ruff + Pyright",
       "command": "cd backend && uv run pytest / ruff / pyright",
-      "latest_state": "PR #467 exact head backend success after unified-context regression migration",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "frontend unit/component + production build",
       "command": "cd frontend && npm test && npm run build",
-      "latest_state": "PR #467 exact head success on isolated rerun; prior single ApplicationDashboard alert test failure did not reproduce",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Playwright acceptance / sidebar-kanban",
       "workflow": ".github/workflows/playwright-acceptance.yml",
-      "latest_state": "PR #467 exact head success",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Full-cycle Playwright + viewport certification",
       "workflow": ".github/workflows/full-cycle-playwright-certification.yml",
-      "latest_state": "PR #467 exact head success at certified production viewport",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Production clean-install Windows",
       "workflow": ".github/workflows/clean-install-windows.yml",
-      "latest_state": "PR #467 exact head success",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Migration recovery",
       "workflow": ".github/workflows/migration-recovery.yml",
-      "latest_state": "PR #467 exact head success",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Reproducible release",
       "workflow": ".github/workflows/reproducible-release.yml",
-      "latest_state": "PR #467 exact head success",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     },
     {
       "name": "Windows scripts",
-      "latest_state": "PR #467 exact head success",
+      "latest_state": "PR #470 exact head success",
       "verified": true
     }
   ],
@@ -94,6 +94,18 @@
       "merge_sha": "98953f63f7e836f100a6ef5f00c3ac5399a649f6",
       "purpose": "Unified Work Package sole durable context authority + deprecated legacy AI mutation paths",
       "result": "backend, frontend isolated rerun, Playwright/sidebar-kanban, full-cycle, clean-install, migration-recovery, reproducible-release and Windows scripts all passed before merge"
+    },
+    {
+      "pull_request": 469,
+      "purpose": "Settings & Data daily-use simplification",
+      "result": "all required exact-head gates passed before merge"
+    },
+    {
+      "pull_request": 470,
+      "head_sha": "8941ce34867ae2884f8a8f0917d288633c5c5ca3",
+      "merge_sha": "0f252f4ec7e17dc29e31bed71a0bd86e23d18da5",
+      "purpose": "Applications scorecard and Board/List operational views",
+      "result": "backend, frontend, Playwright/sidebar-kanban, full-cycle, clean-install, migration-recovery, reproducible-release and Windows scripts all passed before merge"
     }
   ],
   "latest_real_world_external_validation": {
@@ -111,7 +123,7 @@
     "No release-blocking area within the certified local-first single-user Windows boundary.",
     "Future Indeed/InfoJobs adapters require their own supervised real-site acceptance before entering the certified boundary."
   ],
-  "e2e_status": "Fresh and green through PR #467 exact head.",
-  "browser_ui_status": "Fresh and green through PR #467; live UI audit infrastructure remains available for production-data checks.",
+  "e2e_status": "Fresh and green through PR #470 exact head.",
+  "browser_ui_status": "Fresh and green through PR #470 exact head; live UI audit infrastructure remains available for production-data checks.",
   "implemented_vs_verified_rule": "A feature is implemented when code exists; it is verified only when relevant exact-head automated gates and, where applicable, real runtime/external-site evidence pass."
 }
