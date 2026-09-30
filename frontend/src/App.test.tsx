@@ -198,7 +198,7 @@ describe("App AI review workflow", () => {
 
     await screen.findByText("Application Support Engineer");
 
-    expect(screen.getByText("Why it looks promising")).toBeInTheDocument();
+    expect(await screen.findByText("Why it looks promising")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Fit analysis" }));
     expect(screen.getByText("Fit assessment")).toBeInTheDocument();
