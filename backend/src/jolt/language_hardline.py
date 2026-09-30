@@ -15,7 +15,7 @@ REASON_LANGUAGE_UNCERTAIN = "LANGUAGE_REQUIREMENT_UNCERTAIN"
 REASON_UNSUPPORTED_DOCUMENT_LANGUAGE = "UNSUPPORTED_JOB_LANGUAGE"
 
 _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
-    "English": ("english", "inglés", "ingles", "englisch", "anglais", "inglese"),
+    "English": ("english", "inglés", "ingles", "englisch", "englischkenntnisse", "anglais", "inglese"),
     "Spanish": (
         "spanish",
         "español",
@@ -25,7 +25,7 @@ _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
         "espagnol",
         "spagnolo",
     ),
-    "German": ("german", "deutsch", "alemán", "aleman", "allemand", "tedesco"),
+    "German": ("german", "deutsch", "deutschkenntnisse", "alemán", "aleman", "allemand", "tedesco"),
     "French": ("french", "français", "francais", "französisch", "franzoesisch", "francés", "frances"),
     "Dutch": ("dutch", "nederlands", "niederländisch", "niederlaendisch", "neerlandés", "neerlandes"),
     "Italian": ("italian", "italiano", "italienisch", "italien", "italiano"),
