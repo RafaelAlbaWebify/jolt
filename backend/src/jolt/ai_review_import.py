@@ -520,9 +520,7 @@ def import_ai_review(
         review = existing_reviews.get(job.posting_id)
         posting = session.get(Posting, job.posting_id)
         source_document = (
-            session.get(SourceDocument, posting.source_document_id)
-            if posting is not None
-            else None
+            session.get(SourceDocument, posting.source_document_id) if posting is not None else None
         )
         source_text = (
             source_document.raw_text
