@@ -52,25 +52,16 @@ class SourceRevalidationItem(BaseModel):
     @model_validator(mode="after")
     def validate_resolution(self) -> SourceRevalidationItem:
         if self.source_conflict and self.location_verification_status != "conflict":
-            raise ValueError(
-                "source_conflict requires location_verification_status=conflict"
-            )
+            raise ValueError("source_conflict requires location_verification_status=conflict")
         if (
             self.official_work_model in {"hybrid", "on_site"}
             and self.remote_status == "confirmed_remote"
         ):
-            raise ValueError(
-                "Official hybrid/on-site evidence cannot be confirmed_remote"
-            )
+            raise ValueError("Official hybrid/on-site evidence cannot be confirmed_remote")
         if self.resolution == "preserve" and self.source_conflict:
             raise ValueError("A source conflict cannot use resolution=preserve")
-        if (
-            self.resolution == "reject_location"
-            and self.location_verification_status != "verified"
-        ):
-            raise ValueError(
-                "reject_location requires verified authoritative location evidence"
-            )
+        if self.resolution == "reject_location" and self.location_verification_status != "verified":
+            raise ValueError("reject_location requires verified authoritative location evidence")
         return self
 
 
@@ -103,9 +94,7 @@ def import_source_revalidation(
     posting_ids = {item.posting_id for item in request.items}
     protected_human_state = set(
         session.scalars(
-            select(ReviewDecision.posting_id).where(
-                ReviewDecision.posting_id.in_(posting_ids)
-            )
+            select(ReviewDecision.posting_id).where(ReviewDecision.posting_id.in_(posting_ids))
         ).all()
     ) | set(
         session.scalars(
