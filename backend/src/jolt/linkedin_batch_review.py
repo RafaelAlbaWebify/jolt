@@ -30,13 +30,13 @@ from jolt.preference_aware_evaluation import sanitize_capture_text
 
 BATCH_REVIEW_CONTRACT_TYPE = "jolt_ai_review_batch"
 BATCH_REVIEW_CONTRACT_VERSION = "1.0"
-AI_REVIEW_CONTRACT_VERSION = "1.1"
+AI_REVIEW_CONTRACT_VERSION = "1.2"
 
 
 class BatchAIReviewImportRequest(BaseModel):
     contract_type: Literal["jolt_ai_review_batch"]
     contract_version: Literal["1.0"]
-    ai_review_contract_version: Literal["1.1"]
+    ai_review_contract_version: Literal["1.1", "1.2"]
     discovery_batch_id: str = Field(min_length=1)
     review_source: Literal["chatgpt_source_first"]
     review_version: str = Field(min_length=1, max_length=80)
@@ -58,12 +58,32 @@ class BatchAIReviewImportRequest(BaseModel):
             "final_decision",
             "decision_reason",
         }
+        source_fields = {
+            "source_conflict",
+            "linkedin_work_model",
+            "official_work_model",
+            "authoritative_source",
+            "official_source_url",
+            "remote_status",
+            "location_verification_status",
+            "source_confidence",
+        }
         for job in self.jobs:
             missing = required_fields - job.model_fields_set
             if missing:
                 raise ValueError(
                     "Batch AI review is missing hardline fields: " + ", ".join(sorted(missing))
                 )
+            if self.ai_review_contract_version == "1.2":
+                missing_source = source_fields - job.model_fields_set
+                if missing_source:
+                    raise ValueError(
+                        "Batch AI review 1.2 is missing source-verification fields: "
+                        + ", ".join(sorted(missing_source))
+                    )
+                from jolt.ai_review_import import AIReviewImportRequest
+
+                AIReviewImportRequest._validate_source_verification(job)
             if job.final_decision in {"strong_pursue", "pursue"}:
                 if job.hardline_status != "PASS":
                     raise ValueError("Positive decisions require hardline_status=PASS")
@@ -295,6 +315,14 @@ def _response_template(batch_id: str) -> dict[str, object]:
                 "technical_fit_percent": None,
                 "final_decision": "strong_pursue|pursue|conditional|reject",
                 "decision_reason": "",
+                "source_conflict": False,
+                "linkedin_work_model": "remote|hybrid|on_site|unknown",
+                "official_work_model": "remote|hybrid|on_site|unknown",
+                "authoritative_source": "official_ats|official_careers|company_site|linkedin|unknown",
+                "official_source_url": "",
+                "remote_status": "confirmed_remote|not_confirmed_remote|not_remote|unknown",
+                "location_verification_status": "verified|conflict|unverified|not_found",
+                "source_confidence": "high|medium|low|unknown",
                 "decision": "strong_pursue|pursue|conditional|reject",
                 "priority_score": 0,
                 "geography_status": "eligible|conditional|ineligible|unknown",
