@@ -39,6 +39,7 @@ from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
 from jolt.errors import JoltNotFoundError
+from jolt.global_context_api import build_global_context_router
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
 from jolt.job_search_preferences import (
     JobSearchPreferences,
@@ -92,6 +93,7 @@ from jolt.retention_ownership import (
     RetentionOwnershipPreview,
     build_retention_ownership_preview,
 )
+from jolt.review_inbox_exchange_api import build_review_inbox_exchange_router
 from jolt.review_pack import build_review_pack
 from jolt.runtime_identity import RuntimeIdentityResponse, build_runtime_identity
 from jolt.schemas import (
@@ -150,6 +152,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
             session.close()
 
     app.include_router(build_ai_status_router(get_session))
+    app.include_router(build_global_context_router())
+    app.include_router(build_review_inbox_exchange_router(get_session))
     app.include_router(build_application_work_items_router(get_session))
     app.include_router(build_professional_intelligence_plan_router(get_session))
     app.include_router(build_linkedin_search_portfolio_router(get_session))
