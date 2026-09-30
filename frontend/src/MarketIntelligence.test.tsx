@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MarketIntelligence } from "./MarketIntelligence";
@@ -80,12 +80,13 @@ describe("MarketIntelligence", () => {
     expect(screen.getByText("Application support and modern workplace roles remain strong targets.")).toBeInTheDocument();
     expect(screen.getByText("Strengthen API troubleshooting evidence")).toBeInTheDocument();
 
-    expect(screen.getByText("Jobs analyzed")).toBeInTheDocument();
-    expect(screen.getByText("120")).toBeInTheDocument();
-    expect(screen.getByText("Good matches")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("Applications")).toBeInTheDocument();
-    expect(screen.getByText("Interviewing")).toBeInTheDocument();
+    const metrics = screen.getByLabelText("Market overview metrics");
+    expect(within(metrics).getByText("Jobs analyzed")).toBeInTheDocument();
+    expect(within(metrics).getByText("120")).toBeInTheDocument();
+    expect(within(metrics).getByText("Good matches")).toBeInTheDocument();
+    expect(within(metrics).getByText("3")).toBeInTheDocument();
+    expect(within(metrics).getByText("Applications")).toBeInTheDocument();
+    expect(within(metrics).getByText("Interviewing")).toBeInTheDocument();
   });
 
   it("switches between skills, search, application, and evidence views", async () => {
