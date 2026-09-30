@@ -2095,3 +2095,38 @@ body {
     padding-left: 47px;
   }
 }
+
+
+.inspector-review-actions {
+  min-width: 210px;
+  display: grid;
+  gap: 5px;
+}
+
+.inspector-review-actions > span {
+  color: #667085;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.inspector-review-actions > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.inspector-review-actions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+}
+
+.inspector-review-actions small {
+  color: #8791a3;
+  font-size: 0.6rem;
+}
+
+.inspector-reject-action {
+  border-color: #e5b8b8;
+  color: #b42318;
+}
