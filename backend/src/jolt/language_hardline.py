@@ -475,16 +475,16 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
                 )
                 continue
 
-            classification = _nearest_kind(segment, start)
-            if classification is None:
+            single_classification = _nearest_kind(segment, start)
+            if single_classification is None:
                 continue
             level = _minimum_level(segment, start)
-            confidence = 0.95 if classification != "ambiguous" else 0.62
+            confidence = 0.95 if single_classification != "ambiguous" else 0.62
             results.append(
                 LanguageRequirementEvidence(
                     languages=(language,),
                     minimum_level=level,
-                    classification=classification,
+                    classification=single_classification,
                     evidence=raw_segment.strip(),
                     confidence=confidence,
                 )
