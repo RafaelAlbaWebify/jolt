@@ -10,7 +10,9 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 _REMOTE_SIGNAL = re.compile(
-    r"\b(?:remote|fully\s+remote|work\s+from\s+anywhere|teletrabajo)\b",
+    r"\b(?:fully\s+remote|100%\s+remote|work\s+from\s+anywhere|"
+    r"remote[- ]first|remote\s+(?:role|position|job)|work(?:ing)?\s+remotely|"
+    r"location\s*:\s*remote|teletrabajo)\b",
     re.IGNORECASE,
 )
 _REVIEW_DECISIONS = {"strong_pursue", "pursue", "conditional"}
@@ -164,26 +166,35 @@ def main() -> int:
             continue
 
         raw_text = str(row["raw_text"] or "")
-        remote_signal = bool(_REMOTE_SIGNAL.search(str(row["location"] or ""))) or bool(
+        location_text = str(row["location"] or "")
+        remote_signal = bool(re.search(r"\(Remote\)|\bRemote\b", location_text, re.IGNORECASE)) or bool(
             _REMOTE_SIGNAL.search(raw_text)
         )
         decision = str(row["decision"] or "")
         verification = str(row["location_verification_status"] or "unverified")
         conflict = bool(row["source_conflict"])
 
+        authority = str(row["authoritative_source"] or "")
+        location = str(row["location"] or "")
+        verified_geography = verification == "verified" and not conflict
+        local_non_remote = bool(_LOCAL_GALICIA.search(location)) and not remote_signal
+
         needs_revalidation = (
             decision in _REVIEW_DECISIONS
             and (
                 conflict
-                or verification != "verified"
-                or str(row["remote_status"] or "") in {"unknown", "not_confirmed_remote"}
                 or (
                     remote_signal
-                    and str(row["authoritative_source"] or "") not in {
-                        "official_ats",
-                        "official_careers",
-                        "company_site",
-                    }
+                    and (
+                        authority not in _OFFICIAL_AUTHORITIES
+                        or str(row["remote_status"] or "") != "confirmed_remote"
+                        or verification != "verified"
+                    )
+                )
+                or (
+                    not remote_signal
+                    and not verified_geography
+                    and not local_non_remote
                 )
             )
         )
