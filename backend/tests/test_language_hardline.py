@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from jolt.job_search_preferences import JobSearchPreferences
 from jolt.language_hardline import (
-    REASON_LANGUAGE_UNMET,
     REASON_LANGUAGE_UNCERTAIN,
+    REASON_LANGUAGE_UNMET,
     REASON_UNSUPPORTED_DOCUMENT_LANGUAGE,
     analyze_language_evidence,
     detect_document_language,
