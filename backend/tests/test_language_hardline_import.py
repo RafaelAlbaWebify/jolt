@@ -5,7 +5,14 @@ from datetime import UTC, datetime
 import pytest
 
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
-from jolt.database import CaptureItem, CaptureRun, Posting, SourceDocument, create_session_factory
+from jolt.database import (
+    AIReview,
+    CaptureItem,
+    CaptureRun,
+    Posting,
+    SourceDocument,
+    create_session_factory,
+)
 from jolt.job_search_preferences import JobSearchPreferences
 
 
@@ -184,7 +191,7 @@ def test_contract_v12_accepts_and_persists_language_hard_reject(
         response = import_ai_review(session, _request(rejected))
         assert response.created_count == 1
 
-        stored = session.query(__import__("jolt.database", fromlist=["AIReview"]).AIReview).one()
+        stored = session.query(AIReview).one()
         assert stored.decision == "reject"
         assert stored.language_status == "blocked"
         assert "LANGUAGE_REQUIREMENT_UNMET" in stored.hardline_reasons_json
