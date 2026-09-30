@@ -732,7 +732,7 @@ export function App({
                       </button>
                       <div className="review-inbox-card-score">
                         <strong>{hardlineStopped(opportunity) ? hardlineIcon(opportunity) : opportunity.priority_score ?? "—"}</strong>
-                        <span>{hardlineStopped(opportunity) ? "Check" : aiDecisionLabel(opportunity)}</span>
+                        <span>{hardlineStopped(opportunity) ? "Check" : opportunity.ai_review_status === "reviewed" ? aiDecisionLabel(opportunity) : "Pending"}</span>
                       </div>
                       <div className="review-inbox-card-ai">
                         <strong>{opportunity.ai_review_status === "reviewed" ? "AI reviewed" : "Needs AI review"}</strong>
@@ -790,7 +790,7 @@ export function App({
                     </div>
                     <div className="review-preview-score">
                       <strong>{hardlineStopped(previewOpportunity) ? hardlineIcon(previewOpportunity) : previewOpportunity.priority_score ?? "—"}</strong>
-                      <span>{hardlineStopped(previewOpportunity) ? hardlineLabel(previewOpportunity) : aiDecisionLabel(previewOpportunity)}</span>
+                      <span>{hardlineStopped(previewOpportunity) ? hardlineLabel(previewOpportunity) : previewOpportunity.ai_review_status === "reviewed" ? aiDecisionLabel(previewOpportunity) : "Pending"}</span>
                     </div>
                   </header>
 
