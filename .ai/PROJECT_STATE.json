@@ -4,11 +4,11 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-24",
+  "last_update_date": "2026-09-30",
   "baseline_branch": "main",
-  "baseline_commit": "4bad4608adbc5cb44787dec8be4dd784a04e618d",
-  "current_phase": "production_ready_feature_development",
-  "current_milestone": "R-025 complete and verified through normal JOLT UI: two saved LinkedIn searches completed sequentially, consolidated review exchange/import succeeded, and final release main is six-gate green.",
+  "baseline_commit": "98953f63f7e836f100a6ef5f00c3ac5399a649f6",
+  "current_phase": "production_job_search_with_unified_intelligence_and_continuous_ux_improvement",
+  "current_milestone": "Architecture audit remediation complete through PR #467: discovery review refreshes intelligence in one unified round trip, AI freshness is backend-owned, Applications no longer depend on legacy Evaluation, and the Unified Work Package is the sole durable AI context authority.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -22,17 +22,10 @@
   "current_blockers": [],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
-    "No unresolved P1 is currently known. GitHub issue #392 was closed as completed on 2026-09-19 after live PR #393 acceptance."
+    "No unresolved P1 is currently known.",
+    "GitHub issue #441 UX stabilization was closed completed on 2026-09-30."
   ],
-  "active_workstreams": [
-    {
-      "id": "R-025",
-      "name": "LinkedIn Search Portfolio and Discovery Batch",
-      "status": "complete",
-      "roadmap": "docs/LINKEDIN_SEARCH_PORTFOLIO_ROADMAP.md",
-      "current_phase": "COMPLETE — real multi-search acceptance and restart persistence passed"
-    }
-  ],
+  "active_workstreams": [],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
     "Manual intake and supervised LinkedIn capture with source evidence/provenance.",
@@ -71,21 +64,35 @@
     "2026-09-21 repository issue audit found zero open GitHub issues and no known unresolved P0/P1 release blocker.",
     "R-025 LinkedIn Search Portfolio and Discovery Batch completed with real authenticated multi-search acceptance, consolidated AI review/import, and restart persistence.",
     "2026-09-24 R-025 Phase 5 real acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709: Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515 ran two saved LinkedIn searches sequentially, captured/verified 50/50 jobs, materialized a 47-posting frozen review set after excluding 3 already-reviewed postings, imported one consolidated 47-job ChatGPT review, and preserved batch/review state across a full JOLT restart.",
-    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI."
+    "2026-09-24 normal-UI R-025 acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d: Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16 completed 2/2 saved searches, captured/verified 50/50 jobs, reported 50 already known after prior acceptance state, produced a one-item consolidated review set after excluding 49 already-reviewed postings, and the returned one-job AI review was imported through the JOLT UI.",
+    "2026-09-28 PR #437 safely reconciled interrupted discovery batches after backend restart without rewriting queued work.",
+    "2026-09-28 PR #439 added saved-search performance from capture through AI signal, human decision, application, interview and offer outcomes.",
+    "2026-09-28 PR #443 made application documents durable and purged discarded final-outcome files while preserving accepted-offer evidence.",
+    "2026-09-29 UX stabilization phases 1–6 merged through PRs #442, #447, #448, #449, #450 and #452.",
+    "2026-09-29 PR #454 added a read-only live UI Playwright audit; PRs #455–#459 reduced production viewport density and fixed real Review Inbox scrolling.",
+    "2026-09-30 PRs #460–#462 rebuilt Review Inbox as a split-view decision workspace and simplified human choices to Apply, Reject, or leave pending.",
+    "2026-09-30 PR #463 redesigned Market Insights as an action-oriented dashboard with real application/interview metrics.",
+    "2026-09-30 PR #464 unified discovery-batch review and aggregate intelligence refresh into one validated Unified AI Work Package round trip.",
+    "2026-09-30 PR #465 replaced browser-local strategy status with backend-owned GET /api/ai-status freshness across JOLT intelligence domains.",
+    "2026-09-30 PR #466 decoupled durable Applications from legacy Python Evaluation records.",
+    "2026-09-30 PR #467 made the Unified AI Work Package the sole authority for durable AI context updates; section exchanges and legacy AI routes remain deprecated compatibility/diagnostic surfaces.",
+    "2026-09-30 issue #441 UX stabilization closed completed after production/live-audit acceptance."
   ],
   "pending_milestones": [],
   "next_recommended_actions": [
-    "Replace the two acceptance-labelled saved searches with the real production search portfolio and use Saved LinkedIn Search Portfolio as the normal Capture Jobs workflow.",
-    "Tune saved-search labels/filters based on precision and actionable yield; keep each search within the certified 100 jobs / 10 pages ceiling unless separately revalidated.",
-    "After the real LinkedIn portfolio is stable, prioritize the next product workstream (for example another job-board adapter or another operator-efficiency improvement) without reopening R-025."
+    "Use the normal Capture Jobs discovery workflow; each reviewed batch should now update per-job reviews and stale aggregate intelligence in one Unified AI Work Package round trip.",
+    "Use backend /api/ai-status as the freshness authority; do not treat browser localStorage receipts as product state.",
+    "Continue the planned product simplification sequence with Settings & Data, then Applications, driven by real operator friction rather than new architecture layers.",
+    "Retire legacy AI exports/imports only after a final compatibility checkpoint; do not add new product workflows to deprecated routes.",
+    "Keep .ai/ and PROJECT_MEMORY synchronized whenever architectural ownership or production workflow changes."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
     "real_ai_import": "2026-09-19 second real 100-job package imported successfully after strict sequential review: 95 reject, 1 strong_pursue, 1 pursue, 3 conditional; no internal repair reported.",
     "restart_persistence": "2026-09-19 full JOLT restart preserved the second-cycle imported review state, as confirmed by the operator.",
     "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened nested-scroll traversal contract and included later Licenses & certifications entries previously missed, including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity.",
-    "latest_contract_gate": "Main 4bad4608adbc5cb44787dec8be4dd784a04e618d passed all six push workflows after PR #420: CI, Playwright acceptance, Full-cycle Playwright certification, Production clean-install certification, Migration recovery certification, and Reproducible release certification.",
-    "remaining_runtime_acceptance": "None within the certified local-first single-user Windows production boundary. Final release-candidate workflows are configured to run on main pushes so the squash-merged release SHA itself is certified.",
+    "latest_contract_gate": "PR #467 exact head 57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6 passed backend, frontend (isolated rerun confirmed prior failure flaky), Playwright/sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before merge as 98953f63f7e836f100a6ef5f00c3ac5399a649f6.",
+    "remaining_runtime_acceptance": "None within the certified local-first single-user Windows production boundary. Current architecture changes preserve that boundary.",
     "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found.",
     "real_prospect_acceptance": "2026-09-20 REAL_PROSPECT_ACCEPTANCE.bat PASS on local main ca6af3b25cae181bc8b8ccd13fed45417eaf36de. Active DB unchanged. Backup/verify/restore passed; source/restored core counts matched before cleanup. Restored-copy guarded cleanup deleted 31 superseded capture runs and 1206 capture-only postings, preserved 53 retained postings, and protected application d2df157f-152b-4f54-9a8b-f04332e4074a plus posting 733f215d-b03d-4d4d-9cc3-7d83bee0c957 survived.",
     "linkedin_failure_recovery": "2026-09-21 JOLT_LINKEDIN_FAILURE_RECOVERY acceptance PASS: authwall authentication_required; authenticated LinkedIn jobs search 7 cards; forced offline network_failure; restored connectivity 7 cards; evidence file JOLT_LINKEDIN_FAILURE_RECOVERY_20260921_122015.json.",
