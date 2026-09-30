@@ -327,3 +327,100 @@ def test_import_rejects_ai_pass_when_source_evidence_is_deterministically_us_onl
 
         with pytest.raises(ValueError, match="deterministic source evidence"):
             import_ai_review(session, request)
+
+def test_contract_v12_also_enforces_deterministic_location_hardline(tmp_path) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'jolt-v12.db').as_posix()}"
+    factory = create_session_factory(database_url)
+    now = datetime.now(UTC)
+    raw_text = (
+        "Technical Support Engineer\n"
+        "Example\n"
+        "Location: United States\n"
+        "Applicants must be authorized to work in the United States."
+    )
+
+    with factory() as session:
+        source = SourceDocument(
+            id="source-v12-us",
+            source_type="linkedin",
+            source_url="https://example.com/v12-us",
+            raw_text=raw_text,
+            content_hash="b" * 64,
+            captured_at=now,
+        )
+        posting = Posting(
+            id="posting-v12-us",
+            source_document_id=source.id,
+            canonical_url=source.source_url,
+            identity_key="test:v12-us",
+            title="Technical Support Engineer",
+            company="Example",
+            location="United States",
+            description=raw_text,
+            identity_status="verified",
+            created_at=now,
+        )
+        capture = CaptureRun(
+            id="capture-v12-us",
+            source="linkedin",
+            mode="supervised_live",
+            status="completed",
+            search_url="https://example.com/search",
+            warnings_json="[]",
+            requested_item_limit=1,
+            observed_item_count=1,
+            stop_reason="completed",
+            started_at=now,
+            completed_at=now,
+        )
+        session.add_all([source, capture])
+        session.flush()
+        session.add(posting)
+        session.flush()
+        session.add(
+            CaptureItem(
+                id="capture-item-v12-us",
+                capture_run_id=capture.id,
+                source_job_id="job-v12-us",
+                source_url=source.source_url,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                detail_status="verified",
+                verification_reasons_json="[]",
+                source_document_id=source.id,
+                posting_id=posting.id,
+            )
+        )
+        session.commit()
+
+        misleading_pass = _base_job()
+        misleading_pass.update(
+            {
+                "posting_id": posting.id,
+                "source_job_id": "job-v12-us",
+                "source_conflict": False,
+                "linkedin_work_model": "unknown",
+                "official_work_model": "unknown",
+                "authoritative_source": "unknown",
+                "official_source_url": "",
+                "remote_status": "unknown",
+                "location_verification_status": "unverified",
+                "source_confidence": "unknown",
+            }
+        )
+        request = AIReviewImportRequest.model_validate(
+            {
+                "contract_type": "jolt_ai_review",
+                "contract_version": "1.2",
+                "capture_run_id": capture.id,
+                "review_source": "chatgpt_source_first",
+                "review_version": "hardline-v12-test",
+                "reviewed_at": now,
+                "jobs": [misleading_pass],
+            }
+        )
+
+        with pytest.raises(ValueError, match="deterministic source evidence"):
+            import_ai_review(session, request)
+
