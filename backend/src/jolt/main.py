@@ -485,6 +485,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.get(
         "/api/market-intelligence/preparation-pack",
         tags=["exports"],
+        deprecated=True,
     )
     def market_preparation_pack(
         session: Annotated[Session, Depends(get_session)],
@@ -502,6 +503,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/market-intelligence/preparation-import",
         response_model=MarketPreparationImportIndex,
         tags=["analysis"],
+        deprecated=True,
     )
     def market_preparation_imports() -> MarketPreparationImportIndex:
         return list_market_preparation_imports()
@@ -510,6 +512,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/market-intelligence/preparation-import",
         response_model=MarketPreparationImportResponse,
         tags=["analysis"],
+        deprecated=True,
     )
     def import_market_preparation_result(
         request: MarketPreparationImportRequest,
@@ -638,6 +641,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         "/api/ai-review/import",
         response_model=AIReviewImportResponse,
         tags=["ai-review"],
+        deprecated=True,
     )
     def ai_review_import(
         request: AIReviewImportRequest,
@@ -650,7 +654,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    @app.get("/api/exports/ai-review-pack", tags=["exports"])
+    @app.get("/api/exports/ai-review-pack", tags=["exports"], deprecated=True)
     def ai_review_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -664,7 +668,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": ("attachment; filename=JOLT_AI_REVIEW_INPUT.zip")},
         )
 
-    @app.get("/api/exports/ai-review-json", tags=["exports"])
+    @app.get("/api/exports/ai-review-json", tags=["exports"], deprecated=True)
     def ai_review_json(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -678,7 +682,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": "attachment; filename=JOLT_AI_REVIEW_INPUT.json"},
         )
 
-    @app.get("/api/exports/review-pack", tags=["exports"])
+    @app.get("/api/exports/review-pack", tags=["exports"], deprecated=True)
     def review_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
@@ -692,7 +696,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
             headers={"Content-Disposition": "attachment; filename=JOLT_REVIEW_PACK.zip"},
         )
 
-    @app.get("/api/exports/analysis-pack", tags=["exports"])
+    @app.get("/api/exports/analysis-pack", tags=["exports"], deprecated=True)
     def analysis_pack(
         session: Annotated[Session, Depends(get_session)],
     ) -> StreamingResponse:
