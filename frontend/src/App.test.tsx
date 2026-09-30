@@ -209,14 +209,18 @@ describe("App AI review workflow", () => {
       }),
     );
 
+    const dialog = screen.getByRole("dialog", {
+      name: "Application Support Engineer",
+    });
+
     expect(
-      screen.getByText(
+      within(dialog).getByText(
         "Strong application support fit.",
       ),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
+      within(dialog).getByText(
         "Spain-compatible employment.",
       ),
     ).toBeInTheDocument();
