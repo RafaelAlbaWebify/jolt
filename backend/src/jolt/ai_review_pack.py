@@ -175,7 +175,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             source_text=evidence_text,
         )
         language_signals = analyze_language_evidence(
-            source_text=evidence_text,
+            source_text=sanitize_capture_text(evidence_text),
             preferences=preferences,
         )
 
