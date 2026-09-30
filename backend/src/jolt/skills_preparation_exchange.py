@@ -18,7 +18,6 @@ from jolt.global_context import (
     build_global_context_snapshot,
     global_context_version,
     load_global_ai_context,
-    save_global_ai_context,
 )
 from jolt.market_preparation_import import (
     MarketPreparationAction,
@@ -27,6 +26,7 @@ from jolt.market_preparation_import import (
     import_market_preparation,
 )
 from jolt.preference_aware_evaluation import sanitize_capture_text
+from jolt.unified_context_policy import require_unified_context_authority
 
 _SKILLS_PATCH_KEYS = frozenset({"skills_gap_summary", "audit_summary"})
 _ACTION_TYPES = {
@@ -153,26 +153,22 @@ def build_skills_preparation_exchange(session: Session) -> AIExchangeInput:
                     "or interview_prep plus title, rationale, proposed_action, priority, and evidence_refs."
                 ),
             },
-            "context_patch": "Return only changed skills_gap_summary or audit_summary namespaces.",
+            "context_patch": (
+                "For the unified work-package workflow, place durable skills_gap_summary or "
+                "audit_summary changes in the package top-level context_patch. Section-level "
+                "context_patch must remain empty."
+            ),
             "summary": "Include executive_summary, highest_leverage_gaps, covered_strengths, and insufficient_evidence.",
         },
     )
 
 
 def _apply_skills_context_patch(output: AIExchangeOutput) -> GlobalAIContextOverlay:
-    unknown = sorted(set(output.context_patch) - _SKILLS_PATCH_KEYS)
-    if unknown:
-        raise ValueError(f"Skills context patch contains non-patchable keys: {', '.join(unknown)}")
-    current = load_global_ai_context()
-    update = current.model_dump()
-    for key, value in output.context_patch.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"Skills context namespace '{key}' must be an object")
-        update[key] = value
-    update["updated_at"] = output.reviewed_at
-    update["updated_by"] = f"chatgpt:{output.review_version}"
-    return save_global_ai_context(GlobalAIContextOverlay.model_validate(update))
-
+    require_unified_context_authority(
+        output,
+        section_label="Skills",
+    )
+    return load_global_ai_context()
 
 def _preparation_actions(output: AIExchangeOutput) -> list[MarketPreparationAction]:
     actions: list[MarketPreparationAction] = []
