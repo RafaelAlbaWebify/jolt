@@ -312,4 +312,3 @@ def test_verified_spain_wide_geography_does_not_require_remote_confirmation(
     assert summary["positive_candidates"] == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["jobs"] == []
-
