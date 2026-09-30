@@ -346,7 +346,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [moveNotice, setMoveNotice] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [closingPostingId, setClosingPostingId] = useState<string | null>(null);
   const [closeOutcome, setCloseOutcome] = useState("rejected_by_employer");
   const movingApplicationIds = useRef(new Set<string>());
@@ -430,6 +430,13 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     [visibleActiveCandidates],
   );
   const boardApplicationCount = LANES.reduce((total, lane) => total + grouped[lane.id].length, 0);
+  const applicationMetrics = {
+    active: grouped.preparing.length + grouped.applied.length + grouped.interviewing.length + grouped.offer.length,
+    interviewing: grouped.interviewing.length,
+    offers: grouped.offer.length,
+    overdue: visibleActiveCandidates.filter((item) => item.overdue).length,
+  };
+  const listApplications = [...visibleActiveCandidates].sort(newestActivityFirst);
   const selected = candidates.find((item) => item.posting_id === selectedPostingId) ?? null;
   const closingItem = activeCandidates.find((item) => item.posting_id === closingPostingId) ?? null;
 
@@ -671,6 +678,29 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
         </button>
       </div>
 
+      <section className="application-pipeline-metrics" aria-label="Application pipeline metrics">
+        <article>
+          <span>Active</span>
+          <strong>{applicationMetrics.active}</strong>
+          <small>Open applications</small>
+        </article>
+        <article>
+          <span>Interviewing</span>
+          <strong>{applicationMetrics.interviewing}</strong>
+          <small>In interview stages</small>
+        </article>
+        <article>
+          <span>Offers</span>
+          <strong>{applicationMetrics.offers}</strong>
+          <small>Open offers</small>
+        </article>
+        <article className={applicationMetrics.overdue > 0 ? "application-metric-attention" : ""}>
+          <span>Overdue</span>
+          <strong>{applicationMetrics.overdue}</strong>
+          <small>Need attention</small>
+        </article>
+      </section>
+
       <div className="application-board-toolbar">
         <label className="application-search">
           <span>Search</span>
@@ -681,22 +711,22 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <div className="application-density-toggle" role="group" aria-label="Application card density">
+        <div className="application-view-toggle" role="group" aria-label="Application view">
           <button
             type="button"
-            className={density === "compact" ? "application-density-active" : "secondary"}
-            aria-pressed={density === "compact"}
-            onClick={() => setDensity("compact")}
+            className={viewMode === "board" ? "application-view-active" : "secondary"}
+            aria-pressed={viewMode === "board"}
+            onClick={() => setViewMode("board")}
           >
-            Compact
+            Board
           </button>
           <button
             type="button"
-            className={density === "comfortable" ? "application-density-active" : "secondary"}
-            aria-pressed={density === "comfortable"}
-            onClick={() => setDensity("comfortable")}
+            className={viewMode === "list" ? "application-view-active" : "secondary"}
+            aria-pressed={viewMode === "list"}
+            onClick={() => setViewMode("list")}
           >
-            Comfortable
+            List
           </button>
         </div>
         <label className="professional-source-checkbox application-archive-toggle">
@@ -713,7 +743,8 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
       {error && <p className="error" role="alert">{error}</p>}
       {moveNotice && <p className="application-move-notice" role="status">{moveNotice}</p>}
 
-      <div className={`application-board application-board-${density}`} aria-label="Application pipeline board">
+      {viewMode === "board" ? (
+          <div className="application-board application-board-compact" aria-label="Application pipeline board">
         {boardApplicationCount === 0 && (
           <div className="application-board-empty-state">
             <strong>No active applications yet</strong>
@@ -796,7 +827,75 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             </div>
           </section>
         ))}
-      </div>
+          </div>
+      ) : (
+        <section className="application-list-view" aria-label="Application pipeline list">
+          {listApplications.length === 0 ? (
+            <div className="application-board-empty-state">
+              <strong>No active applications yet</strong>
+              <span>{query.trim() ? "No applications match this search." : "Move a suitable job from Review Inbox to start tracking it here."}</span>
+            </div>
+          ) : (
+            <>
+              <div className="application-list-header" aria-hidden="true">
+                <span>Application</span>
+                <span>Stage</span>
+                <span>Last activity</span>
+                <span>Next action</span>
+                <span>Move</span>
+              </div>
+              <div className="application-list-rows">
+                {listApplications.map((opportunity) => {
+                  const currentLane = activeLaneFor(opportunity);
+                  const targets = availableTargetLanes(opportunity);
+                  const company = opportunity.company || "Unknown company";
+                  return (
+                    <article
+                      className={`application-list-row${opportunity.overdue ? " application-list-row-overdue" : ""}`}
+                      key={opportunityIdentity(opportunity)}
+                    >
+                      <button
+                        type="button"
+                        className="application-list-open"
+                        onClick={() => openWorkspace(opportunity.posting_id)}
+                        aria-label={`Open ${opportunity.title || "untitled opportunity"}`}
+                      >
+                        <span className="application-company-mark" aria-hidden="true">
+                          {opportunity.company_logo_url ? <img src={opportunity.company_logo_url} alt="" /> : companyInitials(company)}
+                        </span>
+                        <span>
+                          <strong>{opportunity.title || "Untitled opportunity"}</strong>
+                          <small>{[company, opportunity.location].filter(Boolean).join(" · ")}</small>
+                        </span>
+                      </button>
+                      <span className="application-list-stage">{label(opportunity.outcome_type ?? opportunity.application_status)}</span>
+                      <span className="application-list-activity">{displayDate(opportunity.last_activity_at)}</span>
+                      <span className="application-list-next">
+                        <strong>{nextAction(opportunity)}</strong>
+                        <small>{opportunity.next_due_at ? displayDate(opportunity.next_due_at) : "No due date"}</small>
+                      </span>
+                      <label className="application-list-move">
+                        <span className="sr-only">Move stage</span>
+                        <select
+                          aria-label={`Move ${opportunity.title || "untitled opportunity"} to stage`}
+                          value={currentLane ?? "preparing"}
+                          disabled={targets.length <= 1 || busy}
+                          onChange={(event) => void moveApplication(opportunity, event.target.value as PipelineLane)}
+                        >
+                          {targets.map((targetLane) => {
+                            const target = LANES.find((laneItem) => laneItem.id === targetLane)!;
+                            return <option key={target.id} value={target.id}>{target.label}</option>;
+                          })}
+                        </select>
+                      </label>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {showArchived && (
         <section className="application-archived-section" aria-labelledby="application-archived-heading">
