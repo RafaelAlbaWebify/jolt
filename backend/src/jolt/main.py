@@ -46,6 +46,7 @@ from jolt.hardline_revalidation import (
     import_hardline_revalidation,
 )
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
+from jolt.indeed_live_capture import run_indeed_live_capture
 from jolt.job_search_preferences import (
     JobSearchPreferences,
     load_job_search_preferences,
@@ -108,6 +109,7 @@ from jolt.schemas import (
     CaptureRunResponse,
     CaptureRunSummary,
     IntakeResponse,
+    IndeedLiveCaptureRequest,
     LinkedInFixtureCaptureRequest,
     LinkedInLiveCaptureRequest,
     ManualIntakeRequest,
@@ -200,6 +202,13 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> CaptureRunResponse:
         return run_linkedin_live_capture(session, request)
+
+    @app.post("/api/captures/indeed/live", response_model=CaptureRunResponse, tags=["captures"])
+    def indeed_live_capture(
+        request: IndeedLiveCaptureRequest,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> CaptureRunResponse:
+        return run_indeed_live_capture(session, request)
 
     @app.get("/api/captures", response_model=list[CaptureRunSummary], tags=["captures"])
     def capture_history(
