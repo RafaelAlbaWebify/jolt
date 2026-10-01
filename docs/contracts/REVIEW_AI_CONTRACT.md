@@ -13,7 +13,10 @@ Pending Review Inbox, validated AI review metadata, separate human ReviewDecisio
 - process order: LinkedIn discovery -> official ATS/careers verification -> Stage 1 hardlines -> candidate evidence -> Stage 2 fit -> recommendation;
 - strict sequential per-job review for bulk packages;
 - REJECT/MANUAL_REVIEW stops fit;
-- deterministic hardline contradictions are rejected on import;
+- deterministic hardline contradictions are rejected on import for the current review contract, including location and language evidence;
+- job-ad language outside Spanish/English is a Stage 1 hard reject when confidently detected;
+- mandatory language requirements are compared against candidate language proficiency before fit scoring;
+- preferred/nice-to-have languages never hard reject; ambiguous language wording stops at MANUAL_REVIEW;
 - pursue/strong_pursue require resolved eligible geography and clear language/clearance;
 - duplicates cannot be positive;
 - every imported posting ID/source ID must belong to the intended capture;

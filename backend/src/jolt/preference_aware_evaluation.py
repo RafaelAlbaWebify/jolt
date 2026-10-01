@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from jolt import workflow
 from jolt.job_search_preferences import load_job_search_preferences
+from jolt.language_hardline import analyze_language_evidence
 
 EvaluationResult = tuple[str, str, int, list[str]]
 _ORIGINAL_EVALUATE_TEXT: Callable[[str], EvaluationResult] = workflow.evaluate_text
@@ -335,7 +336,8 @@ def _foreign_onsite_requirement(text: str) -> bool:
 def preference_blockers(text: str) -> list[str]:
     """Return deterministic blockers from the saved job-search preferences."""
     preferences = load_job_search_preferences()
-    lowered = " ".join(sanitize_capture_text(text).casefold().split())
+    sanitized = sanitize_capture_text(text)
+    lowered = " ".join(sanitized.casefold().split())
 
     blockers = [
         f"excluded keyword: {phrase}"
@@ -343,9 +345,22 @@ def preference_blockers(text: str) -> list[str]:
         if phrase.strip() and _excluded_keyword_matches(lowered, phrase)
     ]
 
+    language_evidence = analyze_language_evidence(
+        source_text=sanitized,
+        preferences=preferences,
+    )
     allowed_languages = {language.casefold() for language in preferences.languages}
-    for language in _required_languages(lowered, allowed_languages):
-        blockers.append(f"required language outside current preferences: {language}")
+    for requirement in language_evidence.requirements:
+        if requirement.classification != "required":
+            continue
+        if any(language.casefold() in allowed_languages for language in requirement.languages):
+            continue
+        for language in requirement.languages:
+            blockers.append(f"required language outside current preferences: {language.casefold()}")
+    if language_evidence.document_language_status == "unsupported":
+        blockers.append(
+            f"unsupported job-ad language: {language_evidence.document_language.casefold()}"
+        )
 
     for shift in preferences.excluded_shifts:
         patterns = _SHIFT_PATTERNS.get(shift, ())

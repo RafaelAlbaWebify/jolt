@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 WorkMode = Literal["remote", "hybrid", "onsite"]
 ShiftPreference = Literal["business_hours", "flexible", "evening", "night", "rotating", "weekend"]
 WorkloadPreference = Literal["normal", "high", "unknown"]
+LanguageLevel = Literal["basic", "conversational", "professional", "fluent", "native"]
 
 
 def _data_path() -> Path:
@@ -34,6 +35,12 @@ class JobSearchPreferences(BaseModel):
         default_factory=lambda: ["Spain", "Ireland", "United Kingdom", "European Union"]
     )
     languages: list[str] = Field(default_factory=lambda: ["Spanish", "English"])
+    language_levels: dict[str, LanguageLevel] = Field(
+        default_factory=lambda: {
+            "Spanish": "native",
+            "English": "professional",
+        }
+    )
     expected_salary_eur_min: int | None = Field(default=35000, ge=0, le=250000)
     expected_salary_eur_target: int | None = Field(default=45000, ge=0, le=250000)
     preferred_shifts: list[ShiftPreference] = Field(

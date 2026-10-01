@@ -21,6 +21,9 @@ from jolt.database import (
 )
 from jolt.errors import JoltNotFoundError
 from jolt.hardline_evidence import analyze_location_evidence
+from jolt.job_search_preferences import load_job_search_preferences
+from jolt.language_hardline import analyze_language_evidence
+from jolt.preference_aware_evaluation import sanitize_capture_text
 
 AIReviewDecision = Literal[
     "strong_pursue",
@@ -400,7 +403,7 @@ def _validate_capture_membership(
         if posting is None:
             raise ValueError(f"AI review references unknown posting: {job.posting_id}")
 
-        if request.contract_version == "1.1":
+        if request.contract_version in {"1.1", "1.2"}:
             source_document = session.get(SourceDocument, posting.source_document_id)
             source_text = (
                 source_document.raw_text if source_document is not None else posting.description
@@ -419,6 +422,35 @@ def _validate_capture_membership(
                 evidence = "; ".join(deterministic_location.negative_evidence)
                 raise ValueError(
                     "AI review conflicts with deterministic source evidence for "
+                    f"{job.posting_id}: {evidence}"
+                )
+
+            deterministic_language = analyze_language_evidence(
+                source_text=sanitize_capture_text(source_text),
+                preferences=load_job_search_preferences(),
+            )
+            if deterministic_language.hardline_reject and (
+                job.hardline_status != "REJECT"
+                or job.language_status != "blocked"
+                or job.final_decision != "reject"
+                or job.fit_analysis_allowed
+                or job.technical_fit_percent is not None
+            ):
+                evidence = "; ".join(deterministic_language.reasons)
+                raise ValueError(
+                    "AI review conflicts with deterministic language evidence for "
+                    f"{job.posting_id}: {evidence}"
+                )
+            if deterministic_language.manual_review and (
+                job.hardline_status != "MANUAL_REVIEW"
+                or job.language_status != "conditional"
+                or job.final_decision not in {"conditional", "reject"}
+                or job.fit_analysis_allowed
+                or job.technical_fit_percent is not None
+            ):
+                evidence = "; ".join(deterministic_language.reasons)
+                raise ValueError(
+                    "AI review conflicts with ambiguous language evidence for "
                     f"{job.posting_id}: {evidence}"
                 )
 
@@ -487,6 +519,26 @@ def import_ai_review(
 
     for job in request.jobs:
         review = existing_reviews.get(job.posting_id)
+        posting = session.get(Posting, job.posting_id)
+        source_document = (
+            session.get(SourceDocument, posting.source_document_id) if posting is not None else None
+        )
+        source_text = (
+            source_document.raw_text
+            if source_document is not None
+            else posting.description
+            if posting is not None
+            else ""
+        )
+        deterministic_language = analyze_language_evidence(
+            source_text=sanitize_capture_text(source_text),
+            preferences=load_job_search_preferences(),
+        )
+        stored_hardline_reasons = list(job.hardline_reasons)
+        for reason in deterministic_language.reasons:
+            if reason not in stored_hardline_reasons:
+                stored_hardline_reasons.append(reason)
+
         values = {
             "source_job_id": job.source_job_id,
             "review_version": request.review_version,
@@ -506,7 +558,7 @@ def import_ai_review(
             "location_verification_status": job.location_verification_status,
             "source_confidence": job.source_confidence,
             "hardline_status": job.hardline_status,
-            "hardline_reasons_json": json.dumps(job.hardline_reasons, ensure_ascii=False),
+            "hardline_reasons_json": json.dumps(stored_hardline_reasons, ensure_ascii=False),
             "location_eligibility": job.location_eligibility,
             "location_evidence_json": json.dumps(job.location_evidence, ensure_ascii=False),
             "mandatory_requirements_json": _requirement_json(job.mandatory_requirements),
