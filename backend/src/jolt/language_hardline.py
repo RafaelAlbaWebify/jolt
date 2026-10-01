@@ -31,6 +31,7 @@ _LANGUAGE_ALIASES: dict[str, tuple[str, ...]] = {
     "Dutch": _aliases("dutch nederlands niederländisch niederlaendisch neerlandés neerlandes"),
     "Italian": _aliases("italian italiano italienisch italien"),
     "Portuguese": _aliases("portuguese português portugues portugiesisch"),
+    "Maltese": _aliases("maltese malti"),
     "Swedish": _aliases("swedish svenska schwedisch"),
     "Danish": _aliases("danish dansk dänisch daenisch"),
     "Norwegian": _aliases("norwegian norsk norwegisch"),
@@ -87,6 +88,8 @@ _REQUIRED_MARKERS = (
     "fluido",
     "fluida",
     "nivel profesional",
+    "dominas",
+    "domina",
     "erforderlich",
     "zwingend",
     "voraussetzung",
@@ -112,6 +115,7 @@ _REQUIRED_MARKERS = (
 
 _PREFERRED_MARKERS = (
     "preferred",
+    "not required",
     "nice to have",
     "a plus",
     "is a plus",
@@ -250,8 +254,8 @@ _LEVEL_ORDER = {
     "b1": 2,
     "conversational": 2,
     "b2": 3,
-    "professional": 3,
-    "very_good": 3,
+    "professional": 4,
+    "very_good": 4,
     "c1": 4,
     "fluent": 4,
     "c2": 5,
@@ -387,13 +391,38 @@ def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None
     nearest_preferred = min((_distance(position, marker) for marker in preferred), default=999)
     nearest_required = min((_distance(position, marker) for marker in required), default=999)
 
-    if nearest_preferred <= 45 and nearest_preferred < nearest_required:
+    # Explicit optionality wins over proficiency adjectives such as "native":
+    # "Native Dutch is preferred but not required" must never become a blocker.
+    if nearest_preferred <= 60:
         return "preferred"
+
+    before = segment[max(0, position - 55) : position]
+    after = segment[position : min(len(segment), position + 65)]
+
+    # "French-speaking", "Maltese speaker", etc. are direct role requirements.
+    if re.search(r"^\S{0,30}[-\s]+(?:speaking|speaker)\b", after, re.I):
+        return "required"
+
+    # Spanish possession wording used by real adverts: "Dominas ... catalán".
+    if re.search(r"\bdominas?\b", before, re.I):
+        return "required"
+
     if nearest_required <= 80:
         return "required"
 
-    folded = segment.casefold()
-    if any(marker in folded for marker in _LANGUAGE_SKILL_MARKERS):
+    # Ambiguity is local to the language mention. Do not let wording about one
+    # language contaminate another mention elsewhere in the sentence.
+    after_skill = re.search(
+        r"\b(?:language|skills?|spoken|written|knowledge|command|kenntnisse)\b",
+        after[:45],
+        re.I,
+    )
+    before_skill = re.search(
+        r"\b(?:language|skills?|spoken|written|knowledge\s+of|command\s+of)\b[^.;:]{0,24}$",
+        before,
+        re.I,
+    )
+    if after_skill or before_skill:
         return "ambiguous"
     return None
 
