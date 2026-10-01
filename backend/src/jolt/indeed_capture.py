@@ -425,7 +425,9 @@ def run_capture(
                     )
                     if not panel_ready and verified:
                         verified = False
-                        reason = "Indeed detail panel did not become stable after the listing click."
+                        reason = (
+                            "Indeed detail panel did not become stable after the listing click."
+                        )
                     detail_html = page.content() if verified else ""
                     with contextlib.suppress(Exception):
                         page.screenshot(
