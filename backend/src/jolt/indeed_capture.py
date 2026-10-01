@@ -326,10 +326,21 @@ def submit_capture(
         with urllib.request.urlopen(request, timeout=180) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        if exc.code == 404:
+            return {
+                "submitted": False,
+                "status_code": exc.code,
+                "error": (
+                    "Indeed capture endpoint was not found in the running JOLT backend. "
+                    "Restart the backend after updating JOLT, then retry."
+                ),
+                "response": body,
+            }
         return {
             "submitted": False,
             "status_code": exc.code,
-            "error": exc.read().decode("utf-8", errors="replace"),
+            "error": body,
         }
     except Exception as exc:
         return {"submitted": False, "error": str(exc)}
