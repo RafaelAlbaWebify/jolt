@@ -411,7 +411,12 @@ def _section_kind(segment: str, position: int) -> LanguageRequirementKind | None
     return "preferred" if latest_preferred > latest_required else "required"
 
 
-def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None:
+def _nearest_kind(
+    segment: str,
+    position: int,
+    *,
+    section_kind: LanguageRequirementKind | None = None,
+) -> LanguageRequirementKind | None:
     preferred = _marker_positions(segment, _PREFERRED_MARKERS)
     required = _marker_positions(segment, _REQUIRED_MARKERS)
     cefr = [(match.start(), match.end()) for match in re.finditer(r"\b[ABC][12]\b", segment, re.I)]
@@ -425,8 +430,9 @@ def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None
     if nearest_preferred <= 60:
         return "preferred"
 
-    section_kind = _section_kind(segment, position)
-    if section_kind == "preferred":
+    local_section_kind = _section_kind(segment, position)
+    effective_section_kind = local_section_kind or section_kind
+    if effective_section_kind == "preferred":
         return "preferred"
 
     before = segment[max(0, position - 55) : position]
@@ -443,7 +449,7 @@ def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None
     if nearest_required <= 80:
         return "required"
 
-    if section_kind == "required":
+    if effective_section_kind == "required":
         return "required"
 
     # Ambiguity is local to the language mention. Do not let wording about one
@@ -523,9 +529,20 @@ def _alternative_group_indexes(
 
 def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidence, ...]:
     results: list[LanguageRequirementEvidence] = []
+    active_section_kind: LanguageRequirementKind | None = None
 
     for raw_segment in _segments(text):
         segment = _normalise(raw_segment)
+
+        preferred_section = _PREFERRED_SECTION_PATTERN.search(segment)
+        required_section = _REQUIRED_SECTION_PATTERN.search(segment)
+        if preferred_section or required_section:
+            preferred_position = preferred_section.start() if preferred_section else -1
+            required_position = required_section.start() if required_section else -1
+            active_section_kind = (
+                "preferred" if preferred_position > required_position else "required"
+            )
+
         mentions = _language_mentions(segment)
         if not mentions:
             continue
@@ -540,7 +557,14 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
 
             if len(alternatives) > 1:
                 consumed.update(alternative_indexes)
-                kinds = [_nearest_kind(segment, mentions[i][1]) for i in alternative_indexes]
+                kinds = [
+                    _nearest_kind(
+                        segment,
+                        mentions[i][1],
+                        section_kind=active_section_kind,
+                    )
+                    for i in alternative_indexes
+                ]
                 if all(kind is None for kind in kinds):
                     continue
                 classification: LanguageRequirementKind = (
@@ -564,7 +588,11 @@ def extract_language_requirements(text: str) -> tuple[LanguageRequirementEvidenc
                 )
                 continue
 
-            single_classification = _nearest_kind(segment, start)
+            single_classification = _nearest_kind(
+                segment,
+                start,
+                section_kind=active_section_kind,
+            )
             if single_classification is None:
                 continue
             level = _minimum_level(segment, start)
