@@ -78,4 +78,3 @@ def test_indeed_live_capture_ingests_verified_posting(tmp_path: Path) -> None:
     assert payload["items"][0]["detail_status"] == "verified"
     assert payload["items"][0]["posting_id"]
     assert payload["items"][0]["source_document_id"]
-
