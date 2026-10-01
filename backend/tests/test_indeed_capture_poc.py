@@ -38,3 +38,45 @@ def test_indeed_capture_contract_is_bounded_to_ten_jobs() -> None:
     request = IndeedLiveCaptureRequest.model_validate(payload)
     assert request.items[0].source_job_id == "abc123"
     assert request.requested_item_limit == 1
+
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from jolt.main import create_app
+
+
+def test_indeed_live_capture_ingests_verified_posting(tmp_path: Path) -> None:
+    client = TestClient(create_app(f"sqlite:///{(tmp_path / 'indeed.db').as_posix()}"))
+    response = client.post(
+        "/api/captures/indeed/live",
+        json={
+            "search_url": "https://es.indeed.com/jobs?q=it+support",
+            "requested_item_limit": 1,
+            "stop_reason": "requested_limit_reached",
+            "items": [
+                {
+                    "source_job_id": "6679e1407fc705be",
+                    "source_url": "https://es.indeed.com/viewjob?jk=6679e1407fc705be",
+                    "title": "Técnico/a IT Junior Soporte con inglés",
+                    "company": "knowmad mood",
+                    "location": "Las Rozas de Madrid",
+                    "description": (
+                        "Resolución de incidencias técnicas de primer nivel. "
+                        "Administración básica de sistemas y atención a usuarios."
+                    ),
+                    "identity_verified": True,
+                    "verification_reason": "",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "indeed"
+    assert payload["verified_items"] == 1
+    assert payload["items"][0]["detail_status"] == "verified"
+    assert payload["items"][0]["posting_id"]
+    assert payload["items"][0]["source_document_id"]
+
