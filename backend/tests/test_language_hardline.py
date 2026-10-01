@@ -256,9 +256,7 @@ def test_preferred_qualifications_section_does_not_create_language_reject() -> N
     assert result.hardline_reject is False
     assert result.manual_review is False
     multilingual = [
-        item
-        for item in result.requirements
-        if item.languages == ("Spanish", "Arabic", "French")
+        item for item in result.requirements if item.languages == ("Spanish", "Arabic", "French")
     ]
     assert multilingual
     assert multilingual[0].classification == "preferred"
@@ -285,9 +283,7 @@ def test_comma_or_language_list_keeps_all_alternatives() -> None:
 
     assert result.hardline_reject is False
     requirement = next(
-        item
-        for item in result.requirements
-        if item.languages == ("German", "French", "Spanish")
+        item for item in result.requirements if item.languages == ("German", "French", "Spanish")
     )
     assert requirement.classification == "required"
 
@@ -323,4 +319,3 @@ def test_scriptpro_wording_does_not_false_reject_language() -> None:
 
     assert result.hardline_reject is False
     assert result.manual_review is False
-
