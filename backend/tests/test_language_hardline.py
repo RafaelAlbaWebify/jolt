@@ -242,6 +242,7 @@ def test_catalan_written_job_is_not_treated_as_spanish() -> None:
     assert status == "unsupported"
     assert confidence >= 0.7
 
+
 def test_preferred_qualifications_section_does_not_create_language_reject() -> None:
     result = analyze_language_evidence(
         source_text=(
