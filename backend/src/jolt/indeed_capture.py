@@ -1,0 +1,431 @@
+from __future__ import annotations
+
+import argparse
+import contextlib
+import html
+import json
+import re
+import shutil
+import sys
+import tempfile
+import urllib.error
+import urllib.request
+from dataclasses import asdict
+from datetime import UTC, datetime
+from pathlib import Path
+from urllib.parse import parse_qs, urljoin, urlparse
+
+from playwright.sync_api import Page, sync_playwright
+from pydantic import ValidationError
+
+from jolt.schemas import IndeedLiveCaptureItemRequest, IndeedLiveCaptureRequest
+from jolt.supervised_capture import CapturedCard, package_run, redact_text
+
+DEFAULT_SEARCH_URL = "https://es.indeed.com/jobs"
+DEFAULT_API_URL = "http://127.0.0.1:8000"
+
+
+def extract_indeed_job_key(value: str) -> str:
+    if not value.strip():
+        return ""
+    parsed = urlparse(value.strip())
+    if not parsed.hostname or "indeed." not in parsed.hostname.casefold():
+        return ""
+    query = parse_qs(parsed.query)
+    for key in ("jk", "vjk"):
+        values = query.get(key)
+        if values and values[0].strip():
+            return values[0].strip()
+    return ""
+
+
+def canonical_indeed_job_url(value: str) -> str:
+    key = extract_indeed_job_key(value)
+    return f"https://es.indeed.com/viewjob?jk={key}" if key else value.strip()
+
+
+def _text(locator) -> str:
+    try:
+        return " ".join(locator.inner_text(timeout=2_000).split())
+    except Exception:
+        return ""
+
+
+def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str]]:
+    anchors = page.locator("a[href*='viewjob'][href*='jk='], a[href*='jk=']")
+    candidates: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        count = min(anchors.count(), 100)
+    except Exception:
+        return []
+
+    for index in range(count):
+        anchor = anchors.nth(index)
+        try:
+            if not anchor.is_visible():
+                continue
+        except Exception:
+            continue
+        href = anchor.get_attribute("href") or ""
+        absolute = urljoin(page.url, href)
+        source_job_id = extract_indeed_job_key(absolute)
+        if not source_job_id or source_job_id in seen:
+            continue
+        title = _text(anchor) or (anchor.get_attribute("aria-label") or "").strip()
+        if not title:
+            continue
+        seen.add(source_job_id)
+        candidates.append(
+            {
+                "source_job_id": source_job_id,
+                "source_url": canonical_indeed_job_url(absolute),
+                "title": title[:240],
+            }
+        )
+        if len(candidates) >= max_jobs:
+            break
+    return candidates
+
+
+def _strip_html(value: str) -> str:
+    value = re.sub(r"<\s*br\s*/?>", "\n", value, flags=re.I)
+    value = re.sub(r"</\s*(?:p|li|div|h\d)\s*>", "\n", value, flags=re.I)
+    value = re.sub(r"<[^>]+>", " ", value)
+    return "\n".join(
+        line.strip() for line in html.unescape(value).splitlines() if line.strip()
+    )
+
+
+def _jobposting_jsonld(page: Page) -> dict[str, object]:
+    scripts = page.locator("script[type='application/ld+json']")
+    try:
+        count = min(scripts.count(), 20)
+    except Exception:
+        return {}
+    for index in range(count):
+        try:
+            raw = scripts.nth(index).text_content(timeout=1_000) or ""
+            parsed = json.loads(raw)
+        except Exception:
+            continue
+        queue = parsed if isinstance(parsed, list) else [parsed]
+        while queue:
+            item = queue.pop(0)
+            if not isinstance(item, dict):
+                continue
+            if item.get("@type") == "JobPosting":
+                return item
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                queue.extend(graph)
+    return {}
+
+
+def _location_from_jsonld(data: dict[str, object]) -> str:
+    raw = data.get("jobLocation")
+    locations = raw if isinstance(raw, list) else [raw]
+    parts: list[str] = []
+    for location in locations:
+        if not isinstance(location, dict):
+            continue
+        address = location.get("address")
+        if not isinstance(address, dict):
+            continue
+        chunk = ", ".join(
+            str(address.get(key, "")).strip()
+            for key in ("streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry")
+            if str(address.get(key, "")).strip()
+        )
+        if chunk and chunk not in parts:
+            parts.append(chunk)
+    return " | ".join(parts)
+
+
+def _detail_fields(page: Page, expected_id: str, expected_title: str) -> tuple[str, str, str, str, bool, str]:
+    current_id = extract_indeed_job_key(page.url)
+    data = _jobposting_jsonld(page)
+
+    title = str(data.get("title", "") or "").strip()
+    company = ""
+    organization = data.get("hiringOrganization")
+    if isinstance(organization, dict):
+        company = str(organization.get("name", "") or "").strip()
+    location = _location_from_jsonld(data)
+    description = _strip_html(str(data.get("description", "") or ""))
+
+    if not title:
+        title = _text(page.locator("h1").first)
+    if not company:
+        for selector in (
+            "[data-company-name='true']",
+            "[data-testid='inlineHeader-companyName']",
+            "div[data-testid='jobsearch-CompanyInfoContainer'] a",
+        ):
+            value = _text(page.locator(selector).first)
+            if value:
+                company = value
+                break
+    if not location:
+        for selector in (
+            "[data-testid='job-location']",
+            "[data-testid='inlineHeader-companyLocation']",
+            "div[data-testid='jobsearch-JobInfoHeader-companyLocation']",
+        ):
+            value = _text(page.locator(selector).first)
+            if value:
+                location = value
+                break
+    if not description:
+        description = _text(page.locator("#jobDescriptionText").first)
+
+    reasons: list[str] = []
+    if current_id != expected_id:
+        reasons.append(
+            f"Indeed detail job key {current_id or '<missing>'} does not match expected {expected_id}."
+        )
+    if expected_title and title and expected_title.casefold() != title.casefold():
+        # Indeed sometimes decorates card titles. A containment match is still acceptable.
+        left = " ".join(expected_title.split()).casefold()
+        right = " ".join(title.split()).casefold()
+        if left not in right and right not in left:
+            reasons.append(f"Detail title '{title}' does not match listing title '{expected_title}'.")
+    if not description:
+        reasons.append("Indeed detail page contained no usable job description.")
+
+    return title or expected_title, company, location, description, not reasons, " | ".join(reasons)
+
+
+def _access_warning(page: Page) -> str | None:
+    url = page.url.casefold()
+    body = ""
+    with contextlib.suppress(Exception):
+        body = page.locator("body").inner_text(timeout=2_000).casefold()
+    markers = (
+        "captcha",
+        "verify you are human",
+        "unusual activity",
+        "access denied",
+        "too many requests",
+    )
+    if any(marker in url or marker in body for marker in markers):
+        return "Indeed presented an access challenge or automation warning."
+    return None
+
+
+def build_submit_payload(cards: list[CapturedCard], search_url: str, max_jobs: int) -> dict[str, object]:
+    return {
+        "search_url": search_url,
+        "requested_item_limit": max_jobs,
+        "stop_reason": "requested_limit_reached" if len(cards) >= max_jobs else "visible_jobs_exhausted",
+        "items": [
+            {
+                "source_job_id": card.source_job_id,
+                "source_url": card.source_url,
+                "title": card.title,
+                "company": card.company,
+                "location": card.location,
+                "description": card.description,
+                "identity_verified": card.identity_verified,
+                "verification_reason": card.verification_reason,
+            }
+            for card in cards
+        ],
+    }
+
+
+def submit_capture(api_url: str, cards: list[CapturedCard], search_url: str, max_jobs: int) -> dict[str, object]:
+    payload = build_submit_payload(cards, search_url, max_jobs)
+    try:
+        validated = IndeedLiveCaptureRequest.model_validate(payload)
+        for item in validated.items:
+            IndeedLiveCaptureItemRequest.model_validate(item)
+    except ValidationError as exc:
+        return {"submitted": False, "stage": "local_validation", "validation_errors": json.loads(exc.json(include_url=False))}
+
+    request = urllib.request.Request(
+        f"{api_url.rstrip('/')}/api/captures/indeed/live",
+        data=json.dumps(validated.model_dump(mode="json")).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return {"submitted": False, "status_code": exc.code, "error": exc.read().decode("utf-8", errors="replace")}
+    except Exception as exc:
+        return {"submitted": False, "error": str(exc)}
+
+
+def run_capture(
+    *,
+    search_url: str,
+    api_url: str,
+    profile_dir: Path,
+    output_zip: Path,
+    max_jobs: int,
+    pause_for_login: bool,
+) -> Path:
+    staging_dir = Path(tempfile.mkdtemp(prefix="jolt_indeed_"))
+    evidence_dir = staging_dir / "evidence"
+    evidence_dir.mkdir(parents=True)
+    try:
+        with sync_playwright() as playwright:
+            context = playwright.chromium.launch_persistent_context(
+                user_data_dir=profile_dir,
+                headless=False,
+                viewport={"width": 1440, "height": 1000},
+            )
+            page = context.pages[0] if context.pages else context.new_page()
+            tracing = False
+            try:
+                context.tracing.start(screenshots=True, snapshots=True, sources=False)
+                tracing = True
+                page.goto(search_url, wait_until="domcontentloaded", timeout=60_000)
+                warning = _access_warning(page)
+                if warning:
+                    raise RuntimeError(warning)
+                page.screenshot(path=evidence_dir / "01_search_opened.png", full_page=False)
+
+                if pause_for_login:
+                    print("Indeed is open in a persistent local browser profile.")
+                    print("Log in if desired and apply the search filters you want.")
+                    input("Press Enter to capture the currently visible Indeed jobs: ")
+
+                effective_search_url = page.url
+                candidates = _visible_listing_candidates(page, max_jobs)
+                if not candidates:
+                    raise RuntimeError("No visible Indeed job links with durable job keys were found.")
+
+                cards: list[CapturedCard] = []
+                for position, candidate in enumerate(candidates, 1):
+                    source_job_id = candidate["source_job_id"]
+                    source_url = candidate["source_url"]
+                    title_hint = candidate["title"]
+                    page.goto(source_url, wait_until="domcontentloaded", timeout=60_000)
+                    warning = _access_warning(page)
+                    if warning:
+                        raise RuntimeError(warning)
+                    page.wait_for_timeout(800)
+                    title, company, location, description, verified, reason = _detail_fields(
+                        page, source_job_id, title_hint
+                    )
+                    detail_html = page.content() if verified else ""
+                    with contextlib.suppress(Exception):
+                        page.screenshot(
+                            path=evidence_dir / f"job_{source_job_id}.png",
+                            full_page=False,
+                            timeout=5_000,
+                        )
+                    cards.append(
+                        CapturedCard(
+                            source_job_id,
+                            canonical_indeed_job_url(page.url),
+                            title,
+                            company,
+                            location,
+                            detail_html,
+                            description,
+                            verified,
+                            reason,
+                            result_position=position,
+                            page_number=1,
+                            card_index=position - 1,
+                        )
+                    )
+
+                context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
+                tracing = False
+
+                summary = {
+                    "source": "indeed",
+                    "search_url": effective_search_url,
+                    "captured_at": datetime.now(UTC).isoformat(),
+                    "max_jobs": max_jobs,
+                    "captured_count": len(cards),
+                    "verified_count": sum(card.identity_verified for card in cards),
+                    "stop_reason": (
+                        "requested_limit_reached"
+                        if len(cards) >= max_jobs
+                        else "visible_jobs_exhausted"
+                    ),
+                    "cards": [
+                        asdict(card) | {"detail_html": "[stored separately]", "description": "[submitted]"}
+                        for card in cards
+                    ],
+                }
+                (staging_dir / "capture_summary.json").write_text(
+                    json.dumps(summary, indent=2, ensure_ascii=True), encoding="utf-8"
+                )
+                for card in cards:
+                    if card.detail_html:
+                        (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
+                            redact_text(card.detail_html), encoding="utf-8"
+                        )
+
+                api_result = submit_capture(api_url, cards, effective_search_url, max_jobs)
+                (staging_dir / "api_result.json").write_text(
+                    json.dumps(api_result, indent=2, ensure_ascii=True), encoding="utf-8"
+                )
+                (staging_dir / "run.log").write_text(
+                    redact_text(
+                        "\n".join(
+                            [
+                                f"Captured {len(cards)} visible Indeed jobs.",
+                                f"Verified {sum(card.identity_verified for card in cards)} detail pages.",
+                                f"API result: {api_result.get('status', api_result.get('error', 'completed'))}",
+                            ]
+                        )
+                    ),
+                    encoding="utf-8",
+                )
+            finally:
+                if tracing:
+                    with contextlib.suppress(Exception):
+                        context.tracing.stop(path=evidence_dir / "playwright_trace.zip")
+                with contextlib.suppress(Exception):
+                    context.close()
+
+        return package_run(staging_dir, output_zip)
+    except Exception as exc:
+        (staging_dir / "failure.json").write_text(
+            json.dumps({"error_type": type(exc).__name__, "error": str(exc)}, indent=2),
+            encoding="utf-8",
+        )
+        package_run(staging_dir, output_zip)
+        raise
+    finally:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run a bounded supervised Indeed capture POC.")
+    parser.add_argument("--search-url", default=DEFAULT_SEARCH_URL)
+    parser.add_argument("--api-url", default=DEFAULT_API_URL)
+    parser.add_argument("--profile-dir", type=Path, required=True)
+    parser.add_argument("--output-zip", type=Path, required=True)
+    parser.add_argument("--max-jobs", type=int, default=5)
+    parser.add_argument("--no-login-pause", action="store_true")
+    args = parser.parse_args(argv)
+    if args.max_jobs < 1 or args.max_jobs > 10:
+        parser.error("--max-jobs must be between 1 and 10 for the Indeed POC.")
+    return args
+
+
+def main() -> int:
+    args = parse_args(sys.argv[1:])
+    output = run_capture(
+        search_url=args.search_url,
+        api_url=args.api_url,
+        profile_dir=args.profile_dir,
+        output_zip=args.output_zip,
+        max_jobs=args.max_jobs,
+        pause_for_login=not args.no_login_pause,
+    )
+    print(f"Indeed capture package created: {output}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
