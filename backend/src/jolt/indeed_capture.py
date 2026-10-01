@@ -92,9 +92,7 @@ def _strip_html(value: str) -> str:
     value = re.sub(r"<\s*br\s*/?>", "\n", value, flags=re.I)
     value = re.sub(r"</\s*(?:p|li|div|h\d)\s*>", "\n", value, flags=re.I)
     value = re.sub(r"<[^>]+>", " ", value)
-    return "\n".join(
-        line.strip() for line in html.unescape(value).splitlines() if line.strip()
-    )
+    return "\n".join(line.strip() for line in html.unescape(value).splitlines() if line.strip())
 
 
 def _jobposting_jsonld(page: Page) -> dict[str, object]:
@@ -134,7 +132,13 @@ def _location_from_jsonld(data: dict[str, object]) -> str:
             continue
         chunk = ", ".join(
             str(address.get(key, "")).strip()
-            for key in ("streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry")
+            for key in (
+                "streetAddress",
+                "addressLocality",
+                "addressRegion",
+                "postalCode",
+                "addressCountry",
+            )
             if str(address.get(key, "")).strip()
         )
         if chunk and chunk not in parts:
@@ -142,7 +146,9 @@ def _location_from_jsonld(data: dict[str, object]) -> str:
     return " | ".join(parts)
 
 
-def _detail_fields(page: Page, expected_id: str, expected_title: str) -> tuple[str, str, str, str, bool, str]:
+def _detail_fields(
+    page: Page, expected_id: str, expected_title: str
+) -> tuple[str, str, str, str, bool, str]:
     current_id = extract_indeed_job_key(page.url)
     data = _jobposting_jsonld(page)
 
@@ -189,7 +195,9 @@ def _detail_fields(page: Page, expected_id: str, expected_title: str) -> tuple[s
         left = " ".join(expected_title.split()).casefold()
         right = " ".join(title.split()).casefold()
         if left not in right and right not in left:
-            reasons.append(f"Detail title '{title}' does not match listing title '{expected_title}'.")
+            reasons.append(
+                f"Detail title '{title}' does not match listing title '{expected_title}'."
+            )
     if not description:
         reasons.append("Indeed detail page contained no usable job description.")
 
@@ -213,11 +221,15 @@ def _access_warning(page: Page) -> str | None:
     return None
 
 
-def build_submit_payload(cards: list[CapturedCard], search_url: str, max_jobs: int) -> dict[str, object]:
+def build_submit_payload(
+    cards: list[CapturedCard], search_url: str, max_jobs: int
+) -> dict[str, object]:
     return {
         "search_url": search_url,
         "requested_item_limit": max_jobs,
-        "stop_reason": "requested_limit_reached" if len(cards) >= max_jobs else "visible_jobs_exhausted",
+        "stop_reason": "requested_limit_reached"
+        if len(cards) >= max_jobs
+        else "visible_jobs_exhausted",
         "items": [
             {
                 "source_job_id": card.source_job_id,
@@ -234,14 +246,20 @@ def build_submit_payload(cards: list[CapturedCard], search_url: str, max_jobs: i
     }
 
 
-def submit_capture(api_url: str, cards: list[CapturedCard], search_url: str, max_jobs: int) -> dict[str, object]:
+def submit_capture(
+    api_url: str, cards: list[CapturedCard], search_url: str, max_jobs: int
+) -> dict[str, object]:
     payload = build_submit_payload(cards, search_url, max_jobs)
     try:
         validated = IndeedLiveCaptureRequest.model_validate(payload)
         for item in validated.items:
             IndeedLiveCaptureItemRequest.model_validate(item)
     except ValidationError as exc:
-        return {"submitted": False, "stage": "local_validation", "validation_errors": json.loads(exc.json(include_url=False))}
+        return {
+            "submitted": False,
+            "stage": "local_validation",
+            "validation_errors": json.loads(exc.json(include_url=False)),
+        }
 
     request = urllib.request.Request(
         f"{api_url.rstrip('/')}/api/captures/indeed/live",
@@ -253,7 +271,11 @@ def submit_capture(api_url: str, cards: list[CapturedCard], search_url: str, max
         with urllib.request.urlopen(request, timeout=180) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        return {"submitted": False, "status_code": exc.code, "error": exc.read().decode("utf-8", errors="replace")}
+        return {
+            "submitted": False,
+            "status_code": exc.code,
+            "error": exc.read().decode("utf-8", errors="replace"),
+        }
     except Exception as exc:
         return {"submitted": False, "error": str(exc)}
 
@@ -296,7 +318,9 @@ def run_capture(
                 effective_search_url = page.url
                 candidates = _visible_listing_candidates(page, max_jobs)
                 if not candidates:
-                    raise RuntimeError("No visible Indeed job links with durable job keys were found.")
+                    raise RuntimeError(
+                        "No visible Indeed job links with durable job keys were found."
+                    )
 
                 cards: list[CapturedCard] = []
                 for position, candidate in enumerate(candidates, 1):
@@ -351,7 +375,8 @@ def run_capture(
                         else "visible_jobs_exhausted"
                     ),
                     "cards": [
-                        asdict(card) | {"detail_html": "[stored separately]", "description": "[submitted]"}
+                        asdict(card)
+                        | {"detail_html": "[stored separately]", "description": "[submitted]"}
                         for card in cards
                     ],
                 }
