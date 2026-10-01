@@ -142,6 +142,40 @@ class LinkedInLiveCaptureRequest(BaseModel):
         return self
 
 
+
+class IndeedLiveCaptureItemRequest(BaseModel):
+    source_job_id: str = Field(min_length=1)
+    source_url: str = ""
+    title: str = ""
+    company: str = ""
+    location: str = ""
+    description: str = ""
+    identity_verified: bool
+    verification_reason: str = ""
+
+    @field_validator("source_job_id")
+    @classmethod
+    def normalize_source_job_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("source_job_id must not be blank")
+        return normalized
+
+
+class IndeedLiveCaptureRequest(BaseModel):
+    search_url: str = ""
+    items: list[IndeedLiveCaptureItemRequest] = Field(min_length=1, max_length=10)
+    requested_item_limit: int | None = Field(default=None, ge=1, le=10)
+    stop_reason: str = Field(default="", max_length=80)
+
+    @model_validator(mode="after")
+    def validate_capture_evidence(self) -> IndeedLiveCaptureRequest:
+        item_ids = [item.source_job_id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("item source_job_id values must be unique")
+        return self
+
+
 class CaptureItemResponse(BaseModel):
     capture_item_id: str
     source_job_id: str
