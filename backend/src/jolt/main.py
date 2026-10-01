@@ -45,8 +45,8 @@ from jolt.hardline_revalidation import (
     HardlineRevalidationImportResponse,
     import_hardline_revalidation,
 )
-from jolt.indeed_live_capture import run_indeed_live_capture
 from jolt.identity_evidence import list_identity_evidence, opportunity_identity_evidence
+from jolt.indeed_live_capture import run_indeed_live_capture
 from jolt.job_search_preferences import (
     JobSearchPreferences,
     load_job_search_preferences,
