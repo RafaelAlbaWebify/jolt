@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
 from jolt.indeed_capture import canonical_indeed_job_url, extract_indeed_job_key
 from jolt.schemas import IndeedLiveCaptureRequest
 from jolt.url_identity import canonicalize_source_url, indeed_job_key
@@ -38,10 +42,6 @@ def test_indeed_capture_contract_is_bounded_to_ten_jobs() -> None:
     request = IndeedLiveCaptureRequest.model_validate(payload)
     assert request.items[0].source_job_id == "abc123"
     assert request.requested_item_limit == 1
-
-from pathlib import Path
-
-from fastapi.testclient import TestClient
 
 from jolt.main import create_app
 
