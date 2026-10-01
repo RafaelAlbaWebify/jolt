@@ -142,7 +142,6 @@ class LinkedInLiveCaptureRequest(BaseModel):
         return self
 
 
-
 class IndeedLiveCaptureItemRequest(BaseModel):
     source_job_id: str = Field(min_length=1)
     source_url: str = ""
