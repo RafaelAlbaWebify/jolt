@@ -241,3 +241,86 @@ def test_catalan_written_job_is_not_treated_as_spanish() -> None:
     assert language == "Catalan"
     assert status == "unsupported"
     assert confidence >= 0.7
+
+def test_preferred_qualifications_section_does_not_create_language_reject() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "Required Qualifications: 2+ years of technical support experience. "
+            "Strong Windows Server knowledge. "
+            "Preferred Qualifications: CompTIA certifications. "
+            "Multilingual skills in Spanish, Arabic, or French."
+        ),
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+    multilingual = [
+        item
+        for item in result.requirements
+        if item.languages == ("Spanish", "Arabic", "French")
+    ]
+    assert multilingual
+    assert multilingual[0].classification == "preferred"
+
+
+def test_required_qualifications_section_can_create_language_reject() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "Required Qualifications: German language skills. "
+            "Preferred Qualifications: French is a plus."
+        ),
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is True
+    assert REASON_LANGUAGE_UNMET in result.reason_codes
+
+
+def test_comma_or_language_list_keeps_all_alternatives() -> None:
+    result = analyze_language_evidence(
+        source_text="Fluent German, French, or Spanish is required.",
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    requirement = next(
+        item
+        for item in result.requirements
+        if item.languages == ("German", "French", "Spanish")
+    )
+    assert requirement.classification == "required"
+
+
+def test_and_language_list_means_all_languages_are_required() -> None:
+    result = analyze_language_evidence(
+        source_text="English, German and French are required for customer support.",
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is True
+    required_languages = {
+        item.languages[0]
+        for item in result.requirements
+        if item.classification == "required" and len(item.languages) == 1
+    }
+    assert {"English", "German", "French"} <= required_languages
+
+
+def test_scriptpro_wording_does_not_false_reject_language() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "Required Qualifications: 2+ years of related experience in technical support. "
+            "Strong working knowledge of Windows Server. "
+            "Preferred Qualifications: CompTIA A+, Network+, Security+, Microsoft certifications. "
+            "Experience supporting Windows Server environments. "
+            "Knowledge of the healthcare industry. "
+            "Multilingual skills in Spanish, Arabic, or French. "
+            "Remote Work Requirements: Must have reliable internet access."
+        ),
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+
