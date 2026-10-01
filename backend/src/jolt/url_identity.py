@@ -17,6 +17,20 @@ def linkedin_job_id(value: str) -> str:
     return match.group("job_id") if match else ""
 
 
+def indeed_job_key(value: str) -> str:
+    """Extract Indeed's stable job key from a job-detail URL."""
+    if not value.strip():
+        return ""
+    parts = urlsplit(value.strip())
+    hostname = (parts.hostname or "").casefold()
+    if "indeed." not in hostname:
+        return ""
+    for key, val in parse_qsl(parts.query, keep_blank_values=True):
+        if key.casefold() in {"jk", "vjk"} and val.strip():
+            return val.strip()
+    return ""
+
+
 def canonicalize_source_url(value: str) -> str:
     """Return a stable posting identity while preserving non-identity source evidence elsewhere."""
     if not value.strip():
@@ -24,6 +38,10 @@ def canonicalize_source_url(value: str) -> str:
     job_id = linkedin_job_id(value)
     if job_id:
         return f"https://www.linkedin.com/jobs/view/{job_id}"
+
+    indeed_key = indeed_job_key(value)
+    if indeed_key:
+        return f"https://www.indeed.com/viewjob?jk={indeed_key}"
 
     parts = urlsplit(value.strip())
     query = [
