@@ -69,7 +69,7 @@ if (-not $Ready) {
 
 Write-Host "Chrome is ready."
 Write-Host "Use that Chrome window normally. If Indeed asks for verification, complete it manually."
-Write-Host "When the Indeed results page is visible, return here."
+Write-Host "JOLT will begin automatically as soon as visible Indeed job results are detected."
 Write-Host ""
 
 Push-Location $BackendRoot
