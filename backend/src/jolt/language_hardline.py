@@ -418,7 +418,10 @@ def _nearest_kind(segment: str, position: int) -> LanguageRequirementKind | None
         re.I,
     )
     before_skill = re.search(
-        r"\b(?:language|skills?|spoken|written|knowledge\s+of|command\s+of)\b[^.;:]{0,24}$",
+        r"(?:\b(?:spoken|written)\s+|"
+        r"\b(?:knowledge|command)\s+of\s+|"
+        r"\blanguage\s+(?:skills?\s*)?(?::\s*)?|"
+        r"\bskills?\s+(?:in\s+)?)$",
         before,
         re.I,
     )
