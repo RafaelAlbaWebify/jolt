@@ -88,6 +88,61 @@ def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str
     return candidates
 
 
+def _click_listing_candidate(page: Page, source_job_id: str) -> bool:
+    anchors = page.locator("a[href*='jk=']")
+    try:
+        count = min(anchors.count(), 100)
+    except Exception:
+        return False
+
+    for index in range(count):
+        anchor = anchors.nth(index)
+        href = anchor.get_attribute("href") or ""
+        if extract_indeed_job_key(urljoin(page.url, href)) != source_job_id:
+            continue
+        try:
+            if not anchor.is_visible():
+                continue
+            anchor.scroll_into_view_if_needed(timeout=2_000)
+            anchor.click(timeout=8_000)
+            return True
+        except Exception:
+            return False
+    return False
+
+
+def _wait_for_detail_panel(
+    page: Page,
+    expected_id: str,
+    expected_title: str,
+    *,
+    timeout_ms: int = 10_000,
+) -> bool:
+    elapsed = 0
+    normalized_expected_title = " ".join(expected_title.split()).casefold()
+    while elapsed < timeout_ms:
+        current_id = extract_indeed_job_key(page.url)
+        title = _text(page.locator("h1").first)
+        description = _text(page.locator("#jobDescriptionText").first)
+        normalized_title = " ".join(title.split()).casefold()
+
+        id_matches = current_id == expected_id
+        title_matches = bool(
+            normalized_expected_title
+            and normalized_title
+            and (
+                normalized_expected_title in normalized_title
+                or normalized_title in normalized_expected_title
+            )
+        )
+        if description and (id_matches or title_matches):
+            return True
+
+        page.wait_for_timeout(250)
+        elapsed += 250
+    return False
+
+
 def _strip_html(value: str) -> str:
     value = re.sub(r"<\s*br\s*/?>", "\n", value, flags=re.I)
     value = re.sub(r"</\s*(?:p|li|div|h\d)\s*>", "\n", value, flags=re.I)
@@ -271,10 +326,21 @@ def submit_capture(
         with urllib.request.urlopen(request, timeout=180) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        if exc.code == 404:
+            return {
+                "submitted": False,
+                "status_code": exc.code,
+                "error": (
+                    "Indeed capture endpoint was not found in the running JOLT backend. "
+                    "Restart the backend after updating JOLT, then retry."
+                ),
+                "response": body,
+            }
         return {
             "submitted": False,
             "status_code": exc.code,
-            "error": exc.read().decode("utf-8", errors="replace"),
+            "error": body,
         }
     except Exception as exc:
         return {"submitted": False, "error": str(exc)}
@@ -312,7 +378,8 @@ def run_capture(
 
                 if pause_for_login:
                     print("Indeed is open in a persistent local browser profile.")
-                    print("Log in if desired and apply the search filters you want.")
+                    print("Use the visible anonymous search page and apply the filters you want.")
+                    print("Do not sign in during this capture POC.")
                     input("Press Enter to capture the currently visible Indeed jobs: ")
 
                 effective_search_url = page.url
@@ -327,14 +394,40 @@ def run_capture(
                     source_job_id = candidate["source_job_id"]
                     source_url = candidate["source_url"]
                     title_hint = candidate["title"]
-                    page.goto(source_url, wait_until="domcontentloaded", timeout=60_000)
+
+                    clicked = _click_listing_candidate(page, source_job_id)
+                    if not clicked:
+                        cards.append(
+                            CapturedCard(
+                                source_job_id,
+                                source_url,
+                                title_hint,
+                                "",
+                                "",
+                                "",
+                                "",
+                                False,
+                                "Indeed listing card could not be clicked.",
+                                result_position=position,
+                                page_number=1,
+                                card_index=position - 1,
+                            )
+                        )
+                        continue
+
                     warning = _access_warning(page)
                     if warning:
                         raise RuntimeError(warning)
-                    page.wait_for_timeout(800)
+
+                    panel_ready = _wait_for_detail_panel(page, source_job_id, title_hint)
                     title, company, location, description, verified, reason = _detail_fields(
                         page, source_job_id, title_hint
                     )
+                    if not panel_ready and verified:
+                        verified = False
+                        reason = (
+                            "Indeed detail panel did not become stable after the listing click."
+                        )
                     detail_html = page.content() if verified else ""
                     with contextlib.suppress(Exception):
                         page.screenshot(
@@ -345,7 +438,7 @@ def run_capture(
                     cards.append(
                         CapturedCard(
                             source_job_id,
-                            canonical_indeed_job_url(page.url),
+                            source_url,
                             title,
                             company,
                             location,
