@@ -17,7 +17,6 @@ def linkedin_job_id(value: str) -> str:
     return match.group("job_id") if match else ""
 
 
-
 def indeed_job_key(value: str) -> str:
     """Extract Indeed's stable job key from a job-detail URL."""
     if not value.strip():
@@ -30,6 +29,7 @@ def indeed_job_key(value: str) -> str:
         if key.casefold() in {"jk", "vjk"} and val.strip():
             return val.strip()
     return ""
+
 
 def canonicalize_source_url(value: str) -> str:
     """Return a stable posting identity while preserving non-identity source evidence elsewhere."""
