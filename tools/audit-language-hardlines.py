@@ -4,11 +4,17 @@ import argparse
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from jolt.job_search_preferences import load_job_search_preferences
-from jolt.language_hardline import analyze_language_evidence
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_BACKEND_SRC = _REPO_ROOT / "backend" / "src"
+if str(_BACKEND_SRC) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_SRC))
+
+from jolt.job_search_preferences import load_job_search_preferences  # noqa: E402
+from jolt.language_hardline import analyze_language_evidence  # noqa: E402
 
 
 def _database_path() -> Path:
