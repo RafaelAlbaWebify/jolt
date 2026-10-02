@@ -58,8 +58,37 @@ def _raw_text(locator) -> str:
         return ""
 
 
+def _is_action_link_text(value: str) -> bool:
+    normalized = " ".join(value.split()).casefold()
+    action_markers = (
+        "ver empleos similares",
+        "view similar jobs",
+        "solicitar en la página de la empresa",
+        "solicitar en la pagina de la empresa",
+        "apply on company site",
+        "apply on company website",
+        "guardar empleo",
+        "save job",
+    )
+    return any(marker in normalized for marker in action_markers)
+
+
+def _listing_title_anchors(page: Page):
+    primary = page.locator(
+        "h2.jobTitle a[href*='jk='], "
+        "a.jcs-JobTitle[href*='jk='], "
+        "a[data-testid='job-title'][href*='jk=']"
+    )
+    try:
+        if primary.count():
+            return primary
+    except Exception:
+        pass
+    return page.locator("a[href*='viewjob'][href*='jk='], a[href*='jk=']")
+
+
 def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str]]:
-    anchors = page.locator("a[href*='viewjob'][href*='jk='], a[href*='jk=']")
+    anchors = _listing_title_anchors(page)
     candidates: list[dict[str, str]] = []
     seen: set[str] = set()
     try:
@@ -80,7 +109,7 @@ def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str
         if not source_job_id or source_job_id in seen:
             continue
         title = _text(anchor) or (anchor.get_attribute("aria-label") or "").strip()
-        if not title:
+        if not title or _is_action_link_text(title):
             continue
         seen.add(source_job_id)
         candidates.append(
@@ -96,7 +125,7 @@ def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str
 
 
 def _click_listing_candidate(page: Page, source_job_id: str) -> bool:
-    anchors = page.locator("a[href*='jk=']")
+    anchors = _listing_title_anchors(page)
     try:
         count = min(anchors.count(), 100)
     except Exception:
