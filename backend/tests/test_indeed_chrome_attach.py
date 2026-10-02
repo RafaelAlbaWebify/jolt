@@ -39,7 +39,6 @@ def test_parse_args_rejects_more_than_ten_pages(tmp_path) -> None:
         )
 
 
-
 class _FakePage:
     def __init__(self, *, closed: bool = False) -> None:
         self._closed = closed
