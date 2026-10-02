@@ -160,3 +160,25 @@ def test_panel_text_parser_handles_description_below_job_details() -> None:
     assert company == "Indra"
     assert location == "España · Teletrabajo"
     assert "soporte remoto" in description
+
+
+def test_parse_panel_text_requires_preserved_line_structure() -> None:
+    panel_text = (
+        "Técnico/a de Soporte Informático Junior\n"
+        "Indra\n"
+        "España · Teletrabajo\n"
+        "Contrato indefinido\n"
+        "Detalles del empleo\n"
+        "Descripción completa del empleo\n"
+        "Soporte remoto a usuarios y resolución de incidencias."
+    )
+
+    title, company, location, description = _parse_panel_text(
+        panel_text,
+        "Técnico/a de Soporte Informático Junior",
+    )
+
+    assert title == "Técnico/a de Soporte Informático Junior"
+    assert company == "Indra"
+    assert location == "España · Teletrabajo"
+    assert description == "Soporte remoto a usuarios y resolución de incidencias."
