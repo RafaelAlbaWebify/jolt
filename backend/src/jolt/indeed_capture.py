@@ -119,24 +119,19 @@ def _wait_for_detail_panel(
     timeout_ms: int = 10_000,
 ) -> bool:
     elapsed = 0
-    normalized_expected_title = " ".join(expected_title.split()).casefold()
     while elapsed < timeout_ms:
         current_id = extract_indeed_job_key(page.url)
-        title = _text(page.locator("h1").first)
-        description = _text(page.locator("#jobDescriptionText").first)
-        normalized_title = " ".join(title.split()).casefold()
-
-        id_matches = current_id == expected_id
-        title_matches = bool(
-            normalized_expected_title
-            and normalized_title
-            and (
-                normalized_expected_title in normalized_title
-                or normalized_title in normalized_expected_title
+        panel = _panel_container(page, expected_title)
+        if panel is not None:
+            panel_text = _text(panel).casefold()
+            has_job_detail = (
+                "descripción completa del empleo" in panel_text
+                or "descripcion completa del empleo" in panel_text
+                or "job description" in panel_text
+                or "detalles del empleo" in panel_text
             )
-        )
-        if description and (id_matches or title_matches):
-            return True
+            if has_job_detail and current_id == expected_id:
+                return True
 
         page.wait_for_timeout(250)
         elapsed += 250
@@ -210,6 +205,40 @@ def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
 
 
 def _panel_container(page: Page, expected_title: str):
+    title_locator = page.get_by_text(expected_title, exact=True)
+    try:
+        title_count = min(title_locator.count(), 10)
+    except Exception:
+        title_count = 0
+
+    for title_index in range(title_count):
+        title_node = title_locator.nth(title_index)
+        try:
+            if not title_node.is_visible():
+                continue
+        except Exception:
+            continue
+
+        ancestors = title_node.locator("xpath=ancestor::div")
+        try:
+            ancestor_count = min(ancestors.count(), 30)
+        except Exception:
+            ancestor_count = 0
+
+        for ancestor_index in range(ancestor_count):
+            ancestor = ancestors.nth(ancestor_index)
+            text = _text(ancestor)
+            normalized = text.casefold()
+            if expected_title.casefold() not in normalized:
+                continue
+            if (
+                "descripción completa del empleo" in normalized
+                or "descripcion completa del empleo" in normalized
+                or "job description" in normalized
+                or "detalles del empleo" in normalized
+            ):
+                return ancestor
+
     selectors = (
         "#jobsearch-ViewjobPaneWrapper",
         "[data-testid='jobsearch-ViewJobLayout-jobDisplay']",
@@ -221,37 +250,12 @@ def _panel_container(page: Page, expected_title: str):
         try:
             if locator.count() and locator.first.is_visible():
                 text = _text(locator.first)
-                if expected_title.casefold() in text.casefold() or "descripci" in text.casefold():
+                if expected_title.casefold() in text.casefold():
                     return locator.first
         except Exception:
             continue
 
-    containers = page.locator("div")
-    try:
-        count = min(containers.count(), 250)
-    except Exception:
-        return None
-
-    expected = " ".join(expected_title.split()).casefold()
-    best = None
-    best_len = 10**9
-    for index in range(count):
-        locator = containers.nth(index)
-        try:
-            if not locator.is_visible():
-                continue
-        except Exception:
-            continue
-        text = _text(locator)
-        normalized = text.casefold()
-        if expected and expected not in normalized:
-            continue
-        if "descripci" not in normalized and "job description" not in normalized:
-            continue
-        if len(text) < best_len:
-            best = locator
-            best_len = len(text)
-    return best
+    return None
 
 
 def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
@@ -312,17 +316,9 @@ def _detail_fields(
     panel = _panel_container(page, expected_title)
 
     if panel is not None:
-        if not title:
-            for selector in (
-                "[data-testid='jobsearch-JobInfoHeader-title']",
-                "[data-testid='simpler-jobInfoHeader-title']",
-                "h2",
-                "h1",
-            ):
-                value = _text(panel.locator(selector).first)
-                if value and "empleos de " not in value.casefold():
-                    title = value
-                    break
+        # The selected listing title is our strongest panel anchor. Indeed's internal
+        # heading tags vary and may point at labels such as "Salario" or "Tipo de empleo".
+        title = expected_title
 
         if not company:
             for selector in (
