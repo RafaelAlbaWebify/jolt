@@ -93,6 +93,11 @@ try {
         --max-jobs $MaxJobs `
         --max-pages $MaxPages
 
+    $CaptureExitCode = $LASTEXITCODE
+    if ($CaptureExitCode -ne 0) {
+        throw "Indeed Chrome-attached capture failed with exit code $CaptureExitCode. Failure package: $OutputZip"
+    }
+
     if (-not (Test-Path $OutputZip)) {
         throw "Indeed Chrome-attached capture completed without creating the expected ZIP."
     }
