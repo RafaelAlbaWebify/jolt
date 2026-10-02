@@ -4,7 +4,12 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from jolt.indeed_capture import _parse_panel_text, canonical_indeed_job_url, extract_indeed_job_key
+from jolt.indeed_capture import (
+    _is_action_link_text,
+    _parse_panel_text,
+    canonical_indeed_job_url,
+    extract_indeed_job_key,
+)
 from jolt.indeed_chrome_attach import _page_search_url
 from jolt.main import create_app
 from jolt.schemas import IndeedLiveCaptureRequest
@@ -306,3 +311,12 @@ def test_indeed_live_capture_persists_multi_page_evidence(tmp_path: Path) -> Non
     assert body["pages"][0]["visible_job_ids"] == ["page1-job"]
     assert body["pages"][1]["visible_job_ids"] == ["page2-job"]
     assert body["total_items"] == 2
+
+
+
+def test_indeed_action_links_are_not_treated_as_job_titles() -> None:
+    assert _is_action_link_text("Ver empleos similares de esta empresa")
+    assert _is_action_link_text("Solicitar en la página de la empresa")
+    assert _is_action_link_text("Apply on company site")
+    assert not _is_action_link_text("Technical Support Specialist")
+    assert not _is_action_link_text("IT System Administrator")
