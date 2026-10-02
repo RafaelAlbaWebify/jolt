@@ -4,11 +4,11 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-09-30",
+  "last_update_date": "2026-10-03",
   "baseline_branch": "main",
-  "baseline_commit": "0f252f4ec7e17dc29e31bed71a0bd86e23d18da5",
-  "current_phase": "production_job_search_with_unified_intelligence_and_observed_friction_only",
-  "current_milestone": "Architecture and planned UX simplification are complete through PR #470: unified intelligence ownership is established, Settings & Data is simplified around daily use, and Applications now uses the compact scorecard plus Board/List workflow.",
+  "baseline_commit": "9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5",
+  "current_phase": "production_job_search_with_linkedin_daily_batches_and_supervised_indeed_acceptance",
+  "current_milestone": "LinkedIn daily discovery/review is in normal use. Indeed authenticated multi-page capture is implemented through PR #491 and awaits one fresh real post-#491 acceptance before promotion to production-accepted source coverage.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -25,7 +25,10 @@
     "No unresolved P1 is currently known.",
     "GitHub issue #441 UX stabilization was closed completed on 2026-09-30."
   ],
-  "active_workstreams": [],
+  "active_workstreams": [
+    "Import and validate the 2026-10-03 LinkedIn 121-posting reviewed Unified AI Work Package through the normal JOLT UI.",
+    "Run one fresh authenticated 3-page Indeed acceptance on main after PR #491 and verify title/company/location/detail identity plus API ingestion against the current backend."
+  ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
     "Manual intake and supervised LinkedIn capture with source evidence/provenance.",
@@ -79,22 +82,29 @@
     "2026-09-30 PR #468 synchronized the repository-authoritative project-control layer with the unified intelligence architecture.",
     "2026-09-30 PR #469 simplified Settings & Data around backend-owned intelligence status and moved deliberate strategy refresh plus legacy compatibility tools into Advanced.",
     "2026-09-30 PR #470 added the Applications Active / Interviewing / Offers / Overdue scorecard and compact Board/List views without changing backend or persistence semantics.",
-    "2026-09-30 issue #441 UX stabilization closed completed after production/live-audit acceptance."
+    "2026-09-30 issue #441 UX stabilization closed completed after production/live-audit acceptance.",
+    "2026-10-02 PR #489 added authenticated logged-in multi-page Indeed capture with start=10/20 pagination, global jk deduplication, page_number/card_index provenance and a 100-job/10-page bounded contract.",
+    "2026-10-02 PR #490 recovered supervised Indeed capture from closed/stale CDP pages and made the PowerShell launcher fail correctly on non-zero capture exit.",
+    "2026-10-02 live Indeed acceptance traversed three pages successfully (4 + 6 + 1 visible unique jobs) after PR #490, exposing title-anchor contamination and confirming the value of production-shaped acceptance.",
+    "2026-10-03 PR #491 filtered Indeed secondary action links from job-title discovery and aligned discovery/clicking on title anchors; exact-head 8/8 release gates passed before merge as 9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5.",
+    "2026-10-03 LinkedIn discovery batch 27ddb661-98c2-4ffd-ab9e-28a07df1f377 produced 173 raw captures, 135 canonical postings and a frozen 121-posting review set after excluding 14 already-reviewed postings."
   ],
-  "pending_milestones": [],
+  "pending_milestones": [
+    "Post-#491 real Indeed acceptance: 3 pages, correct title anchors, no action-link contamination, successful current-backend ingestion, preserved page/jk provenance."
+  ],
   "next_recommended_actions": [
-    "Use the normal Capture Jobs discovery workflow; each reviewed batch should now update per-job reviews and stale aggregate intelligence in one Unified AI Work Package round trip.",
-    "Use backend /api/ai-status as the freshness authority; do not treat browser localStorage receipts as product state.",
-    "Use the simplified Settings & Data and Applications surfaces in normal production work; make further UX changes only when observed operator friction provides concrete evidence.",
-    "Retire legacy AI exports/imports only after a final compatibility checkpoint; do not add new product workflows to deprecated routes.",
-    "Keep .ai/ and PROJECT_MEMORY synchronized whenever architectural ownership or production workflow changes."
+    "Import the reviewed Unified AI Work Package for discovery batch 27ddb661-98c2-4ffd-ab9e-28a07df1f377 through Import reviewed update and verify exact 121/121 receipt.",
+    "Restart JOLT whenever the runtime mismatch guard reports an older backend commit than the repository checkout.",
+    "Pull main 9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5 and repeat the supervised Indeed 30-job / 3-page acceptance; inspect the produced ZIP before declaring the adapter production-accepted.",
+    "Continue normal Capture Jobs -> Unified AI Work Package -> Review Inbox -> Applications workflow and make further product changes only from observed operator friction or source-coverage evidence.",
+    "Keep .ai/ and PROJECT_MEMORY synchronized whenever architecture, source coverage, or production workflow changes."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
     "real_ai_import": "2026-09-19 second real 100-job package imported successfully after strict sequential review: 95 reject, 1 strong_pursue, 1 pursue, 3 conditional; no internal repair reported.",
     "restart_persistence": "2026-09-19 full JOLT restart preserved the second-cycle imported review state, as confirmed by the operator.",
     "profile_acceptance": "2026-09-19 fresh live LinkedIn profile-detail capture passed the strengthened nested-scroll traversal contract and included later Licenses & certifications entries previously missed, including IBM Cybersecurity Analyst, AWS Cloud Solutions Architect and Google Cybersecurity.",
-    "latest_contract_gate": "PR #470 exact head 8941ce34867ae2884f8a8f0917d288633c5c5ca3 passed backend, frontend, Playwright/sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before squash merge as 0f252f4ec7e17dc29e31bed71a0bd86e23d18da5.",
+    "latest_contract_gate": "PR #491 exact head e0e4a2931e6160a8449244cea86a485dc619e89b passed backend, frontend, sidebar-kanban, full-cycle, clean-install Windows, migration recovery, reproducible release and Windows scripts before squash merge as 9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5.",
     "remaining_runtime_acceptance": "None within the certified local-first single-user Windows production boundary. Current architecture changes preserve that boundary.",
     "source_audit": "2026-09-19 manual source audit passed for both promoted jobs. Hired source 4467076188 explicitly states Remote (Work from Anywhere), flexible hours and ability to work from anywhere. Synthires source 4466264642 is scoped to European Union and states Contractor, Remote, Independent contractor engagement, Fully remote opportunity and Flexible remote work schedule; no conflicting Spain-ineligible restriction found.",
     "real_prospect_acceptance": "2026-09-20 REAL_PROSPECT_ACCEPTANCE.bat PASS on local main ca6af3b25cae181bc8b8ccd13fed45417eaf36de. Active DB unchanged. Backup/verify/restore passed; source/restored core counts matched before cleanup. Restored-copy guarded cleanup deleted 31 superseded capture runs and 1206 capture-only postings, preserved 53 retained postings, and protected application d2df157f-152b-4f54-9a8b-f04332e4074a plus posting 733f215d-b03d-4d4d-9cc3-7d83bee0c957 survived.",
@@ -102,6 +112,7 @@
     "migration_recovery": "PR #406 exact-head Migration recovery certification #1 PASS; pre-revision seeded data survived forward upgrade and verified backup restored the prior revision/data.",
     "reproducible_release": "PR #408 exact-head Reproducible release certification #1 PASS; two builds of the same clean commit produced byte-identical release ZIPs with embedded commit/version/file-hash manifest.",
     "linkedin_search_portfolio": "2026-09-24 real authenticated Phase 5 acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709. Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515: 2/2 searches completed; 50 captured; 50 verified; 47 new postings; 3 duplicates/known exclusions; one batch AI exchange with frozen review_set=47; consolidated 47-job ChatGPT review imported successfully; JOLT restart completed and batch/review state persisted. Local evidence files: JOLT_LINKEDIN_PORTFOLIO_ACCEPTANCE_20260924_110205.json and JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_20260924_114024.json.",
-    "linkedin_search_portfolio_ui": "2026-09-24 normal JOLT UI acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d. Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16: 2/2 searches completed; 50 captured; 50 verified; 0 new at batch summary / 50 already known; consolidated AI exchange materialized review_set=1 after excluding 49 already-reviewed postings; returned review imported through the UI. The exact main SHA also passed all six push workflows."
+    "linkedin_search_portfolio_ui": "2026-09-24 normal JOLT UI acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d. Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16: 2/2 searches completed; 50 captured; 50 verified; 0 new at batch summary / 50 already known; consolidated AI exchange materialized review_set=1 after excluding 49 already-reviewed postings; returned review imported through the UI. The exact main SHA also passed all six push workflows.",
+    "indeed_live_acceptance": "2026-10-02 post-#490 live run: page 1=4 visible, page 2=6 visible, page 3=1 visible; navigation start=10/start=20 succeeded and package was created. Audit found secondary action anchors misclassified as titles and ingestion hit a stale backend runtime; PR #491 corrected title-anchor selection. Fresh post-#491 live acceptance still required."
   }
 }

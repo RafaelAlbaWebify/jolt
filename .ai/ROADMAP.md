@@ -93,3 +93,11 @@ Acceptance evidence: PR #470 exact head `8941ce34867ae2884f8a8f0917d288633c5c5ca
 
 ## Current product-development posture
 There is no pending operability milestone inside the certified local-first single-user Windows boundary. Normal job-search use is the primary next activity. Further product work should be triggered by observed workflow friction, a demonstrated source-coverage need, or an explicit compatibility/removal decision rather than speculative feature expansion.
+
+
+## 2026-10-03 source-coverage extensions
+
+| ID | Status | Description | Dependencies | Acceptance criteria | Evidence required |
+|---|---|---|---|---|---|
+| R-026 | COMPLETE | LinkedIn daily saved-search discovery + frozen unified AI batch review in normal production use | R-025 | multi-search run completes, canonical deduplication produces frozen review set, one Unified AI Work Package round trip is importable | real discovery batch + package/import evidence |
+| R-027 | ACTIVE | Supervised authenticated Indeed source adapter | R-002, R-026 | 3+ pages navigate in one persistent session; only real job-title anchors are discovered; jk deduplication/provenance persist; current backend ingests package successfully | fresh post-#491 real ZIP + API result + exact-head gates |

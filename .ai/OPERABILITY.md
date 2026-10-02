@@ -153,3 +153,15 @@ A gate may pass only from directly verified runtime/test evidence or an exact gr
 - Durable Applications remain visible without legacy Evaluation rows.
 - The Unified AI Work Package top-level `context_patch` is the sole durable global AI context mutation path. Individual exchanges/legacy review-preparation routes are deprecated compatibility/diagnostic surfaces.
 - PR #467 exact head `57ebc6529a3da8d50e987e6b1ad7f97ae6de00d6` passed backend, frontend isolated rerun, Playwright/sidebar-kanban, full-cycle, clean-install, migration recovery, reproducible release and Windows scripts before merge as `98953f63f7e836f100a6ef5f00c3ac5399a649f6`.
+
+
+## 2026-10-03 source-adapter operability
+
+Core JOLT operability remains **100%** within the certified local-first single-user Windows boundary. LinkedIn remains the production-accepted normal discovery source.
+
+Indeed is an additive supervised source adapter and does not reduce core JOLT operability while its final acceptance is pending. Current evidence:
+- PR #489: authenticated multi-page capture, bounded at 100 jobs / 10 pages.
+- PR #490: closed/stale CDP page recovery plus truthful launcher failure propagation.
+- Real 2026-10-02 run: pages 1–3 navigated successfully with `start=10` and `start=20`.
+- PR #491: action-link contamination corrected; exact-head release gates 8/8 green.
+- Remaining gate: one fresh post-#491 real run with current backend proving clean extraction and successful ingestion.
