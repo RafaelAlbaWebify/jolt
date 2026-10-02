@@ -107,3 +107,29 @@ def test_parse_panel_text_extracts_visible_indeed_detail() -> None:
     assert location == "Ogíjares, Granada provincia"
     assert "soporte informático" in description
     assert "resolución de incidencias" in description
+
+
+def test_parse_panel_text_keeps_selected_title_authoritative() -> None:
+    panel_text = """
+    Técnico/a de Soporte Informático Junior
+    Indra
+    España · Teletrabajo
+    Contrato indefinido
+    Detalles del empleo
+    Tipo de empleo
+    Contrato indefinido
+    Beneficios
+    Formación continua
+    Descripción completa del empleo
+    Soporte a usuarios y resolución de incidencias.
+    """
+
+    title, company, location, description = _parse_panel_text(
+        panel_text,
+        "Técnico/a de Soporte Informático Junior",
+    )
+
+    assert title == "Técnico/a de Soporte Informático Junior"
+    assert company == "Indra"
+    assert location == "España · Teletrabajo"
+    assert description == "Soporte a usuarios y resolución de incidencias."
