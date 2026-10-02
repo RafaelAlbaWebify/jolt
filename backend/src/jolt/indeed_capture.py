@@ -449,7 +449,10 @@ def _access_warning(page: Page) -> str | None:
 
 
 def build_submit_payload(
-    cards: list[CapturedCard], search_url: str, max_jobs: int
+    cards: list[CapturedCard],
+    search_url: str,
+    max_jobs: int,
+    pages: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     return {
         "search_url": search_url,
@@ -457,6 +460,7 @@ def build_submit_payload(
         "stop_reason": "requested_limit_reached"
         if len(cards) >= max_jobs
         else "visible_jobs_exhausted",
+        "pages": pages or [],
         "items": [
             {
                 "source_job_id": card.source_job_id,
@@ -474,9 +478,13 @@ def build_submit_payload(
 
 
 def submit_capture(
-    api_url: str, cards: list[CapturedCard], search_url: str, max_jobs: int
+    api_url: str,
+    cards: list[CapturedCard],
+    search_url: str,
+    max_jobs: int,
+    pages: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
-    payload = build_submit_payload(cards, search_url, max_jobs)
+    payload = build_submit_payload(cards, search_url, max_jobs, pages)
     try:
         validated = IndeedLiveCaptureRequest.model_validate(payload)
         for item in validated.items:
