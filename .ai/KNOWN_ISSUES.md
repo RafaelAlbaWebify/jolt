@@ -108,3 +108,12 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 ## Current open issue state
 - No open GitHub product issues as of 2026-09-30 after issue #441 was closed completed.
 - No known unresolved P0/P1 blocker.
+
+
+## 2026-10-03 Indeed acceptance status
+
+- No unresolved P0/P1 product defect is known.
+- The supervised Indeed adapter is **not yet production-accepted** despite green exact-head CI.
+- The 2026-10-02 real three-page run successfully navigated pages 1–3 and deduplicated by `jk`, but exposed secondary action anchors being treated as titles. PR #491 corrected this with title-specific selectors and regression coverage.
+- The same run's HTTP 422 was produced by an older loaded backend, not the current schema; the runtime mismatch guard had already reported that stale process.
+- Required closure evidence: restart current JOLT, run a fresh post-#491 three-page capture, confirm clean title/company/location/detail identity and successful API ingestion.
