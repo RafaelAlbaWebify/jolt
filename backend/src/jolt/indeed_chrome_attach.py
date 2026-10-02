@@ -11,7 +11,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from playwright.sync_api import Browser, BrowserContext, Error as PlaywrightError, Page, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+    Error as PlaywrightError,
+    Page,
+    sync_playwright,
+)
 
 from jolt.indeed_capture import (
     _access_warning,
