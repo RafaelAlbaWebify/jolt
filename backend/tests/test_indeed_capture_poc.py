@@ -313,7 +313,6 @@ def test_indeed_live_capture_persists_multi_page_evidence(tmp_path: Path) -> Non
     assert body["total_items"] == 2
 
 
-
 def test_indeed_action_links_are_not_treated_as_job_titles() -> None:
     assert _is_action_link_text("Ver empleos similares de esta empresa")
     assert _is_action_link_text("Solicitar en la página de la empresa")
