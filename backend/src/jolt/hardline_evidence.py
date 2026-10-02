@@ -148,7 +148,6 @@ _NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             re.I,
         ),
     ),
-    ("E-Verify", re.compile(r"\be[- ]?verify\b", re.I)),
     (
         "US residency",
         re.compile(
@@ -286,6 +285,14 @@ def analyze_location_evidence(*, location: str, source_text: str) -> LocationEvi
             negative.append(state_name)
         elif state_abbreviation:
             negative.append(state_abbreviation)
+
+    if re.search(r"\be[- ]?verify\b", combined, re.I):
+        has_us_context = bool(
+            _US_LOCATION_PATTERN.search(location)
+            or any("US" in value or "United States" in value for value in negative)
+        )
+        if has_us_context:
+            negative.append("E-Verify")
 
     for label, pattern in _POSITIVE_PATTERNS:
         match = pattern.search(combined)
