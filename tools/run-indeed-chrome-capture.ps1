@@ -36,6 +36,15 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 
 $CdpEndpoint = "http://127.0.0.1:$DebugPort"
 
+try {
+    $Health = Invoke-RestMethod -Uri "$ApiUrl/api/health" -TimeoutSec 3
+} catch {
+    throw "JOLT backend is not reachable at $ApiUrl. Start or restart JOLT before running Indeed capture."
+}
+if ($Health.status -ne "ok") {
+    throw "JOLT backend health check did not return status=ok."
+}
+
 Write-Host "Starting Google Chrome for the JOLT Indeed CDP capture POC..."
 Write-Host "Chrome executable: $ChromePath"
 Write-Host "JOLT Chrome profile: $ChromeProfileDir"
