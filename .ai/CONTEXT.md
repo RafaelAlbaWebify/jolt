@@ -2,9 +2,9 @@
 
 JOLT is a local-first, single-user Windows job-search evidence, review, application-tracking, LinkedIn-profile and market-intelligence workbench. It preserves source evidence, deduplicates opportunities, exposes structured review data, persists durable human/application state and exchanges judgment-heavy analysis with ChatGPT through validated JSON contracts.
 
-## Current production state — 2026-09-30
+## Current production state — 2026-10-03
 - Production operability: **100%** within the certified local-first single-user Windows x64 boundary.
-- Current main baseline after architecture remediation: `98953f63f7e836f100a6ef5f00c3ac5399a649f6`.
+- Current main baseline: `9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5`.
 - No known unresolved P0/P1 blocker.
 - No open GitHub product issues; UX issue #441 closed completed on 2026-09-30.
 - Normal discovery uses the production saved-search portfolio and frozen discovery batches.
@@ -58,7 +58,7 @@ Major user modules:
 1. Use JOLT normally and let real search/application outcomes accumulate.
 2. Continue the approved simplification sequence with **Settings & Data**, then **Applications**.
 3. Keep Search Performance evidence-driven; do not restart broad search experiments without outcome evidence.
-4. Add Indeed/InfoJobs only if they materially improve the real workflow.
+4. Complete the supervised Indeed adapter acceptance: multi-page CDP navigation and title-anchor filtering are merged through PR #491; one fresh real capture on post-#491 main is still required before calling Indeed production-accepted.
 5. Keep `.ai/` and `PROJECT_MEMORY.md` synchronized when architecture or ownership changes.
 
 ## Start here
@@ -67,3 +67,12 @@ Major user modules:
 3. Load only the contract/module files relevant to the active workstream.
 4. Preserve the ownership and unified-intelligence rules above.
 5. Verify exact-head tests/runtime before changing behavior.
+
+
+## 2026-10-03 operational update
+- Daily LinkedIn discovery is operating through the saved-search portfolio and frozen discovery batches.
+- Discovery batch `27ddb661-98c2-4ffd-ab9e-28a07df1f377` exported 173 raw capture items, 135 canonical postings, 14 already-reviewed exclusions and a frozen 121-posting review set.
+- The 121-posting Unified AI Work Package was reviewed under contract 1.2; the returned update is intended for normal UI import, with human Apply/Reject decisions remaining authoritative.
+- Supervised Indeed acquisition is now a real source adapter, not a hypothetical roadmap item. PR #489 added authenticated multi-page capture, PR #490 recovers closed CDP pages and fixes launcher failure reporting, and PR #491 filters secondary action anchors from job-title discovery.
+- The 2026-10-02 live Indeed run proved three-page navigation (start=0/10/20) and unique-jk deduplication, but exposed action-link contamination and stale-backend ingestion. Those defects were corrected; a fresh post-#491 live acceptance remains required.
+- No open product PRs or GitHub issues remain after stale documentation PR #453 was closed as superseded.
