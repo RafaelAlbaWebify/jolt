@@ -61,22 +61,31 @@ def run_indeed_live_capture(
         session.add(run)
         session.flush()
 
-        page_response = CapturePageResponse(
-            page_number=1,
-            visible_job_ids=[item.source_job_id for item in request.items],
-            next_control_present=False,
-            next_control_enabled=False,
-        )
-        session.add(
-            CapturePage(
-                id=str(uuid4()),
-                capture_run_id=run.id,
-                page_number=1,
-                visible_job_ids_json=json.dumps(page_response.visible_job_ids),
-                next_control_present=False,
-                next_control_enabled=False,
+        page_requests = request.pages or [
+            type("_Page", (), {
+                "page_number": 1,
+                "visible_job_ids": [item.source_job_id for item in request.items],
+            })()
+        ]
+        page_responses: list[CapturePageResponse] = []
+        for index, page_request in enumerate(page_requests):
+            page_response = CapturePageResponse(
+                page_number=page_request.page_number,
+                visible_job_ids=list(page_request.visible_job_ids),
+                next_control_present=index < len(page_requests) - 1,
+                next_control_enabled=index < len(page_requests) - 1,
             )
-        )
+            page_responses.append(page_response)
+            session.add(
+                CapturePage(
+                    id=str(uuid4()),
+                    capture_run_id=run.id,
+                    page_number=page_response.page_number,
+                    visible_job_ids_json=json.dumps(page_response.visible_job_ids),
+                    next_control_present=page_response.next_control_present,
+                    next_control_enabled=page_response.next_control_enabled,
+                )
+            )
 
         profile = load_active_strategy_profile()
         warnings: list[str] = []
@@ -182,7 +191,7 @@ def run_indeed_live_capture(
             total_items=len(responses),
             verified_items=verified_count,
             rejected_items=len(responses) - verified_count,
-            pages=[page_response],
+            pages=page_responses,
             items=responses,
         )
     except Exception:
