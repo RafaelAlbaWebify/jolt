@@ -51,6 +51,13 @@ def _text(locator) -> str:
         return ""
 
 
+def _raw_text(locator) -> str:
+    try:
+        return locator.inner_text(timeout=2_000).strip()
+    except Exception:
+        return ""
+
+
 def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str]]:
     anchors = page.locator("a[href*='viewjob'][href*='jk='], a[href*='jk=']")
     candidates: list[dict[str, str]] = []
@@ -203,6 +210,9 @@ def _panel_container(page: Page, expected_title: str):
     except Exception:
         title_count = 0
 
+    best = None
+    best_len = 10**9
+
     for title_index in range(title_count):
         title_node = title_locator.nth(title_index)
         try:
@@ -217,8 +227,6 @@ def _panel_container(page: Page, expected_title: str):
         except Exception:
             ancestor_count = 0
 
-        best = None
-        best_len = 10**9
         for ancestor_index in range(ancestor_count):
             ancestor = ancestors.nth(ancestor_index)
             text = _text(ancestor)
@@ -227,12 +235,14 @@ def _panel_container(page: Page, expected_title: str):
                 continue
             if "detalles del empleo" not in normalized and "job details" not in normalized:
                 continue
+            if "empleos de " in normalized and len(text) > 2500:
+                continue
             if len(text) < best_len:
                 best = ancestor
                 best_len = len(text)
 
-        if best is not None:
-            return best
+    if best is not None:
+        return best
 
     selectors = (
         "#jobsearch-ViewjobPaneWrapper",
@@ -346,7 +356,6 @@ def _detail_fields(
                 "[data-company-name='true']",
                 "[data-testid='inlineHeader-companyName']",
                 "[data-testid='jobsearch-CompanyInfoContainer'] a",
-                "a",
             ):
                 value = _text(panel.locator(selector).first)
                 if value:
@@ -377,7 +386,7 @@ def _detail_fields(
 
         if not (title and company and location and description):
             parsed_title, parsed_company, parsed_location, parsed_description = _parse_panel_text(
-                _text(panel), expected_title
+                _raw_text(panel), expected_title
             )
             title = title or parsed_title
             company = company or parsed_company
