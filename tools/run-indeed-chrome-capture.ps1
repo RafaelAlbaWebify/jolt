@@ -1,8 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$SearchUrl = "https://es.indeed.com/jobs?q=IT+Support",
+    [ValidateRange(1, 100)]
+    [int]$MaxJobs = 15,
     [ValidateRange(1, 10)]
-    [int]$MaxJobs = 5,
+    [int]$MaxPages = 1,
     [int]$DebugPort = 9222,
     [string]$ApiUrl = "http://127.0.0.1:8000"
 )
@@ -88,7 +90,8 @@ try {
         --cdp-endpoint $CdpEndpoint `
         --api-url $ApiUrl `
         --output-zip $OutputZip `
-        --max-jobs $MaxJobs
+        --max-jobs $MaxJobs `
+        --max-pages $MaxPages
 
     if (-not (Test-Path $OutputZip)) {
         throw "Indeed Chrome-attached capture completed without creating the expected ZIP."
