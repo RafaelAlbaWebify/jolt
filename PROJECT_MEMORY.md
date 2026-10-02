@@ -3,7 +3,7 @@
 This file records durable product contracts, project boundaries, and development rules.
 Review it before changing existing JOLT behavior.
 
-Last reviewed: 2026-09-30
+Last reviewed: 2026-10-03
 
 ## Product purpose
 
@@ -335,3 +335,26 @@ Durable rule:
 - Review contract 1.2 records linkedin_work_model, official_work_model, authoritative_source, official_source_url, source_conflict, remote_status, location_verification_status and source_confidence.
 - When LinkedIn and the official source diverge, keep technical fit available but cap geography at conditional/unknown and the AI decision at conditional until the conflict is resolved.
 - Do not convert a conflict directly into SKIP_BY_LOCATION unless authoritative evidence proves the candidate is ineligible; unresolved flexibility remains a verification task.
+
+
+## 2026-10-03 supervised Indeed source contract
+
+Indeed is supported only as a **supervised authenticated browser capture** inside JOLT's existing safe-automation boundary.
+
+Durable rules:
+- reuse a dedicated persistent Chrome profile/session; do not store Indeed credentials in JOLT;
+- no CAPTCHA bypass, unattended mass crawling, auto-apply or recruiter messaging;
+- pagination may use deterministic `start=10/20/...` URLs while preserving search filters;
+- candidate identity is deduplicated globally by Indeed `jk`;
+- preserve page provenance (`page_number`, card position and per-page visible job ids);
+- discover/click actual job-title anchors, not generic `jk` links or UI action links;
+- a closed/stale Playwright page must be reacquired without destroying the authenticated browser context;
+- launcher success must reflect the Python process exit code; failure packages are diagnostic evidence, not successful captures;
+- code/CI success is insufficient for an external-site adapter. A production-shaped live acceptance is required after behavior-changing fixes.
+
+PR history:
+- #489 introduced authenticated multi-page capture;
+- #490 added CDP page recovery and truthful launcher errors;
+- #491 corrected title-anchor selection after a real three-page run exposed secondary-link contamination.
+
+The adapter remains pending one fresh post-#491 live acceptance before it can be described as production-accepted.
