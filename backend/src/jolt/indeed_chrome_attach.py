@@ -98,7 +98,9 @@ def run_capture(
             candidates = _wait_for_visible_results(page, max_jobs)
 
             if pause_before_capture:
-                print(f"Found {len(candidates)} visible Indeed job(s). Starting capture automatically.")
+                print(
+                    f"Found {len(candidates)} visible Indeed job(s). Starting capture automatically."
+                )
 
             search_url = page.url
 
