@@ -161,10 +161,26 @@ class IndeedLiveCaptureItemRequest(BaseModel):
         return normalized
 
 
+class IndeedLiveCapturePageRequest(BaseModel):
+    page_number: int = Field(ge=1)
+    visible_job_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("visible_job_ids")
+    @classmethod
+    def normalize_visible_job_ids(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("visible_job_ids must not contain blank values")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("visible_job_ids must be unique within each page")
+        return normalized
+
+
 class IndeedLiveCaptureRequest(BaseModel):
     search_url: str = ""
-    items: list[IndeedLiveCaptureItemRequest] = Field(min_length=1, max_length=10)
-    requested_item_limit: int | None = Field(default=None, ge=1, le=10)
+    items: list[IndeedLiveCaptureItemRequest] = Field(min_length=1, max_length=100)
+    pages: list[IndeedLiveCapturePageRequest] = Field(default_factory=list, max_length=10)
+    requested_item_limit: int | None = Field(default=None, ge=1, le=100)
     stop_reason: str = Field(default="", max_length=80)
 
     @model_validator(mode="after")
@@ -172,6 +188,23 @@ class IndeedLiveCaptureRequest(BaseModel):
         item_ids = [item.source_job_id for item in self.items]
         if len(item_ids) != len(set(item_ids)):
             raise ValueError("item source_job_id values must be unique")
+
+        if not self.pages:
+            return self
+
+        page_numbers = [page.page_number for page in self.pages]
+        if len(page_numbers) != len(set(page_numbers)):
+            raise ValueError("page numbers must be unique")
+        if sorted(page_numbers) != list(range(1, len(self.pages) + 1)):
+            raise ValueError("page numbers must be contiguous and begin at 1")
+
+        observed_job_ids = {job_id for page in self.pages for job_id in page.visible_job_ids}
+        missing_item_ids = sorted(set(item_ids) - observed_job_ids)
+        if missing_item_ids:
+            raise ValueError(
+                "every submitted item must appear in page evidence; missing: "
+                + ", ".join(missing_item_ids)
+            )
         return self
 
 
