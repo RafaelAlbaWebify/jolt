@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from jolt.indeed_capture import _parse_panel_text, canonical_indeed_job_url, extract_indeed_job_key
+from jolt.indeed_chrome_attach import _page_search_url
 from jolt.main import create_app
 from jolt.schemas import IndeedLiveCaptureRequest
 from jolt.url_identity import canonicalize_source_url, indeed_job_key
@@ -182,3 +183,126 @@ def test_parse_panel_text_requires_preserved_line_structure() -> None:
     assert company == "Indra"
     assert location == "España · Teletrabajo"
     assert description == "Soporte remoto a usuarios y resolución de incidencias."
+
+
+def test_indeed_page_url_preserves_filters_and_replaces_ephemeral_job_key() -> None:
+    source = (
+        "https://es.indeed.com/jobs?q=IT+Support&l=&sort=date&"
+        "sc=0kf%3Aattr%28DSQF7%7CPAXZC%252COR%29%3B&"
+        "from=searchOnDesktopSerp&vjk=6c9392526a94bcfa"
+    )
+
+    page_1 = _page_search_url(source, 1)
+    page_3 = _page_search_url(source, 3)
+
+    assert "q=IT+Support" in page_1
+    assert "sort=date" in page_1
+    assert "sc=" in page_1
+    assert "vjk=" not in page_1
+    assert "start=" not in page_1
+
+    assert "q=IT+Support" in page_3
+    assert "sort=date" in page_3
+    assert "sc=" in page_3
+    assert "vjk=" not in page_3
+    assert "start=20" in page_3
+
+
+def test_indeed_capture_contract_accepts_contiguous_multi_page_evidence() -> None:
+    payload = {
+        "search_url": "https://es.indeed.com/jobs?q=IT+Support&sort=date",
+        "requested_item_limit": 3,
+        "pages": [
+            {
+                "page_number": 1,
+                "visible_job_ids": ["job-a", "job-b"],
+            },
+            {
+                "page_number": 2,
+                "visible_job_ids": ["job-b", "job-c"],
+            },
+        ],
+        "items": [
+            {
+                "source_job_id": "job-a",
+                "source_url": "https://es.indeed.com/viewjob?jk=job-a",
+                "title": "IT Support A",
+                "company": "Example A",
+                "location": "Spain",
+                "description": "Support users.",
+                "identity_verified": True,
+                "verification_reason": "",
+            },
+            {
+                "source_job_id": "job-b",
+                "source_url": "https://es.indeed.com/viewjob?jk=job-b",
+                "title": "IT Support B",
+                "company": "Example B",
+                "location": "Spain",
+                "description": "Support users.",
+                "identity_verified": True,
+                "verification_reason": "",
+            },
+            {
+                "source_job_id": "job-c",
+                "source_url": "https://es.indeed.com/viewjob?jk=job-c",
+                "title": "IT Support C",
+                "company": "Example C",
+                "location": "Spain",
+                "description": "Support users.",
+                "identity_verified": True,
+                "verification_reason": "",
+            },
+        ],
+    }
+
+    request = IndeedLiveCaptureRequest.model_validate(payload)
+
+    assert len(request.pages) == 2
+    assert request.pages[1].page_number == 2
+    assert request.requested_item_limit == 3
+
+
+def test_indeed_live_capture_persists_multi_page_evidence(tmp_path: Path) -> None:
+    client = TestClient(create_app(f"sqlite:///{(tmp_path / 'indeed-pages.db').as_posix()}"))
+    response = client.post(
+        "/api/captures/indeed/live",
+        json={
+            "search_url": "https://es.indeed.com/jobs?q=IT+Support&sort=date",
+            "requested_item_limit": 2,
+            "stop_reason": "page_limit_reached",
+            "pages": [
+                {"page_number": 1, "visible_job_ids": ["page1-job"]},
+                {"page_number": 2, "visible_job_ids": ["page2-job"]},
+            ],
+            "items": [
+                {
+                    "source_job_id": "page1-job",
+                    "source_url": "https://es.indeed.com/viewjob?jk=page1-job",
+                    "title": "Support One",
+                    "company": "Example One",
+                    "location": "Spain",
+                    "description": "Support users and endpoints.",
+                    "identity_verified": True,
+                    "verification_reason": "",
+                },
+                {
+                    "source_job_id": "page2-job",
+                    "source_url": "https://es.indeed.com/viewjob?jk=page2-job",
+                    "title": "Support Two",
+                    "company": "Example Two",
+                    "location": "Spain",
+                    "description": "Support users and systems.",
+                    "identity_verified": True,
+                    "verification_reason": "",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [page["page_number"] for page in body["pages"]] == [1, 2]
+    assert body["pages"][0]["visible_job_ids"] == ["page1-job"]
+    assert body["pages"][1]["visible_job_ids"] == ["page2-job"]
+    assert body["total_items"] == 2
