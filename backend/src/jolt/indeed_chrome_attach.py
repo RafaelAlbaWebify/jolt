@@ -191,7 +191,9 @@ def run_capture(
                     )
                     if not panel_ready and verified:
                         verified = False
-                        reason = "Indeed detail panel did not become stable after the listing click."
+                        reason = (
+                            "Indeed detail panel did not become stable after the listing click."
+                        )
 
                     detail_html = page.content() if verified else ""
                     with contextlib.suppress(Exception):
@@ -287,6 +289,7 @@ def run_capture(
         raise
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
+
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
