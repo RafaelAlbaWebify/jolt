@@ -72,7 +72,7 @@ def run_indeed_live_capture(
                 page_number=page_number,
                 visible_job_ids=visible_job_ids,
                 next_control_present=index < len(page_evidence) - 1,
-                next_control_enabled=index < len(page_requests) - 1,
+                next_control_enabled=index < len(page_evidence) - 1,
             )
             page_responses.append(page_response)
             session.add(
