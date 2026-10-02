@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+from playwright.sync_api import Browser, BrowserContext, Page, TargetClosedError, sync_playwright
 
 from jolt.indeed_capture import (
     _access_warning,
@@ -45,6 +45,23 @@ def _select_indeed_page(browser: Browser) -> tuple[BrowserContext, Page]:
         "No Indeed tab was found in the attached Chrome instance. "
         "Open an Indeed jobs search in that Chrome window and retry."
     )
+
+
+def _navigate_search_page(
+    context: BrowserContext,
+    page: Page,
+    target_url: str,
+) -> Page:
+    if page.is_closed():
+        page = context.new_page()
+
+    try:
+        page.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
+        return page
+    except TargetClosedError:
+        replacement = context.new_page()
+        replacement.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
+        return replacement
 
 
 def _page_search_url(search_url: str, page_number: int) -> str:
@@ -102,16 +119,21 @@ def run_capture(
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.connect_over_cdp(cdp_endpoint, timeout=30_000)
-            _, page = _select_indeed_page(browser)
+            context, attached_page = _select_indeed_page(browser)
 
             with contextlib.suppress(Exception):
-                page.screenshot(path=evidence_dir / "01_attached_search.png", full_page=False)
+                attached_page.screenshot(
+                    path=evidence_dir / "01_attached_search.png",
+                    full_page=False,
+                )
 
             print("JOLT is attached to Google Chrome.")
             print("Waiting for visible Indeed job results...")
-            _wait_for_visible_results(page, 1)
+            _wait_for_visible_results(attached_page, 1)
 
-            base_search_url = _page_search_url(page.url, 1)
+            base_search_url = _page_search_url(attached_page.url, 1)
+            page = context.new_page()
+            page = _navigate_search_page(context, page, base_search_url)
             cards: list[CapturedCard] = []
             pages: list[dict[str, object]] = []
             seen_job_ids: set[str] = set()
@@ -125,7 +147,7 @@ def run_capture(
                 target_url = _page_search_url(base_search_url, page_number)
                 if page_number > 1:
                     print(f"Opening Indeed results page {page_number}: {target_url}")
-                    page.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
+                page = _navigate_search_page(context, page, target_url)
 
                 candidates = _wait_for_visible_results(page, 15)
                 visible_ids = [candidate["source_job_id"] for candidate in candidates]
@@ -161,7 +183,14 @@ def run_capture(
                     seen_job_ids.add(source_job_id)
                     result_position += 1
 
+                    if page.is_closed():
+                        page = _navigate_search_page(context, page, target_url)
+
                     clicked = _click_listing_candidate(page, source_job_id)
+                    if not clicked and page.is_closed():
+                        page = _navigate_search_page(context, page, target_url)
+                        clicked = _click_listing_candidate(page, source_job_id)
+
                     if not clicked:
                         cards.append(
                             CapturedCard(
