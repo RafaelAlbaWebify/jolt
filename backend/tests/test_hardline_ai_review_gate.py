@@ -424,3 +424,27 @@ def test_contract_v12_also_enforces_deterministic_location_hardline(tmp_path) ->
 
         with pytest.raises(ValueError, match="deterministic source evidence"):
             import_ai_review(session, request)
+
+
+def test_everify_boilerplate_does_not_block_non_us_remote_role() -> None:
+    result = analyze_location_evidence(
+        location="Ireland · Remote",
+        source_text=(
+            "Location This role will be remote, and based in Ireland. "
+            "Twilio participates in the E-Verify program in certain locations, as required by law."
+        ),
+    )
+
+    assert result.hardline_reject is False
+    assert result.location_eligibility in {"eligible", "conditional"}
+    assert "E-Verify" not in result.negative_evidence
+
+
+def test_everify_remains_negative_when_role_is_us_scoped() -> None:
+    result = analyze_location_evidence(
+        location="United States · Remote",
+        source_text="This role participates in E-Verify.",
+    )
+
+    assert result.hardline_reject is True
+    assert "E-Verify" in result.negative_evidence
