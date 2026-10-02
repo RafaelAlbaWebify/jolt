@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from playwright.sync_api import Browser, BrowserContext, Page, TargetClosedError, sync_playwright
+from playwright.sync_api import Browser, BrowserContext, Error as PlaywrightError, Page, sync_playwright
 
 from jolt.indeed_capture import (
     _access_warning,
@@ -58,7 +58,9 @@ def _navigate_search_page(
     try:
         page.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
         return page
-    except TargetClosedError:
+    except PlaywrightError as exc:
+        if "closed" not in str(exc).casefold():
+            raise
         replacement = context.new_page()
         replacement.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
         return replacement
