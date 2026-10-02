@@ -46,6 +46,33 @@ def _select_indeed_page(browser: Browser) -> tuple[BrowserContext, Page]:
     )
 
 
+def _wait_for_visible_results(
+    page: Page,
+    max_jobs: int,
+    *,
+    timeout_ms: int = 180_000,
+) -> list[dict[str, str]]:
+    elapsed = 0
+    announced_verification = False
+    while elapsed < timeout_ms:
+        candidates = _visible_listing_candidates(page, max_jobs)
+        if candidates:
+            return candidates
+
+        warning = _access_warning(page)
+        if warning and not announced_verification:
+            print("Indeed verification is visible. Complete it manually in Chrome.")
+            print("JOLT will continue automatically when job results become available.")
+            announced_verification = True
+
+        page.wait_for_timeout(500)
+        elapsed += 500
+
+    raise RuntimeError(
+        "Timed out waiting for visible Indeed job results in the attached Chrome tab."
+    )
+
+
 def run_capture(
     *,
     cdp_endpoint: str,
@@ -63,30 +90,19 @@ def run_capture(
             browser = playwright.chromium.connect_over_cdp(cdp_endpoint, timeout=30_000)
             _, page = _select_indeed_page(browser)
 
-            warning = _access_warning(page)
-            if warning:
-                raise RuntimeError(warning)
-
             with contextlib.suppress(Exception):
                 page.screenshot(path=evidence_dir / "01_attached_search.png", full_page=False)
 
-            if pause_before_capture:
-                print("JOLT is attached to the existing Google Chrome instance.")
-                print("Keep the Indeed search results visible in that Chrome window.")
-                print("Resolve any verification manually before continuing.")
-                input("Press Enter to capture up to the requested number of visible jobs: ")
+            print("JOLT is attached to Google Chrome.")
+            print("Waiting for visible Indeed job results...")
+            candidates = _wait_for_visible_results(page, max_jobs)
 
-            warning = _access_warning(page)
-            if warning:
-                raise RuntimeError(warning)
+            if pause_before_capture:
+                print(
+                    f"Found {len(candidates)} visible Indeed job(s). Starting capture automatically."
+                )
 
             search_url = page.url
-            candidates = _visible_listing_candidates(page, max_jobs)
-            if not candidates:
-                raise RuntimeError(
-                    "No visible Indeed job links with durable job keys were found "
-                    "in the attached Chrome tab."
-                )
 
             cards: list[CapturedCard] = []
             for position, candidate in enumerate(candidates, 1):
