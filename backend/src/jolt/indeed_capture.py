@@ -201,6 +201,100 @@ def _location_from_jsonld(data: dict[str, object]) -> str:
     return " | ".join(parts)
 
 
+def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
+    for selector in selectors:
+        value = _text(page.locator(selector).first)
+        if value:
+            return value
+    return ""
+
+
+def _panel_container(page: Page, expected_title: str):
+    selectors = (
+        "#jobsearch-ViewjobPaneWrapper",
+        "[data-testid='jobsearch-ViewJobLayout-jobDisplay']",
+        "[data-testid='jobsearch-JobComponent']",
+        "#vjs-container",
+    )
+    for selector in selectors:
+        locator = page.locator(selector)
+        try:
+            if locator.count() and locator.first.is_visible():
+                text = _text(locator.first)
+                if expected_title.casefold() in text.casefold() or "descripci" in text.casefold():
+                    return locator.first
+        except Exception:
+            continue
+
+    containers = page.locator("div")
+    try:
+        count = min(containers.count(), 250)
+    except Exception:
+        return None
+
+    expected = " ".join(expected_title.split()).casefold()
+    best = None
+    best_len = 10**9
+    for index in range(count):
+        locator = containers.nth(index)
+        try:
+            if not locator.is_visible():
+                continue
+        except Exception:
+            continue
+        text = _text(locator)
+        normalized = text.casefold()
+        if expected and expected not in normalized:
+            continue
+        if "descripci" not in normalized and "job description" not in normalized:
+            continue
+        if len(text) < best_len:
+            best = locator
+            best_len = len(text)
+    return best
+
+
+def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return expected_title, "", "", ""
+
+    title = expected_title
+    company = ""
+    location = ""
+    description = ""
+
+    normalized_expected = " ".join(expected_title.split()).casefold()
+    title_index = 0
+    for index, line in enumerate(lines[:20]):
+        normalized_line = " ".join(line.split()).casefold()
+        if normalized_expected and (
+            normalized_expected in normalized_line or normalized_line in normalized_expected
+        ):
+            title = line
+            title_index = index
+            break
+
+    after_title = lines[title_index + 1 : title_index + 8]
+    if after_title:
+        company = after_title[0]
+    if len(after_title) > 1:
+        location = after_title[1]
+
+    description_markers = (
+        "descripción completa del empleo",
+        "descripcion completa del empleo",
+        "job description",
+        "full job description",
+    )
+    for index, line in enumerate(lines):
+        if any(marker in line.casefold() for marker in description_markers):
+            description = "\n".join(lines[index + 1 :]).strip()
+            break
+
+    return title, company, location, description
+
+
 def _detail_fields(
     page: Page, expected_id: str, expected_title: str
 ) -> tuple[str, str, str, str, bool, str]:
@@ -215,30 +309,82 @@ def _detail_fields(
     location = _location_from_jsonld(data)
     description = _strip_html(str(data.get("description", "") or ""))
 
+    panel = _panel_container(page, expected_title)
+
+    if panel is not None:
+        if not title:
+            for selector in (
+                "[data-testid='jobsearch-JobInfoHeader-title']",
+                "[data-testid='simpler-jobInfoHeader-title']",
+                "h2",
+                "h1",
+            ):
+                value = _text(panel.locator(selector).first)
+                if value and "empleos de " not in value.casefold():
+                    title = value
+                    break
+
+        if not company:
+            for selector in (
+                "[data-company-name='true']",
+                "[data-testid='inlineHeader-companyName']",
+                "[data-testid='jobsearch-CompanyInfoContainer'] a",
+                "a",
+            ):
+                value = _text(panel.locator(selector).first)
+                if value:
+                    company = value
+                    break
+
+        if not location:
+            for selector in (
+                "[data-testid='job-location']",
+                "[data-testid='inlineHeader-companyLocation']",
+                "[data-testid='jobsearch-JobInfoHeader-companyLocation']",
+            ):
+                value = _text(panel.locator(selector).first)
+                if value:
+                    location = value
+                    break
+
+        if not description:
+            for selector in (
+                "#jobDescriptionText",
+                "[data-testid='jobsearch-jobDescriptionText']",
+                "[id^='jobDescriptionText']",
+            ):
+                value = _text(panel.locator(selector).first)
+                if value:
+                    description = value
+                    break
+
+        if not (title and company and location and description):
+            parsed_title, parsed_company, parsed_location, parsed_description = _parse_panel_text(
+                _text(panel), expected_title
+            )
+            title = title or parsed_title
+            company = company or parsed_company
+            location = location or parsed_location
+            description = description or parsed_description
+
     if not title:
-        title = _text(page.locator("h1").first)
+        title = expected_title
     if not company:
-        for selector in (
-            "[data-company-name='true']",
-            "[data-testid='inlineHeader-companyName']",
-            "div[data-testid='jobsearch-CompanyInfoContainer'] a",
-        ):
-            value = _text(page.locator(selector).first)
-            if value:
-                company = value
-                break
+        company = _first_text(
+            page,
+            (
+                "[data-company-name='true']",
+                "[data-testid='inlineHeader-companyName']",
+            ),
+        )
     if not location:
-        for selector in (
-            "[data-testid='job-location']",
-            "[data-testid='inlineHeader-companyLocation']",
-            "div[data-testid='jobsearch-JobInfoHeader-companyLocation']",
-        ):
-            value = _text(page.locator(selector).first)
-            if value:
-                location = value
-                break
-    if not description:
-        description = _text(page.locator("#jobDescriptionText").first)
+        location = _first_text(
+            page,
+            (
+                "[data-testid='job-location']",
+                "[data-testid='inlineHeader-companyLocation']",
+            ),
+        )
 
     reasons: list[str] = []
     if current_id != expected_id:

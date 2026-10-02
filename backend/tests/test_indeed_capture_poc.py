@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from jolt.indeed_capture import canonical_indeed_job_url, extract_indeed_job_key
+from jolt.indeed_capture import _parse_panel_text, canonical_indeed_job_url, extract_indeed_job_key
 from jolt.main import create_app
 from jolt.schemas import IndeedLiveCaptureRequest
 from jolt.url_identity import canonicalize_source_url, indeed_job_key
@@ -78,3 +78,32 @@ def test_indeed_live_capture_ingests_verified_posting(tmp_path: Path) -> None:
     assert payload["items"][0]["detail_status"] == "verified"
     assert payload["items"][0]["posting_id"]
     assert payload["items"][0]["source_document_id"]
+
+
+def test_parse_panel_text_extracts_visible_indeed_detail() -> None:
+    panel_text = """
+    Técnico auxiliar informático
+    domestiko.com
+    Ogíjares, Granada provincia
+    2.645 € al mes - Contrato temporal, Jornada completa
+    Detalles del empleo
+    Salario
+    2.645 € al mes
+    Tipo de empleo
+    Contrato temporal
+    Jornada completa
+    Descripción completa del empleo
+    En Ogíjares (Granada) se busca una persona para dar soporte informático.
+    Atención a usuarios y resolución de incidencias.
+    """
+
+    title, company, location, description = _parse_panel_text(
+        panel_text,
+        "Técnico auxiliar informático",
+    )
+
+    assert title == "Técnico auxiliar informático"
+    assert company == "domestiko.com"
+    assert location == "Ogíjares, Granada provincia"
+    assert "soporte informático" in description
+    assert "resolución de incidencias" in description
