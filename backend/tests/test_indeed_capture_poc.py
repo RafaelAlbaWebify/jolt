@@ -133,3 +133,30 @@ def test_parse_panel_text_keeps_selected_title_authoritative() -> None:
     assert company == "Indra"
     assert location == "España · Teletrabajo"
     assert description == "Soporte a usuarios y resolución de incidencias."
+
+
+def test_panel_text_parser_handles_description_below_job_details() -> None:
+    panel_text = """
+    Técnico/a de Soporte Informático Junior
+    Indra
+    España · Teletrabajo
+    Contrato indefinido
+    Detalles del empleo
+    Tipo de empleo
+    Contrato indefinido
+    Beneficios
+    Formación continua
+    Seguro de vida
+    Descripción completa del empleo
+    Atención a usuarios, soporte remoto y resolución de incidencias.
+    """
+
+    title, company, location, description = _parse_panel_text(
+        panel_text,
+        "Técnico/a de Soporte Informático Junior",
+    )
+
+    assert title == "Técnico/a de Soporte Informático Junior"
+    assert company == "Indra"
+    assert location == "España · Teletrabajo"
+    assert "soporte remoto" in description

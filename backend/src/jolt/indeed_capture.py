@@ -122,16 +122,8 @@ def _wait_for_detail_panel(
     while elapsed < timeout_ms:
         current_id = extract_indeed_job_key(page.url)
         panel = _panel_container(page, expected_title)
-        if panel is not None:
-            panel_text = _text(panel).casefold()
-            has_job_detail = (
-                "descripción completa del empleo" in panel_text
-                or "descripcion completa del empleo" in panel_text
-                or "job description" in panel_text
-                or "detalles del empleo" in panel_text
-            )
-            if has_job_detail and current_id == expected_id:
-                return True
+        if panel is not None and current_id == expected_id:
+            return True
 
         page.wait_for_timeout(250)
         elapsed += 250
@@ -225,19 +217,22 @@ def _panel_container(page: Page, expected_title: str):
         except Exception:
             ancestor_count = 0
 
+        best = None
+        best_len = 10**9
         for ancestor_index in range(ancestor_count):
             ancestor = ancestors.nth(ancestor_index)
             text = _text(ancestor)
             normalized = text.casefold()
             if expected_title.casefold() not in normalized:
                 continue
-            if (
-                "descripción completa del empleo" in normalized
-                or "descripcion completa del empleo" in normalized
-                or "job description" in normalized
-                or "detalles del empleo" in normalized
-            ):
-                return ancestor
+            if "detalles del empleo" not in normalized and "job details" not in normalized:
+                continue
+            if len(text) < best_len:
+                best = ancestor
+                best_len = len(text)
+
+        if best is not None:
+            return best
 
     selectors = (
         "#jobsearch-ViewjobPaneWrapper",
@@ -256,6 +251,31 @@ def _panel_container(page: Page, expected_title: str):
             continue
 
     return None
+
+
+def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
+    markers = (
+        "descripción completa del empleo",
+        "descripcion completa del empleo",
+        "job description",
+        "full job description",
+    )
+    for _ in range(max_steps):
+        text = _text(panel).casefold()
+        if any(marker in text for marker in markers):
+            return
+        try:
+            panel.evaluate(
+                """element => {
+                    element.scrollTop = Math.min(
+                        element.scrollTop + Math.max(500, element.clientHeight * 0.8),
+                        element.scrollHeight
+                    );
+                }"""
+            )
+        except Exception:
+            return
+        panel.page.wait_for_timeout(250)
 
 
 def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
@@ -319,6 +339,7 @@ def _detail_fields(
         # The selected listing title is our strongest panel anchor. Indeed's internal
         # heading tags vary and may point at labels such as "Salario" or "Tipo de empleo".
         title = expected_title
+        _scroll_panel_to_description(panel)
 
         if not company:
             for selector in (
