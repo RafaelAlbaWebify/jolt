@@ -60,9 +60,13 @@ def _identity_for_url(
 
 
 def _change_summary(changes: list[tuple[str, str, str]]) -> str:
-    return "; ".join(
-        f"{label}: {before or '—'} → {after or '—'}" for label, before, after in changes
-    )
+    summaries: list[str] = []
+    for label, before, after in changes:
+        if label == "Notes":
+            summaries.append("Notes: updated")
+        else:
+            summaries.append(f"{label}: {before or '—'} → {after or '—'}")
+    return "; ".join(summaries)
 
 
 def update_application_metadata(
