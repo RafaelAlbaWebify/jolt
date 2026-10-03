@@ -843,28 +843,6 @@ def _apply_source_first_requirement_gate(
     if certification is not None:
         label, evidence = certification
 
-        if label != "unspecified mandatory certification":
-            return replace(
-                assessment,
-                eligibility="ineligible",
-                recommendation="do_not_pursue",
-                confidence="high",
-                fit_now=0,
-                fit_by_interview=0,
-                fit_on_the_job=0,
-                blockers=tuple(
-                    dict.fromkeys(
-                        [
-                            *assessment.blockers,
-                            (
-                                "Source-first mandatory certification not evidenced: "
-                                f"{label} ({evidence})."
-                            ),
-                        ]
-                    )
-                ),
-            )
-
         if assessment.eligibility != "ineligible" and assessment.recommendation != "do_not_pursue":
             assessment = replace(
                 assessment,
@@ -880,7 +858,7 @@ def _apply_source_first_requirement_gate(
                             *assessment.uncertainties,
                             (
                                 "Source-first mandatory certification must be verified "
-                                f"before pursuit: {evidence}."
+                                f"before pursuit: {label} ({evidence})."
                             ),
                         ]
                     )
