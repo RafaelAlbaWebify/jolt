@@ -1,3 +1,4 @@
+from jolt import linkedin_capture
 import json
 import urllib.error
 from io import BytesIO
@@ -403,3 +404,28 @@ def test_runtime_entry_point_has_no_monkey_patching_or_zip_rewrite() -> None:
     assert not (
         repository / "backend" / "src" / "jolt" / "capture_runtime_enhancements.py"
     ).exists()
+
+
+
+def test_dedicated_capture_page_ignores_restored_tabs() -> None:
+    class FakePage:
+        def __init__(self) -> None:
+            self.brought_to_front = False
+
+        def bring_to_front(self) -> None:
+            self.brought_to_front = True
+
+    class FakeContext:
+        def __init__(self) -> None:
+            self.pages = [object(), object()]
+            self.created = FakePage()
+
+        def new_page(self) -> FakePage:
+            return self.created
+
+    context = FakeContext()
+
+    page = linkedin_capture._dedicated_capture_page(context)  # type: ignore[arg-type]
+
+    assert page is context.created
+    assert page.brought_to_front
