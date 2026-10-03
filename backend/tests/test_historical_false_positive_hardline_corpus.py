@@ -1,0 +1,374 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import pytest
+
+from jolt.evaluation_strategy import CapabilityEvidence, RoleFamily, StrategyProfile
+from jolt.strategy_runtime import calibrated_strategy_assessment
+
+
+def _profile() -> StrategyProfile:
+    return StrategyProfile(
+        schema_version=1,
+        profile_id="historical-hardline-regression",
+        version=1,
+        role_families=[
+            RoleFamily(
+                id="it_operations",
+                label="IT Operations / Support",
+                priority="primary",
+                terms=[
+                    "it support",
+                    "technical support",
+                    "application support",
+                    "infrastructure engineer",
+                    "systems administrator",
+                    "cloud administrator",
+                    "customer support engineer",
+                ],
+                strategic_value=95,
+            )
+        ],
+        capabilities=[
+            CapabilityEvidence(
+                id="windows_identity",
+                label="Windows / Active Directory / Microsoft 365",
+                terms=[
+                    "windows",
+                    "active directory",
+                    "microsoft 365",
+                    "entra id",
+                    "intune",
+                    "vmware",
+                    "technical support",
+                    "application support",
+                ],
+                evidence_level=5,
+            )
+        ],
+    )
+
+
+@dataclass(frozen=True)
+class HistoricalCase:
+    name: str
+    original: str
+    blocker: str
+    location: str
+    description: str
+    expected: str
+
+
+CASES = (
+    HistoricalCase(
+        "PSI CRO France",
+        "preparing/positive application path",
+        "France-based employment",
+        "St.-Maur-des-Fossés, Île-de-France, France",
+        "Full-time employment based in France. IT infrastructure support with Windows, Active Directory and VMware.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Nortal",
+        "94 strong_pursue in an earlier review",
+        "mandatory German",
+        "Germany",
+        "Sehr gute Deutschkenntnisse sowie gute Englischkenntnisse in Wort und Schrift. IT Support.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Prosana",
+        "pursue, technical fit 84",
+        "mandatory Lithuanian",
+        "Lithuania",
+        "Written English & Lithuanian are required for this technical support role.",
+        "reject",
+    ),
+    HistoricalCase(
+        "BV TECH",
+        "positive before language audit",
+        "unsupported/required Italian",
+        "Italy",
+        "Il ruolo richiede esperienza nel supporto IT. Italiano fluente obbligatorio per il supporto agli utenti.",
+        "reject",
+    ),
+    HistoricalCase(
+        "ACTION ICT",
+        "positive before language audit",
+        "unsupported/required Italian",
+        "Italy",
+        "Cerchiamo supporto tecnico. Italiano fluente richiesto e assistenza agli utenti.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Mediatica Digital",
+        "positive before language audit",
+        "unsupported/required Italian",
+        "Italy",
+        "La posizione richiede supporto tecnico e conoscenza fluente della lingua italiana.",
+        "reject",
+    ),
+    HistoricalCase(
+        "LucidLink",
+        "positive/conditional before hardline-first review",
+        "US-only employment",
+        "United States · Remote",
+        "This remote role is available anywhere in the US. Provide enterprise IT support.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Unily",
+        "historical positive/conditional candidate",
+        "US-only remote",
+        "United States · Remote",
+        "Remote United States role supporting enterprise SaaS customers.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Prompt Health",
+        "historical positive/conditional candidate",
+        "US-only employment / E-Verify",
+        "United States · Remote",
+        "Remote US position. We participate in E-Verify. Technical support for healthcare SaaS.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Nebius",
+        "positive before hardline correction",
+        "US-only plus unmet primary IAM experience",
+        "United States · Remote",
+        "US remote. Requires 3+ years primary Entra ID experience plus Google Workspace and GCP IAM.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Stripe/Metronome",
+        "positive before source-first geography correction",
+        "US requisition",
+        "United States",
+        "This position is within the United States and supports cloud infrastructure.",
+        "reject",
+    ),
+    HistoricalCase(
+        "GT Global Services",
+        "positive before hardline revalidation",
+        "US work authorization + mandatory networking certification",
+        "United States · Remote",
+        "Must be authorized to work in the United States. CCNA certification required. IT support role.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Lumen",
+        "positive before hardline revalidation",
+        "Poland-only employment",
+        "Poland · Remote",
+        "Remote from Poland. Technical support and infrastructure operations.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Taraki/ARC9",
+        "positive before hardline revalidation",
+        "Lahore/local shift",
+        "Lahore, Pakistan",
+        "Applicants must be based in Lahore and work the local support shift.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Exa Capital/PrecisionCare",
+        "high technical fit before hardline revalidation",
+        "US-only + mandatory EHR/healthcare SaaS experience",
+        "United States · Remote",
+        "US remote. At least 1 year of EHR or healthcare SaaS support experience is required.",
+        "reject",
+    ),
+    HistoricalCase(
+        "KPA",
+        "positive before hardline revalidation",
+        "US work eligibility",
+        "United States · Remote",
+        "Candidates must be legally authorized to work in the United States. Remote support role.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Russell Tobin",
+        "positive before hardline revalidation",
+        "W2 / US-only",
+        "United States",
+        "W2 only. Applicants must be authorized to work in the United States.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Fever",
+        "positive/conditional before source verification",
+        "Mexico City hiring location",
+        "Mexico City, Mexico",
+        "Technical support role based in Mexico City.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Aircall",
+        "positive/conditional before source verification",
+        "Portugal-only remote",
+        "Portugal · Remote",
+        "Remote from Portugal. SaaS technical support.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Moxie",
+        "positive/conditional before source verification",
+        "Philippines-only remote",
+        "Philippines · Remote",
+        "Remote Philippines customer technical support role.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Tailscale",
+        "positive/conditional before source verification",
+        "US remote + legal authorization",
+        "United States · Remote",
+        "Remote US. Must be legally authorized to work in the United States.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Outmarket AI",
+        "kept alive/positive because eligibility was not closed",
+        "US/India employment scope",
+        "United States",
+        "IT Engineer role. Remote-first, but this requisition is in the United States and India.",
+        "reject",
+    ),
+    HistoricalCase(
+        "PTG/Courser",
+        "positive before geography audit",
+        "US-only remote",
+        "United States",
+        "Ability to work remotely from anywhere in the United States. IT Support Services II.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Roy Jorgensen",
+        "conditional, priority 74, technical fit 86",
+        "Frederick, Maryland / US employment",
+        "Frederick, MD",
+        "IT Support & Operations Specialist. Frederick, Maryland. 401(k), US medical benefits, MVR and controlled-substance testing.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Anaconda",
+        "conditional, priority 75, technical fit 82",
+        "Austin TX / US authorization",
+        "Austin, TX",
+        "What US State do you live in? Must be located in Austin, Texas and legally authorized to work in the US.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Beckman Coulter Italy",
+        "reject; first parser reason included false state token before fix",
+        "mandatory Italian / Italy role",
+        "Italy",
+        "Field technical support in Italy. Italian fluency is required. Frequent travel within Italy.",
+        "reject",
+    ),
+    HistoricalCase(
+        "Tilla",
+        "conditional, technical fit 92",
+        "territorial employment from Spain not established",
+        "Remote",
+        "Fully remote role for a distributed team. Working hours CET +/- 2. Employment countries are not stated.",
+        "hold",
+    ),
+    HistoricalCase(
+        "Jobright",
+        "conditional / VERIFY FIRST",
+        "UK/full-time remote but Spain eligibility unproven",
+        "Remote",
+        "Full-time remote role advertised for the UK. No statement confirms employment or contracting from Spain.",
+        "hold",
+    ),
+    HistoricalCase(
+        "TheyDo",
+        "strong_pursue before authoritative geography correction",
+        "USA East Coast customer territory",
+        "Remote",
+        "Fully remote team across many countries. This Customer Support Engineer role is for North America and requires working USA East Coast hours.",
+        "hold",
+    ),
+    HistoricalCase(
+        "Newmark",
+        "high-fit cloud/support candidate",
+        "Poland hiring location",
+        "Mazowieckie, Poland",
+        "Senior Cloud Administrator supporting Microsoft 365, Entra ID, Intune and Windows infrastructure.",
+        "reject",
+    ),
+    HistoricalCase(
+        "ENCAMINA",
+        "pursue, eligible, technical fit 88",
+        "conflicting work model: LinkedIn remote vs official hybrid",
+        "Remote",
+        "LinkedIn says Remote. Official employer source says Hybrid in Sagunto. Authoritative work model conflict must be verified.",
+        "hold",
+    ),
+)
+
+
+@pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
+def test_historical_false_positive_never_auto_pursues(case: HistoricalCase) -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support / Infrastructure Support",
+        location=case.location,
+        description=case.description,
+    )
+
+    assert assessment.recommendation not in {"pursue", "strong_pursue"}, (
+        f"{case.name}: historical={case.original}; blocker={case.blocker}; "
+        f"current recommendation={assessment.recommendation}; "
+        f"eligibility={assessment.eligibility}; blockers={assessment.blockers}; "
+        f"uncertainties={assessment.uncertainties}"
+    )
+
+    if case.expected == "reject":
+        assert assessment.recommendation == "do_not_pursue", (
+            f"{case.name}: expected a hard reject for {case.blocker}; "
+            f"got {assessment.recommendation}, blockers={assessment.blockers}, "
+            f"uncertainties={assessment.uncertainties}"
+        )
+    else:
+        assert assessment.recommendation in {"pursue_if_condition_met", "review_manually"}, (
+            f"{case.name}: ambiguous evidence must stay HOLD/VERIFY; "
+            f"got {assessment.recommendation}"
+        )
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_fragment"),
+    [
+        (
+            "Security clearance is required before start.",
+            "clearance",
+        ),
+        (
+            "CCNA certification required for this support position.",
+            "certification",
+        ),
+        (
+            "Minimum 5 years of professional experience in infrastructure support is required.",
+            "experience",
+        ),
+    ],
+)
+def test_generic_explicit_hard_requirements_cannot_be_overridden_by_fit(
+    description: str,
+    expected_fragment: str,
+) -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Senior IT Support Engineer",
+        location="Spain · Remote",
+        description=description,
+    )
+
+    assert assessment.recommendation not in {"pursue", "strong_pursue"}
+    combined = " ".join((*assessment.blockers, *assessment.uncertainties)).casefold()
+    assert expected_fragment in combined
