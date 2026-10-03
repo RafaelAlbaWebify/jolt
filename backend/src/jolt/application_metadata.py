@@ -61,8 +61,7 @@ def _identity_for_url(
 
 def _change_summary(changes: list[tuple[str, str, str]]) -> str:
     return "; ".join(
-        f"{label}: {before or '—'} → {after or '—'}"
-        for label, before, after in changes
+        f"{label}: {before or '—'} → {after or '—'}" for label, before, after in changes
     )
 
 
@@ -179,9 +178,7 @@ def update_application_metadata(
         session.commit()
     except IntegrityError as exc:
         session.rollback()
-        raise ValueError(
-            "This job URL already belongs to another JOLT opportunity."
-        ) from exc
+        raise ValueError("This job URL already belongs to another JOLT opportunity.") from exc
     except Exception:
         session.rollback()
         raise
