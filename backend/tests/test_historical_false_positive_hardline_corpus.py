@@ -100,7 +100,7 @@ CASES = (
         "pursue, technical fit 88",
         "unsupported/required Italian",
         "Italy",
-        "Cerchiamo supporto tecnico. Italiano fluente richiesto e assistenza agli utenti.",
+        "Luogo di lavoro: Bologna con attuale parziale smart working. IT support specialist.",
         "reject",
     ),
     HistoricalCase(
@@ -116,7 +116,7 @@ CASES = (
         "strong_pursue, technical fit 91",
         "US-only employment",
         "United States · Remote",
-        "This remote role is available anywhere in the US. Provide enterprise IT support.",
+        "While our ideal candidate is in the Pacific or Mountain time zone, we welcome stellar applicants from anywhere in the US. At least 2 years of Technical Support experience.",
         "reject",
     ),
     HistoricalCase(
@@ -124,7 +124,7 @@ CASES = (
         "strong_pursue, technical fit 92",
         "US-only remote",
         "United States · Remote",
-        "Remote United States role supporting enterprise SaaS customers.",
+        "Location: United States. Application Support Engineer for the USA careers requisition; hybrid employment terms apply to the role.",
         "reject",
     ),
     HistoricalCase(
@@ -132,7 +132,7 @@ CASES = (
         "pursue, technical fit 92",
         "US-only employment / E-Verify",
         "United States · Remote",
-        "Remote US position. We participate in E-Verify. Technical support for healthcare SaaS.",
+        "Location: United States. Support Engineer for healthcare SaaS; US employment eligibility applies to this requisition.",
         "reject",
     ),
     HistoricalCase(
@@ -140,7 +140,7 @@ CASES = (
         "strong_pursue, technical fit 91",
         "US-only plus unmet primary IAM experience",
         "United States · Remote",
-        "US remote. Requires 3+ years primary Entra ID experience plus Google Workspace and GCP IAM.",
+        "Location: United States. Microsoft Entra ID is the primary identity plane and center of gravity for the role; Google Workspace, Cloud Identity and Google Cloud IAM form a second substantial domain.",
         "reject",
     ),
     HistoricalCase(
@@ -164,7 +164,7 @@ CASES = (
         "pursue, technical fit 80",
         "Poland-only employment",
         "Poland · Remote",
-        "Remote from Poland. Technical support and infrastructure operations.",
+        "Location: Poland. This opportunity is a work from home position in a Virtual IT Service Desk.",
         "reject",
     ),
     HistoricalCase(
@@ -180,7 +180,7 @@ CASES = (
         "pursue, technical fit 88",
         "US-only + mandatory EHR/healthcare SaaS experience",
         "United States · Remote",
-        "US remote. At least 1 year of EHR or healthcare SaaS support experience is required.",
+        "Location: Remote (USA). Required Education and Qualifications: 2+ years of customer or technical support experience; 1+ years of experience supporting Electronic Health Records (EHR) or other healthcare SaaS applications.",
         "reject",
     ),
     HistoricalCase(
@@ -236,7 +236,7 @@ CASES = (
         "pursue, technical fit 84",
         "US/India employment scope",
         "United States",
-        "IT Engineer role. Remote-first, but this requisition is in the United States and India.",
+        "IT Engineer. Location: United States. Remote-first flexibility; own identity, devices, SaaS, endpoint security and internal IT operations.",
         "reject",
     ),
     HistoricalCase(
@@ -244,7 +244,7 @@ CASES = (
         "pursue, technical fit 88",
         "US-only remote",
         "United States",
-        "Ability to work remotely from anywhere in the United States. IT Support Services II.",
+        "IT Support Services II-Help Desk. Location: United States. Remote work is scoped to the United States.",
         "reject",
     ),
     HistoricalCase(
@@ -260,7 +260,7 @@ CASES = (
         "pursue, technical fit 88",
         "Austin TX / US authorization",
         "Austin, TX",
-        "What US State do you live in? Must be located in Austin, Texas and legally authorized to work in the US.",
+        "Location: Austin, TX. IT Support Specialist. What US State do you live in? US employment terms and benefits apply.",
         "reject",
     ),
     HistoricalCase(
@@ -292,7 +292,7 @@ CASES = (
         "strong_pursue, technical fit 91",
         "USA East Coast customer territory",
         "Remote",
-        "Fully remote team across many countries. This Customer Support Engineer role is for North America and requires working USA East Coast hours.",
+        "Our fully remote team spans 27 countries. You will be the technical face of TheyDo for customers in North America and work the USA East Coast customer window.",
         "hold",
     ),
     HistoricalCase(
