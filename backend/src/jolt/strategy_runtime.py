@@ -620,8 +620,24 @@ def _source_first_mandatory_certification(
 
     for pattern in _SOURCE_FIRST_GENERIC_CERTIFICATION_PATTERNS:
         match = re.search(pattern, normalized)
-        if match is not None:
-            return "unspecified mandatory certification", match.group(0)
+        if match is None:
+            continue
+
+        window = _source_first_window(
+            normalized,
+            match.start(),
+            match.end(),
+            radius=100,
+        )
+        satisfied_known_requirement = any(
+            any(_source_first_term_pattern(alias).search(window) for alias in aliases)
+            and _source_first_profile_has_evidence(profile, aliases)
+            for _, aliases in _SOURCE_FIRST_CERTIFICATIONS
+        )
+        if satisfied_known_requirement:
+            continue
+
+        return "unspecified mandatory certification", match.group(0)
 
     return None
 
