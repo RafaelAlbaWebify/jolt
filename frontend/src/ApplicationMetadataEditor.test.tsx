@@ -50,7 +50,10 @@ describe("ApplicationMetadataEditor", () => {
     expect(screen.getByLabelText("Job posting URL")).toHaveValue(
       "https://jobs.example.test/france-role",
     );
-    expect(await screen.findByLabelText("Application/Apply URL")).toHaveValue(
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
+    expect(screen.getByLabelText("Application/Apply URL")).toHaveValue(
       "https://apply.example.test/123",
     );
     expect(screen.getByLabelText("Notes")).toHaveValue("Tailored CV pending.");
@@ -71,7 +74,9 @@ describe("ApplicationMetadataEditor", () => {
       />,
     );
 
-    await screen.findByLabelText("Notes");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
     fireEvent.change(screen.getByLabelText("Location"), {
       target: { value: "Madrid, Spain" },
     });
@@ -114,7 +119,9 @@ describe("ApplicationMetadataEditor", () => {
       />,
     );
 
-    await screen.findByLabelText("Notes");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
     fireEvent.change(screen.getByLabelText("Location"), {
       target: { value: "Madrid, Spain" },
     });
@@ -161,7 +168,9 @@ describe("ApplicationMetadataEditor", () => {
       />,
     );
 
-    await screen.findByLabelText("Notes");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Metadata validation failed.");
@@ -196,7 +205,9 @@ describe("ApplicationMetadataEditor", () => {
       />,
     );
 
-    await screen.findByLabelText("Notes");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
