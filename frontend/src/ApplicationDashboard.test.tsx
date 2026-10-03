@@ -647,7 +647,9 @@ describe("ApplicationDashboard", () => {
       within(card!).getByRole("button", { name: "Edit application metadata for Application Support Engineer" }),
     );
 
-    await screen.findByLabelText("Application/Apply URL");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toBeEnabled(),
+    );
     fireEvent.change(screen.getByLabelText("Location"), {
       target: { value: "Madrid, Spain" },
     });
