@@ -262,3 +262,53 @@ def test_invalid_job_url_rolls_back_other_requested_changes(tmp_path: Path) -> N
         "https://example.test/jobs/psi",
         "url:https://example.test/jobs/psi",
     )
+
+
+
+def test_closed_application_outcome_survives_metadata_edit(tmp_path: Path) -> None:
+    database = tmp_path / "outcome.db"
+    client = _client(database)
+    posting_id, application_id = _application(client)
+
+    outcome = client.post(
+        f"/api/applications/{application_id}/outcomes",
+        json={
+            "outcome_type": "rejected_by_employer",
+            "notes": "Historical outcome must survive metadata correction.",
+        },
+    )
+    assert outcome.status_code == 200
+
+    edited = client.patch(
+        f"/api/applications/{application_id}/metadata",
+        json={"company": "PSI CRO Spain", "location": "Madrid, Spain"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["application_id"] == application_id
+    assert edited.json()["posting_id"] == posting_id
+    assert edited.json()["status"] == "rejected"
+
+    detail = client.get(f"/api/applications/{application_id}").json()
+    assert detail["outcome_type"] == "rejected_by_employer"
+    assert detail["status"] == "rejected"
+    assert detail["events"][-1]["event_type"] == "metadata_updated"
+
+
+def test_notes_audit_records_change_without_copying_note_contents(tmp_path: Path) -> None:
+    database = tmp_path / "notes-audit.db"
+    client = _client(database)
+    _, application_id = _application(client)
+    private_note = "Long operator note that should remain on the application, not be duplicated in history."
+
+    edited = client.patch(
+        f"/api/applications/{application_id}/metadata",
+        json={"notes": private_note},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["notes"] == private_note
+
+    detail = client.get(f"/api/applications/{application_id}").json()
+    audit = detail["events"][-1]
+    assert audit["event_type"] == "metadata_updated"
+    assert audit["notes"] == "Notes: updated"
+    assert private_note not in audit["notes"]
