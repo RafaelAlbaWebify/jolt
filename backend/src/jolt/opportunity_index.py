@@ -29,6 +29,7 @@ class OpportunityIndexItem(BaseModel):
     posting_id: str
     evaluation_id: str | None = None
     source_url: str
+    job_url: str = ""
     title: str
     company: str
     location: str
@@ -262,6 +263,7 @@ def list_opportunity_index(
                     source_document,
                     posting.canonical_url,
                 ),
+                job_url=posting.canonical_url,
                 title=posting.title,
                 company=posting.company,
                 location=posting.location,

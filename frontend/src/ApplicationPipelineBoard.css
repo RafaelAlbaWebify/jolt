@@ -221,3 +221,25 @@
   .application-archived-list { grid-template-columns: 1fr; }
   .application-archived-overview dl > div { grid-template-columns: 1fr; gap: 4px; }
 }
+
+
+.application-edit-overlay { position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center; padding: 28px; background: rgba(20, 28, 43, 0.58); backdrop-filter: blur(3px); }
+.application-edit-dialog { width: min(680px, 100%); max-height: calc(100vh - 56px); overflow-y: auto; display: grid; gap: 16px; padding: 22px; border: 1px solid #cfd6e2; border-radius: 16px; background: #fff; box-shadow: 0 28px 80px rgba(15, 23, 42, 0.3); }
+.application-edit-dialog h3,
+.application-edit-dialog p { margin: 0; }
+.application-edit-dialog > div:first-child > p:last-child { margin-top: 5px; color: #667085; }
+.application-edit-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.application-edit-form label { display: grid; gap: 7px; min-width: 0; font-weight: 700; }
+.application-edit-form input,
+.application-edit-form textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #bfc7d5; border-radius: 9px; background: #fff; color: #172033; font: inherit; }
+.application-edit-form textarea { resize: vertical; }
+.application-edit-form small { color: #667085; font-size: 0.76rem; font-weight: 500; line-height: 1.35; }
+.application-edit-wide { grid-column: 1 / -1; }
+.application-edit-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.application-edit-error { margin: 0; }
+
+@media (max-width: 720px) {
+  .application-edit-overlay { padding: 14px; }
+  .application-edit-form { grid-template-columns: 1fr; }
+  .application-edit-wide { grid-column: auto; }
+}

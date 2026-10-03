@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApplicationContacts } from "./ApplicationContacts";
 import { ApplicationDocuments } from "./ApplicationDocuments";
 import { ApplicationInterviews } from "./ApplicationInterviews";
+import { ApplicationMetadataEditor } from "./ApplicationMetadataEditor";
 import { ApplicationTasks } from "./ApplicationTasks";
 import { ApplicationWorkflow } from "./ApplicationWorkflow";
 import type { ApplicationStatus } from "./ApplicationWorkflow";
@@ -12,6 +13,7 @@ type ApplicationRecordStatus = ApplicationStatus | "archived";
 type Opportunity = {
   posting_id: string;
   source_url: string;
+  job_url?: string;
   title: string;
   company: string;
   location: string;
@@ -349,6 +351,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [closingPostingId, setClosingPostingId] = useState<string | null>(null);
   const [closeOutcome, setCloseOutcome] = useState("rejected_by_employer");
+  const [editingPostingId, setEditingPostingId] = useState<string | null>(null);
   const movingApplicationIds = useRef(new Set<string>());
   const detailRequestRef = useRef<AbortController | null>(null);
 
@@ -385,6 +388,15 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [closingPostingId]);
+
+  useEffect(() => {
+    if (!editingPostingId) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setEditingPostingId(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [editingPostingId]);
 
   const candidates = useMemo(
     () => opportunities.filter((item) => Boolean(item.application_id)),
@@ -439,6 +451,7 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
   const listApplications = [...visibleActiveCandidates].sort(newestActivityFirst);
   const selected = candidates.find((item) => item.posting_id === selectedPostingId) ?? null;
   const closingItem = activeCandidates.find((item) => item.posting_id === closingPostingId) ?? null;
+  const editingItem = activeCandidates.find((item) => item.posting_id === editingPostingId) ?? null;
 
   const loadApplicationDetail = useCallback(
     async (applicationId: string | null | undefined) => {
@@ -490,6 +503,26 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
     setError("");
     setActiveTab("overview");
     setSelectedPostingId(postingId);
+  }
+
+  function openMetadataEditor(item: Opportunity) {
+    if (!item.application_id) return;
+    setError("");
+    setMoveNotice("");
+    setEditingPostingId(item.posting_id);
+  }
+
+  async function metadataSaved(updated: { title: string; changed_fields: string[] }) {
+    await refresh();
+    if (selected?.application_id && selected.posting_id === editingPostingId) {
+      await loadApplicationDetail(selected.application_id);
+    }
+    setEditingPostingId(null);
+    setMoveNotice(
+      updated.changed_fields.length > 0
+        ? `${updated.title || "Application"} metadata updated.`
+        : "No application metadata changes were needed.",
+    );
   }
 
   function openCloseDialog(item: Opportunity) {
@@ -794,12 +827,24 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                         </label>
                       </div>
                       <div className="application-card-links">
-                        {opportunity.source_url && <a href={opportunity.source_url} target="_blank" rel="noreferrer">Source job</a>}
+                        {(opportunity.job_url || opportunity.source_url) && <a href={opportunity.job_url || opportunity.source_url} target="_blank" rel="noreferrer">Job posting</a>}
+                        {opportunity.source_url && opportunity.job_url && opportunity.source_url !== opportunity.job_url && (
+                          <a href={opportunity.source_url} target="_blank" rel="noreferrer">Captured source</a>
+                        )}
                         <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
                         <details className="application-card-more">
                           <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
                             More
                           </summary>
+                          <button
+                            type="button"
+                            className="secondary application-card-edit"
+                            disabled={busy}
+                            aria-label={`Edit application metadata for ${opportunity.title || "application"}`}
+                            onClick={() => openMetadataEditor(opportunity)}
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             className="secondary application-card-archive"
@@ -949,6 +994,22 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
             </div>
           )}
         </section>
+      )}
+
+      {editingItem && editingItem.application_id && (
+        <ApplicationMetadataEditor
+          apiBase={apiBase}
+          application={{
+            application_id: editingItem.application_id,
+            title: editingItem.title,
+            company: editingItem.company,
+            location: editingItem.location,
+            job_url: editingItem.job_url,
+            source_url: editingItem.source_url,
+          }}
+          onCancel={() => setEditingPostingId(null)}
+          onSaved={metadataSaved}
+        />
       )}
 
       {closingItem && (

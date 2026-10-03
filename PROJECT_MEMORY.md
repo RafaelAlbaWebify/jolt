@@ -358,3 +358,20 @@ PR history:
 - #491 corrected title-anchor selection after a real three-page run exposed secondary-link contamination.
 
 The adapter remains pending one fresh post-#491 live acceptance before it can be described as production-accepted.
+
+
+## 2026-10-03 application metadata correction contract
+
+Application Pipeline metadata may be corrected manually without replacing durable workflow identity.
+
+Durable rules:
+- `Application.id` and `Posting.id` remain unchanged during metadata correction.
+- Editing title, company, location, current job URL, application/apply URL or notes must not reset stage/status or replace application history/resources.
+- `Posting.canonical_url` is the current canonical job-posting URL and is distinct from immutable captured-source provenance.
+- `Application.application_url` is the external application/apply URL and may differ from the job-posting URL.
+- `SourceDocument.source_url` and `SourceDocument.raw_text` are historical capture evidence and must not be rewritten by manual metadata correction.
+- A changed job URL must be canonicalized using JOLT's existing URL identity rules and `Posting.identity_key` must be recalculated in the same transaction.
+- Identity collisions must fail closed with an actionable error; manual metadata correction must never auto-merge opportunities.
+- Posting/Application field updates plus the `metadata_updated` audit event are one atomic transaction and must roll back together.
+- Notes remain on the Application; the audit event records only that Notes changed rather than duplicating their full contents.
+- Existing reviews, AI/preparation state, tasks, interviews, contacts, documents, outcomes and timeline remain attached through the unchanged Posting/Application IDs.
