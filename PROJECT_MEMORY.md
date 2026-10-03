@@ -375,3 +375,20 @@ Durable rules:
 - Posting/Application field updates plus the `metadata_updated` audit event are one atomic transaction and must roll back together.
 - Notes remain on the Application; the audit event records only that Notes changed rather than duplicating their full contents.
 - Existing reviews, AI/preparation state, tasks, interviews, contacts, documents, outcomes and timeline remain attached through the unchanged Posting/Application IDs.
+
+
+## 2026-10-03 hardline-first regression contract
+
+JOLT strategy engine `profile-rules-v12` enforces hardline eligibility before technical fit.
+
+Durable rules:
+- Technical fit, ranking score and transferable-skill strength can never override a verified hard blocker.
+- Explicit incompatible language, employment geography, residence/work authorization, active clearance, unmet mandatory certification or other demonstrated hard requirement resolves to `do_not_pursue`.
+- Requirements that are real but cannot be conclusively reconciled with candidate evidence resolve to `pursue_if_condition_met` / HOLD-VERIFY, never automatic `pursue` or `strong_pursue`.
+- Explicit numeric minimum experience is hardline evidence from one year upward when the advert marks it as required/minimum/at least or uses a `N+ years` requirement. If candidate tenure cannot be proven from durable evidence, the role stays HOLD/VERIFY.
+- A concrete mandatory certification (for example CCNA) rejects only when the required credential is not evidenced by the candidate profile. Preferred/desirable certifications do not block. An unspecified mandatory certification stays HOLD/VERIFY.
+- An active security-clearance requirement is a hard reject when not evidenced. Merely being required to be eligible/able to obtain clearance stays HOLD/VERIFY.
+- Historical false-positive company names must never be embedded in production rules. They are regression fixtures only; production logic remains evidence-driven.
+- The permanent historical regression corpus covers PSI CRO France, Nortal, Prosana, BV TECH, ACTION ICT, Mediatica Digital, LucidLink, Unily, Prompt Health, Nebius, Stripe/Metronome, GT Global Services, Lumen, Taraki/ARC9, Exa Capital/PrecisionCare, KPA, Russell Tobin, Fever, Aircall, Moxie, Tailscale, Outmarket AI, PTG/Courser, Roy Jorgensen, Anaconda, Beckman Coulter Italy, Tilla, Jobright, TheyDo, Newmark and ENCAMINA.
+- Clear historical blockers must remain `do_not_pursue`; historically ambiguous/source-conflicted cases must remain HOLD/VERIFY.
+- Changing these semantics requires a strategy `ENGINE_VERSION` bump so persisted evaluations are regenerated rather than treated as current.
