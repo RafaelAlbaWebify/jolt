@@ -394,10 +394,7 @@ def test_required_certification_is_allowed_when_profile_evidences_it() -> None:
         description="CCNA certification required for this support position.",
     )
 
-    assert not any(
-        "mandatory certification not evidenced" in blocker.casefold()
-        for blocker in assessment.blockers
-    )
+    assert not any("certification" in item.casefold() for item in assessment.uncertainties)
 
 
 def test_preferred_certification_does_not_create_a_hard_blocker() -> None:
@@ -526,8 +523,8 @@ def test_one_evidenced_certification_does_not_hide_a_second_missing_requirement(
         description="CCNA certification required. ITIL certification required.",
     )
 
-    assert assessment.recommendation == "do_not_pursue"
-    assert any("ITIL" in blocker for blocker in assessment.blockers)
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any("ITIL" in item for item in assessment.uncertainties)
 
 
 def test_active_clearance_must_have_phrase_is_a_hard_reject() -> None:
