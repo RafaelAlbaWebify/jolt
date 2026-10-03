@@ -1,10 +1,10 @@
-from jolt import linkedin_capture
 import json
 import urllib.error
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from jolt import linkedin_capture
 from jolt.linkedin_capture import (
     RetryMetrics,
     _is_relevant_filter_label,
