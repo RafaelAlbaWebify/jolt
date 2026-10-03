@@ -50,7 +50,7 @@ Production rules are evidence-driven. Company names appear only in regression fi
 
 The historical 31-company corpus itself no longer produced an automatic pursue under the current strategy path. The audit nevertheless exposed three generic policy gaps that were not consistently protected by durable tests:
 
-1. **Mandatory certification** — a requirement such as `CCNA certification required` now rejects when the credential is not evidenced by the candidate profile. A preferred certification does not block. An unspecified mandatory certification becomes HOLD/VERIFY.
+1. **Mandatory certification** — a requirement such as `CCNA certification required` can no longer be overridden by fit. If the credential is evidenced in the deterministic profile it is satisfied; if it is not provable from that profile, the role becomes HOLD/VERIFY rather than assuming the credential is absent. A preferred certification does not block.
 2. **Explicit minimum experience from one year upward** — requirements such as `1+ years of EHR support experience` or `at least 1 year of ... experience is required` now produce HOLD/VERIFY when candidate tenure cannot be proven. Company-history statements are explicitly excluded.
 3. **Clearance eligibility ambiguity** — `active security clearance required` remains a hard reject when not evidenced, while `must be eligible/able to obtain a clearance` becomes HOLD/VERIFY.
 
@@ -69,6 +69,6 @@ No case in the corpus may return `pursue` or `strong_pursue`.
 
 Additional negative controls ensure that:
 - preferred certifications do not block;
-- candidate-evidenced mandatory certifications do not block;
+- candidate-evidenced mandatory certifications do not block, while unproven mandatory certifications stay HOLD/VERIFY;
 - company age/history is not misread as candidate minimum experience;
 - ambiguous clearance eligibility does not become an automatic reject or automatic pursue.
