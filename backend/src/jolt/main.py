@@ -18,16 +18,16 @@ from jolt.ai_review_opportunity_index import (
 )
 from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
 from jolt.ai_status_api import build_ai_status_router
-from jolt.application_metadata import (
-    ApplicationMetadataResponse,
-    ApplicationMetadataUpdate,
-    update_application_metadata,
-)
 from jolt.application_archival import (
     ApplicationArchiveRequest,
     ApplicationArchiveResponse,
     archive_application_card,
     restore_application_card,
+)
+from jolt.application_metadata import (
+    ApplicationMetadataResponse,
+    ApplicationMetadataUpdate,
+    update_application_metadata,
 )
 from jolt.application_cleanup import (
     ApplicationDeleteResponse,
