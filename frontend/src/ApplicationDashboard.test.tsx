@@ -670,6 +670,10 @@ describe("ApplicationDashboard", () => {
       "href",
       "https://jobs.smartrecruiters.com/psicro/744000151009639-it-infrastructure-engineer-windows-active-directory-vmware-",
     );
+    expect(within(updatedCard!).getByRole("link", { name: "Captured source" })).toHaveAttribute(
+      "href",
+      submittedOpportunity.source_url,
+    );
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(1);
   });
 
