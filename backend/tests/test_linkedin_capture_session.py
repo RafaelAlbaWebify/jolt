@@ -406,7 +406,6 @@ def test_runtime_entry_point_has_no_monkey_patching_or_zip_rewrite() -> None:
     ).exists()
 
 
-
 def test_dedicated_capture_page_ignores_restored_tabs() -> None:
     class FakePage:
         def __init__(self) -> None:
