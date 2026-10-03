@@ -481,7 +481,6 @@ def test_one_year_explicit_minimum_experience_is_hold_verify() -> None:
     assert any("experience" in item.casefold() for item in assessment.uncertainties)
 
 
-
 def test_clearance_eligibility_is_hold_verify() -> None:
     assessment = calibrated_strategy_assessment(
         _profile(),
