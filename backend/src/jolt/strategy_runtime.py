@@ -634,6 +634,8 @@ def _source_first_large_experience(text: str) -> str | None:
         r"(?:"
         r"(?:of\s+)?(?:professional\s+)?experience\b"
         r"|"
+        r"of\s+[^.\n]{1,100}?\s+experience\b"
+        r"|"
         r"(?:running|operating|administering|managing|supporting)\b"
         r"|"
         r"working\s+(?:with|in|on)\b"
