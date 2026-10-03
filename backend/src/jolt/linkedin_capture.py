@@ -913,6 +913,12 @@ def _write_failure_diagnostics(
             )
 
 
+def _dedicated_capture_page(context: BrowserContext) -> Page:
+    page = context.new_page()
+    page.bring_to_front()
+    return page
+
+
 @contextmanager
 def linkedin_capture_browser(profile_dir: Path) -> Iterator[tuple[BrowserContext, Page]]:
     """Open one persistent LinkedIn browser context for one or more bounded searches."""
@@ -922,8 +928,7 @@ def linkedin_capture_browser(profile_dir: Path) -> Iterator[tuple[BrowserContext
             headless=False,
             viewport={"width": 1440, "height": 1000},
         )
-        page = context.new_page()
-        page.bring_to_front()
+        page = _dedicated_capture_page(context)
         try:
             yield context, page
         finally:
