@@ -493,7 +493,6 @@ def test_clearance_eligibility_is_hold_verify() -> None:
     assert any("clearance" in item.casefold() for item in assessment.uncertainties)
 
 
-
 def test_company_history_does_not_become_candidate_experience_blocker() -> None:
     assessment = calibrated_strategy_assessment(
         _profile(),
