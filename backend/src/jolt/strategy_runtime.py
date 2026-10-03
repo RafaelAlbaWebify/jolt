@@ -285,6 +285,26 @@ _SOURCE_FIRST_CLEARANCE_PATTERNS = (
     r"\bhps\b.{0,80}\b(?:tramitaci[oó]n|vigente|antes\s+de\s+incorporaci[oó]n)\b",
 )
 
+_SOURCE_FIRST_CERTIFICATIONS = (
+    ("CCNA", ("ccna", "cisco certified network associate")),
+    ("CCNP", ("ccnp", "cisco certified network professional")),
+    ("CompTIA Security+", ("comptia security+", "security+")),
+    ("CompTIA Network+", ("comptia network+", "network+")),
+    ("ITIL", ("itil", "itil foundation")),
+    ("CISSP", ("cissp",)),
+    ("CISM", ("cism",)),
+    (
+        "AWS Certified Security - Specialty",
+        ("aws certified security - specialty", "aws certified security specialty"),
+    ),
+)
+
+_SOURCE_FIRST_GENERIC_CERTIFICATION_PATTERNS = (
+    r"\bcertification\s+(?:is\s+)?(?:required|mandatory|essential)\b",
+    r"\b(?:required|mandatory|essential)\s+certification\b",
+    r"\bmust\s+(?:hold|have|possess)\s+(?:a\s+)?(?:valid\s+)?certification\b",
+)
+
 _FOREIGN_RESIDENCE_PATTERN = (
     "(?:" + "|".join(re.escape(location) for location in FOREIGN_COUNTRY_TERMS) + ")"
 )
@@ -541,6 +561,53 @@ def _source_first_clearance(text: str) -> str | None:
     return None
 
 
+def _source_first_mandatory_certification(
+    profile: StrategyProfile,
+    text: str,
+) -> tuple[str, str] | None:
+    normalized = _source_first_normalize(text)
+    required_marker = r"required|mandatory|essential|must\s+(?:hold|have|possess)"
+    certification_marker = r"certification|certificate|certified"
+
+    for label, aliases in _SOURCE_FIRST_CERTIFICATIONS:
+        for alias in aliases:
+            pattern = _source_first_term_pattern(alias)
+            for match in pattern.finditer(normalized):
+                window = _source_first_window(
+                    normalized,
+                    match.start(),
+                    match.end(),
+                    radius=100,
+                )
+                if _source_first_preferred(window, alias):
+                    continue
+
+                escaped = re.escape(alias)
+                is_required = bool(
+                    re.search(
+                        rf"\b(?:{required_marker})\b.{{0,80}}\b{escaped}\b|"
+                        rf"\b{escaped}\b.{{0,80}}\b(?:{required_marker})\b|"
+                        rf"\b{escaped}\b.{{0,50}}\b(?:{certification_marker})\b"
+                        rf".{{0,40}}\b(?:required|mandatory|essential)\b",
+                        window,
+                    )
+                )
+                if not is_required:
+                    continue
+
+                if _source_first_profile_has_evidence(profile, aliases):
+                    return None
+
+                return label, match.group(0)
+
+    for pattern in _SOURCE_FIRST_GENERIC_CERTIFICATION_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is not None:
+            return "unspecified mandatory certification", match.group(0)
+
+    return None
+
+
 def _source_first_large_experience(text: str) -> str | None:
     normalized = _source_first_normalize(text)
 
@@ -717,6 +784,55 @@ def _apply_source_first_requirement_gate(
                 )
             ),
         )
+
+    certification = _source_first_mandatory_certification(profile, text)
+
+    if certification is not None:
+        label, evidence = certification
+
+        if label != "unspecified mandatory certification":
+            return replace(
+                assessment,
+                eligibility="ineligible",
+                recommendation="do_not_pursue",
+                confidence="high",
+                fit_now=0,
+                fit_by_interview=0,
+                fit_on_the_job=0,
+                blockers=tuple(
+                    dict.fromkeys(
+                        [
+                            *assessment.blockers,
+                            (
+                                "Source-first mandatory certification not evidenced: "
+                                f"{label} ({evidence})."
+                            ),
+                        ]
+                    )
+                ),
+            )
+
+        if assessment.eligibility != "ineligible" and assessment.recommendation != "do_not_pursue":
+            assessment = replace(
+                assessment,
+                eligibility="eligible_with_conditions",
+                recommendation="pursue_if_condition_met",
+                confidence="low",
+                fit_now=min(assessment.fit_now, 69),
+                fit_by_interview=min(assessment.fit_by_interview, 69),
+                fit_on_the_job=min(assessment.fit_on_the_job, 74),
+                uncertainties=tuple(
+                    dict.fromkeys(
+                        [
+                            *assessment.uncertainties,
+                            (
+                                "Source-first mandatory certification must be verified "
+                                f"before pursuit: {evidence}."
+                            ),
+                        ]
+                    )
+                ),
+            )
 
     platforms = _source_first_missing_platforms(profile, text)
 
