@@ -264,7 +264,6 @@ def test_invalid_job_url_rolls_back_other_requested_changes(tmp_path: Path) -> N
     )
 
 
-
 def test_closed_application_outcome_survives_metadata_edit(tmp_path: Path) -> None:
     database = tmp_path / "outcome.db"
     client = _client(database)
@@ -298,7 +297,9 @@ def test_notes_audit_records_change_without_copying_note_contents(tmp_path: Path
     database = tmp_path / "notes-audit.db"
     client = _client(database)
     _, application_id = _application(client)
-    private_note = "Long operator note that should remain on the application, not be duplicated in history."
+    private_note = (
+        "Long operator note that should remain on the application, not be duplicated in history."
+    )
 
     edited = client.patch(
         f"/api/applications/{application_id}/metadata",
