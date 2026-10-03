@@ -372,3 +372,52 @@ def test_generic_explicit_hard_requirements_cannot_be_overridden_by_fit(
     assert assessment.recommendation not in {"pursue", "strong_pursue"}
     combined = " ".join((*assessment.blockers, *assessment.uncertainties)).casefold()
     assert expected_fragment in combined
+
+
+
+def test_required_certification_is_allowed_when_profile_evidences_it() -> None:
+    profile = _profile()
+    profile.capabilities.append(
+        CapabilityEvidence(
+            id="ccna",
+            label="CCNA",
+            terms=["ccna", "cisco certified network associate"],
+            evidence_level=5,
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="CCNA certification required for this support position.",
+    )
+
+    assert not any(
+        "mandatory certification not evidenced" in blocker.casefold()
+        for blocker in assessment.blockers
+    )
+
+
+def test_preferred_certification_does_not_create_a_hard_blocker() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="CCNA certification preferred but not required.",
+    )
+
+    assert not any("certification" in blocker.casefold() for blocker in assessment.blockers)
+    assert not any("certification" in uncertainty.casefold() for uncertainty in assessment.uncertainties)
+
+
+def test_unspecified_mandatory_certification_is_hold_verify_not_auto_pursue() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="A relevant networking certification is required for this position.",
+    )
+
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any("certification" in item.casefold() for item in assessment.uncertainties)
