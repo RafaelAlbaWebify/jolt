@@ -828,6 +828,9 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                       </div>
                       <div className="application-card-links">
                         {(opportunity.job_url || opportunity.source_url) && <a href={opportunity.job_url || opportunity.source_url} target="_blank" rel="noreferrer">Job posting</a>}
+                        {opportunity.source_url && opportunity.job_url && opportunity.source_url !== opportunity.job_url && (
+                          <a href={opportunity.source_url} target="_blank" rel="noreferrer">Captured source</a>
+                        )}
                         <a href={`${apiBase}/api/opportunities/${opportunity.posting_id}/preparation-pack`} download>Download prep pack</a>
                         <details className="application-card-more">
                           <summary aria-label={`More actions for ${opportunity.title || "application"}`}>
