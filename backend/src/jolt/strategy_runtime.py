@@ -281,6 +281,7 @@ _SOURCE_FIRST_CLEARANCE_PATTERNS = (
     r"\bhps\s+(?:security\s+)?clearance\b",
     r"\b(?:security\s+)?clearance\s+(?:is\s+)?required\b",
     r"\brequired\s+(?:security\s+)?clearance\b",
+    r"\bmust\s+(?:hold|have|possess)\s+(?:an?\s+)?(?:active\s+|current\s+|valid\s+)?(?:security\s+)?clearance\b",
     r"\bhabilitaci[oó]n\s+personal\s+de\s+seguridad\s+hps\b",
     r"\bhps\b.{0,80}\b(?:tramitaci[oó]n|vigente|antes\s+de\s+incorporaci[oó]n)\b",
 )
@@ -613,7 +614,7 @@ def _source_first_mandatory_certification(
                     continue
 
                 if _source_first_profile_has_evidence(profile, aliases):
-                    return None
+                    continue
 
                 return label, match.group(0)
 
