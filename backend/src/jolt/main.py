@@ -24,14 +24,14 @@ from jolt.application_archival import (
     archive_application_card,
     restore_application_card,
 )
+from jolt.application_cleanup import (
+    ApplicationDeleteResponse,
+    delete_archived_application,
+)
 from jolt.application_metadata import (
     ApplicationMetadataResponse,
     ApplicationMetadataUpdate,
     update_application_metadata,
-)
-from jolt.application_cleanup import (
-    ApplicationDeleteResponse,
-    delete_archived_application,
 )
 from jolt.application_preparation_pack import (
     PreparationPackPostingNotFound,
