@@ -374,7 +374,6 @@ def test_generic_explicit_hard_requirements_cannot_be_overridden_by_fit(
     assert expected_fragment in combined
 
 
-
 def test_required_certification_is_allowed_when_profile_evidences_it() -> None:
     profile = _profile()
     profile.capabilities.append(
@@ -408,7 +407,9 @@ def test_preferred_certification_does_not_create_a_hard_blocker() -> None:
     )
 
     assert not any("certification" in blocker.casefold() for blocker in assessment.blockers)
-    assert not any("certification" in uncertainty.casefold() for uncertainty in assessment.uncertainties)
+    assert not any(
+        "certification" in uncertainty.casefold() for uncertainty in assessment.uncertainties
+    )
 
 
 def test_unspecified_mandatory_certification_is_hold_verify_not_auto_pursue() -> None:
