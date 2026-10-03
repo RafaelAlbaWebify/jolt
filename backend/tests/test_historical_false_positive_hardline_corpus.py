@@ -506,3 +506,38 @@ def test_company_history_does_not_become_candidate_experience_blocker() -> None:
 
     assert assessment.recommendation not in {"pursue_if_condition_met", "review_manually"}
     assert not any("experience" in item.casefold() for item in assessment.uncertainties)
+
+
+
+def test_one_evidenced_certification_does_not_hide_a_second_missing_requirement() -> None:
+    profile = _profile()
+    profile.capabilities.append(
+        CapabilityEvidence(
+            id="ccna",
+            label="CCNA",
+            terms=["ccna", "cisco certified network associate"],
+            evidence_level=5,
+        )
+    )
+
+    assessment = calibrated_strategy_assessment(
+        profile,
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="CCNA certification required. ITIL certification required.",
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("ITIL" in blocker for blocker in assessment.blockers)
+
+
+def test_active_clearance_must_have_phrase_is_a_hard_reject() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="Candidates must have an active security clearance before start.",
+    )
+
+    assert assessment.recommendation == "do_not_pursue"
+    assert any("clearance" in blocker.casefold() for blocker in assessment.blockers)
