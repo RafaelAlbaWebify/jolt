@@ -179,6 +179,7 @@ export function ApplicationMetadataEditor({
           <label className="application-edit-wide">
             Job posting URL
             <input
+              aria-label="Job posting URL"
               type="url"
               value={form.job_url}
               disabled={loading || saving}
@@ -190,6 +191,7 @@ export function ApplicationMetadataEditor({
           <label className="application-edit-wide">
             Application/Apply URL
             <input
+              aria-label="Application/Apply URL"
               type="url"
               value={form.application_url}
               disabled={loading || saving}
