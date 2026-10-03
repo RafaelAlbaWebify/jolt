@@ -491,3 +491,19 @@ def test_clearance_eligibility_is_hold_verify() -> None:
 
     assert assessment.recommendation == "pursue_if_condition_met"
     assert any("clearance" in item.casefold() for item in assessment.uncertainties)
+
+
+
+def test_company_history_does_not_become_candidate_experience_blocker() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "We are a company with 10+ years of experience delivering managed IT services. "
+            "The role provides Windows and Microsoft 365 support."
+        ),
+    )
+
+    assert assessment.recommendation not in {"pursue_if_condition_met", "review_manually"}
+    assert not any("experience" in item.casefold() for item in assessment.uncertainties)
