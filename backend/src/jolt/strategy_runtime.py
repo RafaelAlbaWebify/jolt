@@ -718,7 +718,7 @@ def _source_first_large_experience(text: str) -> str | None:
 
         organizational_history = any(marker in before for marker in organizational_history_markers)
 
-        if organizational_history and not explicit_requirement:
+        if organizational_history:
             continue
 
         return match.group(0)
