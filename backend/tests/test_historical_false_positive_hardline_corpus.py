@@ -479,3 +479,16 @@ def test_one_year_explicit_minimum_experience_is_hold_verify() -> None:
 
     assert assessment.recommendation == "pursue_if_condition_met"
     assert any("experience" in item.casefold() for item in assessment.uncertainties)
+
+
+
+def test_clearance_eligibility_is_hold_verify() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="IT Support Engineer",
+        location="Spain · Remote",
+        description="Candidate must be eligible to obtain a security clearance.",
+    )
+
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any("clearance" in item.casefold() for item in assessment.uncertainties)
