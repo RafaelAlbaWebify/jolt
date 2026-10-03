@@ -285,6 +285,12 @@ _SOURCE_FIRST_CLEARANCE_PATTERNS = (
     r"\bhps\b.{0,80}\b(?:tramitaci[oó]n|vigente|antes\s+de\s+incorporaci[oó]n)\b",
 )
 
+_SOURCE_FIRST_CLEARANCE_VERIFY_PATTERNS = (
+    r"\b(?:must\s+be\s+)?eligible\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+    r"\bability\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+    r"\b(?:must\s+be\s+)?able\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+)
+
 _SOURCE_FIRST_CERTIFICATIONS = (
     ("CCNA", ("ccna", "cisco certified network associate")),
     ("CCNP", ("ccnp", "cisco certified network professional")),
@@ -561,6 +567,17 @@ def _source_first_clearance(text: str) -> str | None:
     return None
 
 
+def _source_first_clearance_to_verify(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for pattern in _SOURCE_FIRST_CLEARANCE_VERIFY_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is not None:
+            return match.group(0)
+
+    return None
+
+
 def _source_first_mandatory_certification(
     profile: StrategyProfile,
     text: str,
@@ -784,6 +801,34 @@ def _apply_source_first_requirement_gate(
                         (
                             "Source-first mandatory requirement: "
                             f"clearance not evidenced: {clearance}."
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    clearance_to_verify = _source_first_clearance_to_verify(text)
+
+    if (
+        clearance_to_verify is not None
+        and assessment.eligibility != "ineligible"
+        and assessment.recommendation != "do_not_pursue"
+    ):
+        assessment = replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            fit_now=min(assessment.fit_now, 69),
+            fit_by_interview=min(assessment.fit_by_interview, 69),
+            fit_on_the_job=min(assessment.fit_on_the_job, 74),
+            uncertainties=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.uncertainties,
+                        (
+                            "Source-first clearance eligibility must be verified "
+                            f"before pursuit: {clearance_to_verify}."
                         ),
                     ]
                 )
