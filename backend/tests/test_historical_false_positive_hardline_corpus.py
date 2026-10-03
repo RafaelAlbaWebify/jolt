@@ -73,7 +73,7 @@ CASES = (
     ),
     HistoricalCase(
         "Nortal",
-        "94 strong_pursue in an earlier review",
+        "pursue, technical fit 88",
         "mandatory German",
         "Germany",
         "Sehr gute Deutschkenntnisse sowie gute Englischkenntnisse in Wort und Schrift. IT Support.",
@@ -89,7 +89,7 @@ CASES = (
     ),
     HistoricalCase(
         "BV TECH",
-        "positive before language audit",
+        "pursue, technical fit 88",
         "unsupported/required Italian",
         "Italy",
         "Il ruolo richiede esperienza nel supporto IT. Italiano fluente obbligatorio per il supporto agli utenti.",
@@ -97,7 +97,7 @@ CASES = (
     ),
     HistoricalCase(
         "ACTION ICT",
-        "positive before language audit",
+        "pursue, technical fit 88",
         "unsupported/required Italian",
         "Italy",
         "Cerchiamo supporto tecnico. Italiano fluente richiesto e assistenza agli utenti.",
@@ -113,7 +113,7 @@ CASES = (
     ),
     HistoricalCase(
         "LucidLink",
-        "positive/conditional before hardline-first review",
+        "strong_pursue, technical fit 91",
         "US-only employment",
         "United States · Remote",
         "This remote role is available anywhere in the US. Provide enterprise IT support.",
@@ -121,7 +121,7 @@ CASES = (
     ),
     HistoricalCase(
         "Unily",
-        "historical positive/conditional candidate",
+        "strong_pursue, technical fit 92",
         "US-only remote",
         "United States · Remote",
         "Remote United States role supporting enterprise SaaS customers.",
@@ -129,7 +129,7 @@ CASES = (
     ),
     HistoricalCase(
         "Prompt Health",
-        "historical positive/conditional candidate",
+        "pursue, technical fit 92",
         "US-only employment / E-Verify",
         "United States · Remote",
         "Remote US position. We participate in E-Verify. Technical support for healthcare SaaS.",
@@ -137,7 +137,7 @@ CASES = (
     ),
     HistoricalCase(
         "Nebius",
-        "positive before hardline correction",
+        "strong_pursue, technical fit 91",
         "US-only plus unmet primary IAM experience",
         "United States · Remote",
         "US remote. Requires 3+ years primary Entra ID experience plus Google Workspace and GCP IAM.",
@@ -153,7 +153,7 @@ CASES = (
     ),
     HistoricalCase(
         "GT Global Services",
-        "positive before hardline revalidation",
+        "pursue, technical fit 88",
         "US work authorization + mandatory networking certification",
         "United States · Remote",
         "Must be authorized to work in the United States. CCNA certification required. IT support role.",
@@ -161,7 +161,7 @@ CASES = (
     ),
     HistoricalCase(
         "Lumen",
-        "positive before hardline revalidation",
+        "pursue, technical fit 80",
         "Poland-only employment",
         "Poland · Remote",
         "Remote from Poland. Technical support and infrastructure operations.",
@@ -169,7 +169,7 @@ CASES = (
     ),
     HistoricalCase(
         "Taraki/ARC9",
-        "positive before hardline revalidation",
+        "pursue, technical fit 80",
         "Lahore/local shift",
         "Lahore, Pakistan",
         "Applicants must be based in Lahore and work the local support shift.",
@@ -177,7 +177,7 @@ CASES = (
     ),
     HistoricalCase(
         "Exa Capital/PrecisionCare",
-        "high technical fit before hardline revalidation",
+        "pursue, technical fit 88",
         "US-only + mandatory EHR/healthcare SaaS experience",
         "United States · Remote",
         "US remote. At least 1 year of EHR or healthcare SaaS support experience is required.",
@@ -185,7 +185,7 @@ CASES = (
     ),
     HistoricalCase(
         "KPA",
-        "positive before hardline revalidation",
+        "pursue, technical fit 80",
         "US work eligibility",
         "United States · Remote",
         "Candidates must be legally authorized to work in the United States. Remote support role.",
@@ -193,7 +193,7 @@ CASES = (
     ),
     HistoricalCase(
         "Russell Tobin",
-        "positive before hardline revalidation",
+        "pursue, technical fit 80",
         "W2 / US-only",
         "United States",
         "W2 only. Applicants must be authorized to work in the United States.",
@@ -209,7 +209,7 @@ CASES = (
     ),
     HistoricalCase(
         "Aircall",
-        "positive/conditional before source verification",
+        "pursue, technical fit 80",
         "Portugal-only remote",
         "Portugal · Remote",
         "Remote from Portugal. SaaS technical support.",
@@ -217,7 +217,7 @@ CASES = (
     ),
     HistoricalCase(
         "Moxie",
-        "positive/conditional before source verification",
+        "pursue, technical fit 80",
         "Philippines-only remote",
         "Philippines · Remote",
         "Remote Philippines customer technical support role.",
@@ -225,7 +225,7 @@ CASES = (
     ),
     HistoricalCase(
         "Tailscale",
-        "positive/conditional before source verification",
+        "pursue, technical fit 86",
         "US remote + legal authorization",
         "United States · Remote",
         "Remote US. Must be legally authorized to work in the United States.",
@@ -233,7 +233,7 @@ CASES = (
     ),
     HistoricalCase(
         "Outmarket AI",
-        "kept alive/positive because eligibility was not closed",
+        "pursue, technical fit 84",
         "US/India employment scope",
         "United States",
         "IT Engineer role. Remote-first, but this requisition is in the United States and India.",
@@ -241,7 +241,7 @@ CASES = (
     ),
     HistoricalCase(
         "PTG/Courser",
-        "positive before geography audit",
+        "pursue, technical fit 88",
         "US-only remote",
         "United States",
         "Ability to work remotely from anywhere in the United States. IT Support Services II.",
@@ -257,7 +257,7 @@ CASES = (
     ),
     HistoricalCase(
         "Anaconda",
-        "conditional, priority 75, technical fit 82",
+        "pursue, technical fit 88",
         "Austin TX / US authorization",
         "Austin, TX",
         "What US State do you live in? Must be located in Austin, Texas and legally authorized to work in the US.",
@@ -289,7 +289,7 @@ CASES = (
     ),
     HistoricalCase(
         "TheyDo",
-        "strong_pursue before authoritative geography correction",
+        "strong_pursue, technical fit 91",
         "USA East Coast customer territory",
         "Remote",
         "Fully remote team across many countries. This Customer Support Engineer role is for North America and requires working USA East Coast hours.",
