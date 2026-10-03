@@ -18,6 +18,11 @@ from jolt.ai_review_opportunity_index import (
 )
 from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
 from jolt.ai_status_api import build_ai_status_router
+from jolt.application_metadata import (
+    ApplicationMetadataResponse,
+    ApplicationMetadataUpdate,
+    update_application_metadata,
+)
 from jolt.application_archival import (
     ApplicationArchiveRequest,
     ApplicationArchiveResponse,
@@ -146,7 +151,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=LOCAL_FRONTEND_ORIGINS,
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["Content-Type"],
     )
     session_factory = create_session_factory(database_url)
@@ -321,6 +326,23 @@ def create_app(database_url: str | None = None) -> FastAPI:
             return get_application(session, application_id)
         except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.patch(
+        "/api/applications/{application_id}/metadata",
+        response_model=ApplicationMetadataResponse,
+        tags=["applications"],
+    )
+    def edit_application_metadata(
+        application_id: str,
+        request: ApplicationMetadataUpdate,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> ApplicationMetadataResponse:
+        try:
+            return update_application_metadata(session, application_id, request)
+        except JoltNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post(
         "/api/applications/{application_id}/archive",
