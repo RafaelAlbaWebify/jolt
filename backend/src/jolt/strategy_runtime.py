@@ -27,7 +27,7 @@ from jolt.evaluation_strategy import (
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.preference_aware_evaluation import preference_blockers, sanitize_capture_text
 
-ENGINE_VERSION = "profile-rules-v11"
+ENGINE_VERSION = "profile-rules-v12"
 _PEOPLE_MANAGEMENT_LABEL = "formal people-management ownership"
 _SPAIN_LOCATION_TERMS = (
     "spain",
@@ -281,8 +281,35 @@ _SOURCE_FIRST_CLEARANCE_PATTERNS = (
     r"\bhps\s+(?:security\s+)?clearance\b",
     r"\b(?:security\s+)?clearance\s+(?:is\s+)?required\b",
     r"\brequired\s+(?:security\s+)?clearance\b",
+    r"\bmust\s+(?:hold|have|possess)\s+(?:an?\s+)?(?:active\s+|current\s+|valid\s+)?(?:security\s+)?clearance\b",
     r"\bhabilitaci[oó]n\s+personal\s+de\s+seguridad\s+hps\b",
     r"\bhps\b.{0,80}\b(?:tramitaci[oó]n|vigente|antes\s+de\s+incorporaci[oó]n)\b",
+)
+
+_SOURCE_FIRST_CLEARANCE_VERIFY_PATTERNS = (
+    r"\b(?:must\s+be\s+)?eligible\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+    r"\bability\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+    r"\b(?:must\s+be\s+)?able\s+to\s+obtain\s+(?:a\s+)?(?:security\s+)?clearance\b",
+)
+
+_SOURCE_FIRST_CERTIFICATIONS = (
+    ("CCNA", ("ccna", "cisco certified network associate")),
+    ("CCNP", ("ccnp", "cisco certified network professional")),
+    ("CompTIA Security+", ("comptia security+", "security+")),
+    ("CompTIA Network+", ("comptia network+", "network+")),
+    ("ITIL", ("itil", "itil foundation")),
+    ("CISSP", ("cissp",)),
+    ("CISM", ("cism",)),
+    (
+        "AWS Certified Security - Specialty",
+        ("aws certified security - specialty", "aws certified security specialty"),
+    ),
+)
+
+_SOURCE_FIRST_GENERIC_CERTIFICATION_PATTERNS = (
+    r"\bcertification\s+(?:is\s+)?(?:required|mandatory|essential)\b",
+    r"\b(?:required|mandatory|essential)\s+certification\b",
+    r"\bmust\s+(?:hold|have|possess)\s+(?:a\s+)?(?:valid\s+)?certification\b",
 )
 
 _FOREIGN_RESIDENCE_PATTERN = (
@@ -541,6 +568,80 @@ def _source_first_clearance(text: str) -> str | None:
     return None
 
 
+def _source_first_clearance_to_verify(text: str) -> str | None:
+    normalized = _source_first_normalize(text)
+
+    for pattern in _SOURCE_FIRST_CLEARANCE_VERIFY_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is not None:
+            return match.group(0)
+
+    return None
+
+
+def _source_first_mandatory_certification(
+    profile: StrategyProfile,
+    text: str,
+) -> tuple[str, str] | None:
+    normalized = _source_first_normalize(text)
+    required_marker = r"required|mandatory|essential|must\s+(?:hold|have|possess)"
+    certification_marker = r"certification|certificate|certified"
+
+    for label, aliases in _SOURCE_FIRST_CERTIFICATIONS:
+        for alias in aliases:
+            pattern = _source_first_term_pattern(alias)
+            for match in pattern.finditer(normalized):
+                window = _source_first_window(
+                    normalized,
+                    match.start(),
+                    match.end(),
+                    radius=100,
+                )
+                if _source_first_preferred(window, alias):
+                    continue
+
+                escaped = re.escape(alias)
+                is_required = bool(
+                    re.search(
+                        rf"\b(?:{required_marker})\b.{{0,80}}\b{escaped}\b|"
+                        rf"\b{escaped}\b.{{0,80}}\b(?:{required_marker})\b|"
+                        rf"\b{escaped}\b.{{0,50}}\b(?:{certification_marker})\b"
+                        rf".{{0,40}}\b(?:required|mandatory|essential)\b",
+                        window,
+                    )
+                )
+                if not is_required:
+                    continue
+
+                if _source_first_profile_has_evidence(profile, aliases):
+                    continue
+
+                return label, match.group(0)
+
+    for pattern in _SOURCE_FIRST_GENERIC_CERTIFICATION_PATTERNS:
+        match = re.search(pattern, normalized)
+        if match is None:
+            continue
+
+        window = _source_first_window(
+            normalized,
+            match.start(),
+            match.end(),
+            radius=100,
+        )
+        satisfied_known_requirement = any(
+            any(_source_first_term_pattern(alias).search(window) for alias in aliases)
+            and _source_first_profile_has_evidence(profile, aliases)
+            for _, aliases in _SOURCE_FIRST_CERTIFICATIONS
+        )
+        if satisfied_known_requirement:
+            continue
+
+        return "unspecified mandatory certification", match.group(0)
+
+    return None
+
+
 def _source_first_large_experience(text: str) -> str | None:
     normalized = _source_first_normalize(text)
 
@@ -549,6 +650,8 @@ def _source_first_large_experience(text: str) -> str | None:
         r"(?P<years>\d+)\+?\s+years?\s+"
         r"(?:"
         r"(?:of\s+)?(?:professional\s+)?experience\b"
+        r"|"
+        r"of\s+[^.\n]{1,100}?\s+experience\b"
         r"|"
         r"(?:running|operating|administering|managing|supporting)\b"
         r"|"
@@ -596,9 +699,6 @@ def _source_first_large_experience(text: str) -> str | None:
     for match in pattern.finditer(normalized):
         years = int(match.group("years"))
 
-        if years < 4:
-            continue
-
         # Job requirements above twenty years are implausible enough that
         # they are substantially more likely to describe company history.
         if years > 20:
@@ -623,11 +723,19 @@ def _source_first_large_experience(text: str) -> str | None:
         ):
             continue
 
-        explicit_requirement = any(marker in before for marker in requirement_markers)
+        explicit_requirement = any(
+            marker in window for marker in requirement_markers
+        ) or "+" in match.group(0)
+
+        # Preserve the older conservative threshold for bare statements such
+        # as "5 years experience", but treat lower numeric minima as hardline
+        # evidence when the advert explicitly marks them as requirements.
+        if years < 4 and not explicit_requirement:
+            continue
 
         organizational_history = any(marker in before for marker in organizational_history_markers)
 
-        if organizational_history and not explicit_requirement:
+        if organizational_history:
             continue
 
         return match.group(0)
@@ -717,6 +825,61 @@ def _apply_source_first_requirement_gate(
                 )
             ),
         )
+
+    clearance_to_verify = _source_first_clearance_to_verify(text)
+
+    if (
+        clearance_to_verify is not None
+        and assessment.eligibility != "ineligible"
+        and assessment.recommendation != "do_not_pursue"
+    ):
+        assessment = replace(
+            assessment,
+            eligibility="eligible_with_conditions",
+            recommendation="pursue_if_condition_met",
+            confidence="low",
+            fit_now=min(assessment.fit_now, 69),
+            fit_by_interview=min(assessment.fit_by_interview, 69),
+            fit_on_the_job=min(assessment.fit_on_the_job, 74),
+            uncertainties=tuple(
+                dict.fromkeys(
+                    [
+                        *assessment.uncertainties,
+                        (
+                            "Source-first clearance eligibility must be verified "
+                            f"before pursuit: {clearance_to_verify}."
+                        ),
+                    ]
+                )
+            ),
+        )
+
+    certification = _source_first_mandatory_certification(profile, text)
+
+    if certification is not None:
+        label, evidence = certification
+
+        if assessment.eligibility != "ineligible" and assessment.recommendation != "do_not_pursue":
+            assessment = replace(
+                assessment,
+                eligibility="eligible_with_conditions",
+                recommendation="pursue_if_condition_met",
+                confidence="low",
+                fit_now=min(assessment.fit_now, 69),
+                fit_by_interview=min(assessment.fit_by_interview, 69),
+                fit_on_the_job=min(assessment.fit_on_the_job, 74),
+                uncertainties=tuple(
+                    dict.fromkeys(
+                        [
+                            *assessment.uncertainties,
+                            (
+                                "Source-first mandatory certification must be verified "
+                                f"before pursuit: {label} ({evidence})."
+                            ),
+                        ]
+                    )
+                ),
+            )
 
     platforms = _source_first_missing_platforms(profile, text)
 

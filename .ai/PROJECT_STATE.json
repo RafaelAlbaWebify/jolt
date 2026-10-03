@@ -88,12 +88,14 @@
     "2026-10-02 live Indeed acceptance traversed three pages successfully (4 + 6 + 1 visible unique jobs) after PR #490, exposing title-anchor contamination and confirming the value of production-shaped acceptance.",
     "2026-10-03 PR #491 filtered Indeed secondary action links from job-title discovery and aligned discovery/clicking on title anchors; exact-head 8/8 release gates passed before merge as 9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5.",
     "2026-10-03 LinkedIn discovery batch 27ddb661-98c2-4ffd-ab9e-28a07df1f377 produced 173 raw captures, 135 canonical postings and a frozen 121-posting review set after excluding 14 already-reviewed postings.",
-    "2026-10-03 PR #493 added Application Pipeline More -> Edit with transactional Posting/Application metadata correction, canonical URL + identity_key collision safety, immutable captured-source provenance and metadata_updated audit history."
+    "2026-10-03 PR #493 added Application Pipeline More -> Edit with transactional Posting/Application metadata correction, canonical URL + identity_key collision safety, immutable captured-source provenance and metadata_updated audit history.",
+    "2026-10-03 PR #494 audited historical hard-filter false positives and introduced profile-rules-v12: hard blockers dominate fit, explicit minimum experience is HOLD/VERIFY from 1+ years when mandatory, mandatory certifications are evidence-gated, and ambiguous clearance eligibility is HOLD/VERIFY."
   ],
   "pending_milestones": [
     "Post-#491 real Indeed acceptance: 3 pages, correct title anchors, no action-link contamination, successful current-backend ingestion, preserved page/jk provenance."
   ],
   "next_recommended_actions": [
+    "Treat the historical 31-case hardline corpus as a permanent regression gate: clear blockers must reject and ambiguous eligibility/source evidence must HOLD/VERIFY; never add company-name-specific production rules.",
     "Use Application Pipeline -> More -> Edit for manual corrections instead of creating replacement applications; preserve captured source evidence and resolve identity collisions manually.",
     "Import the reviewed Unified AI Work Package for discovery batch 27ddb661-98c2-4ffd-ab9e-28a07df1f377 through Import reviewed update and verify exact 121/121 receipt.",
     "Restart JOLT whenever the runtime mismatch guard reports an older backend commit than the repository checkout.",
