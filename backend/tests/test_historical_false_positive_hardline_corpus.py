@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import pytest
 
 from jolt.evaluation_strategy import CapabilityEvidence, RoleFamily, StrategyProfile
+from jolt.job_search_preferences import JobSearchPreferences
+from jolt.language_hardline import analyze_language_evidence
 from jolt.strategy_runtime import calibrated_strategy_assessment
 
 
@@ -422,3 +424,61 @@ def test_unspecified_mandatory_certification_is_hold_verify_not_auto_pursue() ->
 
     assert assessment.recommendation == "pursue_if_condition_met"
     assert any("certification" in item.casefold() for item in assessment.uncertainties)
+
+
+
+@pytest.mark.parametrize(
+    ("name", "description"),
+    [
+        (
+            "Nortal",
+            "IT Support. Sehr gute Deutschkenntnisse sowie gute Englischkenntnisse "
+            "in Wort und Schrift are required.",
+        ),
+        (
+            "Prosana",
+            "Written English and Lithuanian are required for this technical support role.",
+        ),
+        (
+            "BV TECH",
+            "Fluent Italian is required for this IT support position.",
+        ),
+        (
+            "ACTION ICT",
+            "Italiano fluente obbligatorio per il supporto tecnico agli utenti.",
+        ),
+        (
+            "Mediatica Digital",
+            "La posizione richiede supporto tecnico. Italiano fluente obbligatorio.",
+        ),
+        (
+            "Beckman Coulter Italy",
+            "Fluent Italian is required for field technical support in Italy.",
+        ),
+    ],
+)
+def test_historical_required_language_cases_are_hard_rejects(
+    name: str,
+    description: str,
+) -> None:
+    result = analyze_language_evidence(
+        source_text=description,
+        preferences=JobSearchPreferences(),
+    )
+
+    assert result.hardline_reject, name
+    assert not result.manual_review, name
+
+
+def test_one_year_explicit_minimum_experience_is_hold_verify() -> None:
+    assessment = calibrated_strategy_assessment(
+        _profile(),
+        title="Application Support Engineer",
+        location="Spain · Remote",
+        description=(
+            "At least 1 year of EHR or healthcare SaaS support experience is required."
+        ),
+    )
+
+    assert assessment.recommendation == "pursue_if_condition_met"
+    assert any("experience" in item.casefold() for item in assessment.uncertainties)
