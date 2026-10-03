@@ -663,9 +663,6 @@ def _source_first_large_experience(text: str) -> str | None:
     for match in pattern.finditer(normalized):
         years = int(match.group("years"))
 
-        if years < 4:
-            continue
-
         # Job requirements above twenty years are implausible enough that
         # they are substantially more likely to describe company history.
         if years > 20:
@@ -690,7 +687,16 @@ def _source_first_large_experience(text: str) -> str | None:
         ):
             continue
 
-        explicit_requirement = any(marker in before for marker in requirement_markers)
+        explicit_requirement = (
+            any(marker in window for marker in requirement_markers)
+            or "+" in match.group(0)
+        )
+
+        # Preserve the older conservative threshold for bare statements such
+        # as "5 years experience", but treat lower numeric minima as hardline
+        # evidence when the advert explicitly marks them as requirements.
+        if years < 4 and not explicit_requirement:
+            continue
 
         organizational_history = any(marker in before for marker in organizational_history_markers)
 
