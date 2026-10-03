@@ -9,6 +9,7 @@ type TestApplicationStatus = ApplicationStatus | "archived";
 type TestOpportunity = {
   posting_id: string;
   source_url: string;
+  job_url?: string;
   title: string;
   company: string;
   location: string;
@@ -567,6 +568,107 @@ describe("ApplicationDashboard", () => {
 
     const save = screen.getByRole("button", { name: "Save outcome" });
     expect(save).not.toHaveClass("danger");
+  });
+
+
+  it("shows Edit inside the card More menu", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    const card = (await screen.findByRole("button", { name: "Open Application Support Engineer" }))
+      .closest("article");
+    expect(card).not.toBeNull();
+
+    fireEvent.click(
+      within(card!).getByLabelText("More actions for Application Support Engineer"),
+    );
+
+    expect(
+      within(card!).getByRole("button", { name: "Edit application metadata for Application Support Engineer" }),
+    ).toBeInTheDocument();
+  });
+
+  it("refreshes the application card immediately after a successful metadata edit", async () => {
+    let currentPipeline: TestOpportunity[] = [
+      {
+        ...submittedOpportunity,
+        job_url: "https://jobs.example.test/france-role",
+      },
+    ];
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/application-index")) return jsonResponse(currentPipeline);
+      if (url.endsWith("/api/applications/application-1") && !init?.method) {
+        return jsonResponse(application);
+      }
+      if (
+        url.endsWith("/api/applications/application-1/metadata") &&
+        init?.method === "PATCH"
+      ) {
+        const payload = JSON.parse(String(init.body)) as {
+          title: string;
+          company: string;
+          location: string;
+          job_url: string;
+        };
+        currentPipeline = currentPipeline.map((item) => ({
+          ...item,
+          title: payload.title,
+          company: payload.company,
+          location: payload.location,
+          job_url: payload.job_url,
+        }));
+        return jsonResponse({
+          application_id: "application-1",
+          posting_id: "posting-applied",
+          status: "submitted",
+          title: payload.title,
+          company: payload.company,
+          location: payload.location,
+          job_url: payload.job_url,
+          application_url: application.application_url,
+          notes: application.notes,
+          changed_fields: ["Location", "Job URL"],
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+
+    const card = (await screen.findByRole("button", { name: "Open Application Support Engineer" }))
+      .closest("article");
+    expect(card).not.toBeNull();
+    fireEvent.click(
+      within(card!).getByLabelText("More actions for Application Support Engineer"),
+    );
+    fireEvent.click(
+      within(card!).getByRole("button", { name: "Edit application metadata for Application Support Engineer" }),
+    );
+
+    await screen.findByLabelText("Application/Apply URL");
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: "Madrid, Spain" },
+    });
+    fireEvent.change(screen.getByLabelText("Job posting URL"), {
+      target: {
+        value:
+          "https://jobs.smartrecruiters.com/psicro/744000151009639-it-infrastructure-engineer-windows-active-directory-vmware-",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Edit Application Support Engineer/ })).not.toBeInTheDocument());
+    expect(screen.getByText("Madrid, Spain")).toBeInTheDocument();
+    const updatedCard = screen
+      .getByRole("button", { name: "Open Application Support Engineer" })
+      .closest("article");
+    expect(within(updatedCard!).getByRole("link", { name: "Job posting" })).toHaveAttribute(
+      "href",
+      "https://jobs.smartrecruiters.com/psicro/744000151009639-it-infrastructure-engineer-windows-active-directory-vmware-",
+    );
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(1);
   });
 
 });
