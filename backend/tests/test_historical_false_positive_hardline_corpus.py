@@ -474,9 +474,7 @@ def test_one_year_explicit_minimum_experience_is_hold_verify() -> None:
         _profile(),
         title="Application Support Engineer",
         location="Spain · Remote",
-        description=(
-            "At least 1 year of EHR or healthcare SaaS support experience is required."
-        ),
+        description=("At least 1 year of EHR or healthcare SaaS support experience is required."),
     )
 
     assert assessment.recommendation == "pursue_if_condition_met"
