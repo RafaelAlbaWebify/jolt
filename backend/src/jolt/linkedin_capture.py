@@ -922,7 +922,8 @@ def linkedin_capture_browser(profile_dir: Path) -> Iterator[tuple[BrowserContext
             headless=False,
             viewport={"width": 1440, "height": 1000},
         )
-        page = context.pages[0] if context.pages else context.new_page()
+        page = context.new_page()
+        page.bring_to_front()
         try:
             yield context, page
         finally:
