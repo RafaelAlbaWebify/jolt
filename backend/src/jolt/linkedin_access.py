@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
-AUTH_URL_MARKERS = (
+AUTH_PATH_MARKERS = (
     "/login",
     "/uas/login",
-    "authwall",
-    "session_redirect",
+    "/authwall",
 )
 CHECKPOINT_URL_MARKERS = (
     "/checkpoint",
@@ -39,9 +39,11 @@ SAFETY_BODY_MARKERS = (
 
 def detect_linkedin_access_problem(page: Any) -> tuple[str, str] | None:
     current_url = str(getattr(page, "url", "")).lower()
-    if any(marker in current_url for marker in CHECKPOINT_URL_MARKERS):
+    parsed_url = urlparse(current_url)
+    current_path = parsed_url.path
+    if any(marker in current_path for marker in CHECKPOINT_URL_MARKERS):
         return "checkpoint", "LinkedIn presented a checkpoint or challenge."
-    if any(marker in current_url for marker in AUTH_URL_MARKERS):
+    if any(marker in current_path for marker in AUTH_PATH_MARKERS):
         return "authentication_required", "LinkedIn authentication is required."
 
     body_text = ""
@@ -63,7 +65,12 @@ def detect_linkedin_access_problem(page: Any) -> tuple[str, str] | None:
     for marker in SAFETY_BODY_MARKERS:
         if marker in body_text:
             return "safety_warning", f"LinkedIn safety warning detected: {marker}."
-    if any(marker in body_text for marker in AUTH_BODY_MARKERS):
+    auth_marker_count = sum(marker in body_text for marker in AUTH_BODY_MARKERS)
+    has_login_form_evidence = "email or phone" in body_text and "password" in body_text
+    has_authwall_evidence = "sign in" in body_text and (
+        "join linkedin" in body_text or "join now" in body_text
+    )
+    if has_login_form_evidence or has_authwall_evidence or auth_marker_count >= 3:
         return "authentication_required", "LinkedIn authentication is required."
     return None
 
