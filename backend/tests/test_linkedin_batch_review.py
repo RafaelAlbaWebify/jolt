@@ -544,7 +544,6 @@ def test_unified_work_package_can_scope_review_to_discovery_batch(tmp_path: Path
         session.close()
 
 
-
 def test_failed_batch_with_completed_items_is_exportable(tmp_path: Path) -> None:
     factory = _factory(tmp_path)
     session = factory()
