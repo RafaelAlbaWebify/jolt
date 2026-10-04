@@ -164,10 +164,29 @@ def materialize_batch_review_set(
             .order_by(LinkedInDiscoveryBatchReviewItem.position.asc())
         ).all()
     )
-    if existing:
-        return existing
 
     items = _batch_items(session, batch_id)
+    if existing:
+        current_capture_ids = set(_batch_capture_ids(session, batch_id))
+        current_posting_ids = {
+            item.posting_id for item in items if item.posting_id is not None
+        }
+        invalid_existing = [
+            item
+            for item in existing
+            if item.posting_id not in current_posting_ids
+            or item.representative_capture_run_id not in current_capture_ids
+        ]
+        if invalid_existing:
+            invalid_ids = {item.id for item in invalid_existing}
+            for item in invalid_existing:
+                session.delete(item)
+            existing = [item for item in existing if item.id not in invalid_ids]
+            for position, item in enumerate(existing, start=1):
+                item.position = position
+            session.commit()
+        return existing
+
     if not items:
         raise ValueError("Discovery batch contains no completed captured postings.")
 
