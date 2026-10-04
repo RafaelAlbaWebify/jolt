@@ -542,3 +542,24 @@ def test_unified_work_package_can_scope_review_to_discovery_batch(tmp_path: Path
         assert result.section_results["review_inbox"]["received_count"] == 2
     finally:
         session.close()
+
+
+def test_failed_batch_with_completed_items_is_exportable(tmp_path: Path) -> None:
+    factory = _factory(tmp_path)
+    session = factory()
+    try:
+        batch_id = _seed_completed_batch(session)
+        batch = session.get(LinkedInDiscoveryBatch, batch_id)
+        assert batch is not None
+        batch.status = "failed"
+        session.commit()
+
+        document = build_batch_ai_review_document(session, batch_id)
+
+        assert document["counts"]["review_set"] == 2
+        assert [job["posting_id"] for job in document["jobs"]] == [
+            "posting-1",
+            "posting-2",
+        ]
+    finally:
+        session.close()

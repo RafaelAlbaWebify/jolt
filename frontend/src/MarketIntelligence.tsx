@@ -264,8 +264,17 @@ export function MarketIntelligence({ apiBase, active }: Props) {
 
           {data.freshness.needs_analysis && (
             <section className="market-pro-update" role="status">
-              <strong>Market analysis needs an update</strong>
-              <span>New job evidence is available. Update the analysis from Settings & Data when convenient.</span>
+              <div>
+                <strong>Market analysis needs an update</strong>
+                <span>New job evidence is available. Export the current intelligence package, review it with ChatGPT, then import the returned update.</span>
+              </div>
+              <a
+                className="secondary"
+                href={`${apiBase}/api/ai-work-package/export`}
+                download="JOLT_AI_WORK_PACKAGE.json"
+              >
+                Download intelligence package
+              </a>
             </section>
           )}
 

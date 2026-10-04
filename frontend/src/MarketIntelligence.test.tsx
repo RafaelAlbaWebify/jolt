@@ -140,7 +140,8 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByText("Market analysis needs an update")).toBeInTheDocument();
-    expect(screen.getByText(/Update the analysis from Settings & Data/i)).toBeInTheDocument();
+    const download = screen.getByRole("link", { name: "Download intelligence package" });
+    expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/export");
   });
 
   it("refreshes both persisted views without recomputing local intelligence", async () => {

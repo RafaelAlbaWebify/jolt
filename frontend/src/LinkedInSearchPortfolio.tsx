@@ -401,7 +401,10 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
   }
 
   const batchIsActive = batch ? !terminalBatch(batch.status) : false;
-  const canExportReview = batch?.status === "completed" || batch?.status === "completed_with_failures";
+  const canExportReview =
+    batch?.status === "completed" ||
+    batch?.status === "completed_with_failures" ||
+    (batch?.status === "failed" && batch.verified_count > 0);
 
   return (
     <section className="panel linkedin-search-portfolio" aria-labelledby="linkedin-search-portfolio-heading">

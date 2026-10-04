@@ -384,3 +384,45 @@ it("moves focus into the saved-search editor and restores it on Escape", async (
   );
   await waitFor(() => expect(addSearch).toHaveFocus());
 });
+
+
+
+it("shows review export for a failed batch with verified jobs", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/api/linkedin-searches")) {
+      return new Response(JSON.stringify(savedSearches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-search-performance")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches")) {
+      return new Response(JSON.stringify([{
+        id: "b-partial",
+        status: "failed",
+        selected_search_count: 12,
+        completed_search_count: 10,
+        failed_search_count: 1,
+        captured_count: 209,
+        verified_count: 209,
+        new_posting_count: 105,
+        duplicate_count: 104,
+        started_at: "2026-10-03T18:00:00Z",
+        completed_at: "2026-10-03T18:30:00Z",
+        created_at: "2026-10-03T18:00:00Z",
+        searches: [],
+      }]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: GET ${url}`);
+  });
+
+  render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
+
+  const link = await screen.findByRole("link", {
+    name: "Download review + intelligence package",
+  });
+  expect(link).toHaveAttribute(
+    "href",
+    "http://127.0.0.1:8000/api/ai-work-package/export?discovery_batch_id=b-partial",
+  );
+});

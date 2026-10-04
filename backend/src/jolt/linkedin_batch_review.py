@@ -154,8 +154,8 @@ def materialize_batch_review_set(
     batch = session.get(LinkedInDiscoveryBatch, batch_id)
     if batch is None:
         raise JoltNotFoundError("LinkedIn discovery batch was not found.")
-    if batch.status not in {"completed", "completed_with_failures"}:
-        raise ValueError("Discovery batch must be completed before AI review export.")
+    if batch.status not in {"completed", "completed_with_failures", "failed"}:
+        raise ValueError("Discovery batch must be terminal before AI review export.")
 
     existing = list(
         session.scalars(
