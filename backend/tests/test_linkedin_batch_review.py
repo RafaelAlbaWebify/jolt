@@ -404,7 +404,9 @@ def test_batch_review_does_not_import_postings_from_earlier_failed_batch(
         }
 
         failed_document = build_batch_ai_review_document(session, failed_batch.id)
-        assert [job["posting_id"] for job in failed_document["jobs"]] == ["orphan-posting"]
+        assert [job["posting_id"] for job in failed_document["jobs"]] == [
+            "orphan-posting"
+        ]
         assert failed_document["counts"] == {
             "raw_capture_items": 1,
             "unique_canonical_postings": 1,
