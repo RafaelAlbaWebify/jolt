@@ -110,3 +110,28 @@ def test_fails_closed_after_three_body_inspection_failures() -> None:
         assert str(exc) == "Unable to inspect LinkedIn access state after 3 attempts."
     else:
         raise AssertionError("Expected fail-closed LinkedIn access inspection error.")
+
+
+def test_allows_session_redirect_query_on_jobs_page() -> None:
+    assert (
+        detect_linkedin_access_problem(
+            _Page(
+                "https://www.linkedin.com/jobs/search/?keywords=Support&session_redirect=%2Fjobs%2F",
+                "Jobs\nIT Support Engineer\nAbout the job",
+            )
+        )
+        is None
+    )
+
+
+def test_single_incidental_auth_marker_does_not_force_logout() -> None:
+    for marker in ("Sign in", "Join LinkedIn", "Join now", "Email or phone", "Password"):
+        assert (
+            detect_linkedin_access_problem(
+                _Page(
+                    "https://www.linkedin.com/jobs/search/?keywords=Support",
+                    f"Jobs\nIT Support Engineer\nAbout the job\n{marker}",
+                )
+            )
+            is None
+        )
