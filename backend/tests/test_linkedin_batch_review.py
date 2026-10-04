@@ -299,7 +299,7 @@ def test_batch_review_import_requires_exact_frozen_set(tmp_path: Path) -> None:
         session.close()
 
 
-def test_batch_review_recovers_verified_posting_from_earlier_failed_batch(
+def test_batch_review_does_not_import_postings_from_earlier_failed_batch(
     tmp_path: Path,
 ) -> None:
     factory = _factory(tmp_path)
@@ -391,27 +391,28 @@ def test_batch_review_recovers_verified_posting_from_earlier_failed_batch(
         )
         session.commit()
 
-        document = build_batch_ai_review_document(session, batch_id)
-        jobs = document["jobs"]
-        assert isinstance(jobs, list)
-        assert {job["posting_id"] for job in jobs} == {
+        current_document = build_batch_ai_review_document(session, batch_id)
+        assert [job["posting_id"] for job in current_document["jobs"]] == [
             "posting-1",
             "posting-2",
-            "orphan-posting",
-        }
-        assert document["counts"] == {
+        ]
+        assert current_document["counts"] == {
             "raw_capture_items": 3,
-            "unique_canonical_postings": 3,
+            "unique_canonical_postings": 2,
             "already_reviewed_excluded": 0,
-            "review_set": 3,
+            "review_set": 2,
         }
 
-        # The set is frozen after first materialization.
-        second = build_batch_ai_review_document(session, batch_id)
-        assert [job["posting_id"] for job in second["jobs"]] == [job["posting_id"] for job in jobs]
+        failed_document = build_batch_ai_review_document(session, failed_batch.id)
+        assert [job["posting_id"] for job in failed_document["jobs"]] == ["orphan-posting"]
+        assert failed_document["counts"] == {
+            "raw_capture_items": 1,
+            "unique_canonical_postings": 1,
+            "already_reviewed_excluded": 0,
+            "review_set": 1,
+        }
     finally:
         session.close()
-
 
 def test_batch_review_excludes_postings_with_human_decisions(tmp_path: Path) -> None:
     factory = _factory(tmp_path)
