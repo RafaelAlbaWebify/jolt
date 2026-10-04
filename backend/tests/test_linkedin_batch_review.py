@@ -10,6 +10,7 @@ from jolt.database import (
     CaptureItem,
     CaptureRun,
     LinkedInDiscoveryBatch,
+    LinkedInDiscoveryBatchReviewItem,
     LinkedInDiscoveryBatchSearch,
     LinkedInSavedSearch,
     Posting,
@@ -246,6 +247,81 @@ def test_batch_review_export_deduplicates_postings_and_preserves_occurrences(
             "posting-1",
             "posting-2",
         ]
+    finally:
+        session.close()
+
+
+def test_batch_review_repairs_foreign_rows_in_frozen_set(tmp_path: Path) -> None:
+    factory = _factory(tmp_path)
+    session = factory()
+    try:
+        batch_id = _seed_completed_batch(session)
+        first = build_batch_ai_review_document(session, batch_id)
+        assert first["counts"]["review_set"] == 2
+
+        now = _now()
+        foreign_source = SourceDocument(
+            id="foreign-source",
+            source_type="linkedin",
+            source_url="https://www.linkedin.com/jobs/view/foreign/",
+            raw_text="Foreign vacancy evidence",
+            content_hash="f" * 64,
+            captured_at=now,
+        )
+        foreign_posting = Posting(
+            id="foreign-posting",
+            source_document_id=foreign_source.id,
+            canonical_url=foreign_source.source_url,
+            identity_key="linkedin:foreign",
+            title="Foreign Support Engineer",
+            company="Foreign Corp",
+            location="United States",
+            description="Foreign description",
+            identity_status="canonical",
+            created_at=now,
+        )
+        foreign_capture = CaptureRun(
+            id="foreign-capture",
+            source="linkedin",
+            mode="live",
+            status="completed",
+            search_url="https://www.linkedin.com/jobs/search/?keywords=Foreign",
+            warnings_json="[]",
+            requested_item_limit=100,
+            observed_item_count=1,
+            stop_reason="no_next_page",
+            started_at=now,
+            completed_at=now,
+        )
+        session.add_all([foreign_source, foreign_posting, foreign_capture])
+        session.flush()
+        session.add(
+            LinkedInDiscoveryBatchReviewItem(
+                id="foreign-review-item",
+                batch_id=batch_id,
+                posting_id=foreign_posting.id,
+                representative_capture_run_id=foreign_capture.id,
+                representative_capture_item_id="foreign-item",
+                representative_source_job_id="foreign-job",
+                position=3,
+                created_at=now,
+            )
+        )
+        session.commit()
+
+        repaired = build_batch_ai_review_document(session, batch_id)
+
+        assert [job["posting_id"] for job in repaired["jobs"]] == [
+            "posting-1",
+            "posting-2",
+        ]
+        assert repaired["counts"] == {
+            "raw_capture_items": 3,
+            "unique_canonical_postings": 2,
+            "already_reviewed_excluded": 0,
+            "review_set": 2,
+        }
+        assert session.get(LinkedInDiscoveryBatchReviewItem, "foreign-review-item") is None
     finally:
         session.close()
 
