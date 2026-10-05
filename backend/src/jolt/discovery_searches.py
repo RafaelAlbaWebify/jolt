@@ -213,7 +213,7 @@ def update_discovery_search(
     if search is None:
         raise JoltNotFoundError("Saved discovery search was not found.")
     if search.source != request.source:
-        raise ValueError("A saved search cannot be moved to another portal; create a new search instead.")
+        raise ValueError(\n            "A saved search cannot be moved to another portal; create a new search instead."\n        )
 
     definition_json, definition_key = _canonical_definition(request.definition)
     existing = session.scalar(
