@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { vi } from "vitest";
+import { it, vi } from "vitest";
 
 import { DiscoverySearchQueue } from "./DiscoverySearchQueue";
 
