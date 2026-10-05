@@ -271,6 +271,40 @@ describe("ApplicationDashboard", () => {
     expect(await screen.findByText("Application Support Engineer moved to Interviewing.")).toBeInTheDocument();
   });
 
+  it("exposes the original job offer in the application workspace", async () => {
+    const opportunityWithJobUrl: TestOpportunity = {
+      ...submittedOpportunity,
+      job_url: "https://jobs.example.test/application-support-engineer",
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([opportunityWithJobUrl]));
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open Application Support Engineer" }));
+
+    const workspace = screen.getByRole("dialog", { name: "Application Support Engineer" });
+    expect(within(workspace).getByRole("link", { name: "Open original job offer" })).toHaveAttribute(
+      "href",
+      opportunityWithJobUrl.job_url,
+    );
+    expect(within(workspace).getByRole("link", { name: "Open original job offer" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+  });
+
+  it("falls back to the captured source URL for the original job offer", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([submittedOpportunity]));
+
+    render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open Application Support Engineer" }));
+
+    const workspace = screen.getByRole("dialog", { name: "Application Support Engineer" });
+    expect(within(workspace).getByRole("link", { name: "Open original job offer" })).toHaveAttribute(
+      "href",
+      submittedOpportunity.source_url,
+    );
+  });
+
   it("uses one explicit stage control per application card", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(pipeline));
     render(<ApplicationDashboard apiBase="http://127.0.0.1:8000" active />);

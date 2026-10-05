@@ -1074,6 +1074,16 @@ export function ApplicationDashboard({ apiBase, active }: Props) {
                 <p>{[selected.company, selected.location].filter(Boolean).join(" · ")}</p>
               </div>
               <div className="application-detail-header-actions">
+                {(selected.job_url || selected.source_url) && (
+                  <a
+                    className="secondary"
+                    href={selected.job_url || selected.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open original job offer
+                  </a>
+                )}
                 {selected.application_status === "archived" && (
                   <>
                     <button type="button" className="secondary" disabled={busy} onClick={() => void restoreCard(selected)}>
