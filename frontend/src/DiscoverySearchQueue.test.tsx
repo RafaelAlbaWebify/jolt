@@ -1,7 +1,12 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { DiscoverySearchQueue } from "./DiscoverySearchQueue";
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const sources = [
   { source: "linkedin", label: "LinkedIn", transport: "browser", saved_search_backend: "legacy_linkedin", execution_available: true },
