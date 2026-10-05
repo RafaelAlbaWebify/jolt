@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -81,7 +81,7 @@ class DiscoverySavedSearchResponse(BaseModel):
 
 def list_discovery_sources() -> list[DiscoverySourceResponse]:
     return [
-        DiscoverySourceResponse(source=source, **capabilities)
+        DiscoverySourceResponse(source=cast(DiscoverySource, source), **capabilities)
         for source, capabilities in _SOURCE_CAPABILITIES.items()
     ]
 
@@ -104,7 +104,7 @@ def _validate_non_linkedin(request: DiscoverySavedSearchRequest) -> None:
 
 
 def _response(search: DiscoverySavedSearch) -> DiscoverySavedSearchResponse:
-    source = search.source
+    source = cast(DiscoverySource, search.source)
     capabilities = _SOURCE_CAPABILITIES.get(source, {})
     return DiscoverySavedSearchResponse(
         id=search.id,
