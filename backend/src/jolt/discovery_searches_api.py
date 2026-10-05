@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.discovery_searches import (
@@ -29,7 +29,7 @@ def build_discovery_searches_router(get_session: SessionProvider) -> APIRouter:
 
     @router.get("/api/discovery-searches", response_model=list[DiscoverySavedSearchResponse])
     def discovery_searches(
-        source: DiscoverySource | None = Query(default=None),
+        source: DiscoverySource | None = None,
         session: Session = session_dependency,
     ) -> list[DiscoverySavedSearchResponse]:
         return list_discovery_searches(session, source=source)
