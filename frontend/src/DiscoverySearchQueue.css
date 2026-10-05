@@ -1,0 +1,62 @@
+.discovery-search-queue {
+  display: grid;
+  gap: 16px;
+}
+
+.discovery-source-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.discovery-source-status-grid > div,
+.discovery-queue-preview {
+  padding: 10px 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.discovery-source-status-grid span {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.8rem;
+}
+
+.discovery-order-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.discovery-order-controls span {
+  min-width: 28px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.discovery-order-controls button {
+  min-width: 34px;
+  padding: 6px 8px;
+}
+
+.discovery-queue-preview ol {
+  margin: 8px 0 0;
+  padding-left: 24px;
+}
+
+.discovery-queue-preview li {
+  margin: 4px 0;
+}
+
+.discovery-queue-preview li span {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .discovery-order-controls {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
