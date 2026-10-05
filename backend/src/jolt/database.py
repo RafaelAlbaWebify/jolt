@@ -89,6 +89,28 @@ class CaptureItem(Base):
     )
 
 
+class DiscoverySavedSearch(Base):
+    __tablename__ = "discovery_saved_searches"
+    __table_args__ = (
+        UniqueConstraint(
+            "source",
+            "definition_key",
+            name="uq_discovery_saved_search_source_definition",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    definition_json: Mapped[str] = mapped_column(Text, nullable=False)
+    definition_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    notes: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    max_jobs: Mapped[int] = mapped_column(default=50, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class LinkedInSavedSearch(Base):
     __tablename__ = "linkedin_saved_searches"
     __table_args__ = (
