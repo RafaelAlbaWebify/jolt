@@ -44,7 +44,10 @@ def build_discovery_searches_router(get_session: SessionProvider) -> APIRouter:
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    @router.post(\n        "/api/discovery-searches/{saved_search_id}", response_model=DiscoverySavedSearchResponse\n    )
+    @router.post(
+        "/api/discovery-searches/{saved_search_id}",
+        response_model=DiscoverySavedSearchResponse,
+    )
     def edit_discovery_search(
         saved_search_id: str,
         request: DiscoverySavedSearchRequest,
