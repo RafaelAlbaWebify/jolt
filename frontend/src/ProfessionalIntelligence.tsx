@@ -1,3 +1,4 @@
+import { DiscoverySearchQueue } from "./DiscoverySearchQueue";
 import { LinkedInJobCaptureLauncher } from "./LinkedInJobCaptureLauncher";
 import { LinkedInSearchPortfolio } from "./LinkedInSearchPortfolio";
 
@@ -24,13 +25,15 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
         <div>
           <p className="eyebrow">Job discovery</p>
           <h2 id="job-capture-heading">Capture Jobs</h2>
-          <p>Run saved LinkedIn searches and send only new jobs to review.</p>
+          <p>Build an ordered discovery run from independent searches across multiple job portals.</p>
         </div>
         <div className="professional-safety-boundary professional-readonly-badge" role="note">
           <strong>Read-only</strong>
-          <span>Browser capture only</span>
+          <span>API + supervised browser capture</span>
         </div>
       </section>
+
+      <DiscoverySearchQueue apiBase={apiBase} active={active} />
 
       <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
 
