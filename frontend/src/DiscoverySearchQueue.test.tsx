@@ -10,7 +10,7 @@ afterEach(() => {
 
 const sources = [
   { source: "linkedin", label: "LinkedIn", transport: "browser", saved_search_backend: "legacy_linkedin", execution_available: true },
-  { source: "indeed", label: "Indeed", transport: "browser", saved_search_backend: "discovery", execution_available: false },
+  { source: "indeed", label: "Indeed", transport: "browser", saved_search_backend: "discovery", execution_available: true },
   { source: "jobgether", label: "Jobgether", transport: "api", saved_search_backend: "discovery", execution_available: false },
 ];
 
@@ -37,7 +37,7 @@ const searches = [
     max_jobs: 50,
     created_at: "2026-10-05T00:00:00Z",
     updated_at: "2026-10-05T00:00:00Z",
-    execution_available: false,
+    execution_available: true,
   },
 ];
 
@@ -73,7 +73,7 @@ it("shows portal-specific searches and lets the user build an execution order", 
   expect(reordered[0]).toHaveTextContent("Indeed · Application Support - Spain");
   expect(reordered[1]).toHaveTextContent("LinkedIn · IT Operations Engineer - EU Remote");
 
-  expect(screen.getByRole("button", { name: "Run discovery (2)" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Run discovery (2)" })).toBeEnabled();
 });
 
 it("filters saved searches by portal", async () => {
@@ -148,4 +148,68 @@ it("creates an Indeed search from the unified editor", async () => {
     expect(screen.getByText("Indeed Application Support Spain")).toBeInTheDocument();
   });
   expect(fetchMock).toHaveBeenCalled();
+});
+
+
+it("runs LinkedIn then Indeed in the selected order", async () => {
+  const calls: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify(sources), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches") && (!init?.method || init.method === "GET")) {
+      return new Response(JSON.stringify(searches), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches") && init?.method === "POST") {
+      calls.push("linkedin:create");
+      return new Response(JSON.stringify({ id: "linkedin-batch", status: "queued" }), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches/linkedin-batch/start")) {
+      calls.push("linkedin:start");
+      return new Response(JSON.stringify({ id: "linkedin-batch", status: "scheduled" }), { status: 200 });
+    }
+    if (url.endsWith("/api/linkedin-discovery-batches/linkedin-batch")) {
+      calls.push("linkedin:complete");
+      return new Response(JSON.stringify({ id: "linkedin-batch", status: "completed" }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
+      calls.push("indeed:create");
+      return new Response(JSON.stringify({
+        id: "indeed-execution",
+        status: "queued",
+        error: "",
+        capture_run_id: null,
+      }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions/indeed-execution")) {
+      calls.push("indeed:complete");
+      return new Response(JSON.stringify({
+        id: "indeed-execution",
+        status: "completed",
+        error: "",
+        capture_run_id: "capture-1",
+      }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  await screen.findByText("IT Operations Engineer - EU Remote");
+
+  fireEvent.click(screen.getByLabelText("Select LinkedIn · IT Operations Engineer - EU Remote"));
+  fireEvent.click(screen.getByLabelText("Select Indeed · Application Support - Spain"));
+  fireEvent.click(screen.getByRole("button", { name: "Run discovery (2)" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("Discovery completed in the requested order: 2 searches.")).toBeInTheDocument();
+  });
+
+  expect(calls).toEqual([
+    "linkedin:create",
+    "linkedin:start",
+    "linkedin:complete",
+    "indeed:create",
+    "indeed:complete",
+  ]);
 });
