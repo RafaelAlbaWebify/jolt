@@ -39,6 +39,18 @@ type Props = {
   active: boolean;
 };
 
+type LinkedInDiscoveryBatch = {
+  id: string;
+  status: string;
+};
+
+type DiscoveryExecution = {
+  id: string;
+  status: string;
+  error: string;
+  capture_run_id: string | null;
+};
+
 function sourceLabel(source: DiscoverySourceId) {
   switch (source) {
     case "linkedin": return "LinkedIn";
@@ -237,6 +249,91 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
 
   const allExecutable = selected.length > 0 && selected.every((item) => item.execution_available);
 
+  async function pollUntilTerminal<T extends { status: string }>(
+    url: string,
+    terminal: Set<string>,
+  ): Promise<T> {
+    for (;;) {
+      const response = await fetch(url);
+      if (!response.ok) throw await responseError(response, "Unable to refresh discovery execution.");
+      const current = (await response.json()) as T;
+      if (terminal.has(current.status)) return current;
+      await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+    }
+  }
+
+  async function runLinkedInChunk(chunk: DiscoverySearch[]) {
+    const createResponse = await fetch(`${apiBase}/api/linkedin-discovery-batches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saved_search_ids: chunk.map((item) => item.id) }),
+    });
+    if (!createResponse.ok) throw await responseError(createResponse, "LinkedIn discovery batch could not be created.");
+    const created = (await createResponse.json()) as LinkedInDiscoveryBatch;
+    const startResponse = await fetch(`${apiBase}/api/linkedin-discovery-batches/${created.id}/start`, { method: "POST" });
+    if (!startResponse.ok) throw await responseError(startResponse, "LinkedIn discovery batch could not start.");
+
+    const finished = await pollUntilTerminal<LinkedInDiscoveryBatch>(
+      `${apiBase}/api/linkedin-discovery-batches/${created.id}`,
+      new Set(["completed", "completed_with_failures", "failed"]),
+    );
+    if (finished.status === "failed") {
+      throw new Error("LinkedIn discovery stopped because its shared browser session failed.");
+    }
+  }
+
+  async function runIndeedSearch(search: DiscoverySearch) {
+    const createResponse = await fetch(`${apiBase}/api/discovery-executions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: "indeed", saved_search_id: search.id }),
+    });
+    if (!createResponse.ok) throw await responseError(createResponse, "Indeed discovery execution could not start.");
+    const created = (await createResponse.json()) as DiscoveryExecution;
+    const finished = await pollUntilTerminal<DiscoveryExecution>(
+      `${apiBase}/api/discovery-executions/${created.id}`,
+      new Set(["completed", "failed"]),
+    );
+    if (finished.status === "failed") {
+      throw new Error(finished.error || `Indeed search failed: ${search.label}`);
+    }
+  }
+
+  async function startDiscovery() {
+    if (!allExecutable) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      let index = 0;
+      while (index < selected.length) {
+        const search = selected[index];
+        if (search.source === "linkedin") {
+          const chunk: DiscoverySearch[] = [];
+          while (index < selected.length && selected[index].source === "linkedin") {
+            chunk.push(selected[index]);
+            index += 1;
+          }
+          setNotice(`Running LinkedIn searches ${index - chunk.length + 1}–${index} of ${selected.length}…`);
+          await runLinkedInChunk(chunk);
+          continue;
+        }
+        if (search.source === "indeed") {
+          setNotice(`Running Indeed search ${index + 1} of ${selected.length}: ${search.label}`);
+          await runIndeedSearch(search);
+          index += 1;
+          continue;
+        }
+        throw new Error(`${sourceLabel(search.source)} execution is not available yet.`);
+      }
+      setNotice(`Discovery completed in the requested order: ${selected.length} search${selected.length === 1 ? "" : "es"}.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Discovery execution failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="panel discovery-search-queue" aria-labelledby="discovery-search-queue-heading">
       <div className="section-heading">
@@ -396,8 +493,13 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
         )}
       </div>
 
-      <button type="button" disabled={!allExecutable} title={allExecutable ? "" : "Multi-source execution will unlock as portal connectors are attached."}>
-        Run discovery ({selected.length})
+      <button
+        type="button"
+        disabled={!allExecutable || busy}
+        title={allExecutable ? "" : "Multi-source execution will unlock as portal connectors are attached."}
+        onClick={() => void startDiscovery()}
+      >
+        {busy ? "Discovery running…" : `Run discovery (${selected.length})`}
       </button>
       {!allExecutable && selected.length > 0 && (
         <small>Selection and ordering are active now. Execution remains disabled while selected portal connectors are pending.</small>
