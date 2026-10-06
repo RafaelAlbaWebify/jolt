@@ -26,7 +26,7 @@ _SOURCE_CAPABILITIES: dict[str, dict[str, Any]] = {
         "label": "Indeed",
         "transport": "browser",
         "saved_search_backend": "discovery",
-        "execution_available": False,
+        "execution_available": True,
     },
     "jobgether": {
         "label": "Jobgether",
