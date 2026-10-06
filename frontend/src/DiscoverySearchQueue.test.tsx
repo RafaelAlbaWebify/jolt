@@ -260,5 +260,11 @@ it("shows the live Indeed phase while a capture is running", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
 
   expect(await screen.findByText(/Waiting for visible Indeed results/)).toBeInTheDocument();
-  expect(\n    await screen.findByText(\n      "Discovery completed in the requested order: 1 search.",\n      {},\n      { timeout: 3_000 },\n    ),\n  ).toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      "Discovery completed in the requested order: 1 search.",
+      {},
+      { timeout: 3_000 },
+    ),
+  ).toBeInTheDocument();
 });
