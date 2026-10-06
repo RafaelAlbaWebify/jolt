@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import threading
+import time
 import zipfile
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from queue import Empty, Queue
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -200,25 +203,55 @@ def run_indeed_saved_search(
         bufsize=1,
     )
     output_lines: list[str] = []
-    assert process.stdout is not None
-    for line in process.stdout:
-        text_line = line.rstrip()
-        if text_line:
-            output_lines.append(text_line)
-            if len(output_lines) > 200:
-                output_lines = output_lines[-200:]
-        normalized = text_line.casefold()
-        if phase_callback is not None:
-            if "chrome is ready" in normalized or "waiting for visible indeed job results" in normalized:
-                phase_callback("waiting_results")
-            elif (
-                normalized.startswith("page ")
-                or "opening indeed results page" in normalized
-                or "jolt is attached to google chrome" in normalized
-            ):
-                phase_callback("capturing")
+    output_queue: Queue[str | None] = Queue()
 
-    returncode = process.wait(timeout=3600)
+    def read_output() -> None:
+        assert process.stdout is not None
+        try:
+            for line in process.stdout:
+                output_queue.put(line.rstrip())
+        finally:
+            output_queue.put(None)
+
+    reader = threading.Thread(target=read_output, daemon=True)
+    reader.start()
+
+    deadline = time.monotonic() + 3600
+    stream_finished = False
+    while True:
+        if time.monotonic() >= deadline:
+            process.kill()
+            raise RuntimeError("Indeed supervised capture timed out after 3600 seconds.")
+
+        try:
+            text_line = output_queue.get(timeout=0.25)
+            if text_line is None:
+                stream_finished = True
+            elif text_line:
+                output_lines.append(text_line)
+                if len(output_lines) > 200:
+                    output_lines = output_lines[-200:]
+                normalized = text_line.casefold()
+                if phase_callback is not None:
+                    if (
+                        "chrome is ready" in normalized
+                        or "waiting for visible indeed job results" in normalized
+                    ):
+                        phase_callback("waiting_results")
+                    elif (
+                        normalized.startswith("page ")
+                        or "opening indeed results page" in normalized
+                        or "jolt is attached to google chrome" in normalized
+                    ):
+                        phase_callback("capturing")
+        except Empty:
+            pass
+
+        returncode = process.poll()
+        if returncode is not None and stream_finished:
+            break
+
+    reader.join(timeout=2)
     if returncode != 0:
         diagnostic = "\n".join(output_lines[-80:])
         raise RuntimeError(
