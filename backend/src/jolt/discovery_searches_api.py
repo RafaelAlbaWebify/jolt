@@ -4,6 +4,14 @@ from contextlib import suppress
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from jolt.discovery_execution import (
+    DiscoveryExecutionCreateRequest,
+    DiscoveryExecutionResponse,
+    create_discovery_execution,
+    execute_discovery_execution,
+    get_discovery_execution,
+    list_discovery_executions,
+)
 from jolt.discovery_searches import (
     DiscoverySavedSearchRequest,
     DiscoverySavedSearchResponse,
@@ -14,14 +22,6 @@ from jolt.discovery_searches import (
     list_discovery_searches,
     list_discovery_sources,
     update_discovery_search,
-)
-from jolt.discovery_execution import (
-    DiscoveryExecutionCreateRequest,
-    DiscoveryExecutionResponse,
-    create_discovery_execution,
-    execute_discovery_execution,
-    get_discovery_execution,
-    list_discovery_executions,
 )
 from jolt.errors import JoltNotFoundError
 
