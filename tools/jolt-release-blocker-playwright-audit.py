@@ -131,27 +131,33 @@ def audit(output_dir: Path) -> dict[str, Any]:
         page.get_by_role("button", name="Capture Jobs", exact=True).click()
         page.get_by_role("heading", name="Capture Jobs", exact=True).wait_for(timeout=30_000)
 
-        page.get_by_role("heading", name="Saved LinkedIn searches", exact=True).wait_for(
+        page.get_by_role("heading", name="Discovery queue", exact=True).wait_for(
             timeout=30_000
         )
         add_search = page.get_by_role("button", name="Add search", exact=True)
         add_search.wait_for(timeout=30_000)
-        assert_true(add_search.is_visible(), "Saved Search Portfolio add action is not visible")
+        assert_true(add_search.is_visible(), "Discovery queue add-search action is not visible")
 
-        primary = page.get_by_role("button", name=re.compile(r"^Run searches \(\d+\)$"))
+        primary = page.get_by_role("button", name=re.compile(r"^Run discovery \(\d+\)$"))
         primary.wait_for(timeout=30_000)
-        assert_true(primary.is_visible(), "Primary search action is not visible")
+        assert_true(primary.is_visible(), "Primary discovery action is not visible")
 
         fallback = page.get_by_text("Advanced capture", exact=True)
         assert_true(fallback.is_visible(), "Advanced capture option is not visible")
+        linkedin_advanced = page.get_by_text("LinkedIn advanced operations", exact=True)
+        assert_true(
+            linkedin_advanced.is_visible(),
+            "LinkedIn legacy operations are not available as a collapsed advanced fallback",
+        )
 
         add_search.click()
-        editor = page.get_by_role("dialog", name="Add saved search", exact=True)
+        editor = page.get_by_role("dialog", name="Add discovery search", exact=True)
         editor.wait_for(timeout=30_000)
+        assert_true(editor.get_by_label("Portal", exact=True).is_visible(), "Portal selector is missing")
         assert_true(editor.get_by_label("Name", exact=True).is_visible(), "Saved-search name field is missing")
         assert_true(
-            editor.get_by_label("LinkedIn search URL", exact=True).is_visible(),
-            "Saved-search LinkedIn URL field is missing",
+            editor.get_by_label("Indeed search URL", exact=True).is_visible(),
+            "Default Indeed search URL field is missing",
         )
         assert_true(
             editor.get_by_label("Maximum jobs", exact=True).is_visible(),
