@@ -3,10 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from playwright.sync_api import sync_playwright
 
 from jolt.indeed_capture import (
     _is_action_link_text,
     _parse_panel_text,
+    _visible_listing_candidates,
     canonical_indeed_job_url,
     extract_indeed_job_key,
 )
@@ -319,3 +321,35 @@ def test_indeed_action_links_are_not_treated_as_job_titles() -> None:
     assert _is_action_link_text("Apply on company site")
     assert not _is_action_link_text("Technical Support Specialist")
     assert not _is_action_link_text("IT System Administrator")
+
+
+
+def test_visible_candidates_include_mixed_current_indeed_link_structures() -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(
+            """
+            <html>
+              <body>
+                <h2 class="jobTitle">
+                  <a href="https://es.indeed.com/viewjob?jk=job-a">Support A</a>
+                </h2>
+                <div>
+                  <a href="https://es.indeed.com/rc/clk?jk=job-b">Support B</a>
+                </div>
+                <div>
+                  <a href="/pagead/clk?jk=job-c">Support C</a>
+                </div>
+              </body>
+            </html>
+            """
+        )
+        candidates = _visible_listing_candidates(page, 10)
+        browser.close()
+
+    assert [candidate["source_job_id"] for candidate in candidates] == [
+        "job-a",
+        "job-b",
+        "job-c",
+    ]
