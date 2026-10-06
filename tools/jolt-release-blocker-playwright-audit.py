@@ -153,7 +153,8 @@ def audit(output_dir: Path) -> dict[str, Any]:
         add_search.click()
         editor = page.get_by_role("dialog", name="Add discovery search", exact=True)
         editor.wait_for(timeout=30_000)
-        assert_true(editor.get_by_label("Portal", exact=True).is_visible(), "Portal selector is missing")
+        portal_select = editor.locator("label").filter(has_text=re.compile(r"^Portal")).locator("select")
+        assert_true(portal_select.is_visible(), "Portal selector is missing")
         assert_true(editor.get_by_label("Name", exact=True).is_visible(), "Saved-search name field is missing")
         assert_true(
             editor.get_by_label("Indeed search URL", exact=True).is_visible(),
