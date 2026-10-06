@@ -43,6 +43,7 @@ from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
+from jolt.discovery_searches_api import build_discovery_searches_router
 from jolt.errors import JoltNotFoundError
 from jolt.global_context_api import build_global_context_router
 from jolt.hardline_revalidation import (
@@ -174,6 +175,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(build_application_work_items_router(get_session))
     app.include_router(build_professional_intelligence_plan_router(get_session))
     app.include_router(build_linkedin_search_portfolio_router(get_session))
+    app.include_router(build_discovery_searches_router(get_session))
 
     @app.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:
