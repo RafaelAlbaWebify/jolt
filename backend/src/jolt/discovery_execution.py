@@ -122,7 +122,11 @@ def create_discovery_execution(
 def recover_interrupted_discovery_executions(session: Session) -> int:
     rows = list(
         session.scalars(
-            select(DiscoveryExecution).where(\n                DiscoveryExecution.status.in_(\n                    ("queued", "starting_chrome", "waiting_results", "capturing")\n                )\n            )
+            select(DiscoveryExecution).where(
+                DiscoveryExecution.status.in_(
+                    ("queued", "starting_chrome", "waiting_results", "capturing")
+                )
+            )
         ).all()
     )
     if not rows:
