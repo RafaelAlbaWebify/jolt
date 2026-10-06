@@ -33,7 +33,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/package.json frontend/package-lock.json
+          git add package.json package-lock.json
           git diff --cached --quiet && exit 0
           git commit -m "Refresh frontend test dependencies"
           git push origin HEAD:feature/multisource-discovery-foundation
