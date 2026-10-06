@@ -94,7 +94,9 @@ def create_discovery_execution(
         select(DiscoveryExecution.id)
         .where(
             DiscoveryExecution.source == "indeed",
-            DiscoveryExecution.status.in_(("queued", "starting_chrome", "waiting_results", "capturing")),
+            DiscoveryExecution.status.in_(
+                ("queued", "starting_chrome", "waiting_results", "capturing")
+            ),
         )
         .limit(1)
     )
