@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import zipfile
+from datetime import datetime
 from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
@@ -29,9 +30,9 @@ class DiscoveryExecutionResponse(BaseModel):
     status: str
     capture_run_id: str | None
     error: str
-    started_at: object | None
-    completed_at: object | None
-    created_at: object
+    started_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
 
 
 def _repo_root() -> Path:
