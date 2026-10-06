@@ -27,6 +27,7 @@ jobs:
       - name: Refresh secure test dependencies
         run: |
           npm install --save-dev --package-lock-only --ignore-scripts --no-fund vitest@5.0.3
+          npm audit fix --package-lock-only --ignore-scripts --no-fund
           npm audit --audit-level=high
       - name: Commit refreshed manifest and lockfile
         run: |
