@@ -83,7 +83,6 @@ def test_navigate_search_page_replaces_closed_cdp_page() -> None:
     ]
 
 
-
 def test_navigate_search_page_reuses_open_cdp_page() -> None:
     open_page = _FakePage()
     replacement = _FakePage()
