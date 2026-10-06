@@ -252,11 +252,13 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
   async function pollUntilTerminal<T extends { status: string }>(
     url: string,
     terminal: Set<string>,
+    onProgress?: (current: T) => void,
   ): Promise<T> {
     for (;;) {
       const response = await fetch(url);
       if (!response.ok) throw await responseError(response, "Unable to refresh discovery execution.");
       const current = (await response.json()) as T;
+      onProgress?.(current);
       if (terminal.has(current.status)) return current;
       await new Promise((resolve) => window.setTimeout(resolve, 1_500));
     }
@@ -293,6 +295,16 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
     const finished = await pollUntilTerminal<DiscoveryExecution>(
       `${apiBase}/api/discovery-executions/${created.id}`,
       new Set(["completed", "failed"]),
+      (current) => {
+        const phaseText: Record<string, string> = {
+          queued: "Queued",
+          starting_chrome: "Starting Chrome",
+          waiting_results: "Waiting for visible Indeed results",
+          capturing: "Capturing Indeed jobs",
+        };
+        const detail = phaseText[current.status] ?? current.status;
+        setNotice(`Indeed · ${search.label}: ${detail}…`);
+      },
     );
     if (finished.status === "failed") {
       throw new Error(finished.error || `Indeed search failed: ${search.label}`);
