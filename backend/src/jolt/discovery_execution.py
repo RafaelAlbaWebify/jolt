@@ -119,9 +119,7 @@ def create_discovery_execution(
 def recover_interrupted_discovery_executions(session: Session) -> int:
     rows = list(
         session.scalars(
-            select(DiscoveryExecution).where(
-                DiscoveryExecution.status.in_(("queued", "running"))
-            )
+            select(DiscoveryExecution).where(DiscoveryExecution.status.in_(("queued", "running")))
         ).all()
     )
     if not rows:
@@ -146,8 +144,7 @@ def _capture_run_id(output_zip: Path) -> str:
     if not capture_run_id:
         error = str(result.get("error", "") or result.get("response", "") or "")
         raise RuntimeError(
-            "Indeed execution did not persist a capture run."
-            + (f" {error}" if error else "")
+            "Indeed execution did not persist a capture run." + (f" {error}" if error else "")
         )
     return capture_run_id
 
