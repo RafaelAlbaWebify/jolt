@@ -323,7 +323,6 @@ def test_indeed_action_links_are_not_treated_as_job_titles() -> None:
     assert not _is_action_link_text("IT System Administrator")
 
 
-
 def test_visible_candidates_include_mixed_current_indeed_link_structures() -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
