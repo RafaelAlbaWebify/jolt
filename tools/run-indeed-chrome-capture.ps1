@@ -7,7 +7,8 @@ param(
     [int]$MaxPages = 1,
     [int]$DebugPort = 9222,
     [string]$ApiUrl = "http://127.0.0.1:8000",
-    [string]$OutputZip = ""
+    [string]$OutputZip = "",
+    [switch]$SkipSync
 )
 
 $ErrorActionPreference = "Stop"
@@ -88,8 +89,14 @@ Write-Host ""
 
 Push-Location $BackendRoot
 try {
-    uv sync --all-groups
-    uv run python -m jolt.indeed_chrome_attach `
+    if (-not $SkipSync) {
+        Write-Host "Preparing Indeed capture runtime..."
+        uv sync --all-groups
+    } else {
+        Write-Host "Using the existing JOLT Python environment."
+    }
+
+    uv run --no-sync python -m jolt.indeed_chrome_attach `
         --cdp-endpoint $CdpEndpoint `
         --api-url $ApiUrl `
         --output-zip $OutputZip `

@@ -213,3 +213,58 @@ it("runs LinkedIn then Indeed in the selected order", async () => {
     "indeed:complete",
   ]);
 });
+
+
+it("shows the live Indeed phase while a capture is running", async () => {
+  let executionPolls = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify(sources), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches") && (!init?.method || init.method === "GET")) {
+      return new Response(JSON.stringify([searches[1]]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
+      return new Response(JSON.stringify({
+        id: "indeed-phase",
+        status: "queued",
+        error: "",
+        capture_run_id: null,
+      }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions/indeed-phase")) {
+      executionPolls += 1;
+      if (executionPolls === 1) {
+        return new Response(JSON.stringify({
+          id: "indeed-phase",
+          status: "waiting_results",
+          error: "",
+          capture_run_id: null,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify({
+        id: "indeed-phase",
+        status: "completed",
+        error: "",
+        capture_run_id: "capture-phase",
+      }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  await screen.findByText("Application Support - Spain");
+
+  fireEvent.click(screen.getByLabelText("Select Indeed · Application Support - Spain"));
+  fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
+
+  expect(await screen.findByText(/Waiting for visible Indeed results/)).toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      "Discovery completed in the requested order: 1 search.",
+      {},
+      { timeout: 3_000 },
+    ),
+  ).toBeInTheDocument();
+});
