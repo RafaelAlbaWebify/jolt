@@ -6,7 +6,8 @@ param(
     [ValidateRange(1, 10)]
     [int]$MaxPages = 1,
     [int]$DebugPort = 9222,
-    [string]$ApiUrl = "http://127.0.0.1:8000"
+    [string]$ApiUrl = "http://127.0.0.1:8000",
+    [string]$OutputZip = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,7 +19,9 @@ $RuntimeRoot = Join-Path $RepoRoot ".jolt"
 $ChromeProfileDir = Join-Path $RuntimeRoot "chrome-indeed-cdp"
 $Downloads = Join-Path $env:USERPROFILE "Downloads"
 $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$OutputZip = Join-Path $Downloads "JOLT_INDEED_CHROME_CAPTURE_$Timestamp.zip"
+if (-not $OutputZip) {
+    $OutputZip = Join-Path $Downloads "JOLT_INDEED_CHROME_CAPTURE_$Timestamp.zip"
+}
 
 $ChromeCandidates = @(
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
