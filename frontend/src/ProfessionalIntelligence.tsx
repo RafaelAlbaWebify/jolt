@@ -35,7 +35,11 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
 
       <DiscoverySearchQueue apiBase={apiBase} active={active} />
 
-      <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
+      <details className="panel professional-single-capture-fallback">
+        <summary>LinkedIn advanced operations</summary>
+        <p>Batch status, review exchange, performance history, and legacy LinkedIn controls.</p>
+        <LinkedInSearchPortfolio apiBase={apiBase} active={active} onAIImported={onAIImported} />
+      </details>
 
       <details className="panel professional-single-capture-fallback">
         <summary>Advanced capture</summary>
