@@ -60,3 +60,16 @@
     justify-self: end;
   }
 }
+
+
+.discovery-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.discovery-search-editor {
+  margin: 0;
+}

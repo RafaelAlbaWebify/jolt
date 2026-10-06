@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { DiscoverySearchQueue } from "./DiscoverySearchQueue";
@@ -95,4 +95,57 @@ it("filters saved searches by portal", async () => {
 
   expect(screen.queryByText("IT Operations Engineer - EU Remote")).not.toBeInTheDocument();
   expect(screen.getByText("Application Support - Spain")).toBeInTheDocument();
+});
+
+
+it("creates an Indeed search from the unified editor", async () => {
+  let listed = searches.filter((item) => item.source !== "indeed");
+  const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify(sources), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches") && (!init?.method || init.method === "GET")) {
+      return new Response(JSON.stringify(listed), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body));
+      expect(body.source).toBe("indeed");
+      expect(body.definition.search_url).toBe("https://es.indeed.com/jobs?q=application+support");
+      expect(body.definition.max_pages).toBe(3);
+      listed = [
+        ...listed,
+        {
+          id: "indeed-new",
+          source: "indeed",
+          label: body.label,
+          definition: body.definition,
+          notes: body.notes,
+          enabled: body.enabled,
+          max_jobs: body.max_jobs,
+          created_at: "2026-10-06T00:00:00Z",
+          updated_at: "2026-10-06T00:00:00Z",
+          execution_available: false,
+        },
+      ];
+      return new Response(JSON.stringify(listed.at(-1)), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  await screen.findByText("IT Operations Engineer - EU Remote");
+
+  fireEvent.change(screen.getByLabelText("Portal"), { target: { value: "indeed" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add Indeed search" }));
+
+  const dialog = screen.getByRole("dialog", { name: "Add discovery search" });
+  fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Indeed Application Support Spain" } });
+  fireEvent.change(within(dialog).getByLabelText("Indeed search URL"), { target: { value: "https://es.indeed.com/jobs?q=application+support" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save search" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("Indeed Application Support Spain")).toBeInTheDocument();
+  });
+  expect(fetchMock).toHaveBeenCalled();
 });
