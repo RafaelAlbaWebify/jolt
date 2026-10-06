@@ -111,6 +111,21 @@ class DiscoverySavedSearch(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class DiscoveryExecution(Base):
+    __tablename__ = "discovery_executions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    saved_search_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    label_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    capture_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class LinkedInSavedSearch(Base):
     __tablename__ = "linkedin_saved_searches"
     __table_args__ = (

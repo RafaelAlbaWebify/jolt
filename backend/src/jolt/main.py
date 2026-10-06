@@ -43,6 +43,7 @@ from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
+from jolt.discovery_execution import recover_interrupted_discovery_executions
 from jolt.discovery_searches_api import build_discovery_searches_router
 from jolt.errors import JoltNotFoundError
 from jolt.global_context_api import build_global_context_router
@@ -161,6 +162,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     # state left behind when Windows or the backend stops mid-batch.
     with session_factory() as recovery_session:
         recover_interrupted_discovery_batches(recovery_session)
+        recover_interrupted_discovery_executions(recovery_session)
 
     def get_session() -> Iterator[Session]:
         session = session_factory()
