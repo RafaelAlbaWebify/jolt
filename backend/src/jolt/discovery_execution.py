@@ -161,6 +161,7 @@ def run_indeed_saved_search(
     execution_id: str,
     *,
     api_url: str = "http://127.0.0.1:8000",
+    phase_callback: Callable[[str], None] | None = None,
 ) -> str:
     definition = json.loads(search.definition_json)
     search_url = str(definition.get("search_url", "") or "").strip()
@@ -194,6 +195,7 @@ def run_indeed_saved_search(
         api_url,
         "-OutputZip",
         str(output_zip),
+        "-SkipSync",
     ]
     if phase_callback is not None:
         phase_callback("starting_chrome")
