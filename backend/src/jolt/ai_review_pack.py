@@ -9,7 +9,16 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.database import CaptureItem, CapturePage, CaptureRun, Posting, SourceDocument
+from jolt.database import (
+    AIReview,
+    Application,
+    CaptureItem,
+    CapturePage,
+    CaptureRun,
+    Posting,
+    ReviewDecision,
+    SourceDocument,
+)
 from jolt.errors import JoltNotFoundError
 from jolt.hardline_evidence import analyze_location_evidence
 from jolt.job_search_preferences import load_job_search_preferences
@@ -95,6 +104,35 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             .order_by(CaptureItem.id)
         ).all()
     )
+
+    capture_posting_ids = {item.posting_id for item in items if item.posting_id is not None}
+    already_reviewed_posting_ids = set(
+        session.scalars(
+            select(AIReview.posting_id).where(AIReview.posting_id.in_(capture_posting_ids))
+        ).all()
+    )
+    human_decided_posting_ids = set(
+        session.scalars(
+            select(ReviewDecision.posting_id).where(
+                ReviewDecision.posting_id.in_(capture_posting_ids)
+            )
+        ).all()
+    )
+    applied_posting_ids = set(
+        session.scalars(
+            select(Application.posting_id).where(
+                Application.posting_id.in_(capture_posting_ids)
+            )
+        ).all()
+    )
+    excluded_posting_ids = (
+        already_reviewed_posting_ids | human_decided_posting_ids | applied_posting_ids
+    )
+    items = [
+        item
+        for item in items
+        if item.posting_id is not None and item.posting_id not in excluded_posting_ids
+    ]
 
     posting_ids = {item.posting_id for item in items if item.posting_id is not None}
     postings = (
@@ -303,6 +341,7 @@ def build_ai_review_json(session: Session) -> bytes:
             "capture_pages": len(pages),
             "capture_items": len(jobs),
             "verified_items": payloads["verified_items"],
+            "excluded_already_reviewed_or_decided": len(capture_posting_ids) - len(posting_ids),
         },
         "capture": payloads["capture"],
         "pages": pages,
