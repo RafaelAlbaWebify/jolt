@@ -206,6 +206,79 @@ describe("App AI review workflow", () => {
     expect(exportLink).toHaveAttribute("download", "JOLT_AI_WORK_PACKAGE.json");
   });
 
+  it("imports a reviewed AI work package from Review Inbox", async () => {
+    let index = [awaitingOpportunity];
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      async (input, init) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/ai-review/opportunity-index")) {
+          return jsonResponse(index);
+        }
+
+        if (
+          url.endsWith("/api/ai-work-package/import") &&
+          init?.method === "POST"
+        ) {
+          expect(JSON.parse(String(init.body))).toEqual({
+            contract_type: "jolt_ai_work_package_update",
+            package_id: "package-1",
+          });
+
+          index = [reviewedOpportunity];
+
+          return jsonResponse({
+            package_id: "package-1",
+            imported_sections: [],
+            review_inbox_imported: true,
+            section_results: {
+              review_inbox: {
+                received_count: 1,
+              },
+            },
+          });
+        }
+
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
+
+    render(<App />);
+
+    await screen.findByText("Cloud Operations Analyst");
+
+    const input = screen.getByLabelText("AI review result file");
+    const file = new File(
+      [
+        JSON.stringify({
+          contract_type: "jolt_ai_work_package_update",
+          package_id: "package-1",
+        }),
+      ],
+      "JOLT_AI_WORK_PACKAGE_REVIEWED.json",
+      { type: "application/json" },
+    );
+
+    fireEvent.change(input, {
+      target: { files: [file] },
+    });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/ai-work-package/import",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    expect(
+      await screen.findByText("AI review imported successfully for 1 job."),
+    ).toBeInTheDocument();
+  });
+
   it("switches the selected-job preview between overview, fit analysis, and job details", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse([reviewedOpportunity]),
