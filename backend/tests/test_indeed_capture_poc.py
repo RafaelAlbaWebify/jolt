@@ -363,9 +363,9 @@ def test_visible_candidates_accept_data_jk_card_without_jk_in_href() -> None:
             <html>
               <body>
                 <div class="job_seen_beacon" data-jk="job-data-jk">
-                  <h2 class="jobTitle">
-                    <a href="https://es.indeed.com/viewjob">Data JK Support Engineer</a>
-                  </h2>
+                  <a class="jcs-JobTitle" href="https://es.indeed.com/viewjob">
+                    Data JK Support Engineer
+                  </a>
                   <span>Example Company</span>
                 </div>
               </body>
