@@ -111,7 +111,9 @@ class UnifiedAIUpdate(BaseModel):
     reviewed_at: datetime
     review_source: Literal["chatgpt"] = "chatgpt"
     review_version: str = Field(min_length=1, max_length=80)
-    review_inbox: AIReviewImportRequest | BatchAIReviewImportRequest | AIReviewBundleImportRequest | None = None
+    review_inbox: (
+        AIReviewImportRequest | BatchAIReviewImportRequest | AIReviewBundleImportRequest | None
+    ) = None
     exchanges: list[AIExchangeOutput] = Field(default_factory=list)
     context_patch: dict[str, Any] = Field(default_factory=dict)
     summary: dict[str, Any] = Field(default_factory=dict)
@@ -421,8 +423,7 @@ def import_unified_ai_update(
     if update.review_inbox is not None:
         if isinstance(update.review_inbox, AIReviewBundleImportRequest):
             group_results = [
-                import_ai_review(session, request)
-                for request in update.review_inbox.reviews
+                import_ai_review(session, request) for request in update.review_inbox.reviews
             ]
             section_results["review_inbox"] = {
                 "capture_run_count": len(group_results),
@@ -432,9 +433,7 @@ def import_unified_ai_update(
                 "protected_human_state_count": sum(
                     result.protected_human_state_count for result in group_results
                 ),
-                "capture_runs": [
-                    result.model_dump(mode="json") for result in group_results
-                ],
+                "capture_runs": [result.model_dump(mode="json") for result in group_results],
             }
         elif isinstance(update.review_inbox, BatchAIReviewImportRequest):
             review_result = import_batch_ai_review(session, update.review_inbox)
