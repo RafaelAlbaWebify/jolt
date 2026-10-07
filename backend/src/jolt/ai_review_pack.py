@@ -120,9 +120,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
     )
     applied_posting_ids = set(
         session.scalars(
-            select(Application.posting_id).where(
-                Application.posting_id.in_(capture_posting_ids)
-            )
+            select(Application.posting_id).where(Application.posting_id.in_(capture_posting_ids))
         ).all()
     )
     excluded_posting_ids = (
