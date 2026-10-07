@@ -295,8 +295,7 @@ def run_capture(
                     )
 
                 print(
-                    f"Progress: page {page_number}/{max_pages} · "
-                    f"captured {len(cards)}/{max_jobs}"
+                    f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
                 )
 
             stop_reason = (
