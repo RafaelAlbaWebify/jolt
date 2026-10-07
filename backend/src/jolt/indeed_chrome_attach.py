@@ -212,6 +212,10 @@ def run_capture(
 
                 if not new_candidates:
                     exhausted = True
+                    print(
+                        f"Progress: page {page_number}/{max_pages} · "
+                        f"captured {len(cards)}/{max_jobs}"
+                    )
                     break
 
                 for card_index, candidate in enumerate(new_candidates):
@@ -289,6 +293,10 @@ def run_capture(
                             card_index=card_index,
                         )
                     )
+
+                print(
+                    f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
+                )
 
             stop_reason = (
                 "requested_limit_reached"

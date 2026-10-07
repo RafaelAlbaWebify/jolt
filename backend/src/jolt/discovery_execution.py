@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import threading
@@ -32,6 +33,11 @@ class DiscoveryExecutionResponse(BaseModel):
     label: str
     status: str
     capture_run_id: str | None
+    current_page: int
+    pages_visited: int
+    captured_count: int
+    target_jobs: int
+    max_pages: int
     error: str
     started_at: datetime | None
     completed_at: datetime | None
@@ -50,6 +56,11 @@ def _response(execution: DiscoveryExecution) -> DiscoveryExecutionResponse:
         label=execution.label_snapshot,
         status=execution.status,
         capture_run_id=execution.capture_run_id,
+        current_page=execution.current_page,
+        pages_visited=execution.pages_visited,
+        captured_count=execution.captured_count,
+        target_jobs=execution.target_jobs,
+        max_pages=execution.max_pages,
         error=execution.error,
         started_at=execution.started_at,
         completed_at=execution.completed_at,
@@ -103,6 +114,9 @@ def create_discovery_execution(
     if active is not None:
         raise ValueError("Another Indeed discovery execution is already active.")
 
+    definition = json.loads(search.definition_json)
+    max_pages = max(1, min(10, int(definition.get("max_pages", 3) or 3)))
+
     now = utc_now()
     execution = DiscoveryExecution(
         id=str(uuid4()),
@@ -111,6 +125,11 @@ def create_discovery_execution(
         label_snapshot=search.label,
         status="queued",
         capture_run_id=None,
+        current_page=0,
+        pages_visited=0,
+        captured_count=0,
+        target_jobs=search.max_jobs,
+        max_pages=max_pages,
         error="",
         started_at=None,
         completed_at=None,
@@ -163,7 +182,7 @@ def run_indeed_saved_search(
     execution_id: str,
     *,
     api_url: str = "http://127.0.0.1:8000",
-    phase_callback: Callable[[str], None] | None = None,
+    phase_callback: Callable[[str, int | None, int | None], None] | None = None,
 ) -> str:
     definition = json.loads(search.definition_json)
     search_url = str(definition.get("search_url", "") or "").strip()
@@ -200,7 +219,7 @@ def run_indeed_saved_search(
         "-SkipSync",
     ]
     if phase_callback is not None:
-        phase_callback("starting_chrome")
+        phase_callback("starting_chrome", None, None)
 
     process = subprocess.Popen(
         command,
@@ -241,17 +260,27 @@ def run_indeed_saved_search(
                     output_lines = output_lines[-200:]
                 normalized = text_line.casefold()
                 if phase_callback is not None:
-                    if (
+                    progress = re.search(
+                        r"^progress: page (\d+)/(\d+) · captured (\d+)/(\d+)$",
+                        normalized,
+                    )
+                    if progress is not None:
+                        phase_callback(
+                            "capturing",
+                            int(progress.group(1)),
+                            int(progress.group(3)),
+                        )
+                    elif (
                         "chrome is ready" in normalized
                         or "waiting for visible indeed job results" in normalized
                     ):
-                        phase_callback("waiting_results")
+                        phase_callback("waiting_results", None, None)
                     elif (
                         normalized.startswith("page ")
                         or "opening indeed results page" in normalized
                         or "jolt is attached to google chrome" in normalized
                     ):
-                        phase_callback("capturing")
+                        phase_callback("capturing", None, None)
         except Empty:
             pass
 
@@ -290,11 +319,20 @@ def execute_discovery_execution(
     execution.error = ""
     session.commit()
 
-    def set_phase(phase: str) -> None:
+    def set_phase(
+        phase: str,
+        current_page: int | None = None,
+        captured_count: int | None = None,
+    ) -> None:
         current = session.get(DiscoveryExecution, execution_id)
         if current is None:
             return
         current.status = phase
+        if current_page is not None:
+            current.current_page = current_page
+            current.pages_visited = max(current.pages_visited, current_page)
+        if captured_count is not None:
+            current.captured_count = captured_count
         session.commit()
 
     selected_runner = runner or run_indeed_saved_search

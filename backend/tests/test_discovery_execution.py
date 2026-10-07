@@ -40,6 +40,11 @@ def test_indeed_execution_persists_lifecycle_and_capture_run(tmp_path: Path) -> 
             ),
         )
         assert execution.status == "queued"
+        assert execution.target_jobs == 30
+        assert execution.max_pages == 3
+        assert execution.current_page == 0
+        assert execution.pages_visited == 0
+        assert execution.captured_count == 0
 
         execute_discovery_execution(
             session,

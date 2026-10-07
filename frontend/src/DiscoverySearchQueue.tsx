@@ -49,6 +49,11 @@ type DiscoveryExecution = {
   status: string;
   error: string;
   capture_run_id: string | null;
+  current_page: number;
+  pages_visited: number;
+  captured_count: number;
+  target_jobs: number;
+  max_pages: number;
 };
 
 function sourceLabel(source: DiscoverySourceId) {
@@ -302,7 +307,10 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
           waiting_results: "Waiting for visible Indeed results",
           capturing: "Capturing Indeed jobs",
         };
-        const detail = phaseText[current.status] ?? current.status;
+        let detail = phaseText[current.status] ?? current.status;
+        if (current.status === "capturing" && current.current_page > 0) {
+          detail = `Page ${current.current_page}/${current.max_pages} · ${current.captured_count}/${current.target_jobs} jobs captured`;
+        }
         setNotice(`Indeed · ${search.label}: ${detail}…`);
       },
     );
@@ -402,7 +410,12 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
             </label>
             <label>
               Maximum pages
-              <input type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              <input aria-label="Maximum pages" type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              {draft.source === "indeed" && (
+                <small>
+                  Indeed stops as soon as Maximum jobs is reached. Use more than 15 jobs if you want the capture to continue beyond page 1.
+                </small>
+              )}
             </label>
             <label>
               Enabled
@@ -473,7 +486,12 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 </label>
                 <div className="search-portfolio-main">
                   <strong>{search.label}</strong>
-                  <span>{sourceLabel(search.source)} · {search.max_jobs} jobs max · {search.execution_available ? "ready" : "connector pending"}</span>
+                  <span>
+                    {sourceLabel(search.source)} · {search.max_jobs} jobs max · {Number(search.definition.max_pages ?? (search.source === "linkedin" ? 5 : 3))} pages max · {search.execution_available ? "ready" : "connector pending"}
+                    {search.source === "indeed" && search.max_jobs <= 15 && Number(search.definition.max_pages ?? 3) > 1
+                      ? " · increase jobs max to exercise multiple pages"
+                      : ""}
+                  </span>
                 </div>
                 <div className="discovery-row-actions">
                   {editorSupported(search.source) && (
