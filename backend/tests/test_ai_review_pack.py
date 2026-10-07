@@ -11,6 +11,7 @@ from jolt.database import (
     CapturePage,
     CaptureRun,
     Posting,
+    ReviewDecision,
     SourceDocument,
     create_session_factory,
 )
@@ -179,11 +180,41 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
             "capture_pages": 1,
             "capture_items": 1,
             "verified_items": 1,
+            "excluded_already_reviewed_or_decided": 0,
         }
         assert document["capture"]["capture_run_id"] == capture.id
         assert document["pages"][0]["visible_job_ids"] == ["123"]
         _assert_clean_job(document["jobs"][0], posting, raw_text)
         assert document["response_template"]["capture_run_id"] == capture.id
         assert document["response_template"]["review_source"] == "chatgpt_source_first"
+    finally:
+        session.close()
+
+
+def test_ai_review_json_excludes_human_decided_jobs_from_latest_capture(tmp_path) -> None:
+    session, capture, posting, _raw_text = _seed_ai_review_capture(tmp_path)
+    try:
+        session.add(
+            ReviewDecision(
+                id="review-decision-1",
+                posting_id=posting.id,
+                evaluation_id=None,
+                ai_review_id=None,
+                decision="reject",
+                reason_code="human",
+                notes="Already handled by the user.",
+                evaluation_overridden=False,
+                reviewed_at=datetime.now(UTC),
+            )
+        )
+        session.commit()
+
+        document = json.loads(build_ai_review_json(session))
+
+        assert document["capture_run_id"] == capture.id
+        assert document["jobs"] == []
+        assert document["counts"]["capture_items"] == 0
+        assert document["counts"]["verified_items"] == 0
+        assert document["counts"]["excluded_already_reviewed_or_decided"] == 1
     finally:
         session.close()

@@ -368,6 +368,10 @@ export function App({
     reviewed: opportunities.filter((item) => item.ai_review_status === "reviewed").length,
   }), [opportunities]);
 
+  const awaitingAIReviewCount = opportunities.filter(
+    (item) => item.ai_review_status === "awaiting_ai_review",
+  ).length;
+
   const visibleOpportunities = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
     const filtered = opportunities.filter((opportunity) => {
@@ -609,6 +613,16 @@ export function App({
             <p>Review the jobs JOLT has analyzed and decide which ones deserve your time.</p>
           </div>
           <div className="professional-source-editor-actions">
+            {awaitingAIReviewCount > 0 && (
+              <a
+                className="primary-link"
+                href={`${API_BASE}/api/ai-work-package/export`}
+                download="JOLT_AI_WORK_PACKAGE.json"
+                title="Export only the latest capture jobs that still need AI review, plus current intelligence context."
+              >
+                Export AI review ({awaitingAIReviewCount})
+              </a>
+            )}
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually
             </button>
