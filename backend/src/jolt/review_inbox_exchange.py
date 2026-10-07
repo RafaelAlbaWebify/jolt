@@ -203,9 +203,15 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         )
         for capture_run_id, posting_ids in sorted(groups.items())
     ]
-    jobs = [
-        job for group in review_groups for job in group.get("jobs", []) if isinstance(job, dict)
-    ]
+    jobs: list[dict[str, object]] = []
+    verified_items = 0
+    for group in review_groups:
+        raw_jobs = group.get("jobs")
+        if isinstance(raw_jobs, list):
+            jobs.extend(job for job in raw_jobs if isinstance(job, dict))
+        raw_counts = group.get("counts")
+        if isinstance(raw_counts, dict):
+            verified_items += int(raw_counts.get("verified_items", 0))
 
     group_metadata = [
         {
@@ -226,11 +232,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         "counts": {
             "capture_runs": len(review_groups),
             "capture_items": len(jobs),
-            "verified_items": sum(
-                int(group.get("counts", {}).get("verified_items", 0))
-                for group in review_groups
-                if isinstance(group.get("counts"), dict)
-            ),
+            "verified_items": verified_items,
         },
         "review_groups": group_metadata,
         "jobs": jobs,
