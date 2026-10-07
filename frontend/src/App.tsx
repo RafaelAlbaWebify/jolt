@@ -89,6 +89,21 @@ const AI_DECISION_LABELS: Record<AIReviewDecision, string> = {
 };
 
 
+function readTextFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("The AI review file could not be read."));
+    };
+    reader.onerror = () => reject(new Error("The AI review file could not be read."));
+    reader.readAsText(file);
+  });
+}
+
 function externalSourceUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -467,7 +482,7 @@ export function App({
     setWorkflowNotice("");
 
     try {
-      const text = await file.text();
+      const text = await readTextFile(file);
       let payload: unknown;
 
       try {
