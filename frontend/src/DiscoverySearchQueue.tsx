@@ -410,7 +410,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
             </label>
             <label>
               Maximum pages
-              <input type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              <input aria-label="Maximum pages" type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
               {draft.source === "indeed" && (
                 <small>
                   Indeed stops as soon as Maximum jobs is reached. Use more than 15 jobs if you want the capture to continue beyond page 1.
