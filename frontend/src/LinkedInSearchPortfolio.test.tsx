@@ -232,7 +232,7 @@ it("keeps critical discovery controls visible when search and batch lists are lo
   );
 
   expect(await screen.findByText("Search settings (21)")).toBeInTheDocument();
-  expect(screen.getByText("Download review + intelligence package")).toBeInTheDocument();
+  expect(screen.getByText("Download this LinkedIn batch (advanced)")).toBeInTheDocument();
   expect(screen.getByText("Import reviewed update")).toBeInTheDocument();
 
   const activeDetails = container.querySelector(".active-searches-details");
@@ -419,7 +419,7 @@ it("shows review export for a failed batch with verified jobs", async () => {
   render(<LinkedInSearchPortfolio apiBase="http://127.0.0.1:8000" active />);
 
   const link = await screen.findByRole("link", {
-    name: "Download review + intelligence package",
+    name: "Download this LinkedIn batch (advanced)",
   });
   expect(link).toHaveAttribute(
     "href",
