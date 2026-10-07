@@ -354,7 +354,6 @@ def test_visible_candidates_include_mixed_current_indeed_link_structures() -> No
     ]
 
 
-
 def test_visible_candidates_accept_data_jk_card_without_jk_in_href() -> None:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
