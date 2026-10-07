@@ -189,6 +189,23 @@ describe("App AI review workflow", () => {
     );
   });
 
+  it("exports the current AI review package from Review Inbox", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse([reviewedOpportunity, awaitingOpportunity]),
+    );
+
+    render(<App />);
+
+    await screen.findByText("Cloud Operations Analyst");
+
+    const exportLink = screen.getByRole("link", { name: "Export AI review (1)" });
+    expect(exportLink).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/api/ai-work-package/export",
+    );
+    expect(exportLink).toHaveAttribute("download", "JOLT_AI_WORK_PACKAGE.json");
+  });
+
   it("switches the selected-job preview between overview, fit analysis, and job details", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse([reviewedOpportunity]),
