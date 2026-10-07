@@ -46,7 +46,7 @@ from jolt.professional_evidence_exchange import (
     import_professional_evidence_exchange,
 )
 from jolt.review_inbox_exchange import (
-    build_review_inbox_exchange_json,
+    build_current_review_inbox_bundle,
     enrich_review_inbox_document,
 )
 from jolt.search_preference_exchange import (
@@ -98,6 +98,12 @@ class UnifiedAIWorkPackage(BaseModel):
     instructions: dict[str, Any]
 
 
+class AIReviewBundleImportRequest(BaseModel):
+    contract_type: Literal["jolt_ai_review_bundle"] = "jolt_ai_review_bundle"
+    contract_version: Literal["1.0"] = "1.0"
+    reviews: list[AIReviewImportRequest]
+
+
 class UnifiedAIUpdate(BaseModel):
     contract_type: Literal["jolt_ai_work_package_update"] = "jolt_ai_work_package_update"
     contract_version: Literal["1.0"] = "1.0"
@@ -106,7 +112,7 @@ class UnifiedAIUpdate(BaseModel):
     reviewed_at: datetime
     review_source: Literal["chatgpt"] = "chatgpt"
     review_version: str = Field(min_length=1, max_length=80)
-    review_inbox: AIReviewImportRequest | BatchAIReviewImportRequest | None = None
+    review_inbox: AIReviewImportRequest | BatchAIReviewImportRequest | AIReviewBundleImportRequest | None = None
     exchanges: list[AIExchangeOutput] = Field(default_factory=list)
     context_patch: dict[str, Any] = Field(default_factory=dict)
     summary: dict[str, Any] = Field(default_factory=dict)
@@ -218,8 +224,8 @@ def _review_inbox_payload(
                 build_batch_ai_review_document(session, discovery_batch_id)
             )
         else:
-            payload = json.loads(build_review_inbox_exchange_json(session))
-    except JoltNotFoundError:
+            payload = build_current_review_inbox_bundle(session)
+    except (JoltNotFoundError, ValueError):
         if discovery_batch_id:
             raise
         return None
@@ -414,11 +420,29 @@ def import_unified_ai_update(
     review_inbox_imported = False
 
     if update.review_inbox is not None:
-        if isinstance(update.review_inbox, BatchAIReviewImportRequest):
+        if isinstance(update.review_inbox, AIReviewBundleImportRequest):
+            group_results = [
+                import_ai_review(session, request)
+                for request in update.review_inbox.reviews
+            ]
+            section_results["review_inbox"] = {
+                "capture_run_count": len(group_results),
+                "received_count": sum(result.received_count for result in group_results),
+                "created_count": sum(result.created_count for result in group_results),
+                "updated_count": sum(result.updated_count for result in group_results),
+                "protected_human_state_count": sum(
+                    result.protected_human_state_count for result in group_results
+                ),
+                "capture_runs": [
+                    result.model_dump(mode="json") for result in group_results
+                ],
+            }
+        elif isinstance(update.review_inbox, BatchAIReviewImportRequest):
             review_result = import_batch_ai_review(session, update.review_inbox)
+            section_results["review_inbox"] = review_result.model_dump(mode="json")
         else:
             review_result = import_ai_review(session, update.review_inbox)
-        section_results["review_inbox"] = review_result.model_dump(mode="json")
+            section_results["review_inbox"] = review_result.model_dump(mode="json")
         review_inbox_imported = True
 
     for output in update.exchanges:
