@@ -153,7 +153,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       search_url: "",
       notes: "",
       enabled: true,
-      max_jobs: source === "linkedin" ? 50 : 45,
+      max_jobs: source === "linkedin" ? 50 : 30,
       max_pages: source === "linkedin" ? 5 : 3,
     });
     setError("");
