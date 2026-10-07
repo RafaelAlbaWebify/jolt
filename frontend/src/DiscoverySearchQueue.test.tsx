@@ -113,6 +113,7 @@ it("creates an Indeed search from the unified editor", async () => {
       expect(body.source).toBe("indeed");
       expect(body.definition.search_url).toBe("https://es.indeed.com/jobs?q=application+support");
       expect(body.definition.max_pages).toBe(3);
+      expect(body.max_jobs).toBe(45);
       listed = [
         ...listed,
         {
@@ -238,9 +239,14 @@ it("shows the live Indeed phase while a capture is running", async () => {
       if (executionPolls === 1) {
         return new Response(JSON.stringify({
           id: "indeed-phase",
-          status: "waiting_results",
+          status: "capturing",
           error: "",
           capture_run_id: null,
+          current_page: 2,
+          pages_visited: 2,
+          captured_count: 18,
+          target_jobs: 45,
+          max_pages: 3,
         }), { status: 200 });
       }
       return new Response(JSON.stringify({
@@ -248,6 +254,11 @@ it("shows the live Indeed phase while a capture is running", async () => {
         status: "completed",
         error: "",
         capture_run_id: "capture-phase",
+        current_page: 3,
+        pages_visited: 3,
+        captured_count: 30,
+        target_jobs: 45,
+        max_pages: 3,
       }), { status: 200 });
     }
     throw new Error(`Unexpected request: ${url}`);
@@ -259,7 +270,9 @@ it("shows the live Indeed phase while a capture is running", async () => {
   fireEvent.click(screen.getByLabelText("Select Indeed · Application Support - Spain"));
   fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
 
-  expect(await screen.findByText(/Waiting for visible Indeed results/)).toBeInTheDocument();
+  expect(
+    await screen.findByText(/Page 2\/3 · 18\/45 jobs captured/),
+  ).toBeInTheDocument();
   expect(
     await screen.findByText(
       "Discovery completed in the requested order: 1 search.",
