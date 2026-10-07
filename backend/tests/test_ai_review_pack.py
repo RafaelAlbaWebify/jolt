@@ -191,7 +191,6 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
         session.close()
 
 
-
 def test_ai_review_json_excludes_human_decided_jobs_from_latest_capture(tmp_path) -> None:
     session, capture, posting, _raw_text = _seed_ai_review_capture(tmp_path)
     try:
