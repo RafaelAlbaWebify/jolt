@@ -24,15 +24,25 @@ def upgrade() -> None:
     columns = {column["name"] for column in inspector.get_columns("discovery_executions")}
     with op.batch_alter_table("discovery_executions") as batch:
         if "current_page" not in columns:
-            batch.add_column(sa.Column("current_page", sa.Integer(), nullable=False, server_default="0"))
+            batch.add_column(
+                sa.Column("current_page", sa.Integer(), nullable=False, server_default="0")
+            )
         if "pages_visited" not in columns:
-            batch.add_column(sa.Column("pages_visited", sa.Integer(), nullable=False, server_default="0"))
+            batch.add_column(
+                sa.Column("pages_visited", sa.Integer(), nullable=False, server_default="0")
+            )
         if "captured_count" not in columns:
-            batch.add_column(sa.Column("captured_count", sa.Integer(), nullable=False, server_default="0"))
+            batch.add_column(
+                sa.Column("captured_count", sa.Integer(), nullable=False, server_default="0")
+            )
         if "target_jobs" not in columns:
-            batch.add_column(sa.Column("target_jobs", sa.Integer(), nullable=False, server_default="0"))
+            batch.add_column(
+                sa.Column("target_jobs", sa.Integer(), nullable=False, server_default="0")
+            )
         if "max_pages" not in columns:
-            batch.add_column(sa.Column("max_pages", sa.Integer(), nullable=False, server_default="0"))
+            batch.add_column(
+                sa.Column("max_pages", sa.Integer(), nullable=False, server_default="0")
+            )
 
 
 def downgrade() -> None:
