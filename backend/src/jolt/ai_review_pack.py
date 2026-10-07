@@ -380,6 +380,7 @@ def build_ai_review_json(session: Session) -> bytes:
     """Build one self-contained UTF-8 JSON file for external AI review."""
     return _json_bytes(build_ai_review_document(session))
 
+
 def build_ai_review_pack(session: Session) -> bytes:
     """Export the legacy multi-file ZIP AI review package."""
     payloads = _build_ai_review_payloads(session)
