@@ -81,3 +81,25 @@ def test_navigate_search_page_replaces_closed_cdp_page() -> None:
             60_000,
         )
     ]
+
+
+def test_navigate_search_page_reuses_open_cdp_page() -> None:
+    open_page = _FakePage()
+    replacement = _FakePage()
+    context = _FakeContext(replacement)
+
+    selected = _navigate_search_page(
+        context,  # type: ignore[arg-type]
+        open_page,  # type: ignore[arg-type]
+        "https://es.indeed.com/jobs?q=application+support",
+    )
+
+    assert selected is open_page
+    assert context.new_page_calls == 0
+    assert open_page.goto_calls == [
+        (
+            "https://es.indeed.com/jobs?q=application+support",
+            "domcontentloaded",
+            60_000,
+        )
+    ]

@@ -135,8 +135,7 @@ def run_capture(
             _wait_for_visible_results(attached_page, 1)
 
             base_search_url = _page_search_url(attached_page.url, 1)
-            page = context.new_page()
-            page = _navigate_search_page(context, page, base_search_url)
+            page = _navigate_search_page(context, attached_page, base_search_url)
             cards: list[CapturedCard] = []
             pages: list[dict[str, object]] = []
             seen_job_ids: set[str] = set()

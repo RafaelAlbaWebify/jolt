@@ -74,17 +74,13 @@ def _is_action_link_text(value: str) -> bool:
 
 
 def _listing_title_anchors(page: Page):
-    primary = page.locator(
+    return page.locator(
         "h2.jobTitle a[href*='jk='], "
         "a.jcs-JobTitle[href*='jk='], "
-        "a[data-testid='job-title'][href*='jk=']"
+        "a[data-testid='job-title'][href*='jk='], "
+        "a[href*='viewjob'][href*='jk='], "
+        "a[href*='jk=']"
     )
-    try:
-        if primary.count():
-            return primary
-    except Exception:
-        pass
-    return page.locator("a[href*='viewjob'][href*='jk='], a[href*='jk=']")
 
 
 def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str]]:
