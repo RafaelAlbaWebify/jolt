@@ -94,9 +94,14 @@ def _node_job_key(page: Page, node) -> str:
 
 
 def _node_title(node) -> str:
-    title = _text(node) or (node.get_attribute("aria-label") or "").strip()
-    if title and not _is_action_link_text(title):
-        return title
+    tag_name = ""
+    with contextlib.suppress(Exception):
+        tag_name = str(node.evaluate("element => element.tagName") or "").casefold()
+
+    if tag_name == "a":
+        title = _text(node) or (node.get_attribute("aria-label") or "").strip()
+        if title and not _is_action_link_text(title):
+            return title
 
     for selector in (
         "h2.jobTitle a",
@@ -108,6 +113,10 @@ def _node_title(node) -> str:
         value = _text(nested) or (nested.get_attribute("aria-label") or "").strip()
         if value and not _is_action_link_text(value):
             return value
+
+    title = _text(node) or (node.get_attribute("aria-label") or "").strip()
+    if title and not _is_action_link_text(title):
+        return title
     return ""
 
 
