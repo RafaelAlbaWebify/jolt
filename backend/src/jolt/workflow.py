@@ -222,6 +222,7 @@ def _record_manual_capture(
             completed_at=now,
         )
     )
+    session.flush()
     session.add(
         CaptureItem(
             id=str(uuid4()),
@@ -288,6 +289,7 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
         created_at=utc_now(),
     )
     session.add(evaluation)
+    session.flush()
     _record_manual_capture(
         session,
         request,
