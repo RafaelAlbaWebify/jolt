@@ -411,6 +411,11 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
             <label>
               Maximum pages
               <input type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              {draft.source === "indeed" && (
+                <small>
+                  Indeed stops as soon as Maximum jobs is reached. Use more than 15 jobs if you want the capture to continue beyond page 1.
+                </small>
+              )}
             </label>
             <label>
               Enabled
@@ -483,6 +488,9 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                   <strong>{search.label}</strong>
                   <span>
                     {sourceLabel(search.source)} · {search.max_jobs} jobs max · {Number(search.definition.max_pages ?? (search.source === "linkedin" ? 5 : 3))} pages max · {search.execution_available ? "ready" : "connector pending"}
+                    {search.source === "indeed" && search.max_jobs <= 15 && Number(search.definition.max_pages ?? 3) > 1
+                      ? " · increase jobs max to exercise multiple pages"
+                      : ""}
                   </span>
                 </div>
                 <div className="discovery-row-actions">
