@@ -180,6 +180,7 @@ def test_ai_review_json_is_self_contained_and_matches_review_contract(tmp_path) 
             "capture_pages": 1,
             "capture_items": 1,
             "verified_items": 1,
+            "excluded_already_reviewed_or_decided": 0,
         }
         assert document["capture"]["capture_run_id"] == capture.id
         assert document["pages"][0]["visible_job_ids"] == ["123"]
