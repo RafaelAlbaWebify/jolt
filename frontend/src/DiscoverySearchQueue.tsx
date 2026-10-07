@@ -49,6 +49,11 @@ type DiscoveryExecution = {
   status: string;
   error: string;
   capture_run_id: string | null;
+  current_page: number;
+  pages_visited: number;
+  captured_count: number;
+  target_jobs: number;
+  max_pages: number;
 };
 
 function sourceLabel(source: DiscoverySourceId) {
@@ -148,7 +153,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       search_url: "",
       notes: "",
       enabled: true,
-      max_jobs: source === "linkedin" ? 50 : 30,
+      max_jobs: source === "linkedin" ? 50 : 45,
       max_pages: source === "linkedin" ? 5 : 3,
     });
     setError("");
@@ -302,7 +307,10 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
           waiting_results: "Waiting for visible Indeed results",
           capturing: "Capturing Indeed jobs",
         };
-        const detail = phaseText[current.status] ?? current.status;
+        let detail = phaseText[current.status] ?? current.status;
+        if (current.status === "capturing" && current.current_page > 0) {
+          detail = `Page ${current.current_page}/${current.max_pages} · ${current.captured_count}/${current.target_jobs} jobs captured`;
+        }
         setNotice(`Indeed · ${search.label}: ${detail}…`);
       },
     );
@@ -473,7 +481,9 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 </label>
                 <div className="search-portfolio-main">
                   <strong>{search.label}</strong>
-                  <span>{sourceLabel(search.source)} · {search.max_jobs} jobs max · {search.execution_available ? "ready" : "connector pending"}</span>
+                  <span>
+                    {sourceLabel(search.source)} · {search.max_jobs} jobs max · {Number(search.definition.max_pages ?? (search.source === "linkedin" ? 5 : 3))} pages max · {search.execution_available ? "ready" : "connector pending"}
+                  </span>
                 </div>
                 <div className="discovery-row-actions">
                   {editorSupported(search.source) && (
