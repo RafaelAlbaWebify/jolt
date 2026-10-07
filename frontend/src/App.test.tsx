@@ -207,7 +207,9 @@ describe("App AI review workflow", () => {
   });
 
   it("imports a reviewed AI work package from Review Inbox", async () => {
-    let index = [awaitingOpportunity];
+    let index: Array<typeof reviewedOpportunity | typeof awaitingOpportunity> = [
+      awaitingOpportunity,
+    ];
 
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
       async (input, init) => {
