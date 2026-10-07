@@ -19,9 +19,10 @@ depends_on = None
 
 def upgrade() -> None:
     connection = op.get_bind()
-    rows = connection.execute(
-        sa.text(
-            """
+    rows = (
+        connection.execute(
+            sa.text(
+                """
             SELECT p.id AS posting_id,
                    p.canonical_url,
                    p.title,
@@ -37,8 +38,11 @@ def upgrade() -> None:
                   SELECT 1 FROM capture_items ci WHERE ci.posting_id = p.id
               )
             """
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     for row in rows:
         run_id = str(uuid4())
