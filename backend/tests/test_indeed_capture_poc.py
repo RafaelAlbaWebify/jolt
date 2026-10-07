@@ -352,3 +352,34 @@ def test_visible_candidates_include_mixed_current_indeed_link_structures() -> No
         "job-b",
         "job-c",
     ]
+
+
+def test_visible_candidates_accept_data_jk_card_without_jk_in_href() -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(
+            """
+            <html>
+              <body>
+                <a
+                  class="jcs-JobTitle"
+                  data-jk="job-data-jk"
+                  href="/pagead/clk?mo=r&ad=opaque-without-jk-query"
+                >
+                  Data JK Support Engineer
+                </a>
+              </body>
+            </html>
+            """
+        )
+        candidates = _visible_listing_candidates(page, 10)
+        browser.close()
+
+    assert candidates == [
+        {
+            "source_job_id": "job-data-jk",
+            "source_url": "https://es.indeed.com/viewjob?jk=job-data-jk",
+            "title": "Data JK Support Engineer",
+        }
+    ]

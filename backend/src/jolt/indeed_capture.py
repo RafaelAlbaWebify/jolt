@@ -73,45 +73,85 @@ def _is_action_link_text(value: str) -> bool:
     return any(marker in normalized for marker in action_markers)
 
 
-def _listing_title_anchors(page: Page):
+def _listing_candidate_nodes(page: Page):
     return page.locator(
-        "h2.jobTitle a[href*='jk='], "
-        "a.jcs-JobTitle[href*='jk='], "
-        "a[data-testid='job-title'][href*='jk='], "
-        "a[href*='viewjob'][href*='jk='], "
-        "a[href*='jk=']"
+        "h2.jobTitle a, "
+        "a.jcs-JobTitle, "
+        "a[data-testid='job-title'], "
+        "a[href*='viewjob'], "
+        "a[href*='jk='], "
+        "[data-jk]"
     )
 
 
+def _node_job_key(page: Page, node) -> str:
+    href = (node.get_attribute("href") or "").strip()
+    if href:
+        key = extract_indeed_job_key(urljoin(page.url, href))
+        if key:
+            return key
+    return (node.get_attribute("data-jk") or "").strip()
+
+
+def _node_title(node) -> str:
+    tag_name = ""
+    with contextlib.suppress(Exception):
+        tag_name = str(node.evaluate("element => element.tagName") or "").casefold()
+
+    if tag_name == "a":
+        title = _text(node) or (node.get_attribute("aria-label") or "").strip()
+        if title and not _is_action_link_text(title):
+            return title
+
+    for selector in (
+        "h2.jobTitle a",
+        "a.jcs-JobTitle",
+        "a[data-testid='job-title']",
+        "h2.jobTitle",
+    ):
+        nested = node.locator(selector).first
+        value = _text(nested) or (nested.get_attribute("aria-label") or "").strip()
+        if value and not _is_action_link_text(value):
+            return value
+
+    title = _text(node) or (node.get_attribute("aria-label") or "").strip()
+    if title and not _is_action_link_text(title):
+        return title
+    return ""
+
+
 def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str]]:
-    anchors = _listing_title_anchors(page)
+    nodes = _listing_candidate_nodes(page)
     candidates: list[dict[str, str]] = []
     seen: set[str] = set()
     try:
-        count = min(anchors.count(), 100)
+        count = min(nodes.count(), 200)
     except Exception:
         return []
 
     for index in range(count):
-        anchor = anchors.nth(index)
+        node = nodes.nth(index)
         try:
-            if not anchor.is_visible():
+            if not node.is_visible():
                 continue
         except Exception:
             continue
-        href = anchor.get_attribute("href") or ""
-        absolute = urljoin(page.url, href)
-        source_job_id = extract_indeed_job_key(absolute)
+
+        source_job_id = _node_job_key(page, node)
         if not source_job_id or source_job_id in seen:
             continue
-        title = _text(anchor) or (anchor.get_attribute("aria-label") or "").strip()
-        if not title or _is_action_link_text(title):
+
+        title = _node_title(node)
+        if not title:
             continue
+
         seen.add(source_job_id)
         candidates.append(
             {
                 "source_job_id": source_job_id,
-                "source_url": canonical_indeed_job_url(absolute),
+                "source_url": canonical_indeed_job_url(
+                    f"https://es.indeed.com/viewjob?jk={source_job_id}"
+                ),
                 "title": title[:240],
             }
         )
@@ -121,25 +161,35 @@ def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str
 
 
 def _click_listing_candidate(page: Page, source_job_id: str) -> bool:
-    anchors = _listing_title_anchors(page)
+    nodes = _listing_candidate_nodes(page)
     try:
-        count = min(anchors.count(), 100)
+        count = min(nodes.count(), 200)
     except Exception:
         return False
 
     for index in range(count):
-        anchor = anchors.nth(index)
-        href = anchor.get_attribute("href") or ""
-        if extract_indeed_job_key(urljoin(page.url, href)) != source_job_id:
+        node = nodes.nth(index)
+        if _node_job_key(page, node) != source_job_id:
             continue
         try:
-            if not anchor.is_visible():
+            if not node.is_visible():
                 continue
-            anchor.scroll_into_view_if_needed(timeout=2_000)
-            anchor.click(timeout=8_000)
+            clickable = node
+            if (node.evaluate("element => element.tagName") or "").casefold() != "a":
+                nested = node.locator(
+                    "h2.jobTitle a, "
+                    "a.jcs-JobTitle, "
+                    "a[data-testid='job-title'], "
+                    "a[href*='viewjob'], "
+                    "a[href*='jk=']"
+                ).first
+                if nested.count():
+                    clickable = nested
+            clickable.scroll_into_view_if_needed(timeout=2_000)
+            clickable.click(timeout=8_000)
             return True
         except Exception:
-            return False
+            continue
     return False
 
 

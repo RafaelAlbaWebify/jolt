@@ -84,6 +84,8 @@ def _wait_for_visible_results(
     max_jobs: int,
     *,
     timeout_ms: int = 180_000,
+    evidence_dir: Path | None = None,
+    diagnostic_label: str = "indeed_wait",
 ) -> list[dict[str, str]]:
     elapsed = 0
     announced_verification = False
@@ -100,6 +102,33 @@ def _wait_for_visible_results(
 
         page.wait_for_timeout(500)
         elapsed += 500
+
+    if evidence_dir is not None:
+        with contextlib.suppress(Exception):
+            page.screenshot(
+                path=evidence_dir / f"{diagnostic_label}.png",
+                full_page=False,
+                timeout=5_000,
+            )
+        with contextlib.suppress(Exception):
+            html = redact_text(page.content())
+            (evidence_dir / f"{diagnostic_label}.html").write_text(html, encoding="utf-8")
+        with contextlib.suppress(Exception):
+            snapshot = page.locator("[data-jk], a[href]").evaluate_all(
+                """elements => elements.slice(0, 250).map(element => ({
+                    tag: element.tagName,
+                    dataJk: element.getAttribute('data-jk') || '',
+                    href: element.getAttribute('href') || '',
+                    text: (element.innerText || element.getAttribute('aria-label') || '')
+                        .replace(/\\s+/g, ' ')
+                        .trim()
+                        .slice(0, 300)
+                }))"""
+            )
+            (evidence_dir / f"{diagnostic_label}.json").write_text(
+                json.dumps(snapshot, indent=2, ensure_ascii=True),
+                encoding="utf-8",
+            )
 
     raise RuntimeError(
         "Timed out waiting for visible Indeed job results in the attached Chrome tab."
@@ -132,10 +161,15 @@ def run_capture(
 
             print("JOLT is attached to Google Chrome.")
             print("Waiting for visible Indeed job results...")
-            _wait_for_visible_results(attached_page, 1)
+            _wait_for_visible_results(
+                attached_page,
+                1,
+                evidence_dir=evidence_dir,
+                diagnostic_label="initial_wait_timeout",
+            )
 
             base_search_url = _page_search_url(attached_page.url, 1)
-            page = _navigate_search_page(context, attached_page, base_search_url)
+            page = attached_page
             cards: list[CapturedCard] = []
             pages: list[dict[str, object]] = []
             seen_job_ids: set[str] = set()
@@ -149,9 +183,14 @@ def run_capture(
                 target_url = _page_search_url(base_search_url, page_number)
                 if page_number > 1:
                     print(f"Opening Indeed results page {page_number}: {target_url}")
-                page = _navigate_search_page(context, page, target_url)
+                    page = _navigate_search_page(context, page, target_url)
 
-                candidates = _wait_for_visible_results(page, 15)
+                candidates = _wait_for_visible_results(
+                    page,
+                    15,
+                    evidence_dir=evidence_dir,
+                    diagnostic_label=f"page_{page_number:02d}_wait_timeout",
+                )
                 visible_ids = [candidate["source_job_id"] for candidate in candidates]
                 pages.append(
                     {

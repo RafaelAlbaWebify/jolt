@@ -96,7 +96,7 @@ try {
         Write-Host "Using the existing JOLT Python environment."
     }
 
-    uv run --no-sync python -m jolt.indeed_chrome_attach `
+    uv run --no-sync python -u -m jolt.indeed_chrome_attach `
         --cdp-endpoint $CdpEndpoint `
         --api-url $ApiUrl `
         --output-zip $OutputZip `
