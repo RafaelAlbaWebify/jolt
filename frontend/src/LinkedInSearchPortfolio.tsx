@@ -700,9 +700,9 @@ export function LinkedInSearchPortfolio({ apiBase, active, onAIImported }: Props
                 href={`${apiBase}/api/ai-work-package/export?discovery_batch_id=${encodeURIComponent(batch.id)}`}
                 target="_blank"
                 rel="noreferrer"
-                title="Download the new jobs from this search run plus the current intelligence context for one combined ChatGPT review."
+                title="Advanced LinkedIn-only export for this historical batch. Use Review Inbox for the current multi-source AI review export."
               >
-                Download review + intelligence package
+                Download this LinkedIn batch (advanced)
               </a>
               <label className="batch-review-import">
                 Import reviewed update
