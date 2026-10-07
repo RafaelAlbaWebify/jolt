@@ -113,7 +113,7 @@ it("creates an Indeed search from the unified editor", async () => {
       expect(body.source).toBe("indeed");
       expect(body.definition.search_url).toBe("https://es.indeed.com/jobs?q=application+support");
       expect(body.definition.max_pages).toBe(3);
-      expect(body.max_jobs).toBe(45);
+      expect(body.max_jobs).toBe(30);
       listed = [
         ...listed,
         {
