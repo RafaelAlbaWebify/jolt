@@ -105,7 +105,6 @@ def test_navigate_search_page_reuses_open_cdp_page() -> None:
     ]
 
 
-
 def test_page_search_url_advances_indeed_pagination() -> None:
     base = "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a&vjk=abc"
 
@@ -121,10 +120,7 @@ def test_page_search_url_advances_indeed_pagination() -> None:
 
 
 def test_page_search_url_replaces_stale_start_and_job_identity() -> None:
-    current = (
-        "https://es.indeed.com/jobs?q=application+support"
-        "&start=40&vjk=abc&jk=def"
-    )
+    current = "https://es.indeed.com/jobs?q=application+support&start=40&vjk=abc&jk=def"
 
     assert _page_search_url(current, 2) == (
         "https://es.indeed.com/jobs?q=application+support&start=10"
