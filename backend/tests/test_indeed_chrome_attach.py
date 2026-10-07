@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from jolt.indeed_chrome_attach import _navigate_search_page, parse_args
+from jolt.indeed_chrome_attach import _navigate_search_page, _page_search_url, parse_args
 
 
 def test_parse_args_defaults_to_bounded_capture(tmp_path) -> None:
@@ -103,3 +103,29 @@ def test_navigate_search_page_reuses_open_cdp_page() -> None:
             60_000,
         )
     ]
+
+
+
+def test_page_search_url_advances_indeed_pagination() -> None:
+    base = "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a&vjk=abc"
+
+    assert _page_search_url(base, 1) == (
+        "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a"
+    )
+    assert _page_search_url(base, 2) == (
+        "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a&start=10"
+    )
+    assert _page_search_url(base, 3) == (
+        "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a&start=20"
+    )
+
+
+def test_page_search_url_replaces_stale_start_and_job_identity() -> None:
+    current = (
+        "https://es.indeed.com/jobs?q=application+support"
+        "&start=40&vjk=abc&jk=def"
+    )
+
+    assert _page_search_url(current, 2) == (
+        "https://es.indeed.com/jobs?q=application+support&start=10"
+    )
