@@ -19,6 +19,11 @@ depends_on = None
 
 def upgrade() -> None:
     connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    required_tables = {"postings", "source_documents", "capture_items", "capture_runs"}
+    if not required_tables.issubset(set(inspector.get_table_names())):
+        return
+
     rows = (
         connection.execute(
             sa.text(
