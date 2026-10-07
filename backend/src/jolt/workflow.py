@@ -16,6 +16,8 @@ from jolt.database import (
     AIReview,
     Application,
     ApplicationEvent,
+    CaptureItem,
+    CaptureRun,
     Evaluation,
     Outcome,
     Posting,
@@ -196,6 +198,47 @@ def _duplicate_response(
     )
 
 
+def _record_manual_capture(
+    session: Session,
+    request: ManualIntakeRequest,
+    *,
+    source_document_id: str,
+    posting: Posting,
+) -> None:
+    now = utc_now()
+    capture_run_id = str(uuid4())
+    session.add(
+        CaptureRun(
+            id=capture_run_id,
+            source="manual",
+            mode="manual",
+            status="completed",
+            search_url=request.source_url,
+            warnings_json="[]",
+            requested_item_limit=1,
+            observed_item_count=1,
+            stop_reason="manual_intake",
+            started_at=now,
+            completed_at=now,
+        )
+    )
+    session.add(
+        CaptureItem(
+            id=str(uuid4()),
+            capture_run_id=capture_run_id,
+            source_job_id=posting.id,
+            source_url=request.source_url or posting.canonical_url,
+            title=posting.title,
+            company=posting.company,
+            location=posting.location,
+            detail_status="verified",
+            verification_reasons_json="[]",
+            source_document_id=source_document_id,
+            posting_id=posting.id,
+        )
+    )
+
+
 def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeResponse:
     content_hash = hashlib.sha256(request.raw_text.encode("utf-8")).hexdigest()
     canonical_url = normalize_url(request.source_url)
@@ -208,6 +251,12 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
     duplicate = session.scalar(select(Posting).where(Posting.identity_key == identity_key))
     if duplicate is not None:
         response = _duplicate_response(session, source.id, duplicate)
+        _record_manual_capture(
+            session,
+            request,
+            source_document_id=source.id,
+            posting=duplicate,
+        )
         session.commit()
         return response
 
@@ -239,6 +288,12 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
         created_at=utc_now(),
     )
     session.add(evaluation)
+    _record_manual_capture(
+        session,
+        request,
+        source_document_id=source.id,
+        posting=posting,
+    )
     try:
         session.commit()
     except IntegrityError:
@@ -249,6 +304,12 @@ def ingest_manual(session: Session, request: ManualIntakeRequest) -> IntakeRespo
         recovered_source = _source_document(source_id, request, content_hash)
         session.add(recovered_source)
         response = _duplicate_response(session, recovered_source.id, winner)
+        _record_manual_capture(
+            session,
+            request,
+            source_document_id=recovered_source.id,
+            posting=winner,
+        )
         session.commit()
         return response
 
