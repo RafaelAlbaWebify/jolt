@@ -211,6 +211,16 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         if isinstance(job, dict)
     ]
 
+    group_metadata = [
+        {
+            "capture_run_id": group["capture_run_id"],
+            "capture": group["capture"],
+            "pages": group["pages"],
+            "counts": group["counts"],
+        }
+        for group in review_groups
+    ]
+
     bundle: dict[str, object] = {
         "pack_type": "jolt_ai_review_bundle_input",
         "pack_version": "1.0",
@@ -226,7 +236,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
                 if isinstance(group.get("counts"), dict)
             ),
         },
-        "review_groups": review_groups,
+        "review_groups": group_metadata,
         "jobs": jobs,
         "response_template": {
             "contract_type": "jolt_ai_review_bundle",
