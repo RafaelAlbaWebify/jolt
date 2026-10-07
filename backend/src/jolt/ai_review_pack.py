@@ -317,6 +317,7 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
         "jobs": jobs_payload,
         "response_template": response_template,
         "verified_items": sum(item.detail_status == "verified" for item in items),
+        "excluded_already_reviewed_or_decided": len(capture_posting_ids) - len(posting_ids),
     }
 
 
@@ -341,7 +342,9 @@ def build_ai_review_json(session: Session) -> bytes:
             "capture_pages": len(pages),
             "capture_items": len(jobs),
             "verified_items": payloads["verified_items"],
-            "excluded_already_reviewed_or_decided": len(capture_posting_ids) - len(posting_ids),
+            "excluded_already_reviewed_or_decided": payloads[
+                "excluded_already_reviewed_or_decided"
+            ],
         },
         "capture": payloads["capture"],
         "pages": pages,
