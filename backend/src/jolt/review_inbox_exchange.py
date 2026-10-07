@@ -192,8 +192,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
 
     if unresolved:
         raise ValueError(
-            "Pending Review Inbox jobs lack reviewable capture provenance: "
-            + ", ".join(unresolved)
+            "Pending Review Inbox jobs lack reviewable capture provenance: " + ", ".join(unresolved)
         )
 
     review_groups = [
@@ -205,10 +204,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         for capture_run_id, posting_ids in sorted(groups.items())
     ]
     jobs = [
-        job
-        for group in review_groups
-        for job in group.get("jobs", [])
-        if isinstance(job, dict)
+        job for group in review_groups for job in group.get("jobs", []) if isinstance(job, dict)
     ]
 
     group_metadata = [
