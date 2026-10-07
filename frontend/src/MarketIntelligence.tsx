@@ -54,6 +54,21 @@ const INTERVIEW_STATUSES = new Set([
   "final_interview",
 ]);
 
+function readTextFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("The AI review file could not be read."));
+    };
+    reader.onerror = () => reject(new Error("The AI review file could not be read."));
+    reader.readAsText(file);
+  });
+}
+
 function readable(value: string) {
   return value.replaceAll("_", " ");
 }
@@ -185,7 +200,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     try {
       let payload: unknown;
       try {
-        payload = JSON.parse(await file.text());
+        payload = JSON.parse(await readTextFile(file));
       } catch {
         throw new Error("The selected file is not valid JSON.");
       }
