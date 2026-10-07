@@ -89,6 +89,21 @@ const AI_DECISION_LABELS: Record<AIReviewDecision, string> = {
 };
 
 
+function readTextFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("The AI review file could not be read."));
+    };
+    reader.onerror = () => reject(new Error("The AI review file could not be read."));
+    reader.readAsText(file);
+  });
+}
+
 function externalSourceUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -281,6 +296,7 @@ export function App({
   const [workflowNotice, setWorkflowNotice] = useState("");
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const aiReviewImportRef = useRef<HTMLInputElement | null>(null);
   const evaluationRevisionRef = useRef(evaluationRevision);
 
   const loadOpportunityIndex = useCallback(async () => {
@@ -460,6 +476,70 @@ export function App({
     }
   }
 
+  async function importAIReviewFile(file: File) {
+    setBusy(true);
+    setError("");
+    setWorkflowNotice("");
+
+    try {
+      const text = await readTextFile(file);
+      let payload: unknown;
+
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        throw new Error("The selected file is not valid JSON.");
+      }
+
+      const response = await fetch(`${API_BASE}/api/ai-work-package/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw await errorFromResponse(
+          response,
+          "The AI review result could not be imported.",
+        );
+      }
+
+      const result = (await response.json()) as {
+        review_inbox_imported?: boolean;
+        section_results?: {
+          review_inbox?: {
+            received_count?: number;
+          };
+        };
+      };
+
+      await refreshOpportunities();
+
+      const importedCount =
+        result.section_results?.review_inbox?.received_count ??
+        awaitingAIReviewCount;
+
+      setWorkflowNotice(
+        result.review_inbox_imported
+          ? `AI review imported successfully for ${importedCount} job${
+              importedCount === 1 ? "" : "s"
+            }.`
+          : "AI work package imported successfully.",
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The AI review result could not be imported.",
+      );
+    } finally {
+      if (aiReviewImportRef.current) {
+        aiReviewImportRef.current.value = "";
+      }
+      setBusy(false);
+    }
+  }
+
   async function clearPendingInbox() {
     if (busy || opportunities.length === 0) return;
 
@@ -614,14 +694,35 @@ export function App({
           </div>
           <div className="professional-source-editor-actions">
             {awaitingAIReviewCount > 0 && (
-              <a
-                className="primary-link"
-                href={`${API_BASE}/api/ai-work-package/export`}
-                download="JOLT_AI_WORK_PACKAGE.json"
-                title="Export only the latest capture jobs that still need AI review, plus current intelligence context."
-              >
-                Export AI review ({awaitingAIReviewCount})
-              </a>
+              <>
+                <a
+                  className="primary-link"
+                  href={`${API_BASE}/api/ai-work-package/export`}
+                  download="JOLT_AI_WORK_PACKAGE.json"
+                  title="Export only the latest capture jobs that still need AI review, plus current intelligence context."
+                >
+                  Export AI review ({awaitingAIReviewCount})
+                </a>
+                <input
+                  ref={aiReviewImportRef}
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                  aria-label="AI review result file"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void importAIReviewFile(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => aiReviewImportRef.current?.click()}
+                >
+                  {busy ? "Importing…" : "Import AI review result"}
+                </button>
+              </>
             )}
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually

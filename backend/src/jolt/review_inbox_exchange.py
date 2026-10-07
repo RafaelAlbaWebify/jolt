@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.ai_review_pack import build_ai_review_json
+from jolt.ai_review_opportunity_index import list_ai_review_opportunity_index
+from jolt.ai_review_pack import build_ai_review_document, build_ai_review_json
+from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
+from jolt.database import CaptureItem, CaptureRun
 from jolt.global_context import build_global_context_snapshot, global_context_version
 
 
@@ -152,3 +157,89 @@ def build_review_inbox_exchange_json(session: Session) -> bytes:
         ensure_ascii=False,
         sort_keys=True,
     ).encode("utf-8")
+
+
+def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
+    """Export every currently pending Review Inbox posting across active capture runs."""
+
+    pending_posting_ids = {
+        item.posting_id
+        for item in list_ai_review_opportunity_index(session)
+        if item.ai_review_status == "awaiting_ai_review"
+    }
+    if not pending_posting_ids:
+        raise ValueError("No pending Review Inbox jobs exist to export for AI review.")
+
+    groups: dict[str, set[str]] = defaultdict(set)
+    unresolved: list[str] = []
+
+    for posting_id in sorted(pending_posting_ids):
+        match = session.execute(
+            select(CaptureItem, CaptureRun)
+            .join(CaptureRun, CaptureRun.id == CaptureItem.capture_run_id)
+            .where(CaptureItem.posting_id == posting_id)
+            .where(CaptureItem.detail_status == "verified")
+            .where(CaptureRun.status != ARCHIVED_CAPTURE_STATUS)
+            .where(CaptureRun.status != "running")
+            .order_by(CaptureRun.started_at.desc(), CaptureItem.id.desc())
+            .limit(1)
+        ).first()
+        if match is None:
+            unresolved.append(posting_id)
+            continue
+        item, run = match
+        groups[run.id].add(posting_id)
+
+    if unresolved:
+        raise ValueError(
+            "Pending Review Inbox jobs lack reviewable capture provenance: " + ", ".join(unresolved)
+        )
+
+    review_groups = [
+        build_ai_review_document(
+            session,
+            capture_run_id=capture_run_id,
+            posting_ids=posting_ids,
+        )
+        for capture_run_id, posting_ids in sorted(groups.items())
+    ]
+    jobs: list[dict[str, object]] = []
+    verified_items = 0
+    for group in review_groups:
+        raw_jobs = group.get("jobs")
+        if isinstance(raw_jobs, list):
+            jobs.extend(job for job in raw_jobs if isinstance(job, dict))
+        raw_counts = group.get("counts")
+        if isinstance(raw_counts, dict):
+            verified_items += int(raw_counts.get("verified_items", 0))
+
+    group_metadata = [
+        {
+            "capture_run_id": group["capture_run_id"],
+            "capture": group["capture"],
+            "pages": group["pages"],
+            "counts": group["counts"],
+        }
+        for group in review_groups
+    ]
+
+    bundle: dict[str, object] = {
+        "pack_type": "jolt_ai_review_bundle_input",
+        "pack_version": "1.0",
+        "review_contract_version": "1.2",
+        "classification_authority": "external_ai",
+        "capture_run_ids": [group["capture_run_id"] for group in review_groups],
+        "counts": {
+            "capture_runs": len(review_groups),
+            "capture_items": len(jobs),
+            "verified_items": verified_items,
+        },
+        "review_groups": group_metadata,
+        "jobs": jobs,
+        "response_template": {
+            "contract_type": "jolt_ai_review_bundle",
+            "contract_version": "1.0",
+            "reviews": [group["response_template"] for group in review_groups],
+        },
+    }
+    return enrich_review_inbox_document(bundle)

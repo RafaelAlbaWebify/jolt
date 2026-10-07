@@ -34,6 +34,14 @@ def test_manual_intake_review_duplicate_and_restart(tmp_path: Path) -> None:
     assert result["profile_version_id"] == "default-job-search:v1"
     assert result["engine_version"] == "rules-v1"
 
+    ai_package = client.get("/api/ai-work-package/export")
+    assert ai_package.status_code == 200
+    review_inbox = ai_package.json()["review_inbox"]
+    assert review_inbox["pack_type"] == "jolt_ai_review_bundle_input"
+    assert review_inbox["counts"]["capture_items"] == 1
+    assert review_inbox["jobs"][0]["posting_id"] == result["posting_id"]
+    assert review_inbox["review_groups"][0]["capture"]["source"] == "manual"
+
     review = client.post(
         f"/api/opportunities/{result['posting_id']}/reviews",
         json={

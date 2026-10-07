@@ -64,6 +64,15 @@ def _latest_capture(session: Session) -> CaptureRun:
     return capture
 
 
+def _capture_for_export(session: Session, capture_run_id: str | None) -> CaptureRun:
+    if capture_run_id is None:
+        return _latest_capture(session)
+    capture = session.get(CaptureRun, capture_run_id)
+    if capture is None:
+        raise JoltNotFoundError(f"Capture run not found: {capture_run_id}")
+    return capture
+
+
 def _analysis_text(
     *,
     title: str,
@@ -86,9 +95,14 @@ def _analysis_text(
     return f"{header}\n\n{cleaned}".strip()
 
 
-def _build_ai_review_payloads(session: Session) -> dict[str, object]:
+def _build_ai_review_payloads(
+    session: Session,
+    *,
+    capture_run_id: str | None = None,
+    posting_ids: set[str] | None = None,
+) -> dict[str, object]:
     generated_at = datetime.now().astimezone().isoformat()
-    capture = _latest_capture(session)
+    capture = _capture_for_export(session, capture_run_id)
 
     pages = list(
         session.scalars(
@@ -104,6 +118,8 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
             .order_by(CaptureItem.id)
         ).all()
     )
+    if posting_ids is not None:
+        items = [item for item in items if item.posting_id in posting_ids]
 
     capture_posting_ids = {item.posting_id for item in items if item.posting_id is not None}
     already_reviewed_posting_ids = set(
@@ -319,15 +335,24 @@ def _build_ai_review_payloads(session: Session) -> dict[str, object]:
     }
 
 
-def build_ai_review_json(session: Session) -> bytes:
-    """Build one self-contained UTF-8 JSON file for external AI review."""
-    payloads = _build_ai_review_payloads(session)
+def build_ai_review_document(
+    session: Session,
+    *,
+    capture_run_id: str | None = None,
+    posting_ids: set[str] | None = None,
+) -> dict[str, object]:
+    """Build one AI review document, optionally scoped to one capture and posting subset."""
+    payloads = _build_ai_review_payloads(
+        session,
+        capture_run_id=capture_run_id,
+        posting_ids=posting_ids,
+    )
     jobs = payloads["jobs"]
     pages = payloads["pages"]
     assert isinstance(jobs, list)
     assert isinstance(pages, list)
 
-    document = {
+    return {
         "pack_type": "jolt_ai_review_input",
         "pack_version": PACK_VERSION,
         "review_contract_version": REVIEW_CONTRACT_VERSION,
@@ -349,7 +374,11 @@ def build_ai_review_json(session: Session) -> bytes:
         "jobs": jobs,
         "response_template": payloads["response_template"],
     }
-    return _json_bytes(document)
+
+
+def build_ai_review_json(session: Session) -> bytes:
+    """Build one self-contained UTF-8 JSON file for external AI review."""
+    return _json_bytes(build_ai_review_document(session))
 
 
 def build_ai_review_pack(session: Session) -> bytes:

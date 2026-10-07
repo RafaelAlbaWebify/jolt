@@ -144,6 +144,57 @@ describe("MarketIntelligence", () => {
     expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/export");
   });
 
+  it("imports the reviewed unified update from Market Insights", async () => {
+    const stale = {
+      ...DATA,
+      freshness: {
+        status: "stale",
+        ai_updated_at: "2026-09-01T16:00:00+00:00",
+        latest_capture_at: "2026-09-02T09:00:00+00:00",
+        needs_analysis: true,
+        reason: "New captured market evidence is newer than the latest ChatGPT analysis.",
+      },
+    };
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/ai-market/view")) {
+        return new Response(JSON.stringify(stale), { status: 200 });
+      }
+      if (url.includes("/api/application-index")) {
+        return new Response(JSON.stringify(APPLICATIONS), { status: 200 });
+      }
+      if (url.endsWith("/api/ai-work-package/import") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          review_inbox_imported: false,
+          imported_sections: ["market_insights"],
+        }), { status: 200 });
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    render(<MarketIntelligence apiBase="http://api" active />);
+    await screen.findByText("Market analysis needs an update");
+
+    const input = screen.getByLabelText("Import reviewed intelligence update");
+    const file = new File(
+      [JSON.stringify({ contract_type: "jolt_ai_work_package_update" })],
+      "reviewed.json",
+      { type: "application/json" },
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://api/api/ai-work-package/import",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    expect(
+      await screen.findByText("Reviewed intelligence update imported successfully."),
+    ).toBeInTheDocument();
+  });
+
   it("refreshes both persisted views without recomputing local intelligence", async () => {
     const fetchMock = mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
