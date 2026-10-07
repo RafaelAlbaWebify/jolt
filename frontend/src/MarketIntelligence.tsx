@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type FeedbackItem = {
   feedback_type: string;
@@ -149,7 +149,10 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   const [applications, setApplications] = useState<ApplicationIndexItem[]>([]);
   const [activeTab, setActiveTab] = useState<MarketTab>("skills");
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
+  const [importNotice, setImportNotice] = useState("");
+  const importRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!active) return;
@@ -174,6 +177,38 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       setLoading(false);
     }
   }, [active, apiBase]);
+
+  const importReviewedUpdate = useCallback(async (file: File) => {
+    setImporting(true);
+    setError("");
+    setImportNotice("");
+    try {
+      let payload: unknown;
+      try {
+        payload = JSON.parse(await file.text());
+      } catch {
+        throw new Error("The selected file is not valid JSON.");
+      }
+
+      const response = await fetch(`${apiBase}/api/ai-work-package/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const problem = await response.json().catch(() => null) as { detail?: string } | null;
+        throw new Error(problem?.detail || "The reviewed intelligence update could not be imported.");
+      }
+
+      setImportNotice("Reviewed intelligence update imported successfully.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The reviewed intelligence update could not be imported.");
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+      setImporting(false);
+    }
+  }, [apiBase, load]);
 
   useEffect(() => {
     if (!active) return;
@@ -236,6 +271,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       </section>
 
       {error && <p className="error" role="alert">{error}</p>}
+      {importNotice && <p role="status">{importNotice}</p>}
 
       {!data ? (
         <section className="panel">
@@ -268,13 +304,34 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                 <strong>Market analysis needs an update</strong>
                 <span>New job evidence is available. Export the current intelligence package, review it with ChatGPT, then import the returned update.</span>
               </div>
-              <a
-                className="secondary"
-                href={`${apiBase}/api/ai-work-package/export`}
-                download="JOLT_AI_WORK_PACKAGE.json"
-              >
-                Download intelligence package
-              </a>
+              <div className="button-row">
+                <a
+                  className="secondary"
+                  href={`${apiBase}/api/ai-work-package/export`}
+                  download="JOLT_AI_WORK_PACKAGE.json"
+                >
+                  Download intelligence package
+                </a>
+                <input
+                  ref={importRef}
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                  aria-label="Import reviewed intelligence update"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void importReviewedUpdate(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={importing}
+                  onClick={() => importRef.current?.click()}
+                >
+                  {importing ? "Importing…" : "Import reviewed update"}
+                </button>
+              </div>
             </section>
           )}
 
