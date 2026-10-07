@@ -117,7 +117,6 @@ def test_review_inbox_exchange_adds_reasoning_context_without_local_decisions(
     assert "Do not hard-reject merely because" in instructions["mandatory_experience_rule"]
 
 
-
 def test_current_review_inbox_bundle_preserves_multiple_capture_runs(tmp_path) -> None:
     database_url = f"sqlite:///{(tmp_path / 'multi.db').as_posix()}"
     session = create_session_factory(database_url)()
