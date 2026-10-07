@@ -338,7 +338,7 @@ def test_visible_candidates_include_mixed_current_indeed_link_structures() -> No
                   <a href="https://es.indeed.com/rc/clk?jk=job-b">Support B</a>
                 </div>
                 <div>
-                  <a href="/pagead/clk?jk=job-c">Support C</a>
+                  <a href="https://es.indeed.com/pagead/clk?jk=job-c">Support C</a>
                 </div>
               </body>
             </html>
