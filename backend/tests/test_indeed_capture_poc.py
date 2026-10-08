@@ -8,6 +8,7 @@ from playwright.sync_api import sync_playwright
 from jolt.indeed_capture import (
     _is_action_link_text,
     _listing_header_metadata,
+    _panel_container,
     _parse_panel_text,
     _visible_listing_candidates,
     canonical_indeed_job_url,
@@ -412,4 +413,28 @@ def test_indeed_listing_metadata_uses_exact_job_key() -> None:
             "España · Teletrabajo",
         )
         assert _listing_header_metadata(page, "absent") == ("", "")
+        browser.close()
+
+
+def test_indeed_panel_lookup_prefers_description_bearing_element() -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(
+            """
+            <div id="results">
+              <span>Engineer Alpha</span>
+              <span>Engineer Beta</span>
+            </div>
+            <div id="detail">
+              <h2>Engineer Beta</h2>
+              <section><div id="jobDescriptionText">Support systems and users.</div></section>
+            </div>
+            """
+        )
+        panel = _panel_container(page, "Engineer Beta")
+        assert panel is not None
+        assert "Support systems and users." in panel.text_content()
+        assert "Engineer Alpha" not in panel.text_content()
+        assert _panel_container(page, "Nonexistent title") is None
         browser.close()

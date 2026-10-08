@@ -270,60 +270,54 @@ def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
 
 
 def _panel_container(page: Page, expected_title: str):
-    # Indeed usually exposes a stable detail-pane container. Check it first:
-    # traversing thirty ancestors and reading each inner_text can cost seconds
-    # per listing even when the target pane was already rendered.
-    selectors = (
-        "#jobsearch-ViewjobPaneWrapper",
-        "[data-testid='jobsearch-ViewJobLayout-jobDisplay']",
-        "[data-testid='jobsearch-JobComponent']",
-        "#vjs-container",
-    )
-    for selector in selectors:
-        locator = page.locator(selector).first
-        try:
-            if locator.is_visible(timeout=300):
-                text = _text(locator)
-                if expected_title.casefold() in text.casefold():
-                    return locator
-        except Exception:
-            continue
-
-    # Fallback for variants where Indeed does not expose known pane selectors.
-    title_locator = page.get_by_text(expected_title, exact=True)
+    # Keep all candidate inspection inside one browser-side evaluation.
+    # Repeated Playwright inner_text() calls on nested ancestors previously
+    # cost around 26 seconds per listing even after the page had rendered.
     try:
-        title_count = min(title_locator.count(), 10)
+        found = page.evaluate(
+            """expectedTitle => {
+                const title = expectedTitle.toLocaleLowerCase();
+                const descriptionSelector =
+                    '#jobDescriptionText, [data-testid="jobsearch-jobDescriptionText"], '
+                    + '[id^="jobDescriptionText"]';
+                const visible = element =>
+                    !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
+                document.querySelectorAll('[data-jolt-indeed-panel]').forEach(
+                    element => element.removeAttribute('data-jolt-indeed-panel')
+                );
+                const preferred = [
+                    '#jobsearch-ViewjobPaneWrapper',
+                    '[data-testid="jobsearch-ViewJobLayout-jobDisplay"]',
+                    '[data-testid="jobsearch-JobComponent"]',
+                    '#vjs-container'
+                ];
+                for (const selector of preferred) {
+                    const element = document.querySelector(selector);
+                    if (element && visible(element)
+                        && (element.textContent || '').toLocaleLowerCase().includes(title)) {
+                        element.setAttribute('data-jolt-indeed-panel', 'true');
+                        return true;
+                    }
+                }
+                const descriptions = [...document.querySelectorAll(descriptionSelector)];
+                for (const description of descriptions) {
+                    let ancestor = description;
+                    for (let depth = 0; ancestor && depth < 12; depth++, ancestor = ancestor.parentElement) {
+                        if (!visible(ancestor)) continue;
+                        const content = (ancestor.textContent || '').toLocaleLowerCase();
+                        if (content.includes(title) && content.length < 40000) {
+                            ancestor.setAttribute('data-jolt-indeed-panel', 'true');
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }""",
+            expected_title,
+        )
     except Exception:
-        title_count = 0
-
-    best = None
-    best_len = 10**9
-    for title_index in range(title_count):
-        title_node = title_locator.nth(title_index)
-        try:
-            if not title_node.is_visible():
-                continue
-        except Exception:
-            continue
-        ancestors = title_node.locator("xpath=ancestor::div")
-        try:
-            ancestor_count = min(ancestors.count(), 30)
-        except Exception:
-            ancestor_count = 0
-        for ancestor_index in range(ancestor_count):
-            ancestor = ancestors.nth(ancestor_index)
-            text = _text(ancestor)
-            normalized = text.casefold()
-            if expected_title.casefold() not in normalized:
-                continue
-            if "detalles del empleo" not in normalized and "job details" not in normalized:
-                continue
-            if "empleos de " in normalized and len(text) > 2500:
-                continue
-            if len(text) < best_len:
-                best = ancestor
-                best_len = len(text)
-    return best
+        return None
+    return page.locator('[data-jolt-indeed-panel="true"]').first if found else None
 
 
 def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
