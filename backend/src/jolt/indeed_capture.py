@@ -161,32 +161,23 @@ def _visible_listing_candidates(page: Page, max_jobs: int) -> list[dict[str, str
 
 
 def _click_listing_candidate(page: Page, source_job_id: str) -> bool:
-    nodes = _listing_candidate_nodes(page)
-    try:
-        count = min(nodes.count(), 200)
-    except Exception:
-        return False
-
-    for index in range(count):
-        node = nodes.nth(index)
-        if _node_job_key(page, node) != source_job_id:
-            continue
+    # Directly target the exact Indeed job key instead of repeatedly enumerating
+    # every listing node and issuing CDP calls for unrelated cards.
+    key = json.dumps(source_job_id)
+    selectors = (
+        f'a[data-jk={key}]',
+        f'[data-jk={key}] a.jcs-JobTitle',
+        f'[data-jk={key}] h2.jobTitle a',
+        f'a[href*={json.dumps("jk=" + source_job_id)}]',
+        f'[data-jk={key}]',
+    )
+    for selector in selectors:
+        node = page.locator(selector).first
         try:
-            if not node.is_visible():
+            if not node.is_visible(timeout=300):
                 continue
-            clickable = node
-            if (node.evaluate("element => element.tagName") or "").casefold() != "a":
-                nested = node.locator(
-                    "h2.jobTitle a, "
-                    "a.jcs-JobTitle, "
-                    "a[data-testid='job-title'], "
-                    "a[href*='viewjob'], "
-                    "a[href*='jk=']"
-                ).first
-                if nested.count():
-                    clickable = nested
-            clickable.scroll_into_view_if_needed(timeout=2_000)
-            clickable.click(timeout=8_000)
+            node.scroll_into_view_if_needed(timeout=2_000)
+            node.click(timeout=4_000)
             return True
         except Exception:
             continue
