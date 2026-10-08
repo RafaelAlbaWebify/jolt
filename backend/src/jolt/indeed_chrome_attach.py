@@ -6,10 +6,10 @@ import json
 import shutil
 import sys
 import tempfile
-from time import perf_counter
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import playwright.sync_api as playwright_sync_api
