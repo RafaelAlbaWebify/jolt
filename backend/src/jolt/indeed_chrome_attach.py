@@ -264,7 +264,7 @@ def run_capture(
                     if warning:
                         raise RuntimeError(warning)
 
-                    print(f"  Card selected; checking detail identity...", flush=True)
+                    print("  Card selected; checking detail identity...", flush=True)
                     panel_ready = _wait_for_detail_panel(page, source_job_id, title_hint)
                     title, company, location, description, verified, reason = _detail_fields(
                         page, source_job_id, title_hint
