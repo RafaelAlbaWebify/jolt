@@ -6,6 +6,7 @@ import json
 import shutil
 import sys
 import tempfile
+from time import perf_counter
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -171,6 +172,7 @@ def run_capture(
             base_search_url = _page_search_url(attached_page.url, 1)
             page = attached_page
             cards: list[CapturedCard] = []
+            job_timings: list[dict[str, object]] = []
             pages: list[dict[str, object]] = []
             seen_job_ids: set[str] = set()
             result_position = 0
@@ -231,6 +233,7 @@ def run_capture(
                     if page.is_closed():
                         page = _navigate_search_page(context, page, target_url)
 
+                    job_started = perf_counter()
                     print(
                         f"Capturing job {len(cards) + 1}/{max_jobs}: "
                         f"{title_hint[:65]} [{source_job_id}]",
@@ -241,7 +244,13 @@ def run_capture(
                         page = _navigate_search_page(context, page, target_url)
                         clicked = _click_listing_candidate(page, source_job_id)
 
+                    click_seconds = round(perf_counter() - job_started, 3)
                     if not clicked:
+                        job_timings.append(
+                            {"source_job_id": source_job_id, "click_seconds": click_seconds,
+                             "verified": False, "error": "click_failed"}
+                        )
+                        print(f"  Selection failed after {click_seconds:.2f}s", flush=True)
                         cards.append(
                             CapturedCard(
                                 source_job_id,
@@ -266,8 +275,12 @@ def run_capture(
 
                     print("  Card selected; checking detail identity...", flush=True)
                     panel_ready = _wait_for_detail_panel(page, source_job_id, title_hint)
+                    panel_seconds = round(perf_counter() - job_started - click_seconds, 3)
                     title, company, location, description, verified, reason = _detail_fields(
                         page, source_job_id, title_hint
+                    )
+                    extraction_seconds = round(
+                        perf_counter() - job_started - click_seconds - panel_seconds, 3
                     )
                     if not panel_ready and verified:
                         verified = False
@@ -288,6 +301,28 @@ def run_capture(
                             timeout=5_000,
                         )
 
+                    evidence_seconds = round(
+                        perf_counter() - job_started
+                        - click_seconds - panel_seconds - extraction_seconds, 3
+                    )
+                    total_seconds = round(perf_counter() - job_started, 3)
+                    job_timings.append({
+                        "source_job_id": source_job_id,
+                        "click_seconds": click_seconds,
+                        "panel_seconds": panel_seconds,
+                        "extraction_seconds": extraction_seconds,
+                        "evidence_seconds": evidence_seconds,
+                        "total_seconds": total_seconds,
+                        "description_characters": len(description),
+                        "verified": verified,
+                    })
+                    print(
+                        f"  Timing: click={click_seconds:.2f}s "
+                        f"panel={panel_seconds:.2f}s extraction={extraction_seconds:.2f}s "
+                        f"evidence={evidence_seconds:.2f}s total={total_seconds:.2f}s "
+                        f"description_chars={len(description)}",
+                        flush=True,
+                    )
                     cards.append(
                         CapturedCard(
                             source_job_id,
@@ -330,6 +365,7 @@ def run_capture(
                 "verified_count": sum(card.identity_verified for card in cards),
                 "stop_reason": stop_reason,
                 "pages": pages,
+                "job_timings": job_timings,
                 "cards": [
                     asdict(card)
                     | {"detail_html": "[stored separately]", "description": "[submitted]"}
