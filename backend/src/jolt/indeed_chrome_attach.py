@@ -231,6 +231,11 @@ def run_capture(
                     if page.is_closed():
                         page = _navigate_search_page(context, page, target_url)
 
+                    print(
+                        f"Capturing job {len(cards) + 1}/{max_jobs}: "
+                        f"{title_hint[:65]} [{source_job_id}]",
+                        flush=True,
+                    )
                     clicked = _click_listing_candidate(page, source_job_id)
                     if not clicked and page.is_closed():
                         page = _navigate_search_page(context, page, target_url)
@@ -259,6 +264,7 @@ def run_capture(
                     if warning:
                         raise RuntimeError(warning)
 
+                    print(f"  Card selected; checking detail identity...", flush=True)
                     panel_ready = _wait_for_detail_panel(page, source_job_id, title_hint)
                     title, company, location, description, verified, reason = _detail_fields(
                         page, source_job_id, title_hint
@@ -269,6 +275,11 @@ def run_capture(
                             "Indeed detail panel did not become stable after the listing click."
                         )
 
+                    print(
+                        f"  Detail extracted: verified={verified}; "
+                        f"company={company[:50]!r}; location={location[:50]!r}",
+                        flush=True,
+                    )
                     detail_html = page.content() if verified else ""
                     with contextlib.suppress(Exception):
                         page.screenshot(
