@@ -298,12 +298,16 @@ def run_capture(
                         flush=True,
                     )
                     detail_html = page.content() if verified else ""
-                    with contextlib.suppress(Exception):
-                        page.screenshot(
-                            path=evidence_dir / f"p{page_number:02d}_job_{source_job_id}.png",
-                            full_page=False,
-                            timeout=5_000,
-                        )
+                    # Verified listings already retain redacted HTML evidence.
+                    # A per-job screenshot can cost its full five-second timeout;
+                    # reserve screenshots for unsuccessful captures/diagnostics.
+                    if not verified:
+                        with contextlib.suppress(Exception):
+                            page.screenshot(
+                                path=evidence_dir / f"p{page_number:02d}_job_{source_job_id}.png",
+                                full_page=False,
+                                timeout=5_000,
+                            )
 
                     evidence_seconds = round(
                         perf_counter()
