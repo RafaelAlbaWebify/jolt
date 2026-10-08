@@ -322,7 +322,6 @@ def test_scriptpro_wording_does_not_false_reject_language() -> None:
     assert result.manual_review is False
 
 
-
 def test_native_spanish_good_command_english_does_not_upgrade_english_to_native() -> None:
     result = analyze_language_evidence(
         source_text="Native Spanish speaker with a good command of English.",
