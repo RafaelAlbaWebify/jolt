@@ -279,6 +279,26 @@ def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
 
 
 def _panel_container(page: Page, expected_title: str):
+    # Indeed usually exposes a stable detail-pane container. Check it first:
+    # traversing thirty ancestors and reading each inner_text can cost seconds
+    # per listing even when the target pane was already rendered.
+    selectors = (
+        "#jobsearch-ViewjobPaneWrapper",
+        "[data-testid='jobsearch-ViewJobLayout-jobDisplay']",
+        "[data-testid='jobsearch-JobComponent']",
+        "#vjs-container",
+    )
+    for selector in selectors:
+        locator = page.locator(selector).first
+        try:
+            if locator.is_visible(timeout=300):
+                text = _text(locator)
+                if expected_title.casefold() in text.casefold():
+                    return locator
+        except Exception:
+            continue
+
+    # Fallback for variants where Indeed does not expose known pane selectors.
     title_locator = page.get_by_text(expected_title, exact=True)
     try:
         title_count = min(title_locator.count(), 10)
@@ -287,7 +307,6 @@ def _panel_container(page: Page, expected_title: str):
 
     best = None
     best_len = 10**9
-
     for title_index in range(title_count):
         title_node = title_locator.nth(title_index)
         try:
@@ -295,13 +314,11 @@ def _panel_container(page: Page, expected_title: str):
                 continue
         except Exception:
             continue
-
         ancestors = title_node.locator("xpath=ancestor::div")
         try:
             ancestor_count = min(ancestors.count(), 30)
         except Exception:
             ancestor_count = 0
-
         for ancestor_index in range(ancestor_count):
             ancestor = ancestors.nth(ancestor_index)
             text = _text(ancestor)
@@ -315,27 +332,7 @@ def _panel_container(page: Page, expected_title: str):
             if len(text) < best_len:
                 best = ancestor
                 best_len = len(text)
-
-    if best is not None:
-        return best
-
-    selectors = (
-        "#jobsearch-ViewjobPaneWrapper",
-        "[data-testid='jobsearch-ViewJobLayout-jobDisplay']",
-        "[data-testid='jobsearch-JobComponent']",
-        "#vjs-container",
-    )
-    for selector in selectors:
-        locator = page.locator(selector)
-        try:
-            if locator.count() and locator.first.is_visible():
-                text = _text(locator.first)
-                if expected_title.casefold() in text.casefold():
-                    return locator.first
-        except Exception:
-            continue
-
-    return None
+    return best
 
 
 def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
@@ -459,14 +456,12 @@ def _detail_fields(
                     description = value
                     break
 
-        if not (title and company and location and description):
-            parsed_title, parsed_company, parsed_location, parsed_description = _parse_panel_text(
-                _raw_text(panel), expected_title
-            )
-            title = title or parsed_title
-            company = company or parsed_company
-            location = location or parsed_location
-            description = description or parsed_description
+        # A generic paragraph immediately after the title is not authoritative
+        # company/location evidence. The old fallback silently stored sentences
+        # from the job description as structured metadata.
+        if not description:
+            _, _, _, parsed_description = _parse_panel_text(_raw_text(panel), expected_title)
+            description = parsed_description
 
     if not title:
         title = expected_title
@@ -487,7 +482,17 @@ def _detail_fields(
             ),
         )
 
+    # Treat placeholders as missing location rather than verified geography.
+    if location.strip(" ·•-|").strip() == "":
+        location = ""
+
     reasons: list[str] = []
+    if not company:
+        reasons.append("Indeed detail page contained no reliable company name.")
+    if not location:
+        # Location can be absent for remote postings, so retain captured evidence
+        # but mark the record unverified rather than inventing a location.
+        reasons.append("Indeed detail page contained no reliable job location.")
     if current_id != expected_id:
         reasons.append(
             f"Indeed detail job key {current_id or '<missing>'} does not match expected {expected_id}."
