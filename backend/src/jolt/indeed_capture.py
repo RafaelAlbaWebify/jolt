@@ -394,7 +394,7 @@ def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, st
 
 def _listing_header_metadata(page: Page, source_job_id: str) -> tuple[str, str]:
     """Read company/location from the selected Indeed result card, not prose."""
-    return page.evaluate(
+    values = page.evaluate(
         """jobKey => {
             const nodes = Array.from(document.querySelectorAll('[data-jk]'));
             const match = nodes.find(node => node.getAttribute('data-jk') === jobKey);
@@ -418,6 +418,7 @@ def _listing_header_metadata(page: Page, source_job_id: str) -> tuple[str, str]:
         }""",
         source_job_id,
     )
+    return tuple(values)
 
 
 def _detail_fields(
