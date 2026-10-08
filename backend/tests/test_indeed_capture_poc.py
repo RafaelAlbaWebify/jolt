@@ -7,8 +7,8 @@ from playwright.sync_api import sync_playwright
 
 from jolt.indeed_capture import (
     _is_action_link_text,
-    _panel_container,
     _listing_header_metadata,
+    _panel_container,
     _parse_panel_text,
     _visible_listing_candidates,
     canonical_indeed_job_url,
