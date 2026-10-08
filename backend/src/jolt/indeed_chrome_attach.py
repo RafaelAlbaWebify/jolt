@@ -247,8 +247,12 @@ def run_capture(
                     click_seconds = round(perf_counter() - job_started, 3)
                     if not clicked:
                         job_timings.append(
-                            {"source_job_id": source_job_id, "click_seconds": click_seconds,
-                             "verified": False, "error": "click_failed"}
+                            {
+                                "source_job_id": source_job_id,
+                                "click_seconds": click_seconds,
+                                "verified": False,
+                                "error": "click_failed",
+                            }
                         )
                         print(f"  Selection failed after {click_seconds:.2f}s", flush=True)
                         cards.append(
@@ -302,20 +306,26 @@ def run_capture(
                         )
 
                     evidence_seconds = round(
-                        perf_counter() - job_started
-                        - click_seconds - panel_seconds - extraction_seconds, 3
+                        perf_counter()
+                        - job_started
+                        - click_seconds
+                        - panel_seconds
+                        - extraction_seconds,
+                        3,
                     )
                     total_seconds = round(perf_counter() - job_started, 3)
-                    job_timings.append({
-                        "source_job_id": source_job_id,
-                        "click_seconds": click_seconds,
-                        "panel_seconds": panel_seconds,
-                        "extraction_seconds": extraction_seconds,
-                        "evidence_seconds": evidence_seconds,
-                        "total_seconds": total_seconds,
-                        "description_characters": len(description),
-                        "verified": verified,
-                    })
+                    job_timings.append(
+                        {
+                            "source_job_id": source_job_id,
+                            "click_seconds": click_seconds,
+                            "panel_seconds": panel_seconds,
+                            "extraction_seconds": extraction_seconds,
+                            "evidence_seconds": evidence_seconds,
+                            "total_seconds": total_seconds,
+                            "description_characters": len(description),
+                            "verified": verified,
+                        }
+                    )
                     print(
                         f"  Timing: click={click_seconds:.2f}s "
                         f"panel={panel_seconds:.2f}s extraction={extraction_seconds:.2f}s "
