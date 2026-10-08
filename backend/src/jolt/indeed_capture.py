@@ -331,7 +331,7 @@ def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
     # Avoid repeated inner_text(timeout=2000) calls while scrolling:
     # this previously consumed about 26s per verified job in live captures.
     # A single DOM-side query/scroll is enough to trigger lazy content.
-    try:
+    with contextlib.suppress(Exception):
         panel.evaluate(
             """element => {
                 const description = element.querySelector(
@@ -343,8 +343,7 @@ def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
                 }
             }"""
         )
-    except Exception:
-        pass
+
 
 
 def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
