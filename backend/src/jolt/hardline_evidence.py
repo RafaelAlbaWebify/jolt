@@ -182,6 +182,15 @@ _NEGATIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _POSITIVE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "Spain workplace",
+        re.compile(
+            r"\b(?:join(?:ing)?\s+(?:our|the)\s+team|position|role|job|site|office|"
+            r"based|located|work(?:ing)?)\b[^.\n]{0,90}"
+            r"\b(?:in|at)\s+[^,.\n]{1,60},\s*(?:spain|españa|espana)\b",
+            re.I,
+        ),
+    ),
     ("work from anywhere", re.compile(r"\bwork\s+from\s+anywhere\b", re.I)),
     ("global remote", re.compile(r"\bglobal\s+remote\b", re.I)),
     (

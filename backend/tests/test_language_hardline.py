@@ -320,3 +320,50 @@ def test_scriptpro_wording_does_not_false_reject_language() -> None:
 
     assert result.hardline_reject is False
     assert result.manual_review is False
+
+
+def test_native_spanish_good_command_english_does_not_upgrade_english_to_native() -> None:
+    result = analyze_language_evidence(
+        source_text="Native Spanish speaker with a good command of English.",
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+    english = next(item for item in result.requirements if item.languages == ("English",))
+    assert english.minimum_level == "professional"
+    assert english.classification == "required"
+
+
+def test_strong_plus_language_is_preferred_not_manual_review() -> None:
+    result = analyze_language_evidence(
+        source_text="Good English skills; German skills are a strong plus.",
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+    german = next(item for item in result.requirements if item.languages == ("German",))
+    assert german.classification == "preferred"
+
+
+def test_environment_and_citizenship_language_words_are_not_requirements() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "English-Speaking Environment: Build your confidence and fluency while living "
+            "and working in a native English-speaking country. "
+            "What We're Looking For: B1 level English or above. "
+            "EU passport holder (no visa required for Spanish citizens)."
+        ),
+        preferences=_preferences(),
+    )
+
+    assert result.hardline_reject is False
+    assert result.manual_review is False
+    assert any(
+        item.languages == ("English",)
+        and item.classification == "required"
+        and item.minimum_level == "b1"
+        for item in result.requirements
+    )
+    assert not any(item.languages == ("Spanish",) for item in result.requirements)

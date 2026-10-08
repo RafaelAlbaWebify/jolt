@@ -33,6 +33,11 @@ def _assessment(
 def test_location_scope_recognizes_spain_and_broad_regions() -> None:
     assert _normalized_location_scope("Madrid, Spain (Remote)") == "spain"
     assert _normalized_location_scope("A Coruña, Galicia, Spain") == "spain"
+    assert _normalized_location_scope("43002 Tarragona, Tarragona provincia") == "spain"
+    assert _normalized_location_scope("50004 Zaragoza, Zaragoza provincia") == "spain"
+    assert _normalized_location_scope("Begur, Girona provincia") == "spain"
+    assert _normalized_location_scope("Puerto del Rosario, Las Palmas provincia") == "spain"
+    assert _normalized_location_scope("Palencia, Palencia provincia") == "spain"
     assert _normalized_location_scope("European Union (Remote)") == "broad"
     assert _normalized_location_scope("EMEA (Remote)") == "broad"
 
