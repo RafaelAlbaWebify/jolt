@@ -119,6 +119,7 @@ _PREFERRED_MARKERS = (
     "nice to have",
     "a plus",
     "is a plus",
+    "strong plus",
     "advantage",
     "advantageous",
     "desirable",
@@ -438,6 +439,16 @@ def _nearest_kind(
     before = segment[max(0, position - 55) : position]
     after = segment[position : min(len(segment), position + 65)]
 
+    # Do not turn nationality or descriptive environment wording into a language requirement.
+    # Examples from real vacancies include "Spanish citizens" and
+    # "English-speaking environment ... native English-speaking country".
+    if re.match(
+        r"^\S+(?:\s*[- ]\s*speaking\s+(?:environment|country)|\s+(?:citizens?|passport holders?))\b",
+        after,
+        re.I,
+    ):
+        return None
+
     # "French-speaking", "Maltese speaker", etc. are direct role requirements.
     if re.search(r"^\S{0,30}[-\s]+(?:speaking|speaker)\b", after, re.I):
         return "required"
@@ -473,13 +484,16 @@ def _nearest_kind(
 
 
 def _minimum_level(segment: str, position: int) -> str:
-    start = max(0, position - 70)
-    end = min(len(segment), position + 100)
-    window = segment[start:end]
+    matches: list[tuple[int, int, str]] = []
     for level, pattern in _LEVEL_PATTERNS:
-        if pattern.search(window):
-            return level
-    return "unknown"
+        for match in pattern.finditer(segment):
+            distance = _distance(position, (match.start(), match.end()))
+            if distance <= 100:
+                matches.append((distance, -_LEVEL_ORDER.get(level, 0), level))
+    if not matches:
+        return "unknown"
+    matches.sort()
+    return matches[0][2]
 
 
 def _language_mentions(segment: str) -> list[tuple[str, int, int]]:
