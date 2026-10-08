@@ -460,9 +460,7 @@ def _detail_fields(
         # company/location evidence. The old fallback silently stored sentences
         # from the job description as structured metadata.
         if not description:
-            _, _, _, parsed_description = _parse_panel_text(
-                _raw_text(panel), expected_title
-            )
+            _, _, _, parsed_description = _parse_panel_text(_raw_text(panel), expected_title)
             description = parsed_description
 
     if not title:
