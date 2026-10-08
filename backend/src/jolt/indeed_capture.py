@@ -345,7 +345,6 @@ def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
         )
 
 
-
 def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
