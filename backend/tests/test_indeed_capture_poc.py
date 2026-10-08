@@ -7,6 +7,7 @@ from playwright.sync_api import sync_playwright
 
 from jolt.indeed_capture import (
     _is_action_link_text,
+    _listing_header_metadata,
     _parse_panel_text,
     _visible_listing_candidates,
     canonical_indeed_job_url,
@@ -383,3 +384,32 @@ def test_visible_candidates_accept_data_jk_card_without_jk_in_href() -> None:
             "title": "Data JK Support Engineer",
         }
     ]
+
+
+def test_indeed_listing_metadata_uses_exact_job_key() -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.set_content(
+            """
+            <ul>
+              <li class="job_seen_beacon">
+                <a data-jk="first" href="/viewjob?jk=first">Role One</a>
+                <span data-testid="company-name">Alpha Support</span>
+                <div data-testid="text-location">Vigo, Pontevedra</div>
+              </li>
+              <li class="job_seen_beacon">
+                <a data-jk="second" href="/viewjob?jk=second">Role Two</a>
+                <span class="companyName">Beta Systems</span>
+                <div class="companyLocation">España · Teletrabajo</div>
+              </li>
+            </ul>
+            """
+        )
+        assert _listing_header_metadata(page, "first") == ("Alpha Support", "Vigo, Pontevedra")
+        assert _listing_header_metadata(page, "second") == (
+            "Beta Systems",
+            "España · Teletrabajo",
+        )
+        assert _listing_header_metadata(page, "absent") == ("", "")
+        browser.close()

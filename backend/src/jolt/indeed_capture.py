@@ -392,6 +392,35 @@ def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, st
     return title, company, location, description
 
 
+def _listing_header_metadata(page: Page, source_job_id: str) -> tuple[str, str]:
+    """Read company/location from the selected Indeed result card, not prose."""
+    values = page.evaluate(
+        """jobKey => {
+            const nodes = Array.from(document.querySelectorAll('[data-jk]'));
+            const match = nodes.find(node => node.getAttribute('data-jk') === jobKey);
+            if (!match) return ['', ''];
+            const card = match.closest('.job_seen_beacon, .cardOutline, li, [data-testid="slider_item"]')
+                || match.parentElement?.parentElement?.parentElement;
+            if (!card) return ['', ''];
+            const first = selectors => {
+                for (const selector of selectors) {
+                    const node = card.querySelector(selector);
+                    const value = (node?.innerText || node?.textContent || '').trim();
+                    if (value) return value.replace(/\\s+/g, ' ');
+                }
+                return '';
+            };
+            return [
+                first(['[data-testid="company-name"]', '.companyName', '[data-testid="companyName"]']),
+                first(['[data-testid="text-location"]', '.companyLocation',
+                       '[data-testid="job-location"]'])
+            ];
+        }""",
+        source_job_id,
+    )
+    return tuple(values)
+
+
 def _detail_fields(
     page: Page, expected_id: str, expected_title: str
 ) -> tuple[str, str, str, str, bool, str]:
@@ -472,6 +501,17 @@ def _detail_fields(
                 "[data-testid='inlineHeader-companyLocation']",
             ),
         )
+
+    # The left result card commonly exposes company/location even when the
+    # detail pane uses a different header layout. Use the exact job key to avoid
+    # associating the previous listing's metadata with the current job.
+    if not company or not location:
+        try:
+            card_company, card_location = _listing_header_metadata(page, expected_id)
+            company = company or card_company
+            location = location or card_location
+        except Exception:
+            pass
 
     # Treat placeholders as missing location rather than verified geography.
     if location.strip(" ·•-|").strip() == "":
