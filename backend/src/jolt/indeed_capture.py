@@ -165,11 +165,11 @@ def _click_listing_candidate(page: Page, source_job_id: str) -> bool:
     # every listing node and issuing CDP calls for unrelated cards.
     key = json.dumps(source_job_id)
     selectors = (
-        f'a[data-jk={key}]',
-        f'[data-jk={key}] a.jcs-JobTitle',
-        f'[data-jk={key}] h2.jobTitle a',
-        f'a[href*={json.dumps("jk=" + source_job_id)}]',
-        f'[data-jk={key}]',
+        f"a[data-jk={key}]",
+        f"[data-jk={key}] a.jcs-JobTitle",
+        f"[data-jk={key}] h2.jobTitle a",
+        f"a[href*={json.dumps('jk=' + source_job_id)}]",
+        f"[data-jk={key}]",
     )
     for selector in selectors:
         node = page.locator(selector).first
