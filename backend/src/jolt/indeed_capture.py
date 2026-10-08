@@ -327,28 +327,22 @@ def _panel_container(page: Page, expected_title: str):
 
 
 def _scroll_panel_to_description(panel, *, max_steps: int = 12) -> None:
-    markers = (
-        "descripción completa del empleo",
-        "descripcion completa del empleo",
-        "job description",
-        "full job description",
-    )
-    for _ in range(max_steps):
-        text = _text(panel).casefold()
-        if any(marker in text for marker in markers):
-            return
-        try:
-            panel.evaluate(
-                """element => {
-                    element.scrollTop = Math.min(
-                        element.scrollTop + Math.max(500, element.clientHeight * 0.8),
-                        element.scrollHeight
-                    );
-                }"""
-            )
-        except Exception:
-            return
-        panel.page.wait_for_timeout(250)
+    # The detail text is already in the DOM for normal Indeed listings.
+    # Avoid repeated inner_text(timeout=2000) calls while scrolling:
+    # this previously consumed about 26s per verified job in live captures.
+    # A single DOM-side query/scroll is enough to trigger lazy content.
+    with contextlib.suppress(Exception):
+        panel.evaluate(
+            """element => {
+                const description = element.querySelector(
+                    '#jobDescriptionText, [data-testid="jobsearch-jobDescriptionText"], '
+                    + '[id^="jobDescriptionText"]'
+                );
+                if (description) {
+                    description.scrollIntoView({block: 'nearest'});
+                }
+            }"""
+        )
 
 
 def _parse_panel_text(text: str, expected_title: str) -> tuple[str, str, str, str]:
