@@ -4,11 +4,11 @@
   "application_api_version": "0.8.0",
   "backend_package_version": "0.8.0",
   "version_discrepancy": null,
-  "last_update_date": "2026-10-03",
+  "last_update_date": "2026-10-09",
   "baseline_branch": "main",
-  "baseline_commit": "9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5",
-  "current_phase": "production_job_search_with_linkedin_daily_batches_and_supervised_indeed_acceptance",
-  "current_milestone": "LinkedIn daily discovery/review is in normal use. Indeed authenticated multi-page capture is implemented through PR #491 and awaits one fresh real post-#491 acceptance before promotion to production-accepted source coverage.",
+  "baseline_commit": "556d3e391c16e29199f13569690397870f4b7b15",
+  "current_phase": "source_adapter_access_feasibility_and_canonical_context_reconciliation",
+  "current_milestone": "Indeed supervised multipage run/persistence audit accepted within tested scope; InfoJobs offline/API preview code implemented and CI-verified but live API blocked by missing developer credentials. Canonical context drift being reconciled in PR #523.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -19,15 +19,19 @@
     "real_prospect_ready": true,
     "production_ready": true
   },
-  "current_blockers": [],
+  "current_blockers": [
+    "InfoJobs live API acceptance unavailable: user has no developer Client ID/Secret; must verify access feasibility and select compliant fallback if unavailable.",
+    "Project context documentation drift through PRs #510–#522; canonical reconciliation underway in PR #523."
+  ],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
     "No unresolved P1 is currently known.",
     "GitHub issue #441 UX stabilization was closed completed on 2026-09-30."
   ],
   "active_workstreams": [
-    "Import and validate the 2026-10-03 LinkedIn 121-posting reviewed Unified AI Work Package through the normal JOLT UI.",
-    "Run one fresh authenticated 3-page Indeed acceptance on main after PR #491 and verify title/company/location/detail identity plus API ingestion against the current backend."
+    "Synchronize JOLT .ai/ canonical context, known issues, test evidence and roadmap to 2026-10-09.",
+    "Assess feasibility of official InfoJobs developer API credentials before further live-integration claims; choose lawful alternative if not available.",
+    "Continue normal LinkedIn/Indeed user workflow without changing human/Application state."
   ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",
@@ -92,16 +96,16 @@
     "2026-10-03 PR #494 audited historical hard-filter false positives and introduced profile-rules-v12: hard blockers dominate fit, explicit minimum experience is HOLD/VERIFY from 1+ years when mandatory, mandatory certifications are evidence-gated, and ambiguous clearance eligibility is HOLD/VERIFY."
   ],
   "pending_milestones": [
-    "Post-#491 real Indeed acceptance: 3 pages, correct title anchors, no action-link contamination, successful current-backend ingestion, preserved page/jk provenance."
+    "Obtain feasible authorized InfoJobs access or document go/no-go alternative; then run real supervised source acceptance and persistence audit.",
+    "Verify feasibility of Tecnoempleo and Welcome to the Jungle before implementing adapters.",
+    "Audit fidelity of Indeed original website descriptions versus captured content and normalized Posting descriptions only if required for a stronger acceptance claim."
   ],
   "next_recommended_actions": [
-    "Treat the historical 31-case hardline corpus as a permanent regression gate: clear blockers must reject and ambiguous eligibility/source evidence must HOLD/VERIFY; never add company-name-specific production rules.",
-    "Use Application Pipeline -> More -> Edit for manual corrections instead of creating replacement applications; preserve captured source evidence and resolve identity collisions manually.",
-    "Import the reviewed Unified AI Work Package for discovery batch 27ddb661-98c2-4ffd-ab9e-28a07df1f377 through Import reviewed update and verify exact 121/121 receipt.",
-    "Restart JOLT whenever the runtime mismatch guard reports an older backend commit than the repository checkout.",
-    "Pull main 9f484a6dcc98e4225cb3e8afe9dccc89dca2cce5 and repeat the supervised Indeed 30-job / 3-page acceptance; inspect the produced ZIP before declaring the adapter production-accepted.",
-    "Continue normal Capture Jobs -> Unified AI Work Package -> Review Inbox -> Applications workflow and make further product changes only from observed operator friction or source-coverage evidence.",
-    "Keep .ai/ and PROJECT_MEMORY synchronized whenever architecture, source coverage, or production workflow changes."
+    "Verify PR #523 exact-head CI; merge only when 8/8 gates green.",
+    "Follow .ai/SESSION_PROTOCOL.md at every coding session and update project memory in the same PR.",
+    "Check official InfoJobs developer application access feasibility; never ask user to paste client secrets.",
+    "If official InfoJobs access is unavailable, evaluate compliant supervised read-only browser access before changing code.",
+    "After access path is settled, implement and validate live acquisition and ingestion, preserving existing human decisions and Applications."
   ],
   "last_verified_runtime_test_evidence": {
     "real_capture": "2026-09-19 capture b011249b-777e-4cd4-91ed-a0c66ec3e3fb: 100 requested, 100 captured, 100 verified, 4 pages, no warnings, stop_reason=requested_limit_reached. This was the live acceptance of PR #396 after the prior asyncio/Playwright regression.",
@@ -117,6 +121,7 @@
     "reproducible_release": "PR #408 exact-head Reproducible release certification #1 PASS; two builds of the same clean commit produced byte-identical release ZIPs with embedded commit/version/file-hash manifest.",
     "linkedin_search_portfolio": "2026-09-24 real authenticated Phase 5 acceptance PASS on main 1157942fec504b3d41c6371046ae04afc8111709. Discovery Batch 02c529d0-bae8-4cc1-8288-a7575146b515: 2/2 searches completed; 50 captured; 50 verified; 47 new postings; 3 duplicates/known exclusions; one batch AI exchange with frozen review_set=47; consolidated 47-job ChatGPT review imported successfully; JOLT restart completed and batch/review state persisted. Local evidence files: JOLT_LINKEDIN_PORTFOLIO_ACCEPTANCE_20260924_110205.json and JOLT_LINKEDIN_PORTFOLIO_REVIEW_ACCEPTANCE_20260924_114024.json.",
     "linkedin_search_portfolio_ui": "2026-09-24 normal JOLT UI acceptance PASS on main 4bad4608adbc5cb44787dec8be4dd784a04e618d. Discovery Batch 0752632f-f213-453b-afeb-483f9acdfa16: 2/2 searches completed; 50 captured; 50 verified; 0 new at batch summary / 50 already known; consolidated AI exchange materialized review_set=1 after excluding 49 already-reviewed postings; returned review imported through the UI. The exact main SHA also passed all six push workflows.",
-    "indeed_live_acceptance": "2026-10-02 post-#490 live run: page 1=4 visible, page 2=6 visible, page 3=1 visible; navigation start=10/start=20 succeeded and package was created. Audit found secondary action anchors misclassified as titles and ingestion hit a stale backend runtime; PR #491 corrected title-anchor selection. Fresh post-#491 live acceptance still required."
+    "indeed_live_acceptance": "2026-10-09 real supervised multi-page run: 40/40 verified, four observed pages, ~3.99 seconds/job mean, 26 new and 14 duplicates; ZIP JOLT_INDEED_CHROME_CAPTURE_20261009_110952.zip. User executed read-only SQLite audit PR #520, capture_run_id 79bd509f-742d-432e-9bb5-b6ab9eb418f5: 40 expected, 40 checked, 40 passed, 0 failures. No claim of word-for-word live-site or Posting.description equality.",
+    "infojobs_status": "PR #521 merged as d4f99edfffc45f09cf50d7672f854d7758f0b155, PR #522 merged as 556d3e391c16e29199f13569690397870f4b7b15, both with 8/8 CI green. Offline parser and authenticated read-only preview implemented; no official developer credentials, no live API test or ingestion."
   }
 }

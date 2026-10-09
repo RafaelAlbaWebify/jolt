@@ -116,3 +116,12 @@ This file records accepted durable decisions. `PROJECT_MEMORY.md` remains a deep
 - Consequence: include-applied/application indexes must preserve Applications independently; legacy Evaluation may remain only for compatible deterministic/capture support.
 - Evidence: PR #466.
 - Status: active.
+
+
+## D-2026-10-09 — Use existing canonical repository context on every development change
+- Date: 2026-10-09.
+- Decision: `PROJECT_MEMORY.md` and canonical `.ai/` files are the sole persistent development memory. `.ai/SESSION_PROTOCOL.md` is mandatory on every development session, not optional; chat and generated bundles are ephemeral transports.
+- Evidence: files were already present, yet status remained at September/October 3 while PRs #510–#522 shipped.
+- Consequence: every substantive feature or source-adapter PR must reconcile project state, roadmap, known issues and test evidence as necessary **before** claiming completion. Do not create competing Google Drive memory or second disconnected tracking scheme.
+- Source readiness: distinguish code existing, automated tests passing, real authorized capture, ingestion, and persistent-data acceptance. The InfoJobs adapter remains blocked for live validation until lawful real access is available.
+- Status: active; remedial synchronization PR #523.

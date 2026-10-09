@@ -117,3 +117,24 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - The 2026-10-02 real three-page run successfully navigated pages 1–3 and deduplicated by `jk`, but exposed secondary action anchors being treated as titles. PR #491 corrected this with title-specific selectors and regression coverage.
 - The same run's HTTP 422 was produced by an older loaded backend, not the current schema; the runtime mismatch guard had already reported that stale process.
 - Required closure evidence: restart current JOLT, run a fresh post-#491 three-page capture, confirm clean title/company/location/detail identity and successful API ingestion.
+
+
+## KI-014 — OPEN 2026-10-09 — Canonical AI project context is stale
+- Module: project governance / AI development workflow.
+- Evidence: `.ai/CONTEXT.md` and `PROJECT_MEMORY.md` last reviewed 2026-10-03; `.ai/TEST_STATUS.json` last updated 2026-09-30. PRs #510–#522 (Indeed optimization, source-integrity audit and InfoJobs foundation) were merged without matching canonical context updates.
+- Impact: developers may repeat work, assert inaccurate readiness or overlook access blockers despite a pre-existing `.ai/SESSION_PROTOCOL.md`.
+- Mitigation: see `docs/JOLT_CURRENT_HANDOVER_2026-10-09.md` for measured handover. Synchronize canonical state before starting further feature work; apply mandatory session protocol on every turn involving repo changes.
+- Blocking effect: blocks new source-adapter feature development until project state is reconciled; does not block normal existing JOLT use.
+
+## KI-015 — OPEN 2026-10-09 — InfoJobs live integration lacks developer API access
+- Module: InfoJobs source adapter.
+- Evidence: user explicitly confirmed no developer Client ID or Client Secret on 2026-10-09. PRs #521/#522 added parser and read-only authenticated preview with mock tests, but no real API calls or production ingestion.
+- Impact: InfoJobs is **not operational**; passing 8/8 CI does not prove API compatibility or access.
+- Next action: verify practical official access requirements, then document go/no-go. If unavailable, evaluate a compliant supervised browser alternative or change portal priority.
+- Blocking effect: prevents real API acceptance, not LinkedIn/Indeed use.
+
+## KI-016 — PARTIALLY RESOLVED 2026-10-09 — Indeed source extraction latency and acceptance
+- Module: Indeed supervised capture.
+- Evidence: 2026-10-09 multipage run: 40/40 verified, ~3.99 s/job mean; PR #519 eliminated measured ~26s missing-selector waits; PR #520 read-only audit passed all 40/40 against persisted capture JSON and immutable source text.
+- Residual uncertainty: live-site-to-captured-description word-for-word fidelity and normalized Posting.description equality not audited. Preserve this distinction.
+- Blocking effect: none for normal Indeed use; revisit if specific evidence gap or regression arises.

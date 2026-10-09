@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-09-30",
-  "baseline_commit": "0f252f4ec7e17dc29e31bed71a0bd86e23d18da5",
-  "status_note": "Current architecture and planned UX simplification are verified through PR #470. Production certification remains 100% within the local-first single-user Windows boundary. PR #470 exact head passed all eight required gates before squash merge; post-merge main workflows are tracked independently and do not replace exact-head PR certification.",
+  "last_updated": "2026-10-09",
+  "baseline_commit": "556d3e391c16e29199f13569690397870f4b7b15",
+  "status_note": "Prior baseline status was stale (2026-09-30 PR #470). Exact-head CI 8/8 was confirmed for InfoJobs PR #521 and PR #522 before merging. Indeed 2026-10-09 live supervised 40-offer multipage run verified 40/40 at ~3.99 s per job and read-only artifact/source document audit 40/40 passed. PR #523 reconciles canonical project-state context; verify its exact-head gates independently. Not proof of InfoJobs live API access.",
   "testing_percentage": 100,
   "test_suites": [
     {
@@ -106,6 +106,26 @@
       "merge_sha": "0f252f4ec7e17dc29e31bed71a0bd86e23d18da5",
       "purpose": "Applications scorecard and Board/List operational views",
       "result": "backend, frontend, Playwright/sidebar-kanban, full-cycle, clean-install, migration-recovery, reproducible-release and Windows scripts all passed before merge"
+    },
+    {
+      "pull_request": 519,
+      "purpose": "Indeed missing selector latency fix",
+      "result": "8/8 exact-head checks successful before merge; real 40-offer capture later confirmed performance"
+    },
+    {
+      "pull_request": 520,
+      "purpose": "Read-only Indeed persistence integrity audit",
+      "result": "8/8 exact-head checks successful before merge; operator run: 40/40 stored source and artifacts passed"
+    },
+    {
+      "pull_request": 521,
+      "purpose": "InfoJobs offline listing parser",
+      "result": "8/8 exact-head checks successful before merge; no live API verification"
+    },
+    {
+      "pull_request": 522,
+      "purpose": "InfoJobs authenticated read-only preview",
+      "result": "8/8 exact-head checks successful before merge; mocked tests only, no developer credentials"
     }
   ],
   "latest_real_world_external_validation": {

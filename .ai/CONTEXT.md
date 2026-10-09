@@ -1,5 +1,13 @@
 # JOLT AI Bootstrap Context
 
+## Verified source integration update — 2026-10-09
+- Canonical context drift from PRs #510–#522 is being reconciled in PR #523; follow `.ai/SESSION_PROTOCOL.md` and the evidence boundary in `docs/JOLT_CURRENT_HANDOVER_2026-10-09.md`.
+- Indeed: 40/40 verified across four observed pages on 2026-10-09 at ~3.99 s/offer; 26 newly ingested, 14 duplicates; local read-only capture artifact/source-document audit 40/40 passed with zero failures. Site-to-captured-description fidelity and normalized Posting.description equality **not** asserted.
+- InfoJobs: PRs #521/#522 implemented a mock-tested adapter and authenticated read-only preview, but no live API access or ingestion; the user has **no developer Client ID or Client Secret**. Mark live integration BLOCKED rather than complete.
+- Tecnoempleo and Welcome to the Jungle: no implemented adapters, access feasibility unverified.
+- Keep the earlier 100% operability statement strictly limited to the previously certified Windows local-first JOLT product; it is **not** a claim that three new portal integrations are operational.
+- Current active next step: finish documentation reconciliation, check CI/merge, then assess lawful InfoJobs access before further code implementation.
+
 JOLT is a local-first, single-user Windows job-search evidence, review, application-tracking, LinkedIn-profile and market-intelligence workbench. It preserves source evidence, deduplicates opportunities, exposes structured review data, persists durable human/application state and exchanges judgment-heavy analysis with ChatGPT through validated JSON contracts.
 
 ## Current production state — 2026-10-03
