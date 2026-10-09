@@ -452,7 +452,7 @@ def _detail_fields(
                 "[data-testid='inlineHeader-companyName']",
                 "[data-testid='jobsearch-CompanyInfoContainer'] a",
             ):
-                value = measured(f'panel_selector:{selector}', lambda: _text(panel.locator(selector).first))
+                value = measured(f'panel_selector:{selector}', lambda selector=selector: _text(panel.locator(selector).first))
                 if value:
                     company = value
                     break
@@ -463,7 +463,7 @@ def _detail_fields(
                 "[data-testid='inlineHeader-companyLocation']",
                 "[data-testid='jobsearch-JobInfoHeader-companyLocation']",
             ):
-                value = measured(f'panel_selector:{selector}', lambda: _text(panel.locator(selector).first))
+                value = measured(f'panel_selector:{selector}', lambda selector=selector: _text(panel.locator(selector).first))
                 if value:
                     location = value
                     break
@@ -474,7 +474,7 @@ def _detail_fields(
                 "[data-testid='jobsearch-jobDescriptionText']",
                 "[id^='jobDescriptionText']",
             ):
-                value = measured(f'panel_selector:{selector}', lambda: _text(panel.locator(selector).first))
+                value = measured(f'panel_selector:{selector}', lambda selector=selector: _text(panel.locator(selector).first))
                 if value:
                     description = value
                     break
