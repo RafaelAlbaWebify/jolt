@@ -22,9 +22,7 @@ class InfoJobsCandidate:
     location: str
 
 
-def search_url(
-    keywords: str, *, page: int = 1, max_results: int = 20, province: str = ""
-) -> str:
+def search_url(keywords: str, *, page: int = 1, max_results: int = 20, province: str = "") -> str:
     """Construct a bounded API search URL using documented query parameters."""
     if not keywords.strip():
         raise ValueError("keywords are required")
