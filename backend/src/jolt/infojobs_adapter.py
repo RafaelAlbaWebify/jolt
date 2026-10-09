@@ -129,7 +129,7 @@ def _request_json(url: str, client_id: str, client_secret: str) -> object:
     if not client_id or not client_secret:
         raise ValueError("InfoJobs application credentials are required")
     # URL is constructed exclusively by search_url/detail_url.
-    encoded = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
+    encoded = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode("ascii")
     request = urllib.request.Request(
         url,
         headers={
