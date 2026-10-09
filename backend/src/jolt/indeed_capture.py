@@ -52,6 +52,16 @@ def _text(locator) -> str:
         return ""
 
 
+def _text_if_present(locator) -> str:
+    """Read rendered details without waiting for nonexistent Indeed selectors."""
+    try:
+        if locator.count() == 0:
+            return ""
+    except Exception:
+        return ""
+    return _text(locator)
+
+
 def _raw_text(locator) -> str:
     try:
         return locator.inner_text(timeout=2_000).strip()
@@ -264,7 +274,7 @@ def _location_from_jsonld(data: dict[str, object]) -> str:
 
 def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
     for selector in selectors:
-        value = _text(page.locator(selector).first)
+        value = _text_if_present(page.locator(selector).first)
         if value:
             return value
     return ""
@@ -452,7 +462,7 @@ def _detail_fields(
             ):
                 value = measured(
                     f"panel_selector:{selector}",
-                    lambda selector=selector: _text(panel.locator(selector).first),
+                    lambda selector=selector: _text_if_present(panel.locator(selector).first),
                 )
                 if value:
                     company = value
@@ -466,7 +476,7 @@ def _detail_fields(
             ):
                 value = measured(
                     f"panel_selector:{selector}",
-                    lambda selector=selector: _text(panel.locator(selector).first),
+                    lambda selector=selector: _text_if_present(panel.locator(selector).first),
                 )
                 if value:
                     location = value
@@ -480,7 +490,7 @@ def _detail_fields(
             ):
                 value = measured(
                     f"panel_selector:{selector}",
-                    lambda selector=selector: _text(panel.locator(selector).first),
+                    lambda selector=selector: _text_if_present(panel.locator(selector).first),
                 )
                 if value:
                     description = value
