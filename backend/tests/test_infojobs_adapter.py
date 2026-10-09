@@ -4,11 +4,11 @@ import pytest
 
 from jolt import infojobs_adapter
 from jolt.infojobs_adapter import (
-    parse_detail,
-    preview_search,
     detail_url,
+    parse_detail,
     parse_listing,
     parse_search_page,
+    preview_search,
     search_url,
 )
 
