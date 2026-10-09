@@ -13,6 +13,7 @@ import urllib.request
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from playwright.sync_api import Page, sync_playwright
@@ -410,10 +411,22 @@ def _listing_header_metadata(page: Page, source_job_id: str) -> tuple[str, str]:
 
 
 def _detail_fields(
-    page: Page, expected_id: str, expected_title: str
+    page: Page,
+    expected_id: str,
+    expected_title: str,
+    *,
+    timings: list[dict[str, object]] | None = None,
 ) -> tuple[str, str, str, str, bool, str]:
+    def measured(label: str, action):
+        began = perf_counter()
+        try:
+            return action()
+        finally:
+            if timings is not None:
+                timings.append({"step": label, "seconds": round(perf_counter() - began, 3)})
+
     current_id = extract_indeed_job_key(page.url)
-    data = _jobposting_jsonld(page)
+    data = measured("jsonld", lambda: _jobposting_jsonld(page))
 
     title = str(data.get("title", "") or "").strip()
     company = ""
@@ -423,13 +436,13 @@ def _detail_fields(
     location = _location_from_jsonld(data)
     description = _strip_html(str(data.get("description", "") or ""))
 
-    panel = _panel_container(page, expected_title)
+    panel = measured("panel_lookup", lambda: _panel_container(page, expected_title))
 
     if panel is not None:
         # The selected listing title is our strongest panel anchor. Indeed's internal
         # heading tags vary and may point at labels such as "Salario" or "Tipo de empleo".
         title = expected_title
-        _scroll_panel_to_description(panel)
+        measured("scroll_description", lambda: _scroll_panel_to_description(panel))
 
         if not company:
             for selector in (
@@ -437,7 +450,10 @@ def _detail_fields(
                 "[data-testid='inlineHeader-companyName']",
                 "[data-testid='jobsearch-CompanyInfoContainer'] a",
             ):
-                value = _text(panel.locator(selector).first)
+                value = measured(
+                    f"panel_selector:{selector}",
+                    lambda selector=selector: _text(panel.locator(selector).first),
+                )
                 if value:
                     company = value
                     break
@@ -448,7 +464,10 @@ def _detail_fields(
                 "[data-testid='inlineHeader-companyLocation']",
                 "[data-testid='jobsearch-JobInfoHeader-companyLocation']",
             ):
-                value = _text(panel.locator(selector).first)
+                value = measured(
+                    f"panel_selector:{selector}",
+                    lambda selector=selector: _text(panel.locator(selector).first),
+                )
                 if value:
                     location = value
                     break
@@ -459,7 +478,10 @@ def _detail_fields(
                 "[data-testid='jobsearch-jobDescriptionText']",
                 "[id^='jobDescriptionText']",
             ):
-                value = _text(panel.locator(selector).first)
+                value = measured(
+                    f"panel_selector:{selector}",
+                    lambda selector=selector: _text(panel.locator(selector).first),
+                )
                 if value:
                     description = value
                     break
@@ -468,25 +490,33 @@ def _detail_fields(
         # company/location evidence. The old fallback silently stored sentences
         # from the job description as structured metadata.
         if not description:
-            _, _, _, parsed_description = _parse_panel_text(_raw_text(panel), expected_title)
+            _, _, _, parsed_description = measured(
+                "panel_text_fallback", lambda: _parse_panel_text(_raw_text(panel), expected_title)
+            )
             description = parsed_description
 
     if not title:
         title = expected_title
     if not company:
-        company = _first_text(
-            page,
-            (
-                "[data-company-name='true']",
-                "[data-testid='inlineHeader-companyName']",
+        company = measured(
+            "page_company_fallback",
+            lambda: _first_text(
+                page,
+                (
+                    "[data-company-name='true']",
+                    "[data-testid='inlineHeader-companyName']",
+                ),
             ),
         )
     if not location:
-        location = _first_text(
-            page,
-            (
-                "[data-testid='job-location']",
-                "[data-testid='inlineHeader-companyLocation']",
+        location = measured(
+            "page_location_fallback",
+            lambda: _first_text(
+                page,
+                (
+                    "[data-testid='job-location']",
+                    "[data-testid='inlineHeader-companyLocation']",
+                ),
             ),
         )
 
@@ -495,7 +525,9 @@ def _detail_fields(
     # associating the previous listing's metadata with the current job.
     if not company or not location:
         try:
-            card_company, card_location = _listing_header_metadata(page, expected_id)
+            card_company, card_location = measured(
+                "listing_card_metadata", lambda: _listing_header_metadata(page, expected_id)
+            )
             company = company or card_company
             location = location or card_location
         except Exception:
