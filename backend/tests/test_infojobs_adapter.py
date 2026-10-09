@@ -55,9 +55,7 @@ def test_reject_missing_evidence_and_duplicate_ids() -> None:
     with pytest.raises(ValueError):
         parse_listing(invalid)
     with pytest.raises(ValueError):
-        parse_search_page(
-            {"offers": [_offer(), _offer()], "currentPage": 1, "totalPages": 2}
-        )
+        parse_search_page({"offers": [_offer(), _offer()], "currentPage": 1, "totalPages": 2})
     with pytest.raises(ValueError):
         parse_search_page({"offers": [], "currentPage": 2, "totalPages": 1})
     with pytest.raises(ValueError):
