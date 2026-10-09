@@ -79,6 +79,20 @@ function responseError(response: Response, fallback: string) {
   });
 }
 
+const INDEED_RECOMMENDED_SEARCHES = [
+  { label: "Application Support - Spain Remote", keywords: "Application Support Engineer remoto", location: "España" },
+  { label: "Technical Support - Spain Remote", keywords: "Technical Support Engineer remoto", location: "España" },
+  { label: "IT Operations - Spain Remote", keywords: "IT Operations remoto", location: "España" },
+  { label: "Windows Systems - Spain Remote", keywords: "Windows System Administrator remoto", location: "España" },
+  { label: "IT Support - Vigo Local", keywords: "Técnico de Soporte IT", location: "Vigo, Pontevedra" },
+  { label: "Systems Administration - Vigo Local", keywords: "Administrador de Sistemas", location: "Vigo, Pontevedra" },
+] as const;
+
+function recommendedIndeedUrl(keywords: string, location: string): string {
+  const params = new URLSearchParams({ q: keywords, l: location, fromage: "7", sort: "date" });
+  return `https://es.indeed.com/jobs?${params.toString()}`;
+}
+
 export function DiscoverySearchQueue({ apiBase, active }: Props) {
   const [sources, setSources] = useState<DiscoverySource[]>([]);
   const [searches, setSearches] = useState<DiscoverySearch[]>([]);
@@ -230,6 +244,45 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
     }
   }
 
+  async function addRecommendedIndeedSearches() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    let added = 0;
+    try {
+      const existingUrls = new Set(
+        searches.filter((item) => item.source === "indeed")
+          .map((item) => String(item.definition.search_url ?? "")),
+      );
+      for (const preset of INDEED_RECOMMENDED_SEARCHES) {
+        const searchUrl = recommendedIndeedUrl(preset.keywords, preset.location);
+        if (existingUrls.has(searchUrl)) continue;
+        const response = await fetch(`${apiBase}/api/discovery-searches`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: "indeed",
+            label: preset.label,
+            definition: { search_url: searchUrl, max_pages: 3 },
+            notes: "Recommended starting hypothesis; remote hiring eligibility requires verification.",
+            enabled: true,
+            max_jobs: 30,
+          }),
+        });
+        if (!response.ok) throw await responseError(response, "Could not add recommended Indeed searches.");
+        existingUrls.add(searchUrl);
+        added += 1;
+      }
+      await load();
+      setNotice(`Added ${added} Indeed searches; existing searches were preserved.`);
+    } catch (caught) {
+      await load();
+      setError(caught instanceof Error ? caught.message : "Could not add recommended Indeed searches.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteSearch(search: DiscoverySearch) {
     if (!editorSupported(search.source)) return;
     if (!window.confirm(`Delete "${search.label}"?`)) return;
@@ -364,6 +417,9 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
         </div>
         <div className="button-row">
           <span className="professional-plan-status">{sources.length} sources registered</span>
+          <button type="button" className="secondary" onClick={addRecommendedIndeedSearches} disabled={busy}>
+            Add recommended Indeed searches
+          </button>
           <button type="button" className="secondary" onClick={beginAdd} disabled={busy}>
             Add search
           </button>
