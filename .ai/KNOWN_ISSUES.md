@@ -138,3 +138,10 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Evidence: 2026-10-09 multipage run: 40/40 verified, ~3.99 s/job mean; PR #519 eliminated measured ~26s missing-selector waits; PR #520 read-only audit passed all 40/40 against persisted capture JSON and immutable source text.
 - Residual uncertainty: live-site-to-captured-description word-for-word fidelity and normalized Posting.description equality not audited. Preserve this distinction.
 - Blocking effect: none for normal Indeed use; revisit if specific evidence gap or regression arises.
+
+
+## KI-015 update — 2026-10-09 — Developer registration unavailable in user session
+- Direct operator evidence: logged-in InfoJobs Developers > Manage Apps screen displays: "The registration of new apps is currently unavailable. We hope to offer it again in shortly. Sorry for the inconvenience."
+- Impact: cannot register a new developer application to obtain Client ID / Secret using the current official UI; the API preview in PR #522 remains unavailable for live acceptance.
+- Decision: keep official API foundation but suspend credential-dependent integration work. Evaluate permitted supervised browser capture and site terms, or prioritize a source with a feasible authorized access method. Do not ask user to create impossible credentials or use another person's API keys.
+- Evidence scope: the registration UI was unavailable when checked, not proof that registration is permanently closed.
