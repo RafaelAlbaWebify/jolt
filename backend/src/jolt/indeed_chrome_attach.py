@@ -280,9 +280,15 @@ def run_capture(
                     print("  Card selected; checking detail identity...", flush=True)
                     panel_ready = _wait_for_detail_panel(page, source_job_id, title_hint)
                     panel_seconds = round(perf_counter() - job_started - click_seconds, 3)
+                    detail_timings: list[dict[str, object]] = []
                     title, company, location, description, verified, reason = _detail_fields(
-                        page, source_job_id, title_hint
+                        page, source_job_id, title_hint, timings=detail_timings
                     )
+                    for timing in detail_timings:
+                        print(
+                            f"    Detail timing: {timing['step']}={timing['seconds']}s",
+                            flush=True,
+                        )
                     extraction_seconds = round(
                         perf_counter() - job_started - click_seconds - panel_seconds, 3
                     )
@@ -327,6 +333,7 @@ def run_capture(
                             "evidence_seconds": evidence_seconds,
                             "total_seconds": total_seconds,
                             "description_characters": len(description),
+                        "detail_timings": detail_timings,
                             "verified": verified,
                         }
                     )
