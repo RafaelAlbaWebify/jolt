@@ -333,7 +333,7 @@ def run_capture(
                             "evidence_seconds": evidence_seconds,
                             "total_seconds": total_seconds,
                             "description_characters": len(description),
-                        "detail_timings": detail_timings,
+                            "detail_timings": detail_timings,
                             "verified": verified,
                         }
                     )
