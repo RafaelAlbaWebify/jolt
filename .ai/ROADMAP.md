@@ -101,3 +101,17 @@ There is no pending operability milestone inside the certified local-first singl
 |---|---|---|---|---|---|
 | R-026 | COMPLETE | LinkedIn daily saved-search discovery + frozen unified AI batch review in normal production use | R-025 | multi-search run completes, canonical deduplication produces frozen review set, one Unified AI Work Package round trip is importable | real discovery batch + package/import evidence |
 | R-027 | ACTIVE | Supervised authenticated Indeed source adapter | R-002, R-026 | 3+ pages navigate in one persistent session; only real job-title anchors are discovered; jk deduplication/provenance persist; current backend ingests package successfully | fresh post-#491 real ZIP + API result + exact-head gates |
+
+
+## 2026-10-09 evidence-based source-extension reconciliation
+
+This supersedes the 2026-10-03 status of R-027 for its tested scope. See `docs/JOLT_CURRENT_HANDOVER_2026-10-09.md` and KI-014–KI-016.
+
+| ID | Status | Work | Evidence / gate |
+|---|---|---|---|
+| R-027 | COMPLETE (bounded live capture) | Indeed supervised capture, pagination and source-evidence persistence | 2026-10-09 real 40-job run across four observed pages, 40/40 verified, ~3.99s/job, 26 new/14 duplicates; PR #520 local read-only artifact/source-document audit 40/40 passed. Live-site fidelity and normalized Posting description not asserted. |
+| R-036 | ACTIVE | Repair canonical AI context drift from PRs #510–#522 | Reconcile project state, context and test status; enforce session protocol |
+| R-037 | BLOCKED | InfoJobs authorized live acceptance and ingestion | User has no developer Client ID/Secret; PR #521/#522 merged with CI, no real API validation or SQLite ingestion. Verify access feasibility and decide fallback. |
+| R-038 | NEXT | Tecnoempleo source feasibility | Confirm authorized access, detail availability and terms before implementation |
+| R-039 | NEXT | Welcome to the Jungle source feasibility | Confirm accessible lawful integration path and user relevance |
+| R-040 | LATER | JOLT startup dependency reinstall | Repeated ~170 npm packages installed on each start, 22–55 s observed; preserve clean-install tests |
