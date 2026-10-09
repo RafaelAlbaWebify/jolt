@@ -43,8 +43,7 @@ def search_url(
 def detail_url(source_job_id: str) -> str:
     """Only offer identifiers, never arbitrary paths or URLs."""
     if not source_job_id or not all(
-        char.isascii() and (char.isalnum() or char in "-_")
-        for char in source_job_id
+        char.isascii() and (char.isalnum() or char in "-_") for char in source_job_id
     ):
         raise ValueError("invalid InfoJobs offer identifier")
     return f"{DETAIL_ENDPOINT}/{source_job_id}"
