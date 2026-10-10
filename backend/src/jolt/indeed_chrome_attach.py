@@ -222,7 +222,7 @@ def run_capture(
                         for (const node of document.querySelectorAll('[data-jk]')) {
                             const id = node.getAttribute('data-jk');
                             if (!id || results[id]) continue;
-                            const card = node.closest('.job_seen_beacon, .resultContent, .jobsearch-SerpJobCard, .slider_container, li') || node;
+                            const card = node.closest('.slider_item, .job_seen_beacon, .jobsearch-SerpJobCard, li') || node;
                             const text = (card.innerText || '').replace(/\\s+/g, ' ').trim();
                             const sponsoredLabel = text.match(/\\b(sponsored|patrocinad[oa]s?|promocionad[oa]s?)\\b/i);
                             const age = text.match(/(?:hace\\s+)?(?:\\d+\\s*(?:d[ií]as?|hours?|horas?|minutes?|minutos?)|hoy|justo ahora|today|just posted)/i);
@@ -230,7 +230,7 @@ def run_capture(
                                 sponsored_label_detected: Boolean(sponsoredLabel),
                                 sponsored_label: sponsoredLabel ? sponsoredLabel[0] : null,
                                 displayed_age: age ? age[0] : null,
-                                detection_scope: 'visible_card_text',
+                                detection_scope: 'listing_container_text_heuristic',
                             };
                         }
                         return results;
