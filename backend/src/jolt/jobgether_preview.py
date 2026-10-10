@@ -39,13 +39,18 @@ def quality_flags(title: str, posted_at: str | None) -> list[str]:
 def jobgether_identity(url: str) -> str | None:
     """A validated Jobgether offer ID, never inferred from the job title."""
     parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname not in {"jobgether.com", "www.jobgether.com"}:
+    if parsed.scheme != "https" or parsed.hostname not in {
+        "jobgether.com",
+        "www.jobgether.com",
+    }:
         return None
     parts = parsed.path.strip("/").split("/")
     if len(parts) != 2 or parts[0] != "offer":
         return None
     candidate = parts[1].split("-", 1)[0]
-    if len(candidate) != 24 or not all(character in "0123456789abcdef" for character in candidate):
+    if len(candidate) != 24 or not all(
+        character in "0123456789abcdef" for character in candidate
+    ):
         return None
     return candidate
 
@@ -76,7 +81,13 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
         rows.append(
             {
                 "source_job_id": source_job_id,
-                "identity_status": "missing_source_id" if not source_job_id else "repeated_in_response" if repeated else "observed_unverified",
+                "identity_status": (
+                    "missing_source_id"
+                    if not source_job_id
+                    else "repeated_in_response"
+                    if repeated
+                    else "observed_unverified"
+                ),
                 "title": job.get("title"),
                 "company": job.get("company"),
                 "url": job.get("url"),
