@@ -15,7 +15,16 @@ def test_preview_rejects_unbounded_results() -> None:
 
 
 def test_preview_reads_official_json_without_writing() -> None:
-    payload = {"jobs": [{"title": "IT Support", "company": "Example", "url": "https://jobgether.com/job/example", "postedAt": "2026-10-10"}]}
+    payload = {
+        "jobs": [
+            {
+                "title": "IT Support",
+                "company": "Example",
+                "url": "https://jobgether.com/job/example",
+                "postedAt": "2026-10-10",
+            }
+        ]
+    }
     response = io.BytesIO(json.dumps(payload).encode())
     with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response) as urlopen:
         result = preview_jobs(keyword="IT support", limit=3)
