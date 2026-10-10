@@ -171,6 +171,7 @@ def run_capture(
     pause_before_capture: bool,
     search_url: str | None = None,
 ) -> Path:
+    capture_started = perf_counter()
     staging_dir = Path(tempfile.mkdtemp(prefix="jolt_indeed_cdp_"))
     evidence_dir = staging_dir / "evidence"
     evidence_dir.mkdir(parents=True)
@@ -223,6 +224,9 @@ def run_capture(
             result_position = 0
             exhausted = False
             verified_known_skip_count = 0
+            unique_known_ids: set[str] = set()
+            previous_ids: set[str] | None = None
+            identical_streak = 0
 
             for page_number in range(1, max_pages + 1):
                 if len(cards) >= max_jobs:
@@ -275,6 +279,7 @@ def run_capture(
 
                 verified_known = _verified_known_job_ids(visible_ids)
                 verified_known_skip_count += len(verified_known)
+                unique_known_ids.update(verified_known)
                 pages[-1]["skipped_verified_known_ids"] = sorted(verified_known)
                 new_candidates = [
                     candidate
@@ -289,6 +294,16 @@ def run_capture(
                         f"{len(verified_known)} verified known."
                     )
 
+                current_ids = set(visible_ids)
+                repeated = bool(current_ids) and current_ids == previous_ids
+                identical_streak = identical_streak + 1 if repeated else 0
+                previous_ids = current_ids
+                pages[-1]["identical_to_previous_page"] = repeated
+                pages[-1]["unseen_candidate_count"] = len(new_candidates)
+                if identical_streak >= 2 and not new_candidates:
+                    exhausted = True
+                    print("Stopping after three identical pages without unseen offers.")
+                    break
                 if not new_candidates:
                     print(f"Page {page_number}: no unseen jobs, continuing pagination.")
                     continue
@@ -456,6 +471,8 @@ def run_capture(
                 "max_pages": max_pages,
                 "pages_visited": len(pages),
                 "verified_known_skips": verified_known_skip_count,
+                "unique_verified_known_ids": len(unique_known_ids),
+                "elapsed_seconds": round(perf_counter() - capture_started, 3),
                 "captured_count": len(cards),
                 "verified_count": sum(card.identity_verified for card in cards),
                 "stop_reason": stop_reason,
