@@ -149,9 +149,10 @@ def _verified_known_job_ids(source_ids: list[str]) -> set[str]:
         with sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=3) as con:
             placeholders = ",".join("?" for _ in source_ids)
             rows = con.execute(
-                "SELECT DISTINCT source_job_id FROM capture_items "
-                "WHERE detail_status = 'verified' "
-                "AND source_document_id IS NOT NULL "
+                "SELECT DISTINCT item.source_job_id FROM capture_items AS item "
+                "JOIN capture_runs AS run ON run.id = item.capture_run_id "
+                "WHERE run.source = 'indeed' AND item.detail_status = 'verified' "
+                "AND item.source_document_id IS NOT NULL "
                 f"AND source_job_id IN ({placeholders})",
                 source_ids,
             ).fetchall()
