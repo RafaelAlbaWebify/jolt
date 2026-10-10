@@ -144,6 +144,7 @@ def run_capture(
     max_jobs: int,
     max_pages: int,
     pause_before_capture: bool,
+    search_url: str | None = None,
 ) -> Path:
     staging_dir = Path(tempfile.mkdtemp(prefix="jolt_indeed_cdp_"))
     evidence_dir = staging_dir / "evidence"
@@ -153,6 +154,25 @@ def run_capture(
         with sync_playwright() as playwright:
             browser = playwright.chromium.connect_over_cdp(cdp_endpoint, timeout=30_000)
             context, attached_page = _select_indeed_page(browser)
+
+            if search_url:
+                requested = urlparse(search_url)
+                if (
+                    requested.scheme != "https"
+                    or requested.hostname not in {"es.indeed.com", "www.indeed.com", "indeed.com"}
+                    or requested.path != "/jobs"
+                ):
+                    raise ValueError("Expected HTTPS Indeed /jobs search URL")
+                attached_page = _navigate_search_page(context, attached_page, search_url)
+                # Do not attach to an old tab or a stale visible result set.
+                actual = urlparse(attached_page.url)
+                expected_query = dict(parse_qsl(requested.query, keep_blank_values=True))
+                actual_query = dict(parse_qsl(actual.query, keep_blank_values=True))
+                for key in ("q", "l", "fromage", "sort", "radius"):
+                    if key in expected_query and actual_query.get(key) != expected_query[key]:
+                        raise RuntimeError(
+                            f"Indeed search navigation mismatch: {key} differs from requested URL"
+                        )
 
             with contextlib.suppress(Exception):
                 attached_page.screenshot(
@@ -443,6 +463,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--cdp-endpoint", default="http://127.0.0.1:9222")
     parser.add_argument("--api-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--search-url", default="")
     parser.add_argument("--output-zip", type=Path, required=True)
     parser.add_argument("--max-jobs", type=int, default=15)
     parser.add_argument("--max-pages", type=int, default=1)
@@ -464,6 +485,7 @@ def main() -> int:
         max_jobs=args.max_jobs,
         max_pages=args.max_pages,
         pause_before_capture=not args.no_pause,
+        search_url=args.search_url or None,
     )
     print(f"Indeed Chrome-attached capture package created: {output}")
     return 0

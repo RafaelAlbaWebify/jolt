@@ -10,6 +10,7 @@ def test_parse_args_defaults_to_bounded_capture(tmp_path) -> None:
 
     assert args.cdp_endpoint == "http://127.0.0.1:9222"
     assert args.api_url == "http://127.0.0.1:8000"
+    assert args.search_url == ""
     assert args.max_jobs == 15
     assert args.max_pages == 1
     assert args.no_pause is False
@@ -125,3 +126,9 @@ def test_page_search_url_replaces_stale_start_and_job_identity() -> None:
     assert _page_search_url(current, 2) == (
         "https://es.indeed.com/jobs?q=application+support&start=10"
     )
+
+
+def test_parse_args_accepts_explicit_search_url(tmp_path) -> None:
+    url = "https://es.indeed.com/jobs?q=soporte&l=Vigo"
+    args = parse_args(["--output-zip", str(tmp_path / "capture.zip"), "--search-url", url])
+    assert args.search_url == url

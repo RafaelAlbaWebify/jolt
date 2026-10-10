@@ -99,6 +99,7 @@ try {
     uv run --no-sync python -u -m jolt.indeed_chrome_attach `
         --cdp-endpoint $CdpEndpoint `
         --api-url $ApiUrl `
+        --search-url $SearchUrl `
         --output-zip $OutputZip `
         --max-jobs $MaxJobs `
         --max-pages $MaxPages
