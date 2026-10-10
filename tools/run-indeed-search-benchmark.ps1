@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [ValidateRange(1, 100)][int]$MaxJobs = 10,
-    [ValidateRange(1, 10)][int]$MaxPages = 2,
+    [ValidateRange(1, 100)][int]$MaxJobs = 30,
+    [ValidateRange(1, 10)][int]$MaxPages = 5,
     [string]$OutputDirectory = "",
     [switch]$ContinueOnError
 )
