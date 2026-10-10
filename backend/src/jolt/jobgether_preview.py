@@ -72,13 +72,23 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
     for job in payload["jobs"][:limit]:
         if not isinstance(job, dict):
             continue
-        source_job_id = jobgether_identity(str(job.get("url") or ""))
+        api_id = job.get("id")
+        url_id = jobgether_identity(str(job.get("url") or ""))
+        source_job_id = (
+            api_id
+            if isinstance(api_id, str)
+            and len(api_id) == 24
+            and all(character in "0123456789abcdef" for character in api_id)
+            else url_id
+        )
+        identity_mismatch = bool(api_id and url_id and api_id != url_id)
         repeated = source_job_id in seen_ids if source_job_id else False
         if source_job_id:
             seen_ids.add(source_job_id)
         rows.append(
             {
                 "source_job_id": source_job_id,
+                "identity_mismatch": identity_mismatch,
                 "identity_status": (
                     "missing_source_id"
                     if not source_job_id
