@@ -26,6 +26,8 @@ def analyze(directory: Path) -> dict[str, object]:
             "known_postings": 0,
             "mean_seconds": None,
             "pages_visited": 0,
+            "elapsed_seconds": None,
+            "unique_verified_known_ids": 0,
             "sponsored_label_detected": 0,
             "displayed_age_detected": 0,
         }
@@ -39,6 +41,11 @@ def analyze(directory: Path) -> dict[str, object]:
             item["captured"] = len(cards)
             item["verified"] = capture.get("verified_count", 0)
             item["pages_visited"] = capture.get("pages_visited", 0)
+            item["elapsed_seconds"] = capture.get("elapsed_seconds")
+            item["unique_verified_known_ids"] = capture.get("unique_verified_known_ids", 0)
+            item["identical_page_count"] = sum(
+                bool(page.get("identical_to_previous_page")) for page in capture.get("pages", [])
+            )
             observed = {}
             for page in capture.get("pages", []):
                 observed.update(page.get("listing_signals", {}))
