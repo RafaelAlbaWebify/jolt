@@ -16,6 +16,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Ruff lint failed." }
     uv run --no-sync ruff format --check .
     if ($LASTEXITCODE -ne 0) { throw "Ruff formatting failed." }
+    uv run --no-sync pyright
+    if ($LASTEXITCODE -ne 0) { throw "Pyright type check failed." }
     if ($FullTests) {
         uv run --no-sync pytest -q
         if ($LASTEXITCODE -ne 0) { throw "Backend tests failed." }
