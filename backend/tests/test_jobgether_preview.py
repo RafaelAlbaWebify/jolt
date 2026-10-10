@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from jolt.jobgether_preview import preview_jobs
+from jolt.jobgether_preview import preview_jobs, quality_flags
 
 
 def test_preview_rejects_unbounded_results() -> None:
@@ -39,3 +39,10 @@ def test_preview_fails_closed_on_schema_change() -> None:
         pytest.raises(ValueError, match="schema"),
     ):
         preview_jobs(keyword="support")
+
+
+def test_quality_flags_preserve_unverified_records() -> None:
+    assert "internship_title" in quality_flags("IT Support Intern", "2026-10-08T00:00:00Z")
+    assert "possible_inactive_title" in quality_flags("IT Support (hold)", None)
+    assert "missing_posted_at" in quality_flags("IT Support", None)
+    assert "unparseable_posted_at" in quality_flags("IT Support", "not-a-date")
