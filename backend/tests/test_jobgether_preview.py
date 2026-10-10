@@ -26,7 +26,7 @@ def test_preview_reads_official_json_without_writing() -> None:
 
 def test_preview_fails_closed_on_schema_change() -> None:
     with (
-        patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=io.BytesIO(b'{}')),
+        patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=io.BytesIO(b"{}")),
         pytest.raises(ValueError, match="schema"),
     ):
         preview_jobs(keyword="support")
