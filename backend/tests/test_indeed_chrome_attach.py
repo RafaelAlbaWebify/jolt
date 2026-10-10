@@ -130,7 +130,5 @@ def test_page_search_url_replaces_stale_start_and_job_identity() -> None:
 
 def test_parse_args_accepts_explicit_search_url(tmp_path) -> None:
     url = "https://es.indeed.com/jobs?q=soporte&l=Vigo"
-    args = parse_args(
-        ["--output-zip", str(tmp_path / "capture.zip"), "--search-url", url]
-    )
+    args = parse_args(["--output-zip", str(tmp_path / "capture.zip"), "--search-url", url])
     assert args.search_url == url
