@@ -222,6 +222,7 @@ def run_capture(
             seen_job_ids: set[str] = set()
             result_position = 0
             exhausted = False
+            verified_known_skip_count = 0
 
             for page_number in range(1, max_pages + 1):
                 if len(cards) >= max_jobs:
@@ -273,6 +274,7 @@ def run_capture(
                 )
 
                 verified_known = _verified_known_job_ids(visible_ids)
+                verified_known_skip_count += len(verified_known)
                 pages[-1]["skipped_verified_known_ids"] = sorted(verified_known)
                 new_candidates = [
                     candidate
@@ -453,11 +455,7 @@ def run_capture(
                 "max_jobs": max_jobs,
                 "max_pages": max_pages,
                 "pages_visited": len(pages),
-                "verified_known_skips": sum(
-                    len(entry["skipped_verified_known_ids"])
-                    for entry in pages
-                    if isinstance(entry.get("skipped_verified_known_ids"), list)
-                ),
+                "verified_known_skips": verified_known_skip_count,
                 "captured_count": len(cards),
                 "verified_count": sum(card.identity_verified for card in cards),
                 "stop_reason": stop_reason,
