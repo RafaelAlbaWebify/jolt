@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
-from jolt.indeed_chrome_attach import _navigate_search_page, _page_search_url, parse_args
+from jolt.indeed_chrome_attach import (
+    _navigate_search_page,
+    _page_search_url,
+    _verified_known_job_ids,
+    parse_args,
+)
 
 
 def test_parse_args_defaults_to_bounded_capture(tmp_path) -> None:
@@ -132,3 +139,35 @@ def test_parse_args_accepts_explicit_search_url(tmp_path) -> None:
     url = "https://es.indeed.com/jobs?q=soporte&l=Vigo"
     args = parse_args(["--output-zip", str(tmp_path / "capture.zip"), "--search-url", url])
     assert args.search_url == url
+
+
+def test_verified_known_ids_skips_when_no_database(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("JOLT_DATABASE_URL", "sqlite:///external.db")
+    assert _verified_known_job_ids(["abc"]) == set()
+
+
+def test_verified_known_ids_ignores_empty_input() -> None:
+    assert _verified_known_job_ids([]) == set()
+
+
+def test_verified_known_ids_only_returns_verified_indeed(tmp_path, monkeypatch) -> None:
+    import jolt.indeed_chrome_attach as module
+
+    fake_module = tmp_path / "backend" / "src" / "jolt" / "indeed_chrome_attach.py"
+    fake_module.parent.mkdir(parents=True)
+    db = tmp_path / "backend" / "data" / "jolt.db"
+    db.parent.mkdir(parents=True)
+    monkeypatch.delenv("JOLT_DATABASE_URL", raising=False)
+    monkeypatch.setattr(module, "__file__", str(fake_module))
+    with sqlite3.connect(db) as con:
+        con.executescript(
+            "CREATE TABLE capture_runs(id TEXT, source TEXT);"
+            "CREATE TABLE capture_items("
+            "source_job_id TEXT, capture_run_id TEXT, detail_status TEXT,"
+            "source_document_id TEXT);"
+            "INSERT INTO capture_runs VALUES ('a', 'indeed'), ('b', 'linkedin');"
+            "INSERT INTO capture_items VALUES ('known', 'a', 'verified', 'doc');"
+            "INSERT INTO capture_items VALUES ('unverified', 'a', 'rejected', NULL);"
+            "INSERT INTO capture_items VALUES ('other', 'b', 'verified', 'doc');"
+        )
+    assert _verified_known_job_ids(["known", "unverified", "other"]) == {"known"}
