@@ -55,3 +55,38 @@ def test_jobgether_offer_identity_requires_canonical_host_and_offer_path() -> No
     assert jobgether_identity(f"https://untrusted.example/offer/{key}-role-name") is None
     assert jobgether_identity("https://jobgether.com/jobs?keyword=support") is None
     assert jobgether_identity("https://jobgether.com/offer/not-valid") is None
+
+
+def test_preview_prefers_documented_api_id() -> None:
+    key = "6ac85207480485773199660a"
+    payload = {
+        "jobs": [
+            {
+                "id": key,
+                "url": "https://jobgether.com/offer/new-url-format",
+                "title": "IT Support",
+            }
+        ]
+    }
+    response = io.BytesIO(json.dumps(payload).encode())
+    with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response):
+        result = preview_jobs(keyword="support")
+    assert result["jobs"][0]["source_job_id"] == key
+    assert result["jobs"][0]["identity_status"] == "observed_unverified"
+
+
+def test_preview_fails_closed_on_id_mismatch() -> None:
+    payload = {
+        "jobs": [
+            {
+                "id": "6ac85207480485773199660a",
+                "url": "https://jobgether.com/offer/6ac700878a27695aea3b995e-other",
+                "title": "IT Support",
+            }
+        ]
+    }
+    response = io.BytesIO(json.dumps(payload).encode())
+    with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response):
+        result = preview_jobs(keyword="support")
+    assert result["jobs"][0]["source_job_id"] is None
+    assert result["jobs"][0]["identity_mismatch"] is True
