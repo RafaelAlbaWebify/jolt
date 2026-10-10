@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import os
+import sqlite3
 import shutil
 import sys
 import tempfile
@@ -136,6 +138,28 @@ def _wait_for_visible_results(
     )
 
 
+def _verified_known_job_ids(source_ids: list[str]) -> set[str]:
+    """Read verified local identities; on uncertainty, never skip."""
+    if not source_ids or os.getenv("JOLT_DATABASE_URL"):
+        return set()
+    db = Path(__file__).resolve().parents[2] / "data" / "jolt.db"
+    if not db.is_file():
+        return set()
+    try:
+        with sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=3) as con:
+            placeholders = ",".join("?" for _ in source_ids)
+            rows = con.execute(
+                "SELECT DISTINCT source_job_id FROM capture_items "
+                "WHERE detail_status = 'verified' "
+                "AND source_document_id IS NOT NULL "
+                f"AND source_job_id IN ({placeholders})",
+                source_ids,
+            ).fetchall()
+        return {str(row[0]) for row in rows}
+    except (sqlite3.Error, OSError):
+        return set()
+
+
 def run_capture(
     *,
     cdp_endpoint: str,
@@ -247,24 +271,24 @@ def run_capture(
                     }
                 )
 
+                verified_known = _verified_known_job_ids(visible_ids)
+                pages[-1]["skipped_verified_known_ids"] = sorted(verified_known)
                 new_candidates = [
                     candidate
                     for candidate in candidates
                     if candidate["source_job_id"] not in seen_job_ids
+                    and candidate["source_job_id"] not in verified_known
                 ]
                 if pause_before_capture:
                     print(
                         f"Page {page_number}: {len(candidates)} visible, "
-                        f"{len(new_candidates)} new after jk deduplication."
+                        f"{len(new_candidates)} unseen after deduplication; "
+                        f"{len(verified_known)} verified known."
                     )
 
                 if not new_candidates:
-                    exhausted = True
-                    print(
-                        f"Progress: page {page_number}/{max_pages} · "
-                        f"captured {len(cards)}/{max_jobs}"
-                    )
-                    break
+                    print(f"Page {page_number}: no unseen jobs, continuing pagination.")
+                    continue
 
                 for card_index, candidate in enumerate(new_candidates):
                     if len(cards) >= max_jobs:
@@ -428,6 +452,9 @@ def run_capture(
                 "max_jobs": max_jobs,
                 "max_pages": max_pages,
                 "pages_visited": len(pages),
+                "verified_known_skips": sum(
+                    len(entry.get("skipped_verified_known_ids", [])) for entry in pages
+                ),
                 "captured_count": len(cards),
                 "verified_count": sum(card.identity_verified for card in cards),
                 "stop_reason": stop_reason,
