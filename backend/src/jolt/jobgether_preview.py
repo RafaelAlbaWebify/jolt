@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
 
 
 def quality_flags(title: str, posted_at: str | None) -> list[str]:
