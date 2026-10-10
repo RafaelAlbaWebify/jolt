@@ -11,6 +11,7 @@ import json
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 
 def quality_flags(title: str, posted_at: str | None) -> list[str]:
@@ -35,6 +36,23 @@ def quality_flags(title: str, posted_at: str | None) -> list[str]:
     return flags
 
 
+def jobgether_identity(url: str) -> str | None:
+    """A validated Jobgether offer ID, never inferred from the job title."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in {
+        "jobgether.com",
+        "www.jobgether.com",
+    }:
+        return None
+    parts = parsed.path.strip("/").split("/")
+    if len(parts) != 2 or parts[0] != "offer":
+        return None
+    candidate = parts[1].split("-", 1)[0]
+    if len(candidate) != 24 or not all(character in "0123456789abcdef" for character in candidate):
+        return None
+    return candidate
+
+
 def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> dict:
     if not 1 <= limit <= 25:
         raise ValueError("limit must be 1..25")
@@ -50,11 +68,36 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
     if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
         raise ValueError("Unexpected Jobgether API response schema")
     rows = []
+    seen_ids: set[str] = set()
     for job in payload["jobs"][:limit]:
         if not isinstance(job, dict):
             continue
+        api_id = job.get("id")
+        url_id = jobgether_identity(str(job.get("url") or ""))
+        source_job_id = (
+            api_id
+            if isinstance(api_id, str)
+            and len(api_id) == 24
+            and all(character in "0123456789abcdef" for character in api_id)
+            else url_id
+        )
+        identity_mismatch = bool(api_id and url_id and api_id != url_id)
+        if identity_mismatch:
+            source_job_id = None
+        repeated = source_job_id in seen_ids if source_job_id else False
+        if source_job_id:
+            seen_ids.add(source_job_id)
         rows.append(
             {
+                "source_job_id": source_job_id,
+                "identity_mismatch": identity_mismatch,
+                "identity_status": (
+                    "missing_source_id"
+                    if not source_job_id
+                    else "repeated_in_response"
+                    if repeated
+                    else "observed_unverified"
+                ),
                 "title": job.get("title"),
                 "company": job.get("company"),
                 "url": job.get("url"),

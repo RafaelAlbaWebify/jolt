@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from jolt.jobgether_preview import preview_jobs, quality_flags
+from jolt.jobgether_preview import jobgether_identity, preview_jobs, quality_flags
 
 
 def test_preview_rejects_unbounded_results() -> None:
@@ -46,3 +46,47 @@ def test_quality_flags_preserve_unverified_records() -> None:
     assert "possible_inactive_title" in quality_flags("IT Support (hold)", None)
     assert "missing_posted_at" in quality_flags("IT Support", None)
     assert "unparseable_posted_at" in quality_flags("IT Support", "not-a-date")
+
+
+def test_jobgether_offer_identity_requires_canonical_host_and_offer_path() -> None:
+    key = "6ac85207480485773199660a"
+    assert jobgether_identity(f"https://jobgether.com/offer/{key}-role-name") == key
+    assert jobgether_identity(f"https://www.jobgether.com/offer/{key}-role-name") == key
+    assert jobgether_identity(f"https://untrusted.example/offer/{key}-role-name") is None
+    assert jobgether_identity("https://jobgether.com/jobs?keyword=support") is None
+    assert jobgether_identity("https://jobgether.com/offer/not-valid") is None
+
+
+def test_preview_prefers_documented_api_id() -> None:
+    key = "6ac85207480485773199660a"
+    payload = {
+        "jobs": [
+            {
+                "id": key,
+                "url": "https://jobgether.com/offer/new-url-format",
+                "title": "IT Support",
+            }
+        ]
+    }
+    response = io.BytesIO(json.dumps(payload).encode())
+    with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response):
+        result = preview_jobs(keyword="support")
+    assert result["jobs"][0]["source_job_id"] == key
+    assert result["jobs"][0]["identity_status"] == "observed_unverified"
+
+
+def test_preview_fails_closed_on_id_mismatch() -> None:
+    payload = {
+        "jobs": [
+            {
+                "id": "6ac85207480485773199660a",
+                "url": "https://jobgether.com/offer/6ac700878a27695aea3b995e-other",
+                "title": "IT Support",
+            }
+        ]
+    }
+    response = io.BytesIO(json.dumps(payload).encode())
+    with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response):
+        result = preview_jobs(keyword="support")
+    assert result["jobs"][0]["source_job_id"] is None
+    assert result["jobs"][0]["identity_mismatch"] is True
