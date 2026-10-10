@@ -4,8 +4,8 @@ import argparse
 import contextlib
 import json
 import os
-import sqlite3
 import shutil
+import sqlite3
 import sys
 import tempfile
 from dataclasses import asdict
