@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from jolt.jobgether_preview import preview_jobs, quality_flags
+from jolt.jobgether_preview import jobgether_identity, preview_jobs, quality_flags
 
 
 def test_preview_rejects_unbounded_results() -> None:
@@ -46,3 +46,12 @@ def test_quality_flags_preserve_unverified_records() -> None:
     assert "possible_inactive_title" in quality_flags("IT Support (hold)", None)
     assert "missing_posted_at" in quality_flags("IT Support", None)
     assert "unparseable_posted_at" in quality_flags("IT Support", "not-a-date")
+
+
+def test_jobgether_offer_identity_requires_canonical_host_and_offer_path() -> None:
+    key = "6ac85207480485773199660a"
+    assert jobgether_identity(f"https://jobgether.com/offer/{key}-role-name") == key
+    assert jobgether_identity(f"https://www.jobgether.com/offer/{key}-role-name") == key
+    assert jobgether_identity(f"https://untrusted.example/offer/{key}-role-name") is None
+    assert jobgether_identity("https://jobgether.com/jobs?keyword=support") is None
+    assert jobgether_identity("https://jobgether.com/offer/not-valid") is None
