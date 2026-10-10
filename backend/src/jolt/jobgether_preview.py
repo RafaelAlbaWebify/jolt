@@ -82,6 +82,8 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
             else url_id
         )
         identity_mismatch = bool(api_id and url_id and api_id != url_id)
+        if identity_mismatch:
+            source_job_id = None
         repeated = source_job_id in seen_ids if source_job_id else False
         if source_job_id:
             seen_ids.add(source_job_id)
