@@ -25,7 +25,9 @@ def quality_flags(title: str, posted_at: str | None) -> list[str]:
         flags.append("missing_posted_at")
     else:
         try:
-            age = (datetime.now(UTC) - datetime.fromisoformat(posted_at.replace("Z", "+00:00"))).days
+            age = (
+                datetime.now(UTC) - datetime.fromisoformat(posted_at.replace("Z", "+00:00"))
+            ).days
             if age > 30:
                 flags.append("older_than_30_days")
         except (TypeError, ValueError):
@@ -58,9 +60,7 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
                 "url": job.get("url"),
                 "posted_at": job.get("postedAt"),
                 "location": job.get("location"),
-                "quality_flags": quality_flags(
-                    str(job.get("title") or ""), job.get("postedAt")
-                ),
+                "quality_flags": quality_flags(str(job.get("title") or ""), job.get("postedAt")),
             }
         )
     return {"source": "jobgether", "count": len(rows), "jobs": rows}
