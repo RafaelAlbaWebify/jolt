@@ -38,11 +38,13 @@ $Searches = [ordered]@{
     "support-local" = @{
         Keywords = '"soporte informático" OR "técnico de sistemas" OR "help desk"'
         Location = "Vigo, Pontevedra"
+        RadiusKm = 25
         Description = "Local support, all workplace modes"
     }
     "systems-local" = @{
         Keywords = '"administrador de sistemas" OR "system administrator" OR "técnico de sistemas"'
         Location = "Vigo, Pontevedra"
+        RadiusKm = 25
         Description = "Local administration, all workplace modes"
     }
 }
@@ -63,6 +65,9 @@ $Definition = $Searches[$Search]
 $Query = [System.Uri]::EscapeDataString($Definition.Keywords)
 $Location = [System.Uri]::EscapeDataString($Definition.Location)
 $SearchUrl = "https://es.indeed.com/jobs?q=$Query&l=$Location&fromage=7&sort=date"
+if ($Definition.ContainsKey("RadiusKm")) {
+    $SearchUrl += "&radius=$($Definition.RadiusKm)"
+}
 
 $Runner = Join-Path $PSScriptRoot "run-indeed-chrome-capture.ps1"
 if (-not (Test-Path -LiteralPath $Runner)) {
