@@ -48,9 +48,7 @@ def jobgether_identity(url: str) -> str | None:
     if len(parts) != 2 or parts[0] != "offer":
         return None
     candidate = parts[1].split("-", 1)[0]
-    if len(candidate) != 24 or not all(
-        character in "0123456789abcdef" for character in candidate
-    ):
+    if len(candidate) != 24 or not all(character in "0123456789abcdef" for character in candidate):
         return None
     return candidate
 
