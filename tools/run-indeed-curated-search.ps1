@@ -16,32 +16,32 @@ Set-StrictMode -Version Latest
 # A keyword match or "remote" search is not proof of Spain hiring eligibility.
 $Searches = [ordered]@{
     "app-remote" = @{
-        Keywords = ""application support" OR "production support" OR "soporte de aplicaciones""
+        Keywords = '"application support" OR "production support" OR "soporte de aplicaciones"'
         Location = "España"
         Description = "Application support, Spain-wide remote discovery"
     }
     "technical-remote" = @{
-        Keywords = ""technical support engineer" OR "IT support engineer" OR "service desk""
+        Keywords = '"technical support engineer" OR "IT support engineer" OR "service desk"'
         Location = "España"
         Description = "Technical support, Spain-wide remote discovery"
     }
     "operations-remote" = @{
-        Keywords = ""IT operations" OR "infrastructure operations" OR "IT operations analyst""
+        Keywords = '"IT operations" OR "infrastructure operations" OR "IT operations analyst"'
         Location = "España"
         Description = "IT operations, Spain-wide remote discovery"
     }
     "systems-remote" = @{
-        Keywords = ""Windows Server" OR "Microsoft Intune" OR "Microsoft 365 administrator""
+        Keywords = '"Windows Server" OR "Microsoft Intune" OR "Microsoft 365 administrator"'
         Location = "España"
         Description = "Windows administration, Spain-wide remote discovery"
     }
     "support-local" = @{
-        Keywords = ""soporte informático" OR "técnico de sistemas" OR "help desk""
+        Keywords = '"soporte informático" OR "técnico de sistemas" OR "help desk"'
         Location = "Vigo, Pontevedra"
         Description = "Local support, all workplace modes"
     }
     "systems-local" = @{
-        Keywords = ""administrador de sistemas" OR "system administrator" OR "técnico de sistemas""
+        Keywords = '"administrador de sistemas" OR "system administrator" OR "técnico de sistemas"'
         Location = "Vigo, Pontevedra"
         Description = "Local administration, all workplace modes"
     }
