@@ -60,6 +60,16 @@ Before ending a development session, update canonical state where applicable:
 
 Record what changed, what was verified, what remains, current commit, active PR(s), and next recommended action.
 
+## Pre-PR quality gate
+Before opening or updating a Python-affecting PR, run `tools/preflight-jolt.ps1`
+against the relevant local checkout (Ruff lint and formatting), plus applicable
+unit/integration tests. For larger edits use `-FullTests`. When making
+connector-only changes without local execution capability, explicitly record
+preflight as **not run**, inspect formatting and imports conservatively, and
+do not treat green historical CI as validation. Fix red checks before merge;
+always check the exact PR head. Avoid repeated commits while CI is running
+unless addressing a confirmed issue.
+
 ## PR/merge discipline
 Required gates for behavior changes:
 1. CI
