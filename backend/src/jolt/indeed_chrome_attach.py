@@ -214,10 +214,37 @@ def run_capture(
                     diagnostic_label=f"page_{page_number:02d}_wait_timeout",
                 )
                 visible_ids = [candidate["source_job_id"] for candidate in candidates]
+                # Preserve exactly what the page exposes; no claim that
+                # sponsored listings or displayed age are always detectable.
+                listing_signals = page.evaluate(
+                    """() => {
+                        const results = {};
+                        for (const node of document.querySelectorAll('[data-jk]')) {
+                            const id = node.getAttribute('data-jk');
+                            if (!id || results[id]) continue;
+                            const card = node.closest('.job_seen_beacon, .resultContent, .jobsearch-SerpJobCard, .slider_container, li') || node;
+                            const text = (card.innerText || '').replace(/\\s+/g, ' ').trim();
+                            const sponsoredLabel = text.match(/\\b(sponsored|patrocinad[oa]s?|promocionad[oa]s?)\\b/i);
+                            const age = text.match(/(?:hace\\s+)?(?:\\d+\\s*(?:d[ií]as?|hours?|horas?|minutes?|minutos?)|hoy|justo ahora|today|just posted)/i);
+                            results[id] = {
+                                sponsored_label_detected: Boolean(sponsoredLabel),
+                                sponsored_label: sponsoredLabel ? sponsoredLabel[0] : null,
+                                displayed_age: age ? age[0] : null,
+                                detection_scope: 'visible_card_text',
+                            };
+                        }
+                        return results;
+                    }"""
+                )
                 pages.append(
                     {
                         "page_number": page_number,
                         "visible_job_ids": visible_ids,
+                        "listing_signals": {
+                            job_id: listing_signals.get(job_id, {})
+                            for job_id in visible_ids
+                        },
+                        "observed_search_url": page.url,
                     }
                 )
 
