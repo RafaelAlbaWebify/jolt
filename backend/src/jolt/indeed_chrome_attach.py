@@ -241,8 +241,7 @@ def run_capture(
                         "page_number": page_number,
                         "visible_job_ids": visible_ids,
                         "listing_signals": {
-                            job_id: listing_signals.get(job_id, {})
-                            for job_id in visible_ids
+                            job_id: listing_signals.get(job_id, {}) for job_id in visible_ids
                         },
                         "observed_search_url": page.url,
                     }
