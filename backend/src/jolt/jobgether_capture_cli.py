@@ -21,8 +21,6 @@ def run(*, keyword: str, location: str, limit: int, commit: bool) -> dict:
             "committed": False,
             "message": "Read-only preview. Use --commit to stage observations.",
         }
-    from urllib.parse import urlencode
-
     url = "https://jobgether.com/api/v1/jobs?" + urlencode(
         {"keyword": keyword, "locations": location, "limit": limit, "page": 1}
     )
