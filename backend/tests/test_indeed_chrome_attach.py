@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from jolt.indeed_chrome_attach import _navigate_search_page, _page_search_url, parse_args
+from jolt.indeed_chrome_attach import (
+    _navigate_search_page,
+    _page_search_url,
+    _verified_known_job_ids,
+    parse_args,
+)
 
 
 def test_parse_args_defaults_to_bounded_capture(tmp_path) -> None:
@@ -132,3 +137,12 @@ def test_parse_args_accepts_explicit_search_url(tmp_path) -> None:
     url = "https://es.indeed.com/jobs?q=soporte&l=Vigo"
     args = parse_args(["--output-zip", str(tmp_path / "capture.zip"), "--search-url", url])
     assert args.search_url == url
+
+
+def test_verified_known_ids_skips_when_no_database(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("JOLT_DATABASE_URL", "sqlite:///external.db")
+    assert _verified_known_job_ids(["abc"]) == set()
+
+
+def test_verified_known_ids_ignores_empty_input() -> None:
+    assert _verified_known_job_ids([]) == set()
