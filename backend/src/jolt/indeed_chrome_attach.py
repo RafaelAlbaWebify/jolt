@@ -454,7 +454,9 @@ def run_capture(
                 "max_pages": max_pages,
                 "pages_visited": len(pages),
                 "verified_known_skips": sum(
-                    len(entry.get("skipped_verified_known_ids", [])) for entry in pages
+                    len(entry["skipped_verified_known_ids"])
+                    for entry in pages
+                    if isinstance(entry.get("skipped_verified_known_ids"), list)
                 ),
                 "captured_count": len(cards),
                 "verified_count": sum(card.identity_verified for card in cards),
