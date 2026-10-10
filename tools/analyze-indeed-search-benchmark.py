@@ -26,6 +26,8 @@ def analyze(directory: Path) -> dict[str, object]:
             "known_postings": 0,
             "mean_seconds": None,
             "pages_visited": 0,
+            "sponsored_label_detected": 0,
+            "displayed_age_detected": 0,
         }
         if run.get("archive"):
             with zipfile.ZipFile(directory / run["archive"]) as archive:
@@ -37,6 +39,18 @@ def analyze(directory: Path) -> dict[str, object]:
             item["captured"] = len(cards)
             item["verified"] = capture.get("verified_count", 0)
             item["pages_visited"] = capture.get("pages_visited", 0)
+            observed = {}
+            for page in capture.get("pages", []):
+                observed.update(page.get("listing_signals", {}))
+            item["sponsored_label_detected"] = sum(
+                bool(observed.get(job_id, {}).get("sponsored_label_detected"))
+                for job_id in unique
+            )
+            item["displayed_age_detected"] = sum(
+                bool(observed.get(job_id, {}).get("displayed_age"))
+                for job_id in unique
+            )
+
             item["first_seen_in_benchmark"] = len(unique - seen)
             item["already_seen_in_benchmark"] = len(unique & seen)
             item["stop_reason"] = capture.get("stop_reason")
