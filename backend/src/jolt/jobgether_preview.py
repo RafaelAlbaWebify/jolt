@@ -10,6 +10,29 @@ import argparse
 import json
 import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
+
+
+def quality_flags(title: str, posted_at: str | None) -> list[str]:
+    """Warnings only; never equate a title or age with a verified vacancy status."""
+    flags: list[str] = []
+    label = title.casefold()
+    if any(term in label for term in ("intern", "internship", "prácticas", "becario")):
+        flags.append("internship_title")
+    if any(term in label for term in ("(hold)", "on hold", "position filled")):
+        flags.append("possible_inactive_title")
+    if not posted_at:
+        flags.append("missing_posted_at")
+    else:
+        try:
+            age = (
+                datetime.now(UTC) - datetime.fromisoformat(posted_at.replace("Z", "+00:00"))
+            ).days
+            if age > 30:
+                flags.append("older_than_30_days")
+        except (TypeError, ValueError):
+            flags.append("unparseable_posted_at")
+    return flags
 
 
 def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> dict:
@@ -37,6 +60,7 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
                 "url": job.get("url"),
                 "posted_at": job.get("postedAt"),
                 "location": job.get("location"),
+                "quality_flags": quality_flags(str(job.get("title") or ""), job.get("postedAt")),
             }
         )
     return {"source": "jobgether", "count": len(rows), "jobs": rows}
