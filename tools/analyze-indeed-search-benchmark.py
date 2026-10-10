@@ -26,6 +26,7 @@ def analyze(directory: Path) -> dict[str, object]:
             "known_postings": 0,
             "mean_seconds": None,
             "pages_visited": 0,
+            "locations_for_manual_review": [],
             "elapsed_seconds": None,
             "unique_verified_known_ids": 0,
             "sponsored_label_detected": 0,
@@ -39,6 +40,11 @@ def analyze(directory: Path) -> dict[str, object]:
             ids = [str(card["source_job_id"]) for card in cards]
             unique = set(ids)
             item["captured"] = len(cards)
+            if run["search"] in {"support-local", "systems-local"}:
+                item["locations_for_manual_review"] = [
+                    {"job_id": card.get("source_job_id"), "location": card.get("location", "")}
+                    for card in cards
+                ]
             item["verified"] = capture.get("verified_count", 0)
             item["pages_visited"] = capture.get("pages_visited", 0)
             item["elapsed_seconds"] = capture.get("elapsed_seconds")
