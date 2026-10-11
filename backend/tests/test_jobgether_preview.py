@@ -31,6 +31,7 @@ def test_preview_reads_official_json_without_writing() -> None:
     assert result["count"] == 1
     assert result["jobs"][0]["title"] == "IT Support"
     assert "locations=spain" in urlopen.call_args.args[0].full_url
+    assert "sort=date" in urlopen.call_args.args[0].full_url
 
 
 def test_preview_fails_closed_on_schema_change() -> None:
