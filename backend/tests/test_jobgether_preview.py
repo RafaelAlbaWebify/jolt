@@ -91,3 +91,32 @@ def test_preview_fails_closed_on_id_mismatch() -> None:
         result = preview_jobs(keyword="support")
     assert result["jobs"][0]["source_job_id"] is None
     assert result["jobs"][0]["identity_mismatch"] is True
+
+
+def test_preview_preserves_official_eligibility_metadata() -> None:
+    payload = {
+        "jobs": [
+            {
+                "id": "6ac85207480485773199660a",
+                "title": "Support Engineer",
+                "url": (
+                    "https://jobgether.com/offer/"
+                    "6ac85207480485773199660a-support-engineer"
+                ),
+                "remote": "Full Remote",
+                "contractType": "Full time",
+                "experience": "Mid-level (2-5 years)",
+                "salaryRange": "35000-45000 EUR",
+                "jobFunctions": ["IT Support", "Technical Support"],
+            }
+        ]
+    }
+    response = io.BytesIO(json.dumps(payload).encode())
+    with patch("jolt.jobgether_preview.urllib.request.urlopen", return_value=response):
+        row = preview_jobs(keyword="support")["jobs"][0]
+    assert row["remote"] == "Full Remote"
+    assert row["contract_type"] == "Full time"
+    assert row["experience"] == "Mid-level (2-5 years)"
+    assert row["salary_range"] == "35000-45000 EUR"
+    assert row["job_functions"] == ["IT Support", "Technical Support"]
+    assert row["identity_status"] == "observed_unverified"
