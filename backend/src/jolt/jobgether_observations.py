@@ -43,6 +43,17 @@ def stage_jobgether_observations(
             .where(CaptureItem.source_job_id.in_(seen))
         ).all()
     )
+    novel = [job for job in observed if job["source_job_id"] not in existing]
+    if not novel:
+        return {
+            "capture_run_id": None,
+            "observed": len(jobs),
+            "reliable_ids": len(observed),
+            "staged_unverified": 0,
+            "already_known": len(observed),
+            "committed": False,
+            "stop_reason": "all_observations_already_known",
+        }
     run = CaptureRun(
         id=str(uuid4()),
         source="jobgether",
@@ -69,10 +80,8 @@ def stage_jobgether_observations(
         )
     )
     staged = 0
-    for job in observed:
+    for job in novel:
         identifier = job["source_job_id"]
-        if identifier in existing:
-            continue
         item = CaptureItem(
             id=str(uuid4()),
             capture_run_id=run.id,
