@@ -57,7 +57,7 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
     if not 1 <= limit <= 25:
         raise ValueError("limit must be 1..25")
     query = urllib.parse.urlencode(
-        {"keyword": keyword, "locations": location, "limit": limit, "page": 1}
+        {"keyword": keyword, "locations": location, "limit": limit, "page": 1, "sort": "date"}
     )
     url = f"https://jobgether.com/api/v1/jobs?{query}"
     request = urllib.request.Request(
