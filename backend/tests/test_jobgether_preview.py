@@ -99,10 +99,7 @@ def test_preview_preserves_official_eligibility_metadata() -> None:
             {
                 "id": "6ac85207480485773199660a",
                 "title": "Support Engineer",
-                "url": (
-                    "https://jobgether.com/offer/"
-                    "6ac85207480485773199660a-support-engineer"
-                ),
+                "url": ("https://jobgether.com/offer/6ac85207480485773199660a-support-engineer"),
                 "remote": "Full Remote",
                 "contractType": "Full time",
                 "experience": "Mid-level (2-5 years)",
