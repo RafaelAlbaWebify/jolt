@@ -1,4 +1,4 @@
-"""Validate manually supplied Jobgether detail evidence without posting promotion."""
+"""Check structural consistency of supplied Jobgether detail evidence."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def validate_jobgether_detail(
     *, observed_id: str, observed_url: str, detail_url: str, title: str,
     company: str, description: str,
 ) -> dict:
-    """Fail closed on source identity and missing essential job-detail evidence."""
+    """Structural checks only: caller-provided text is NOT verified source evidence."""
     reasons: list[str] = []
     reference_id = jobgether_identity(observed_url)
     detail_id = jobgether_identity(detail_url)
@@ -29,8 +29,9 @@ def validate_jobgether_detail(
         reasons.append("insufficient_description")
     return {
         "source_job_id": observed_id,
-        "identity_verified": not reasons,
-        "detail_evidence_sufficient": not reasons,
+        "identity_consistent": not reasons,
+        "description_structurally_sufficient": not reasons,
+        "source_evidence_verified": False,
         "work_from_spain_verified": False,
         "reasons": reasons,
     }
