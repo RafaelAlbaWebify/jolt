@@ -13,4 +13,7 @@ def test_runner_default_is_read_only() -> None:
     ):
         output = run(keyword="IT support", location="spain", limit=1, commit=False)
     assert output["committed"] is False
+    assert output["triage"]["count"] == 1
+    assert output["triage"]["ranked"][0]["priority"] == "review_later"
+    assert output["triage"]["ranked"][0]["work_from_spain_verified"] is False
     factory.assert_not_called()
