@@ -32,6 +32,8 @@ def test_observation_staging_never_promotes_posting(tmp_path) -> None:
             session, search_url="https://jobgether.com/api/v1/jobs", jobs=[record]
         )
         assert second["already_known"] == 1
+        assert second["capture_run_id"] is None
+        assert second["stop_reason"] == "all_observations_already_known"
         session.commit()
         assert session.scalar(select(func.count(Posting.id))) == 0
         assert session.scalar(select(func.count(CaptureItem.id))) == 1
