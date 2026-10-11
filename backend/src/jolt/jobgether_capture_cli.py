@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from urllib.parse import urlencode
 
 from jolt.database import create_session_factory
 from jolt.jobgether_observations import stage_jobgether_observations
