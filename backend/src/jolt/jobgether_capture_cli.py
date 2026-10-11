@@ -12,13 +12,16 @@ from urllib.parse import urlencode
 from jolt.database import create_session_factory
 from jolt.jobgether_observations import stage_jobgether_observations
 from jolt.jobgether_preview import preview_jobs
+from jolt.jobgether_triage import triage_jobgether_preview
 
 
 def run(*, keyword: str, location: str, limit: int, commit: bool) -> dict:
     preview = preview_jobs(keyword=keyword, location=location, limit=limit)
+    triage = triage_jobgether_preview(preview)
     if not commit:
         return {
             **preview,
+            "triage": triage,
             "committed": False,
             "message": "Read-only preview. Use --commit to stage observations.",
         }
@@ -33,7 +36,7 @@ def run(*, keyword: str, location: str, limit: int, commit: bool) -> dict:
         except Exception:
             session.rollback()
             raise
-    return {**result, "committed": True}
+    return {**result, "triage": triage, "committed": True}
 
 
 def main() -> int:
