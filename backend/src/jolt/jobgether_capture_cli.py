@@ -23,7 +23,7 @@ def run(*, keyword: str, location: str, limit: int, commit: bool) -> dict:
             "message": "Read-only preview. Use --commit to stage observations.",
         }
     url = "https://jobgether.com/api/v1/jobs?" + urlencode(
-        {"keyword": keyword, "locations": location, "limit": limit, "page": 1}
+        {"keyword": keyword, "locations": location, "limit": limit, "page": 1, "sort": "date"}
     )
     factory = create_session_factory()
     with factory() as session:
