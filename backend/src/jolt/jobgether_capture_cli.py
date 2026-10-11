@@ -28,9 +28,7 @@ def run(*, keyword: str, location: str, limit: int, commit: bool) -> dict:
     factory = create_session_factory()
     with factory() as session:
         try:
-            result = stage_jobgether_observations(
-                session, search_url=url, jobs=preview["jobs"]
-            )
+            result = stage_jobgether_observations(session, search_url=url, jobs=preview["jobs"])
             session.commit()
         except Exception:
             session.rollback()
