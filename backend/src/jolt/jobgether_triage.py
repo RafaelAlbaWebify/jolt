@@ -25,11 +25,9 @@ def triage_jobgether_observation(job: dict) -> dict:
         caution.append("unknown_publication_date")
 
     support_terms = ("support", "helpdesk", "help desk", "service desk", "technical")
-    signals = [
-        "support_title_match"
-        for _ in [0]
-        if any(term in title for term in support_terms)
-    ]
+    signals: list[str] = []
+    if any(term in title for term in support_terms):
+        signals.append("support_title_match")
     if "spain" in location or "españa" in location:
         signals.append("spain_listed")
     if "remote" in remote:
