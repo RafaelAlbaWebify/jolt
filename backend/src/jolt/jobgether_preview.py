@@ -102,6 +102,13 @@ def preview_jobs(*, keyword: str, location: str = "spain", limit: int = 10) -> d
                 "company": job.get("company"),
                 "url": job.get("url"),
                 "posted_at": job.get("postedAt"),
+                "remote": job.get("remote"),
+                "contract_type": job.get("contractType"),
+                "experience": job.get("experience"),
+                "salary_range": job.get("salaryRange"),
+                "job_functions": (
+                    job.get("jobFunctions") if isinstance(job.get("jobFunctions"), list) else []
+                ),
                 "location": job.get("location"),
                 "quality_flags": quality_flags(str(job.get("title") or ""), job.get("postedAt")),
             }
