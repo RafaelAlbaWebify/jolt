@@ -6,6 +6,8 @@ import argparse
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+
+from playwright.sync_api import Browser, Page, sync_playwright
 from urllib.parse import urlparse
 
 from jolt.jobgether_preview import jobgether_identity
@@ -26,7 +28,7 @@ def discover_offer_urls(links: list[str], *, limit: int = 5) -> list[str]:
     return list(unique.values())
 
 
-def select_search_page(browser: object) -> object | None:
+def select_search_page(browser: Browser) -> Page | None:
     """Choose a Jobgether page that is not already an individual offer."""
     for context in browser.contexts:
         for page in context.pages:
@@ -40,7 +42,7 @@ def select_search_page(browser: object) -> object | None:
     return None
 
 
-def capture_batch(search_page: object, *, limit: int = 5) -> dict[str, object]:
+def capture_batch(search_page: Page, *, limit: int = 5) -> dict[str, object]:
     """Read at most five discovered offers without writing to JOLT."""
     links = search_page.locator('a[href*="/offer/"]').evaluate_all(
         "elements => elements.map(el => el.href).filter(Boolean)"
@@ -99,8 +101,6 @@ def main() -> int:
     parser.add_argument("--limit", type=int, choices=range(1, 6), default=5)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    from playwright.sync_api import sync_playwright
-
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10_000)
         try:
@@ -117,7 +117,8 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(payload + "\n", encoding="utf-8")
     print(payload)
-    return 0 if result.get("captured_count", 0) > 0 else 2
+    captured_count = result.get("captured_count")
+    return 0 if isinstance(captured_count, int) and captured_count > 0 else 2
 
 
 if __name__ == "__main__":
