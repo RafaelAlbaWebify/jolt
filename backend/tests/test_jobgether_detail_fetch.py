@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from jolt.jobgether_detail_fetch import extract_jobgether_detail
 
 
@@ -37,5 +35,9 @@ def test_missing_or_ambiguous_structured_data_remains_unresolved() -> None:
 
 
 def test_rejects_observed_identity_mismatch() -> None:
-    with pytest.raises(ValueError, match="does not match"):
+    try:
         extract_jobgether_detail("", observed_id="6ac85207480485773199660a", observed_url=URL)
+    except ValueError as exc:
+        assert "does not match" in str(exc)
+    else:
+        raise AssertionError("Expected mismatched source identity to be rejected")
