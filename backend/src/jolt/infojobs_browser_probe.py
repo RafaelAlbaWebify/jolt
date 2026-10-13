@@ -57,15 +57,11 @@ def diagnose_page(page: Page) -> dict[str, object]:
     urls = page.locator("a[href]").evaluate_all(
         "elements => elements.map(el => el.href).filter(Boolean)"
     )
-    offer_urls = sorted(
-        {
-            link.split("?", 1)[0]
-            for link in urls
-            if is_offer_url(link)
-        }
-    )
+    offer_urls = sorted({link.split("?", 1)[0] for link in urls if is_offer_url(link)})
     domain_links = [link for link in urls if is_infojobs_url(link)]
-    candidate_routes = sorted({urlparse(link).path for link in domain_links if "/of-" in urlparse(link).path})
+    candidate_routes = sorted(
+        {urlparse(link).path for link in domain_links if "/of-" in urlparse(link).path}
+    )
     return {
         "same_domain_anchor_count": len(domain_links),
         "potential_offer_route_samples": candidate_routes[:10],
