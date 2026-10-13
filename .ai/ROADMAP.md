@@ -19,8 +19,8 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-013 | COMPLETE | Runtime staleness visibility | R-001 | UI compares process-loaded revision with checkout revision and visibly blocks operator workflow when stale | PR #384 exact green gates; local acceptance required as part of R-010 |
 | R-014 | COMPLETE | External-beta operability pass | R-010,R-011,R-013,R-021 | clean startup, corrected real AI round trip and no unresolved beta-critical P0/P1 blocker | OPERABILITY checklist + dated evidence |
 | R-015 | COMPLETE | Real-prospect readiness | R-014 | two consecutive real workflows plus persistence, recovery and source-audit gates pass without internal repair | full gate in OPERABILITY.md |
-| R-016 | LATER | Indeed source adapter | stable capture abstraction | source-specific adapter preserves same evidence/provenance contracts | tests + supervised real capture |
-| R-017 | LATER | InfoJobs source adapter | stable capture abstraction | same as R-016 | tests + supervised real capture |
+| R-016 | COMPLETE | Indeed source adapter (bounded 2026-10-09 acceptance; further site-fidelity questions remain) | stable capture abstraction | source-specific adapter preserves same evidence/provenance contracts | tests + supervised real capture |
+| R-017 | ACTIVE | InfoJobs source adapter: API preview mocked; supervised public results visible; offer link recognition awaiting live re-test, detail/persistence unverified | stable capture abstraction | same as R-016 | tests + supervised real capture |
 | R-018 | OPTIONAL | Multi-user/SaaS architecture | product decision | explicit business requirement exists; auth/tenancy/security architecture approved | ADR before implementation |
 | R-019 | REJECTED | Auto-apply/recruiter messaging/unattended mass crawling | none | intentionally out of product scope unless product boundaries are explicitly changed | decision ledger |
 | R-020 | REJECTED | Local deterministic engine replacing ChatGPT for judgment-heavy career reasoning | none | keep deterministic code for validation/provenance only | PROJECT_MEMORY + decisions |
@@ -28,6 +28,12 @@ Status values: COMPLETE = acceptance evidence exists; ACTIVE = current work; NEX
 | R-022 | COMPLETE | Backup/restore active-schema rehearsal | R-014 | create, verify and restore a dated backup without modifying the live database; restored database passes integrity/schema verification | CLI output + manifest + restored test target evidence |
 | R-023 | COMPLETE | Unified release/version authority | R-001 | package, FastAPI health and runtime identity derive from one release-version source | tests + exact merge gates |
 | R-024 | COMPLETE | Production environment/release certification | R-015,R-022,R-023 | second-environment clean install, security/privacy review, recovery policy and reproducible release all pass | PRs #403/#404/#406/#407/#408 + dated real-site LinkedIn acceptance + exact final main release gates |
+
+## Current source-adapter acceptance — 2026-10-13
+- Indeed R-016: user accepted 40/40 supervised real offers and 40/40 read-only source/artifact audit; do not infer live-description byte equality.
+- Jobgether: separate supervised observation foundation, 5/5 identities, three new observations committed and second run zero duplicates; **not** verified posting eligibility nor Review Inbox ingestion.
+- InfoJobs R-017: public Chrome result list observed; PR #562 permalink detector merged but no post-merge real acceptance. Official API developer credentials unavailable. Next milestone: certify visible offer links, then source detail and evidence with bounded capture and existing persistence contracts.
+- This status is independent of the original local-first Windows 100% operability certification and of the conversation's 20-interaction plan.
 
 ## Immediate sequence
 Production certification remains complete for the supported local-first single-user Windows boundary.
