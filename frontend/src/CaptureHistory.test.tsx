@@ -67,4 +67,41 @@ describe("CaptureHistory", () => {
     expect(await screen.findByText("0 observed · not recorded requested")).toBeInTheDocument();
     expect(screen.getByText("legacy unknown")).toBeInTheDocument();
   });
+  it("requires operator confirmation to import supervised observations for review", async () => {
+    const source = {
+      ...capture,
+      source: "infojobs",
+      mode: "supervised_browser_observation",
+      verified_items: 0,
+      total_items: 1,
+    };
+    const item = {
+      capture_item_id: "observed-1",
+      source_job_id: "9a3c6c996942d0b2d0f19cacaf8f2e",
+      source_url: "https://www.infojobs.net/madrid/support/of-i9a3c6c996942d0b2d0f19cacaf8f2e",
+      title: "IT Support Engineer",
+      company: "Example Employer",
+      location: "Madrid (Madrid)",
+      detail_status: "observed_unverified",
+      verification_reasons: ["Work-from-Spain eligibility not verified"],
+      posting_id: null,
+    };
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const requests: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      requests.push(url);
+      if (url.endsWith("/api/captures")) return jsonResponse([source]);
+      if (url.endsWith("/api/captures/capture-1")) {
+        return jsonResponse({ ...source, pages: [], items: [item] });
+      }
+      throw new Error("Unexpected request: " + url);
+    });
+    render(<CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect capture" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Import source evidence for review" }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(requests.some((url) => url.includes("/review-import"))).toBe(false);
+  });
+
 });
