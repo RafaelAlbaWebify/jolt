@@ -85,9 +85,7 @@ def inspect_tab(page: Page) -> dict[str, object]:
     ]
     structured = extract_offer(url, scripts, title.strip())
     # Never print full descriptions from the browser probe.
-    structured_summary = {
-        key: value for key, value in structured.items() if key != "description"
-    }
+    structured_summary = {key: value for key, value in structured.items() if key != "description"}
     return {
         "source_job_id": identifier,
         "status": "visible_page_observed"
