@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from jolt.infojobs_browser_probe import diagnose_page, is_infojobs_url, select_infojobs_page
+from jolt.infojobs_browser_probe import diagnose_page, is_infojobs_url, is_offer_url, select_infojobs_page
 
 
 def test_infojobs_url_rejects_external_and_insecure_domains() -> None:
@@ -48,3 +48,24 @@ def test_public_links_are_diagnostic_only() -> None:
     assert result["status"] == "listing_links_observed"
     assert result["offer_links_observed"] == 1
     assert result["work_from_spain_verified"] is False
+
+
+def test_current_infojobs_job_permalinks_are_recognized() -> None:
+    url = "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef"
+    assert is_offer_url(url)
+    assert not is_offer_url("https://www.infojobs.net/ofertas-trabajo/support-it")
+    assert not is_offer_url("https://www.infojobs.net.evil.example/x/of-i0123456789abcdef")
+
+
+def test_current_permalinks_are_deduplicated_in_diagnostic() -> None:
+    page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
+    page.title.return_value = "InfoJobs"
+    page.locator.return_value.first.count.return_value = 1
+    page.locator.return_value.first.inner_text.return_value = "Job results " * 30
+    page.locator.return_value.evaluate_all.return_value = [
+        "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef?src=search",
+        "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef",
+    ]
+    result = diagnose_page(page)
+    assert result["status"] == "listing_links_observed"
+    assert result["offer_links_observed"] == 1
