@@ -52,8 +52,7 @@ def _jobposting_documents(markup: str) -> list[dict]:
             if not isinstance(item, dict):
                 continue
             if item.get("@type") == "JobPosting" or (
-                isinstance(item.get("@type"), list)
-                and "JobPosting" in item["@type"]
+                isinstance(item.get("@type"), list) and "JobPosting" in item["@type"]
             ):
                 matches.append(item)
             graph = item.get("@graph")
@@ -68,7 +67,11 @@ def extract_jobgether_detail(markup: str, *, observed_id: str, observed_url: str
         raise ValueError("Observed Jobgether offer ID does not match URL")
     matches = _jobposting_documents(markup)
     if len(matches) != 1:
-        return {"source_job_id": observed_id, "status": "unresolved", "reason": "jobposting_schema_missing_or_ambiguous"}
+        return {
+            "source_job_id": observed_id,
+            "status": "unresolved",
+            "reason": "jobposting_schema_missing_or_ambiguous",
+        }
     job = matches[0]
     title = str(job.get("title") or "")
     organization = job.get("hiringOrganization")
