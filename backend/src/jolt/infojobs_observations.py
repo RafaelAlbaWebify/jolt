@@ -16,7 +16,7 @@ from jolt.capture_artifacts import stage_capture_artifact
 from jolt.database import CaptureItem, CapturePage, CaptureRun, create_session_factory, utc_now
 from jolt.infojobs_browser_probe import is_offer_url
 
-_ID_RE = re.compile(r"/of-i([0-9a-f]{32})(?:/|$)", re.IGNORECASE)
+_ID_RE = re.compile(r"/of-i([0-9a-f]{30})(?:/|$)", re.IGNORECASE)
 
 
 def inspect_offer(offer: dict) -> dict[str, str]:
@@ -78,9 +78,18 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
             .where(CaptureItem.source_job_id.in_(ids))
         ).all()
     )
-    novel = [(job, offer) for job, offer in zip(checked, offers, strict=True) if job["source_job_id"] not in existing]
+    novel = [
+        (job, offer)
+        for job, offer in zip(checked, offers, strict=True)
+        if job["source_job_id"] not in existing
+    ]
     if not novel:
-        return {"capture_run_id": None, "reliable_ids": len(ids), "staged_unverified": 0, "already_known": len(ids)}
+        return {
+            "capture_run_id": None,
+            "reliable_ids": len(ids),
+            "staged_unverified": 0,
+            "already_known": len(ids),
+        }
     now = utc_now()
     run = CaptureRun(
         id=str(uuid4()),
@@ -88,7 +97,11 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
         mode="supervised_browser_observation",
         status="completed",
         search_url=search_url,
-        warnings_json=json.dumps(["Observed browser evidence only; description and work eligibility not independently verified"]),
+        warnings_json=json.dumps(
+            [
+                "Observed browser evidence only; description and work eligibility not independently verified"
+            ]
+        ),
         requested_item_limit=len(offers),
         observed_item_count=len(offers),
         stop_reason="bounded_supervised_report_staged",
@@ -117,7 +130,12 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
             company="",
             location="",
             detail_status="observed_unverified",
-            verification_reasons_json=json.dumps(["Source job description isolated but not independently verified", "Eligibility from Spain not verified"]),
+            verification_reasons_json=json.dumps(
+                [
+                    "Source job description isolated but not independently verified",
+                    "Eligibility from Spain not verified",
+                ]
+            ),
             source_document_id=None,
             posting_id=None,
         )
@@ -128,9 +146,22 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
             capture_item_id=item.id,
             artifact_type="infojobs_browser_json",
             content_type="application/json",
-            raw_payload=json.dumps({"offer": offer, "isolated_description": job["description"], "description_sha256": job["description_sha256"]}, ensure_ascii=False, sort_keys=True),
+            raw_payload=json.dumps(
+                {
+                    "offer": offer,
+                    "isolated_description": job["description"],
+                    "description_sha256": job["description_sha256"],
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
         )
-    return {"capture_run_id": run.id, "reliable_ids": len(ids), "staged_unverified": len(novel), "already_known": len(ids) - len(novel)}
+    return {
+        "capture_run_id": run.id,
+        "reliable_ids": len(ids),
+        "staged_unverified": len(novel),
+        "already_known": len(ids) - len(novel),
+    }
 
 
 def main() -> int:
@@ -152,7 +183,11 @@ def main() -> int:
         except Exception:
             session.rollback()
             raise
-    print(json.dumps({**result, "committed": bool(args.commit and result["capture_run_id"])}, indent=2))
+    print(
+        json.dumps(
+            {**result, "committed": bool(args.commit and result["capture_run_id"])}, indent=2
+        )
+    )
     return 0
 
 
