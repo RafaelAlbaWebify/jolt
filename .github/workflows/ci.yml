@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: ['**']
 
 jobs:
   backend:
@@ -41,9 +41,6 @@ jobs:
         with:
           name: backend-ruff-diagnostics
           path: artifacts/ruff-check.txt
-      - name: Fail on Ruff errors
-        if: steps.ruff.outcome == 'failure'
-        run: exit 1
       - name: Ruff format check
         id: ruff_format
         continue-on-error: true
@@ -57,9 +54,6 @@ jobs:
         with:
           name: backend-ruff-format-diagnostics
           path: artifacts/ruff-format.txt
-      - name: Fail on Ruff format errors
-        if: steps.ruff_format.outcome == 'failure'
-        run: exit 1
       - name: Pyright
         id: pyright
         continue-on-error: true
@@ -73,9 +67,6 @@ jobs:
         with:
           name: backend-pyright-diagnostics
           path: artifacts/pyright.txt
-      - name: Fail on Pyright errors
-        if: steps.pyright.outcome == 'failure'
-        run: exit 1
       - name: Tests
         id: pytest
         continue-on-error: true
@@ -89,9 +80,22 @@ jobs:
         with:
           name: backend-pytest-diagnostics
           path: artifacts/pytest.txt
-      - name: Fail on test errors
-        if: steps.pytest.outcome == 'failure'
-        run: exit 1
+
+      - name: Enforce all backend quality gates
+        if: always()
+        env:
+          RUFF: ${{ steps.ruff.outcome }}
+          FORMAT: ${{ steps.ruff_format.outcome }}
+          PYRIGHT: ${{ steps.pyright.outcome }}
+          PYTEST: ${{ steps.pytest.outcome }}
+        run: |
+          printf 'Ruff=%s Format=%s Pyright=%s Pytest=%s\\n' "$RUFF" "$FORMAT" "$PYRIGHT" "$PYTEST"
+          for outcome in "$RUFF" "$FORMAT" "$PYRIGHT" "$PYTEST"; do
+            if [ "$outcome" != "success" ]; then
+              echo "Backend preflight failed; consult all four diagnostic steps/artifacts."
+              exit 1
+            fi
+          done
 
   frontend:
     runs-on: ubuntu-latest
