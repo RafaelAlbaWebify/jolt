@@ -4,7 +4,9 @@ param(
     [int]$DebugPort = 9223,
     [switch]$SkipSync,
     [switch]$Capture,
-    [int]$Limit = 5
+    [int]$Limit = 5,
+    [switch]$StageObservations,
+    [switch]$CommitObservations
 )
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -51,11 +53,19 @@ try {
     }
     uv run --no-sync python -m jolt.infojobs_browser_probe --cdp-endpoint $Endpoint
     if ($LASTEXITCODE -ne 0) { throw "InfoJobs access not yet certified; see diagnostics above." }
+    if ($CommitObservations -and -not $StageObservations) { throw "-CommitObservations requires -StageObservations." }
+    if ($StageObservations -and -not $Capture) { throw "-StageObservations requires -Capture." }
     if ($Capture) {
         $Stamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Output = Join-Path $HOME "Downloads\\JOLT_INFOJOBS_SUPERVISED_$Stamp.json"
         uv run --no-sync python -m jolt.infojobs_supervised_capture --cdp-endpoint $Endpoint --limit $Limit --output $Output
         if ($LASTEXITCODE -ne 0) { throw "No validated InfoJobs detail evidence was captured. Diagnostics are shown above." }
         Write-Host "Read-only InfoJobs evidence: $Output"
+        if ($StageObservations) {
+            $Args = @("run", "--no-sync", "python", "-m", "jolt.infojobs_observations", "--input", $Output)
+            if ($CommitObservations) { $Args += "--commit" }
+            & uv @Args
+            if ($LASTEXITCODE -ne 0) { throw "InfoJobs observation staging failed." }
+        }
     }
 } finally { Pop-Location }
