@@ -1,6 +1,11 @@
 from unittest.mock import Mock
 
-from jolt.infojobs_browser_probe import diagnose_page, is_infojobs_url, is_offer_url, select_infojobs_page
+from jolt.infojobs_browser_probe import (
+    diagnose_page,
+    is_infojobs_url,
+    is_offer_url,
+    select_infojobs_page,
+)
 
 
 def test_infojobs_url_rejects_external_and_insecure_domains() -> None:
