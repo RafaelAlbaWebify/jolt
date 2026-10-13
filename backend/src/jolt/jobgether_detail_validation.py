@@ -8,8 +8,13 @@ from jolt.jobgether_preview import jobgether_identity
 
 
 def validate_jobgether_detail(
-    *, observed_id: str, observed_url: str, detail_url: str, title: str,
-    company: str, description: str,
+    *,
+    observed_id: str,
+    observed_url: str,
+    detail_url: str,
+    title: str,
+    company: str,
+    description: str,
 ) -> dict:
     """Structural checks only: caller-provided text is NOT verified source evidence."""
     reasons: list[str] = []
