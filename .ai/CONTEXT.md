@@ -1,5 +1,13 @@
 # JOLT AI Bootstrap Context
 
+## Current reconciled snapshot — 2026-10-13
+- Historical October 3/9 baseline sections below are retained as dated evidence, NOT current priority statements. Current GitHub main baseline before reconciliation: `38b18a96b85f6a477ef14c6911dcddd0cae6523b`.
+- PRs #559–#562: branch preflight improvements, Jobgether supervised observation staging, InfoJobs read-only Chrome probe and current `of-i...` permalink detection all merged and checked green.
+- Jobgether October 13 real persistence: five reliable identities, three new committed, two already known; second run five known and zero newly staged. All remain `observed_unverified`; no Spain eligibility or posting promotion proven.
+- InfoJobs October 13: visible public search page with displayed 205 listings; existing probe read 19,862 body characters, zero legacy links. PR #562 modern-link change has NOT had a real Chrome re-test. Official developer API still lacks credentials.
+- Next source-adapter outcome: one bounded supervised InfoJobs offer capture with identity/detail/provenance, deduplication and acceptance, using existing capture contracts. Do not mark it ready based on mocked CI or screenshot alone.
+- `.ai/SESSION_PROTOCOL.md`, `.ai/DECISIONS.md`, `AGENTS.md` and domain contracts govern further work. Original 100% readiness is restricted to the previously certified product boundary.
+
 ## Verified source integration update — 2026-10-09
 - Canonical context drift from PRs #510–#522 is being reconciled in PR #523; follow `.ai/SESSION_PROTOCOL.md` and the evidence boundary in `docs/JOLT_CURRENT_HANDOVER_2026-10-09.md`.
 - Indeed: 40/40 verified across four observed pages on 2026-10-09 at ~3.99 s/offer; 26 newly ingested, 14 duplicates; local read-only capture artifact/source-document audit 40/40 passed with zero failures. Site-to-captured-description fidelity and normalized Posting.description equality **not** asserted.
