@@ -138,3 +138,16 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 - Evidence: 2026-10-09 multipage run: 40/40 verified, ~3.99 s/job mean; PR #519 eliminated measured ~26s missing-selector waits; PR #520 read-only audit passed all 40/40 against persisted capture JSON and immutable source text.
 - Residual uncertainty: live-site-to-captured-description word-for-word fidelity and normalized Posting.description equality not audited. Preserve this distinction.
 - Blocking effect: none for normal Indeed use; revisit if specific evidence gap or regression arises.
+
+## KI-017 — OPEN 2026-10-13 — Canonical state drift resumed after source-adapter PRs
+- The October 9 handover/state/test ledger omitted Jobgether PRs #551–#560 and InfoJobs #561/#562 even after the protocol required same-PR updates. Existing KI-014 remains historical evidence; this branch reconciles current canonical state.
+- Prevent recurrence: follow `.ai/SESSION_PROTOCOL.md` and `AGENTS.md` together, updating canonical evidence in the *same functional PR*; do not create a parallel tracking system.
+- Scope: 100% historical readiness only covers the original certified Windows product; newly developed source adapters must retain independent acceptance status.
+
+## KI-018 — OPEN 2026-10-13 — InfoJobs visible results without certified offer extraction
+- User's supervised Chrome screenshot shows listing cards and a displayed count of 205; PR #561 returned 19,862 body-text characters, no access indicators and zero recognized legacy `/oferta/` links.
+- PR #562 added `/of-i...` permalink recognition, merged after all checks green; no operator Chrome rerun has certified its match or validated detail extraction yet.
+- Next required acceptance: read-only supervised link observation, followed by bounded detail/identity/evidence/persistence workflow only if real selectors permit it. Do not claim Spain eligibility or automated application.
+
+## KI-019 — OPEN 2026-10-13 — InfoJobs official developer API unavailable for live validation
+- Existing KI-015 still applies to the official API because developer credentials were not provided. Its earlier statement that *all* InfoJobs access was blocked is superseded: visible public browser results were observed; these are separate access modes.

@@ -125,3 +125,9 @@ This file records accepted durable decisions. `PROJECT_MEMORY.md` remains a deep
 - Consequence: every substantive feature or source-adapter PR must reconcile project state, roadmap, known issues and test evidence as necessary **before** claiming completion. Do not create competing Google Drive memory or second disconnected tracking scheme.
 - Source readiness: distinguish code existing, automated tests passing, real authorized capture, ingestion, and persistent-data acceptance. The InfoJobs adapter remains blocked for live validation until lawful real access is available.
 - Status: active; remedial synchronization PR #523.
+
+## D-2026-10-13 — Apply existing Webify governance without competing delivery tracks
+- Date: 2026-10-13.
+- Decision: `.ai/SESSION_PROTOCOL.md`, `AGENTS.md`, `.ai/PROJECT_STATE.json` and existing module contracts together govern development; no new tracking or handover architecture. For feature PRs, audit and update affected canonical state alongside the code. Preflight the development branch fully before opening a PR, then verify exact PR-head gates and complete real acceptance for external-site claims.
+- Rationale: Jobgether and InfoJobs source PRs shipped while canonical `.ai/` state still described October 9; fragmentary probe deliveries increased operator overhead. Keep original product readiness distinct from unverified source integrations.
+- Status: active.

@@ -61,6 +61,9 @@ Before ending a development session, update canonical state where applicable:
 Record what changed, what was verified, what remains, current commit, active PR(s), and next recommended action.
 
 ## Pre-PR quality gate
+
+`AGENTS.md` and this protocol are complementary; the stricter gate applies. Before any feature branch or source adapter change, reconcile canonical `.ai/` evidence, affected module contracts, dependencies, and architecture. Prefer one outcome-complete functional PR over serial probe/format PRs. Push a dedicated branch and require **complete branch preflight** (Ruff check, Ruff format, Pyright, full pytest, applicable frontend and Windows; required Playwright/browser automation). Fix diagnostics on that branch before opening the PR; GitHub Actions must not be used as an avoidable first formatter/linter debugger. If the tools are unavailable locally, document that limitation and use branch verification before PR. Manual acceptance is reserved for authenticated/real-site dependencies and must not be replaced with mocked CI.
+
 Before opening or updating a Python-affecting PR, run `tools/preflight-jolt.ps1`
 against the relevant local checkout (Ruff lint and formatting), plus applicable
 unit/integration tests. For larger edits use `-FullTests`. When making

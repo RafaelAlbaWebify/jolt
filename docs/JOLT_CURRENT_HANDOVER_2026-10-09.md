@@ -1,6 +1,6 @@
-# JOLT current handover — 2026-10-09
+# JOLT handover — historical baseline 2026-10-09
 
-> Read this first with `.ai/SESSION_PROTOCOL.md`, `.ai/PROJECT_STATE.json`, and `.ai/KNOWN_ISSUES.md`. This is a reconciliation record, not a replacement for canonical state. Runtime and exact-head CI outrank this document.
+> **Historical snapshot; superseded for current source-adapter status by `.ai/CONTEXT.md`, `.ai/PROJECT_STATE.json` and `.ai/TEST_STATUS.json` as of 2026-10-13.** Read this first with `.ai/SESSION_PROTOCOL.md`, `.ai/PROJECT_STATE.json`, and `.ai/KNOWN_ISSUES.md`. This is a reconciliation record, not a replacement for canonical state. Runtime and exact-head CI outrank this document.
 
 ## Why this file exists
 The team continued source adapter work in PRs #510–#522 without updating canonical `.ai/` project memory. As of 2026-10-09, `.ai/CONTEXT.md` still describes 2026-10-03 and `.ai/TEST_STATUS.json` still describes 2026-09-30. This is a workflow failure; all future sessions must read and reconcile canonical state before making changes.
