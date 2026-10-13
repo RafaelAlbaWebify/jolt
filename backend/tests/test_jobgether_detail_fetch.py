@@ -5,7 +5,8 @@ URL = f"https://jobgether.com/offer/{IDENTIFIER}-support-technician"
 
 
 def test_extracts_one_structured_official_offer_without_promoting() -> None:
-    data_json = ('{"@context":"https://schema.org","@type":"JobPosting",'
+    data_json = (
+        '{"@context":"https://schema.org","@type":"JobPosting",'
         '"title":"2nd and 3rd Level IT Support Technician",'
         '"hiringOrganization":{"name":"Drees & Sommer"},'
         '"description":"Provide advanced service desk and infrastructure support to internal users across international teams, while resolving complex endpoint and network issues."}'
@@ -20,12 +21,21 @@ def test_extracts_one_structured_official_offer_without_promoting() -> None:
 
 
 def test_missing_or_ambiguous_structured_data_remains_unresolved() -> None:
-    assert extract_jobgether_detail("<html>Job description</html>", observed_id=IDENTIFIER, observed_url=URL)["status"] == "unresolved"
-    html = ('<script type="application/ld+json">'
-        '[{"@type":"JobPosting"},{"@type":"JobPosting"}]'
-        '</script>'
+    assert (
+        extract_jobgether_detail(
+            "<html>Job description</html>", observed_id=IDENTIFIER, observed_url=URL
+        )["status"]
+        == "unresolved"
     )
-    assert extract_jobgether_detail(html, observed_id=IDENTIFIER, observed_url=URL)["status"] == "unresolved"
+    html = (
+        '<script type="application/ld+json">'
+        '[{"@type":"JobPosting"},{"@type":"JobPosting"}]'
+        "</script>"
+    )
+    assert (
+        extract_jobgether_detail(html, observed_id=IDENTIFIER, observed_url=URL)["status"]
+        == "unresolved"
+    )
 
 
 def test_rejects_observed_identity_mismatch() -> None:
