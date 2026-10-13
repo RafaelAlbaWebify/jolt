@@ -8,12 +8,12 @@ from __future__ import annotations
 import argparse
 import json
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 from jolt.jobgether_preview import jobgether_identity
 
 
-def inspect_tab(page: object) -> dict[str, object]:
+def inspect_tab(page: Page) -> dict[str, object]:
     """Observe an open offer tab without interacting with the page."""
     url = str(getattr(page, "url", ""))
     identifier = jobgether_identity(url)
