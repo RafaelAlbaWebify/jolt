@@ -2,7 +2,6 @@ import json
 
 from jolt.jobgether_structured_offer import extract_offer
 
-
 URL = "https://jobgether.com/offer/6ac5d9628a27695aea363d20-example"
 
 
