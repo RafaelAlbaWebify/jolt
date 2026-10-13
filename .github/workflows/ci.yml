@@ -29,7 +29,12 @@ jobs:
         run: |
           mkdir -p ../artifacts
           uv run ruff check . 2>&1 | tee ../artifacts/ruff-check.txt
-          exit ${PIPESTATUS[0]}
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo '--- Suggested Ruff lint fixes (diff) ---' | tee -a ../artifacts/ruff-check.txt
+            uv run ruff check --diff . 2>&1 | tee -a ../artifacts/ruff-check.txt || true
+          fi
+          exit "$status"
       - name: Upload Ruff diagnostics
         if: steps.ruff.outcome == 'failure'
         uses: actions/upload-artifact@v4
