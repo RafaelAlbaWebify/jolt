@@ -123,7 +123,9 @@ def main() -> int:
             browser.close()
     if result.get("source") == "jobgether":
         history_dir = args.history_dir or (args.output.parent if args.output else None)
-        previous = load_previous_reports(history_dir, current_output=args.output) if history_dir else []
+        previous = (
+            load_previous_reports(history_dir, current_output=args.output) if history_dir else []
+        )
         result["quality_audit"] = audit_batch(result, previous)
     payload = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:
