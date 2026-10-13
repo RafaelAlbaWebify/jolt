@@ -45,7 +45,20 @@ def inspect_offer(offer: dict) -> dict[str, str]:
     description = remainder.split("\nCategoría\n", 1)[0].strip()
     if len(description) < 150:
         raise ValueError("description too short")
+    header = body.split("\\nRequisitos\\n", 1)[0]
+    after_title = header.split(title, 1)[1] if title in header else ""
+    lines = [line.strip() for line in after_title.splitlines() if line.strip()]
+    if lines and lines[0] == "Guardar":
+        lines.pop(0)
+    company = lines[0] if lines else ""
+    location = ""
+    for line in lines[1:5]:
+        if "(" in line and ")" in line and not re.fullmatch(r"[\\d., ()]+", line):
+            location = line
+            break
     return {
+        "company": company,
+        "location": location,
         "source_job_id": match.group(1).lower(),
         "url": url.split("?", 1)[0],
         "title": title.strip(),
@@ -127,8 +140,8 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
             source_job_id=job["source_job_id"],
             source_url=job["url"],
             title=job["title"],
-            company="",
-            location="",
+            company=job["company"],
+            location=job["location"],
             detail_status="observed_unverified",
             verification_reasons_json=json.dumps(
                 [
