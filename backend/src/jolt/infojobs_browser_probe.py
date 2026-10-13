@@ -23,10 +23,7 @@ def is_infojobs_url(url: str) -> bool:
 def select_infojobs_page(browser: Browser) -> Page | None:
     """Prefer a listing page, otherwise an existing InfoJobs page."""
     candidates = [
-        page
-        for context in browser.contexts
-        for page in context.pages
-        if is_infojobs_url(page.url)
+        page for context in browser.contexts for page in context.pages if is_infojobs_url(page.url)
     ]
     return next(
         (page for page in candidates if "/ofertas-trabajo" in urlparse(page.url).path),
@@ -48,14 +45,16 @@ def diagnose_page(page: Page) -> dict[str, object]:
         for token in ("captcha", "access denied", "acceso denegado", "verifica que eres humano")
         if token in lowered
     ]
-    urls = page.locator('a[href]').evaluate_all(
+    urls = page.locator("a[href]").evaluate_all(
         "elements => elements.map(el => el.href).filter(Boolean)"
     )
-    offer_urls = sorted({
-        link.split("?", 1)[0]
-        for link in urls
-        if is_infojobs_url(link) and "/oferta/" in urlparse(link).path
-    })
+    offer_urls = sorted(
+        {
+            link.split("?", 1)[0]
+            for link in urls
+            if is_infojobs_url(link) and "/oferta/" in urlparse(link).path
+        }
+    )
     return {
         "status": (
             "access_restricted"
