@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CaptureHistory } from "./CaptureHistory";
@@ -102,6 +102,35 @@ describe("CaptureHistory", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Import source evidence for review" }));
     expect(confirm).toHaveBeenCalledOnce();
     expect(requests.some((url) => url.includes("/review-import"))).toBe(false);
+  });
+
+  it("imports confirmed supervised evidence via the existing captures endpoint", async () => {
+    const run = { ...capture, source: "jobgether", mode: "supervised_browser_observation", verified_items: 0 };
+    const item = {
+      capture_item_id: "item-1", source_job_id: "a".repeat(24),
+      source_url: "https://jobgether.com/offer/" + "a".repeat(24) + "-support",
+      title: "Remote Support Engineer", company: "Example Employer", location: "",
+      detail_status: "observed_unverified", verification_reasons: [], posting_id: null,
+    };
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    let imported = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/captures")) return jsonResponse([run]);
+      if (url.endsWith("/api/captures/capture-1")) {
+        return jsonResponse({ ...run, pages: [], items: [imported ? { ...item, posting_id: "posting-1", detail_status: "verified" } : item] });
+      }
+      if (url.endsWith("/api/captures/observations/item-1/review-import") && init?.method === "POST") {
+        imported = true;
+        return jsonResponse({ status: "imported_for_review", posting_id: "posting-1" });
+      }
+      throw new Error("Unexpected request: " + url);
+    });
+    render(<CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Inspect capture" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Import source evidence for review" }));
+    await waitFor(() => expect(imported).toBe(true));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Import source evidence for review" })).not.toBeInTheDocument());
   });
 
 });
