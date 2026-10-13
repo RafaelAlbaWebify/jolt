@@ -26,8 +26,10 @@ def inspect_tab(page: Page) -> dict[str, object]:
     body_text = body.inner_text(timeout=5000) if body.count() else ""
     schemas = page.locator('script[type="application/ld+json"]').count()
     content_source = (
-        "main" if len(main_text.strip()) >= 100
-        else "body" if len(body_text.strip()) >= 100
+        "main"
+        if len(main_text.strip()) >= 100
+        else "body"
+        if len(body_text.strip()) >= 100
         else "none"
     )
     return {
