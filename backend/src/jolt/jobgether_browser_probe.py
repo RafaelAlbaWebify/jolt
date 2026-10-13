@@ -25,7 +25,9 @@ def inspect_tab(page: Page) -> dict[str, object]:
     schemas = page.locator('script[type="application/ld+json"]').count()
     return {
         "source_job_id": identifier,
-        "status": "visible_page_observed" if title.strip() and len(main_text) >= 100 else "unresolved",
+        "status": "visible_page_observed"
+        if title.strip() and len(main_text) >= 100
+        else "unresolved",
         "url": url,
         "title": title.strip()[:250],
         "main_text_length": len(main_text),
