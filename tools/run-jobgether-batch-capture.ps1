@@ -48,6 +48,13 @@ if (-not $Ready) {
     }
 }
 if (-not $Ready) { throw "Chrome CDP endpoint unavailable: $Endpoint" }
+# Always open the requested listing inside the supervised Chrome profile.
+# An already running CDP endpoint does not imply that this tab exists.
+Start-Process -FilePath $ChromePath -ArgumentList @(
+    "--remote-debugging-port=$DebugPort",
+    "--user-data-dir=$ChromeProfileDir",
+    $SearchUrl
+) | Out-Null
 Write-Host "Open the Jobgether search results in the supervised Chrome window."
 Write-Host "Complete any normal login or verification manually; do not bypass portal blocks."
 [void](Read-Host "When results are visible, press Enter")
@@ -57,7 +64,7 @@ try {
         uv sync --all-groups
         if ($LASTEXITCODE -ne 0) { throw "uv sync failed." }
     }
-    uv run --no-sync python -u -m jolt.jobgether_batch_capture --cdp-endpoint $Endpoint --limit $MaxJobs --output $Output
+    uv run --no-sync python -u -m jolt.jobgether_batch_capture --cdp-endpoint $Endpoint --limit $MaxJobs --search-url $SearchUrl --output $Output
     if ($LASTEXITCODE -ne 0) { throw "Capture incomplete; inspect output: $Output" }
     Write-Host "Capture summary: $Output"
 } finally { Pop-Location }

@@ -28,16 +28,11 @@ def discover_offer_urls(links: list[str], *, limit: int = 5) -> list[str]:
     return list(unique.values())
 
 
-def select_search_page(browser: Browser) -> Page | None:
-    """Choose a Jobgether page that is not already an individual offer."""
+def select_search_page(browser: Browser, search_url: str) -> Page | None:
+    """Select the requested listing, never an unrelated Jobgether tab."""
     for context in browser.contexts:
         for page in context.pages:
-            parsed = urlparse(page.url)
-            if (
-                parsed.scheme == "https"
-                and parsed.hostname in {"jobgether.com", "www.jobgether.com"}
-                and not jobgether_identity(page.url)
-            ):
+            if page.url.split("?", 1)[0].rstrip("/") == search_url.split("?", 1)[0].rstrip("/"):
                 return page
     return None
 
@@ -99,17 +94,29 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cdp-endpoint", default="http://127.0.0.1:9222")
     parser.add_argument("--limit", type=int, choices=range(1, 6), default=5)
+    parser.add_argument("--search-url", default="https://jobgether.com/talent/matches")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    parsed = urlparse(args.search_url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"jobgether.com", "www.jobgether.com"}
+        or jobgether_identity(args.search_url)
+    ):
+        parser.error("--search-url must be an HTTPS Jobgether listing URL")
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10_000)
         try:
-            search = select_search_page(browser)
-            result = (
-                capture_batch(search, limit=args.limit)
-                if search is not None
-                else {"status": "unresolved", "reason": "no_jobgether_search_tab"}
-            )
+            search = select_search_page(browser, args.search_url)
+            if search is None:
+                result: dict[str, object] = {
+                    "status": "unresolved",
+                    "reason": "requested_search_tab_missing",
+                    "requested_search_url": args.search_url,
+                    "open_tab_urls": [page.url for ctx in browser.contexts for page in ctx.pages],
+                }
+            else:
+                result = capture_batch(search, limit=args.limit)
         finally:
             browser.close()
     payload = json.dumps(result, ensure_ascii=False, indent=2)
