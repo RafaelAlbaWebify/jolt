@@ -45,7 +45,7 @@ def inspect_offer(offer: dict) -> dict[str, str]:
     description = remainder.split("\nCategoría\n", 1)[0].strip()
     if len(description) < 150:
         raise ValueError("description too short")
-    header = body.split("\\nRequisitos\\n", 1)[0]
+    header = body.split("\nRequisitos\n", 1)[0]
     after_title = header.split(title, 1)[1] if title in header else ""
     lines = [line.strip() for line in after_title.splitlines() if line.strip()]
     if lines and lines[0] == "Guardar":
@@ -53,7 +53,7 @@ def inspect_offer(offer: dict) -> dict[str, str]:
     company = lines[0] if lines else ""
     location = ""
     for line in lines[1:5]:
-        if "(" in line and ")" in line and not re.fullmatch(r"[\\d., ()]+", line):
+        if "(" in line and ")" in line and not re.fullmatch(r"[\d., ()]+", line):
             location = line
             break
     return {
