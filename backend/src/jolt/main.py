@@ -43,6 +43,7 @@ from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
+from jolt.supervised_source_promotion import promote_supervised_item
 from jolt.discovery_execution import recover_interrupted_discovery_executions
 from jolt.discovery_searches_api import build_discovery_searches_router
 from jolt.errors import JoltNotFoundError
@@ -224,6 +225,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> list[CaptureRunSummary]:
         return list_capture_runs(session)
+
+    @app.post("/api/captures/observations/{capture_item_id}/review-import", tags=["captures"])
+    def review_import_observation(
+        capture_item_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, str]:
+        try:
+            result = promote_supervised_item(session, capture_item_id)
+            session.commit()
+            return result
+        except ValueError as exc:
+            session.rollback()
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except Exception:
+            session.rollback()
+            raise
 
     @app.get("/api/captures/{capture_run_id}", response_model=CaptureRunResponse, tags=["captures"])
     def capture_run(
