@@ -78,3 +78,16 @@ def test_dry_run_rolls_back(tmp_path) -> None:
         stage_report(session, _report())
         session.rollback()
         assert session.scalar(select(func.count(CaptureItem.id))) == 0
+
+
+def test_realistic_infojobs_header_extracts_company_and_location() -> None:
+    offer = _report()["offers"][0]
+    body = offer["body_text"].replace(
+        "Customer Service Trainee\nGuardar\nExample Company\n",
+        "Customer Service Trainee\nGuardar\nExperis IT\n4 (205)\nBarcelona (Barcelona)\nPresencial\n",
+    )
+    offer["body_text"] = body
+    offer["body_sha256"] = hashlib.sha256(body.encode()).hexdigest()
+    parsed = inspect_offer(offer)
+    assert parsed["company"] == "Experis IT"
+    assert parsed["location"] == "Barcelona (Barcelona)"
