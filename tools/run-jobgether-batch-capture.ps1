@@ -3,7 +3,9 @@ param(
     [string]$SearchUrl = "https://jobgether.com/talent/matches",
     [ValidateRange(1, 5)][int]$MaxJobs = 5,
     [int]$DebugPort = 9222,
-    [switch]$SkipSync
+    [switch]$SkipSync,
+    [switch]$StageObservations,
+    [switch]$CommitObservations
 )
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -67,4 +69,11 @@ try {
     uv run --no-sync python -u -m jolt.jobgether_batch_capture --cdp-endpoint $Endpoint --limit $MaxJobs --search-url $SearchUrl --output $Output
     if ($LASTEXITCODE -ne 0) { throw "Capture incomplete; inspect output: $Output" }
     Write-Host "Capture summary: $Output"
+    if ($CommitObservations -and -not $StageObservations) { throw "-CommitObservations requires -StageObservations." }
+    if ($StageObservations) {
+        $Args = @("run", "--no-sync", "python", "-m", "jolt.jobgether_supervised_stage", "--input", $Output)
+        if ($CommitObservations) { $Args += "--commit" }
+        & uv @Args
+        if ($LASTEXITCODE -ne 0) { throw "Jobgether observation staging failed." }
+    }
 } finally { Pop-Location }
