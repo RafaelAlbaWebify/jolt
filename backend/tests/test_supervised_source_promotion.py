@@ -48,7 +48,10 @@ def _jobgether(has_description: bool = True) -> dict:
                 "url": "https://jobgether.com/offer/" + "a" * 24 + "-technical-engineer",
                 "title": "Technical Engineer",
                 "company": "Example Employer",
-                "description": "Support global customer IT operations and troubleshoot endpoints. " * 5 if has_description else "",
+                "description": "Support global customer IT operations and troubleshoot endpoints. "
+                * 5
+                if has_description
+                else "",
                 "mismatches": [],
             }
         ],

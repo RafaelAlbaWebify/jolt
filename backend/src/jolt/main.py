@@ -43,7 +43,6 @@ from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
 from jolt.database import create_session_factory
-from jolt.supervised_source_promotion import promote_supervised_item
 from jolt.discovery_execution import recover_interrupted_discovery_executions
 from jolt.discovery_searches_api import build_discovery_searches_router
 from jolt.errors import JoltNotFoundError
@@ -136,6 +135,7 @@ from jolt.strategy_runtime import (
     ensure_strategy_reviews,
     load_active_strategy_profile,
 )
+from jolt.supervised_source_promotion import promote_supervised_item
 from jolt.workflow import (
     create_application,
     get_application,

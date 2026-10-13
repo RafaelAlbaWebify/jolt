@@ -109,7 +109,9 @@ def promote_supervised_item(session: Session, capture_item_id: str) -> dict[str,
         raise ValueError("Captured evidence artifact not found")
     title, company, location, description = _complete_evidence(run, item, artifact)
     raw_text = "\n".join(
-        part for part in [title, company, f"Location: {location}" if location else "", description] if part
+        part
+        for part in [title, company, f"Location: {location}" if location else "", description]
+        if part
     )
     intake = ingest_capture_item(
         session,
