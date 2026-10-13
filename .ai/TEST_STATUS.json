@@ -1,7 +1,7 @@
 {
-  "last_updated": "2026-10-09",
-  "baseline_commit": "556d3e391c16e29199f13569690397870f4b7b15",
-  "status_note": "Prior baseline status was stale (2026-09-30 PR #470). Exact-head CI 8/8 was confirmed for InfoJobs PR #521 and PR #522 before merging. Indeed 2026-10-09 live supervised 40-offer multipage run verified 40/40 at ~3.99 s per job and read-only artifact/source document audit 40/40 passed. PR #523 reconciles canonical project-state context; verify its exact-head gates independently. Not proof of InfoJobs live API access.",
+  "last_updated": "2026-10-13",
+  "baseline_commit": "38b18a96b85f6a477ef14c6911dcddd0cae6523b",
+  "status_note": "Historical suite rows referencing PR #470 remain historical, not latest. Exact-head PR #560/#561/#562 all checks success in GitHub, including backend, frontend, Windows, sidebar-kanban, full-cycle, clean-install, migration recovery and release. User accepted Jobgether 5-item staging (3 new, 2 known) and second-run dedup (0 new). InfoJobs live Chrome page observed but job-link recognition fix not yet retested. This documentation-only reconciliation branch requires its own preflight before PR.",
   "testing_percentage": 100,
   "test_suites": [
     {
@@ -126,6 +126,21 @@
       "pull_request": 522,
       "purpose": "InfoJobs authenticated read-only preview",
       "result": "8/8 exact-head checks successful before merge; mocked tests only, no developer credentials"
+    },
+    {
+      "pull_request": 560,
+      "purpose": "Jobgether supervised observation staging and AGENTS.md",
+      "result": "merged after successful exact-head required checks; user staged 3 new, 2 known and re-run had 0 new"
+    },
+    {
+      "pull_request": 561,
+      "purpose": "InfoJobs Chrome read-only access diagnostic",
+      "result": "merged after exact-head checks; live operator observed listing page, 19,862 body characters, 0 recognized old-format links"
+    },
+    {
+      "pull_request": 562,
+      "purpose": "InfoJobs modern permalink recognition",
+      "result": "merged after 11/11 exact-head checks; no real Chrome re-acceptance yet"
     }
   ],
   "latest_real_world_external_validation": {
@@ -134,14 +149,17 @@
     "ai_round_trip": "2026-09-19 second real 100-job strict sequential review/import completed and persisted after restart.",
     "real_prospect_acceptance": "2026-09-20 backup/verify/restore plus guarded retention rehearsal passed without modifying the active database.",
     "linkedin_failure_recovery": "2026-09-21 real-site authwall, authenticated access, forced-offline failure and connectivity recovery acceptance passed.",
-    "saved_search_portfolio": "2026-09-24 real multi-search discovery batch acceptance passed; subsequent production search portfolio/search-performance work merged through 2026-09-28."
+    "saved_search_portfolio": "2026-09-24 real multi-search discovery batch acceptance passed; subsequent production search portfolio/search-performance work merged through 2026-09-28.",
+    "jobgether": "2026-10-13 supervised 5-offer batch, audit and SQLite commit: 3 new, 2 known, second run 5 known/0 staged.",
+    "infojobs": "2026-10-13 Chrome visible results (205 displayed), probe 19,862 body characters; legacy-only link parser 0 recognized. Modern path fix not live retested."
   },
   "known_flaky_tests": [
     "2026-09-30 PR #467: ApplicationDashboard workflow mutation alert test failed once while no frontend code changed; isolated GitHub Actions rerun passed unchanged. Treat as monitor-only unless it recurs."
   ],
   "untested_or_not_freshly_verified_areas": [
-    "No release-blocking area within the certified local-first single-user Windows boundary.",
-    "Future Indeed/InfoJobs adapters require their own supervised real-site acceptance before entering the certified boundary."
+    "InfoJobs live source links after PR #562; real detail extraction/persistence not yet built or accepted.",
+    "Jobgether observed evidence is unverified; no Spain eligibility or Posting/Review promotion.",
+    "Historical 100% tests apply to original product certification, not all integrations."
   ],
   "e2e_status": "Fresh and green through PR #470 exact head.",
   "browser_ui_status": "Fresh and green through PR #470 exact head; live UI audit infrastructure remains available for production-data checks.",
