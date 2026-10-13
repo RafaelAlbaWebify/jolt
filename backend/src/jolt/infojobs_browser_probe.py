@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from urllib.parse import urlparse
 
 from playwright.sync_api import Browser, Page, sync_playwright
@@ -18,6 +19,14 @@ def is_infojobs_url(url: str) -> bool:
         "infojobs.net",
         "www.infojobs.net",
     }
+
+
+def is_offer_url(url: str) -> bool:
+    """Recognize classic /oferta/ and current /of-i<hex> job URLs."""
+    if not is_infojobs_url(url):
+        return False
+    path = urlparse(url).path.casefold()
+    return "/oferta/" in path or bool(re.search(r"/of-i[0-9a-f]{12,}(?:/|$)", path))
 
 
 def select_infojobs_page(browser: Browser) -> Page | None:
@@ -48,14 +57,14 @@ def diagnose_page(page: Page) -> dict[str, object]:
     urls = page.locator("a[href]").evaluate_all(
         "elements => elements.map(el => el.href).filter(Boolean)"
     )
-    offer_urls = sorted(
-        {
-            link.split("?", 1)[0]
-            for link in urls
-            if is_infojobs_url(link) and "/oferta/" in urlparse(link).path
-        }
+    offer_urls = sorted({link.split("?", 1)[0] for link in urls if is_offer_url(link)})
+    domain_links = [link for link in urls if is_infojobs_url(link)]
+    candidate_routes = sorted(
+        {urlparse(link).path for link in domain_links if "/of-" in urlparse(link).path}
     )
     return {
+        "same_domain_anchor_count": len(domain_links),
+        "potential_offer_route_samples": candidate_routes[:10],
         "status": (
             "access_restricted"
             if access_indicators
