@@ -136,6 +136,25 @@ export function CaptureHistory({ apiBase, onError }: Props) {
     }
   }
 
+  async function importObservedItem(itemId: string, runId: string) {
+    if (!window.confirm("Import this captured job for review? Source content must be checked. Remote work eligibility is NOT verified.")) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`${apiBase}/api/captures/observations/${itemId}/review-import`, { method: "POST" });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail || "Insufficient verified source evidence for review import.");
+      }
+      await refresh();
+      const detail = await fetch(`${apiBase}/api/captures/${runId}`);
+      if (detail.ok) setSelected((await detail.json()) as CaptureRun);
+    } catch (caught) {
+      onError(caught instanceof Error ? caught.message : "Review import failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archive(runId: string) {
     setBusy(true);
     try {
@@ -226,6 +245,11 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                   <h4>{item.title || `Captured job ${item.source_job_id}`}</h4>
                   <p>{[item.company, item.location].filter(Boolean).join(" · ")}</p>
                   {item.source_url && <a href={externalCaptureUrl(item.source_url)} target="_blank" rel="noreferrer">Open job</a>}
+                  {selected.mode === "supervised_browser_observation" && ["infojobs", "jobgether"].includes(selected.source) && item.detail_status === "observed_unverified" && !item.posting_id && (
+                    <button type="button" disabled={busy} onClick={() => void importObservedItem(item.capture_item_id, selected.capture_run_id)}>
+                      Import source evidence for review
+                    </button>
+                  )}
                   {item.verification_reasons.length > 0 && (
                     <ul>{item.verification_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
                   )}

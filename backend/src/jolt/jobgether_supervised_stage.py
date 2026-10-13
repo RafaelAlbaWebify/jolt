@@ -13,7 +13,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.capture_artifacts import stage_capture_artifact
+from jolt.capture_artifacts import CaptureArtifact, stage_capture_artifact
 from jolt.database import CaptureItem, CapturePage, CaptureRun, create_session_factory, utc_now
 from jolt.jobgether_preview import jobgether_identity
 
@@ -65,7 +65,42 @@ def stage_supervised_batch(session: Session, report: dict) -> dict[str, object]:
         ).all()
     )
     novel = [offer for offer in accepted if offer["source_job_id"] not in existing]
-    if not novel:
+    previous_items = session.scalars(
+        select(CaptureItem)
+        .join(CaptureRun, CaptureItem.capture_run_id == CaptureRun.id)
+        .where(CaptureRun.source == "jobgether")
+        .where(CaptureItem.source_job_id.in_(seen))
+    ).all()
+    item_ids = [item.id for item in previous_items]
+    complete_previous_ids: set[str] = set()
+    if item_ids:
+        artifacts = session.scalars(
+            select(CaptureArtifact)
+            .where(CaptureArtifact.capture_item_id.in_(item_ids))
+            .where(CaptureArtifact.artifact_type == "jobgether_browser_json")
+        ).all()
+        id_by_item = {item.id: item.source_job_id for item in previous_items}
+        for artifact in artifacts:
+            try:
+                previous = json.loads(artifact.raw_payload)
+            except (ValueError, TypeError):
+                continue
+            if (
+                isinstance(previous, dict)
+                and isinstance(previous.get("description"), str)
+                and len(previous["description"].strip()) >= 150
+            ):
+                complete_previous_ids.add(id_by_item[artifact.capture_item_id])
+    improved = [
+        offer
+        for offer in accepted
+        if offer["source_job_id"] in existing
+        and offer["source_job_id"] not in complete_previous_ids
+        and isinstance(offer.get("description"), str)
+        and len(offer["description"].strip()) >= 150
+    ]
+    staged_offers = novel + improved
+    if not staged_offers:
         return {
             "capture_run_id": None,
             "staged_unverified": 0,
@@ -98,7 +133,7 @@ def stage_supervised_batch(session: Session, report: dict) -> dict[str, object]:
             next_control_enabled=False,
         )
     )
-    for offer in novel:
+    for offer in staged_offers:
         reasons = ["Supervised JobPosting extraction; source and eligibility not verified"]
         if not offer.get("spain_declared"):
             reasons.append("spain_not_declared")
@@ -130,8 +165,10 @@ def stage_supervised_batch(session: Session, report: dict) -> dict[str, object]:
     return {
         "capture_run_id": run.id,
         "reliable_ids": len(accepted),
-        "staged_unverified": len(novel),
-        "already_known": len(accepted) - len(novel),
+        "staged_unverified": len(staged_offers),
+        "new_source_id_count": len(novel),
+        "refreshed_evidence": len(improved),
+        "already_known": len(accepted) - len(staged_offers),
     }
 
 

@@ -7,8 +7,8 @@
   "last_update_date": "2026-10-13",
   "baseline_branch": "main",
   "baseline_commit": "38b18a96b85f6a477ef14c6911dcddd0cae6523b",
-  "current_phase": "infojobs_supervised_browser_visible_results_validation",
-  "current_milestone": "Existing local-first Windows product remains certified within its original boundary. Jobgether supervised 5-offer batch persisted 3 new/2 known and re-run found 5 known; InfoJobs browser displayed real listings but current modern-permalink detector (PR #562) awaits live re-test; official InfoJobs API still lacks developer credentials.",
+  "current_phase": "infojobs_jobgether_supervised_evidence_to_review_integration_pending_live_acceptance",
+  "current_milestone": "InfoJobs live Chrome captured 5/5 complete observed detail pages and user accepted 5/5 SQLite staging plus 5/5 repeat dedup. Jobgether prior 5 offer observed batch staged 3 new and 2 known; old capture discarded description. Coordinated source integration branch adds description retention, InfoJobs company/location, chained capture/stage launchers and operator-approved provenance-gated ingestion into existing Posting model; branch acceptance and real UI acceptance are still pending.",
   "overall_completion_percentage": 100,
   "operability_percentage": 100,
   "testing_percentage": 100,
@@ -20,9 +20,10 @@
     "production_ready": true
   },
   "current_blockers": [
-    "InfoJobs browser job-link detection after PR #562 is not yet accepted against live visible offers; real details, evidence, persistence and AI integration unverified.",
-    "InfoJobs official API live preview unavailable without developer credentials; no live API schema validation.",
-    "Canonical governance context was stale after PR #523 and source PRs #551-#562; reconciliation underway in this branch."
+    "InfoJobs and Jobgether coordinated branch not yet merged or accepted through real operator UI; do not claim completed integration.",
+    "Older Jobgether capture artifacts omitted descriptions and must fail closed for review import until a fresh supervised capture retains detail text.",
+    "Work-from-Spain eligibility and B2B/contractor conditions must still be established from source-specific evidence and existing AI review hardlines; no positive eligibility claim.",
+    "InfoJobs official developer API remains unavailable without credentials; supervised browser is the implemented route."
   ],
   "known_critical_failures": [
     "No unresolved P0 is currently known.",
@@ -30,9 +31,9 @@
     "GitHub issue #441 UX stabilization was closed completed on 2026-09-30."
   ],
   "active_workstreams": [
-    "Reconcile canonical .ai governance and handover with GitHub main and user-run acceptance.",
-    "Certify InfoJobs supervised URL observation on visible results; then design one bounded, source-identity-safe capture-to-evidence workflow using existing JOLT contracts.",
-    "Keep original LinkedIn/Indeed certified product boundary and avoid promoting unverified Jobgether/InfoJobs observations."
+    "Complete grouped InfoJobs/Jobgether evidence-to-review integration using existing CaptureRun, CaptureArtifact, SourceDocument, Posting and CaptureHistory.",
+    "Preflight whole feature branch and exact-head PR checks, plus Playwright/UI coverage.",
+    "Complete one real operator end-to-end acceptance for each source; require fresh Jobgether descriptions, do not repeat already accepted InfoJobs source staging."
   ],
   "completed_milestones": [
     "Local FastAPI + React/TypeScript application with SQLite/Alembic persistence.",

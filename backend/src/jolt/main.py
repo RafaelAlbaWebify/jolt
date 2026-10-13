@@ -135,6 +135,7 @@ from jolt.strategy_runtime import (
     ensure_strategy_reviews,
     load_active_strategy_profile,
 )
+from jolt.supervised_source_promotion import promote_supervised_item
 from jolt.workflow import (
     create_application,
     get_application,
@@ -224,6 +225,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> list[CaptureRunSummary]:
         return list_capture_runs(session)
+
+    @app.post("/api/captures/observations/{capture_item_id}/review-import", tags=["captures"])
+    def review_import_observation(
+        capture_item_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, str]:
+        try:
+            result = promote_supervised_item(session, capture_item_id)
+            session.commit()
+            return result
+        except ValueError as exc:
+            session.rollback()
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except Exception:
+            session.rollback()
+            raise
 
     @app.get("/api/captures/{capture_run_id}", response_model=CaptureRunResponse, tags=["captures"])
     def capture_run(

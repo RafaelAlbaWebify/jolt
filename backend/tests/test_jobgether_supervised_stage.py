@@ -72,3 +72,27 @@ def test_identity_mismatch_never_staged(tmp_path) -> None:
         result = stage_supervised_batch(session, report)
         assert result["staged_unverified"] == 0
         assert session.scalar(select(func.count(CaptureRun.id))) == 0
+
+
+def test_new_description_refreshes_known_source_without_erasing_old_evidence(tmp_path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'test.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        stage_supervised_batch(session, _report())
+        session.commit()
+    richer = _report()
+    richer["offers"][0]["description"] = (
+        "Support the Microsoft 365 workplace stack and resolve technical incidents. " * 5
+    )
+    with Session(engine) as session:
+        result = stage_supervised_batch(session, richer)
+        assert result["refreshed_evidence"] == 1
+        assert result["new_source_id_count"] == 0
+        session.commit()
+    with Session(engine) as session:
+        assert session.scalar(select(func.count(CaptureItem.id))) == 2
+        assert session.scalar(select(func.count(CaptureArtifact.id))) == 2
+        again = stage_supervised_batch(session, richer)
+        assert again["staged_unverified"] == 0
+        assert again["already_known"] == 1
+        session.rollback()
