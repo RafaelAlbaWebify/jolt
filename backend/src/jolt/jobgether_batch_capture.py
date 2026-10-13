@@ -62,7 +62,6 @@ def capture_batch(search_page: Page, *, limit: int = 5) -> dict[str, object]:
                 for script in page.locator('script[type="application/ld+json"]').all()
             ]
             offer = extract_offer(actual, scripts, title)
-            offer.pop("description", None)
             offers.append(offer)
         except Exception as exc:
             offers.append(
