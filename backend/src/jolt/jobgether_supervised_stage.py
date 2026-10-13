@@ -50,7 +50,12 @@ def stage_supervised_batch(session: Session, report: dict) -> dict[str, object]:
         seen.add(identifier)
         accepted.append(offer)
     if not accepted:
-        return {"capture_run_id": None, "staged_unverified": 0, "already_known": 0, "reliable_ids": 0}
+        return {
+            "capture_run_id": None,
+            "staged_unverified": 0,
+            "already_known": 0,
+            "reliable_ids": 0,
+        }
     existing = set(
         session.scalars(
             select(CaptureItem.source_job_id)
@@ -149,7 +154,11 @@ def main() -> int:
         except Exception:
             session.rollback()
             raise
-    print(json.dumps({**result, "committed": args.commit and result["capture_run_id"] is not None}, indent=2))
+    print(
+        json.dumps(
+            {**result, "committed": args.commit and result["capture_run_id"] is not None}, indent=2
+        )
+    )
     return 0
 
 
