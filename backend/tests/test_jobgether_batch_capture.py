@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from jolt.jobgether_batch_capture import capture_batch, discover_offer_urls
+from jolt.jobgether_batch_capture import capture_batch, discover_offer_urls, select_search_page
 
 FIRST = "https://jobgether.com/offer/aaaaaaaaaaaaaaaaaaaaaaaa-first"
 SECOND = "https://jobgether.com/offer/bbbbbbbbbbbbbbbbbbbbbbbb-second"
@@ -53,3 +53,13 @@ def test_failed_navigation_stays_unresolved() -> None:
     assert result["offers"][0]["status"] == "unresolved"
     assert result["offers"][0]["error_type"] == "RuntimeError"
     assert result["work_from_spain_verified"] is False
+
+
+def test_select_search_page_requires_requested_listing() -> None:
+    browser = Mock()
+    unrelated = Mock(url="https://jobgether.com/offer/aaaaaaaaaaaaaaaaaaaaaaaa-test")
+    another = Mock(url="https://jobgether.com/talent/profile")
+    requested = Mock(url="https://jobgether.com/talent/matches?sort=new")
+    browser.contexts = [Mock(pages=[unrelated, another, requested])]
+    assert select_search_page(browser, "https://jobgether.com/talent/matches") is requested
+    assert select_search_page(browser, "https://jobgether.com/talent/saved") is None
