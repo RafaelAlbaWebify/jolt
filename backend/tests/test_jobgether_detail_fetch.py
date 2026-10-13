@@ -1,6 +1,5 @@
 from jolt.jobgether_detail_fetch import extract_jobgether_detail
 
-
 IDENTIFIER = "6ac5d9628a27695aea363d32"
 URL = f"https://jobgether.com/offer/{IDENTIFIER}-support-technician"
 
