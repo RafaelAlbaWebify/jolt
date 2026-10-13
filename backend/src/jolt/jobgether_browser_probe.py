@@ -11,6 +11,7 @@ import json
 from playwright.sync_api import Page, sync_playwright
 
 from jolt.jobgether_preview import jobgether_identity
+from jolt.jobgether_structured_offer import extract_offer
 
 
 def _jobposting_diagnostics(page: Page) -> dict[str, object]:
@@ -78,6 +79,13 @@ def inspect_tab(page: Page) -> dict[str, object]:
         else "none"
     )
     diagnostics = _jobposting_diagnostics(page)
+    scripts = [
+        script.text_content(timeout=5000) or ""
+        for script in page.locator('script[type="application/ld+json"]').all()
+    ]
+    structured = extract_offer(url, scripts, title.strip())
+    # Never print full descriptions from the browser probe.
+    structured_summary = {key: value for key, value in structured.items() if key != "description"}
     return {
         "source_job_id": identifier,
         "status": "visible_page_observed"
@@ -90,6 +98,7 @@ def inspect_tab(page: Page) -> dict[str, object]:
         "content_source": content_source,
         "jsonld_blocks": schemas,
         **diagnostics,
+        "structured_offer": structured_summary,
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
     }
