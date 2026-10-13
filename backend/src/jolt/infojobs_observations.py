@@ -61,7 +61,6 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
         report.get("source") != "infojobs"
         or report.get("mode") != "supervised_browser_evidence_read_only"
         or not isinstance(search_url, str)
-        or not is_offer_url("https://www.infojobs.net/oferta/example")
         or not search_url.startswith("https://www.infojobs.net/ofertas-trabajo/")
         or not isinstance(offers, list)
         or not 1 <= len(offers) <= 5
