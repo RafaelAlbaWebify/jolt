@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from jolt.jobgether_detail_probe import main
 
-
 URL = "https://jobgether.com/offer/6ac5d9628a27695aea363d32-support-technician"
 
 
