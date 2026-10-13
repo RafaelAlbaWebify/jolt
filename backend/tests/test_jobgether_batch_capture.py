@@ -63,3 +63,26 @@ def test_select_search_page_requires_requested_listing() -> None:
     browser.contexts = [Mock(pages=[unrelated, another, requested])]
     assert select_search_page(browser, "https://jobgether.com/talent/matches") is requested
     assert select_search_page(browser, "https://jobgether.com/talent/saved") is None
+
+
+def test_supervised_batch_keeps_real_description_evidence(monkeypatch) -> None:
+    search = Mock(url="https://jobgether.com/talent/matches")
+    search.locator.return_value.evaluate_all.return_value = [FIRST]
+    detail = search.context.new_page.return_value
+    detail.url = FIRST
+    detail.locator.return_value.first.text_content.return_value = "Technical Engineer"
+    detail.locator.return_value.all.return_value = []
+    monkeypatch.setattr(
+        "jolt.jobgether_batch_capture.extract_offer",
+        lambda url, scripts, title: {
+            "status": "extracted_unverified",
+            "url": url,
+            "source_job_id": "a" * 24,
+            "title": title,
+            "description": "Verified observation text of job responsibilities, not eligibility.",
+        },
+    )
+    result = capture_batch(search, limit=1)
+    assert result["extracted_count"] == 1
+    assert result["offers"][0]["description"].startswith("Verified observation text")
+    assert result["work_from_spain_verified"] is False
