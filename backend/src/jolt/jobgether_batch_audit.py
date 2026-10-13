@@ -51,10 +51,7 @@ def audit_batch(batch: dict, previous: list[dict]) -> dict[str, object]:
         if not offer.get("spain_declared"):
             warnings.append("spain_not_declared")
         structured = offer.get("structured_identifier")
-        if (
-            isinstance(structured, str)
-            and len(structured_ids.get(structured, set())) > 1
-        ):
+        if isinstance(structured, str) and len(structured_ids.get(structured, set())) > 1:
             warnings.append("shared_structured_identifier")
         rows.append(
             {
