@@ -13,6 +13,51 @@ from playwright.sync_api import Page, sync_playwright
 from jolt.jobgether_preview import jobgether_identity
 
 
+def _jobposting_diagnostics(page: Page) -> dict[str, object]:
+    """Report structured-data coverage without copying full job descriptions."""
+    nodes: list[dict[str, object]] = []
+    for script in page.locator('script[type="application/ld+json"]').all():
+        try:
+            payload = json.loads(script.text_content(timeout=5000) or "")
+        except (ValueError, TypeError):
+            continue
+
+        pending: list[object] = [payload]
+        while pending:
+            node = pending.pop()
+            if isinstance(node, list):
+                pending.extend(node)
+                continue
+            if not isinstance(node, dict):
+                continue
+            graph = node.get("@graph")
+            if isinstance(graph, (list, dict)):
+                pending.append(graph)
+            types = node.get("@type", [])
+            if isinstance(types, str):
+                types = [types]
+            if not isinstance(types, list) or "JobPosting" not in types:
+                continue
+            description = node.get("description")
+            hiring = node.get("hiringOrganization")
+            nodes.append(
+                {
+                    "title_present": bool(node.get("title")),
+                    "description_length": len(description) if isinstance(description, str) else 0,
+                    "date_posted_present": bool(node.get("datePosted")),
+                    "employment_type_present": bool(node.get("employmentType")),
+                    "job_location_present": bool(node.get("jobLocation")),
+                    "applicant_location_requirements_present": bool(
+                        node.get("applicantLocationRequirements")
+                    ),
+                    "hiring_organization_present": bool(hiring),
+                    "identifier_present": bool(node.get("identifier")),
+                    "url_present": bool(node.get("url")),
+                }
+            )
+    return {"jobposting_count": len(nodes), "jobposting_fields": nodes}
+
+
 def inspect_tab(page: Page) -> dict[str, object]:
     """Observe an open offer tab without interacting with the page."""
     url = str(getattr(page, "url", ""))
@@ -32,6 +77,7 @@ def inspect_tab(page: Page) -> dict[str, object]:
         if len(body_text.strip()) >= 100
         else "none"
     )
+    diagnostics = _jobposting_diagnostics(page)
     return {
         "source_job_id": identifier,
         "status": "visible_page_observed"
@@ -43,6 +89,7 @@ def inspect_tab(page: Page) -> dict[str, object]:
         "body_text_length": len(body_text),
         "content_source": content_source,
         "jsonld_blocks": schemas,
+        **diagnostics,
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
     }
