@@ -100,23 +100,27 @@ def extract_offer(url: str, scripts: list[str], visible_title: str = "") -> dict
     hiring = posting.get("hiringOrganization")
     company = hiring.get("name", "") if isinstance(hiring, dict) else ""
     identifier = posting.get("identifier")
-    structured_id = (
-        identifier.get("value") if isinstance(identifier, dict) else identifier
-    )
+    structured_id = identifier.get("value") if isinstance(identifier, dict) else identifier
     structured_id = structured_id if isinstance(structured_id, str) else ""
     structured_url = posting.get("url")
     structured_url = structured_url if isinstance(structured_url, str) else ""
     structured_url_id = jobgether_identity(structured_url) if structured_url else None
 
     mismatches: list[str] = []
-    if visible_title and title and re.sub(r"\s+", " ", visible_title).strip().casefold() != title.casefold():
+    if (
+        visible_title
+        and title
+        and re.sub(r"\s+", " ", visible_title).strip().casefold() != title.casefold()
+    ):
         mismatches.append("visible_title")
     if structured_url and structured_url_id != source_id:
         mismatches.append("structured_url")
 
     countries = _countries(posting.get("applicantLocationRequirements"))
     return {
-        "status": "extracted_unverified" if title and description and not mismatches else "unresolved",
+        "status": "extracted_unverified"
+        if title and description and not mismatches
+        else "unresolved",
         "source_job_id": source_id,
         "url": url,
         "structured_identifier": structured_id,
