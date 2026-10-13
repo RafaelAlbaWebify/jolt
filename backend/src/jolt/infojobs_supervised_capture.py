@@ -60,9 +60,11 @@ def capture_visible(search_page: Page, limit: int = 5) -> dict[str, object]:
             detail = search_page.context.new_page()
             detail.goto(expected_url, wait_until="domcontentloaded", timeout=30000)
             actual = detail.url
-            if not is_offer_url(actual) or urlparse(actual).path.rstrip("/").casefold() != urlparse(
-                expected_url
-            ).path.rstrip("/").casefold():
+            if (
+                not is_offer_url(actual)
+                or urlparse(actual).path.rstrip("/").casefold()
+                != urlparse(expected_url).path.rstrip("/").casefold()
+            ):
                 offers.append(
                     {"url": expected_url, "status": "unresolved", "reason": "identity_mismatch"}
                 )
@@ -101,9 +103,7 @@ def capture_visible(search_page: Page, limit: int = 5) -> dict[str, object]:
                 detail.close()
     result["offers"] = offers
     result["discovered_count"] = len(urls)
-    result["extracted_count"] = sum(
-        offer["status"] == "extracted_unverified" for offer in offers
-    )
+    result["extracted_count"] = sum(offer["status"] == "extracted_unverified" for offer in offers)
     return result
 
 
@@ -114,9 +114,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     with sync_playwright() as playwright:
-        browser: Browser = playwright.chromium.connect_over_cdp(
-            args.cdp_endpoint, timeout=10000
-        )
+        browser: Browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10000)
         try:
             search = select_infojobs_page(browser)
             result = (
