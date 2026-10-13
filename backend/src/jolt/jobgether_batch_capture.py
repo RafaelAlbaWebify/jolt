@@ -6,9 +6,9 @@ import argparse
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from playwright.sync_api import Browser, Page, sync_playwright
-from urllib.parse import urlparse
 
 from jolt.jobgether_preview import jobgether_identity
 from jolt.jobgether_structured_offer import extract_offer
