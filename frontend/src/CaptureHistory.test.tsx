@@ -52,6 +52,9 @@ describe("CaptureHistory", () => {
     expect(screen.getByText("Stop reason:")).toBeInTheDocument();
     expect(screen.getAllByText("3 observed · 3 requested")).toHaveLength(2);
     expect(screen.getAllByText("requested limit reached")).toHaveLength(2);
+    const inspector = screen.getByText("Capture diagnostics");
+    const selectedCard = screen.getByRole("button", { name: "Inspect capture" }).closest("article");
+    expect(selectedCard).toContainElement(inspector);
   });
 
   it("labels legacy runs without inventing a requested bound", async () => {
