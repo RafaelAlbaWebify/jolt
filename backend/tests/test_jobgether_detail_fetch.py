@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from jolt.jobgether_detail_fetch import extract_jobgether_detail
 
 
