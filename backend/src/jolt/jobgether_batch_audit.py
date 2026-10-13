@@ -17,7 +17,11 @@ def audit_batch(batch: dict, previous: list[dict]) -> dict[str, object]:
                 continue
             url = offer.get("url")
             identifier = offer.get("source_job_id")
-            if isinstance(url, str) and jobgether_identity(url) == identifier:
+            if (
+                isinstance(url, str)
+                and isinstance(identifier, str)
+                and jobgether_identity(url) == identifier
+            ):
                 prior_ids.add(identifier)
 
     structured_ids: dict[str, set[str]] = {}
