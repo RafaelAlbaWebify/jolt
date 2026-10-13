@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import Browser, Page, sync_playwright
 
+from jolt.jobgether_batch_audit import audit_batch, load_previous_reports
 from jolt.jobgether_preview import jobgether_identity
 from jolt.jobgether_structured_offer import extract_offer
 
@@ -96,6 +97,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, choices=range(1, 6), default=5)
     parser.add_argument("--search-url", default="https://jobgether.com/talent/matches")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--history-dir", type=Path)
     args = parser.parse_args()
     parsed = urlparse(args.search_url)
     if (
@@ -119,6 +121,12 @@ def main() -> int:
                 result = capture_batch(search, limit=args.limit)
         finally:
             browser.close()
+    if result.get("source") == "jobgether":
+        history_dir = args.history_dir or (args.output.parent if args.output else None)
+        previous = (
+            load_previous_reports(history_dir, current_output=args.output) if history_dir else []
+        )
+        result["quality_audit"] = audit_batch(result, previous)
     payload = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
