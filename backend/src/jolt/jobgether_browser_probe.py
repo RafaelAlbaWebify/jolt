@@ -22,15 +22,26 @@ def inspect_tab(page: Page) -> dict[str, object]:
     title = page.locator("h1").first.text_content(timeout=5000) or ""
     main = page.locator("main").first
     main_text = main.inner_text(timeout=5000) if main.count() else ""
+    body = page.locator("body").first
+    body_text = body.inner_text(timeout=5000) if body.count() else ""
     schemas = page.locator('script[type="application/ld+json"]').count()
+    content_source = (
+        "main"
+        if len(main_text.strip()) >= 100
+        else "body"
+        if len(body_text.strip()) >= 100
+        else "none"
+    )
     return {
         "source_job_id": identifier,
         "status": "visible_page_observed"
-        if title.strip() and len(main_text) >= 100
+        if title.strip() and content_source != "none"
         else "unresolved",
         "url": url,
         "title": title.strip()[:250],
         "main_text_length": len(main_text),
+        "body_text_length": len(body_text),
+        "content_source": content_source,
         "jsonld_blocks": schemas,
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
