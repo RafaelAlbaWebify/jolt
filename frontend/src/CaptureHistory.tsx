@@ -137,7 +137,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   }
 
   async function importObservedItem(itemId: string, runId: string) {
-    if (!window.confirm("Import this captured job for review? Source content must be checked. Remote work eligibility is NOT verified.")) return;
+    if (!window.confirm("Create a posting from this captured evidence? You must still verify eligibility and make the AI/human review decision. No application is created.")) return;
     setBusy(true);
     try {
       const response = await fetch(`${apiBase}/api/captures/observations/${itemId}/review-import`, { method: "POST" });
@@ -220,7 +220,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                 )}
               </div>
               {selected?.capture_run_id === run.capture_run_id && (
-        <div className="capture-diagnostics" aria-live="polite">
+                <div className="capture-diagnostics" aria-live="polite">
           <h3>Captured opportunities · {selected.items.length}</h3>
           
           
@@ -243,7 +243,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                   {item.source_url && <a href={externalCaptureUrl(item.source_url)} target="_blank" rel="noreferrer">View original offer ↗</a>}
                   {selected.mode === "supervised_browser_observation" && ["infojobs", "jobgether"].includes(selected.source) && item.detail_status === "observed_unverified" && !item.posting_id && (
                     <button type="button" disabled={busy} onClick={() => void importObservedItem(item.capture_item_id, selected.capture_run_id)}>
-                      Send to Review Inbox
+                      Create opportunity for review
                     </button>
                   )}
                   </div>
@@ -252,14 +252,14 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                   )}
                 </div>
                 <div className="queue-status">
-                  <strong>{item.posting_id ? "Imported for review" : "Awaiting review"}</strong>
-                  <span>{item.posting_id ? "Evidence imported" : "Eligibility not verified"}</span>
+                  <strong>{item.posting_id ? "Opportunity created" : "Observation only"}</strong>
+                  <span>{item.posting_id ? "Evidence linked" : "Eligibility not verified"}</span>
                 </div>
               </article>
             ))}
           </div>
-        </div>
-      )}
+                </div>
+              )}
             </article>
           ))}
         </div>
