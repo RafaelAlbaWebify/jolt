@@ -98,7 +98,11 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     parsed = urlparse(args.search_url)
-    if parsed.scheme != "https" or parsed.hostname not in {"jobgether.com", "www.jobgether.com"} or jobgether_identity(args.search_url):
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"jobgether.com", "www.jobgether.com"}
+        or jobgether_identity(args.search_url)
+    ):
         parser.error("--search-url must be an HTTPS Jobgether listing URL")
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10_000)
