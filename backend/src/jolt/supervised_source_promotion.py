@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from jolt.capture_artifacts import CaptureArtifact
 from jolt.capture_ingestion import ingest_capture_item
-from jolt.database import CaptureItem, CaptureRun
+from jolt.database import CaptureItem, CaptureRun, Posting
 from jolt.infojobs_observations import inspect_offer
 from jolt.jobgether_preview import jobgether_identity
 from jolt.schemas import ManualIntakeRequest
@@ -121,6 +121,9 @@ def promote_supervised_item(session: Session, capture_item_id: str) -> dict[str,
             source_type=f"{run.source}_supervised",
         ),
     )
+    posting = session.get(Posting, intake.posting_id)
+    if posting is not None:
+        posting.description = description
     item.source_document_id = intake.source_document_id
     item.posting_id = intake.posting_id
     item.detail_status = "verified"
