@@ -171,3 +171,9 @@ button.filter-active, button.decision-active { background: #172033; border-color
   .capture-review-list .capture-review-item { display: block; }
   .capture-review-item .queue-status { text-align: left; margin-top: .75rem; }
 }
+
+/* Full captured source text is readable even before an AI review exists. */
+.inspector-source-description { padding: 1rem 1.25rem; border-top: 1px solid #dce2eb; }
+.inspector-source-description h3 { margin: 0 0 .75rem; }
+.inspector-source-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; max-height: min(52vh, 650px); overflow-y: auto; background: #f6f8fc; padding: 1rem; border: 1px solid #dce2eb; border-radius: .65rem; color: #243041; }
+.inspector-source-description small { display: block; margin-top: .75rem; }

@@ -212,6 +212,51 @@ async function errorFromResponse(response: Response, fallback: string) {
   return new Error(payload?.detail || fallback);
 }
 
+function SourceDescription({ postingId }: { postingId: string }) {
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    fetch(`${API_BASE}/api/opportunities/${postingId}/source-description`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load the captured job description.");
+        return (await response.json()) as { description: string; location: string };
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setDescription(data.description);
+          setLocation(data.location);
+        }
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Unable to load description.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [postingId]);
+
+  return (
+    <section className="inspector-source-description" aria-label="Captured job description">
+      <h3>Original job description</h3>
+      {loading && <p role="status">Loading captured description…</p>}
+      {error && <p role="alert">{error}</p>}
+      {!loading && !error && (
+        <>
+          {location && <p><strong>Captured location:</strong> {location}</p>}
+          {description ? <div className="inspector-source-text">{description}</div> : <p>No source description is available for this opportunity.</p>}
+          <small>Source text is not an AI assessment. Verify geography, work authorization, and mandatory requirements before deciding.</small>
+        </>
+      )}
+    </section>
+  );
+}
+
 function Sources({ postingId }: { postingId: string }) {
   const [data, setData] = useState<SourceEvidence | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1296,6 +1341,7 @@ export function App({
               </section>
             )}
 
+            <SourceDescription postingId={selectedOpportunity.posting_id} />
             <Sources postingId={selectedOpportunity.posting_id} />
           </aside>
         </div>

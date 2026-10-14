@@ -42,7 +42,7 @@ from jolt.automated_review import ensure_automated_reviews
 from jolt.capture_analysis_pack import build_analysis_pack
 from jolt.capture_archival import CaptureBatchArchiveResult, archive_capture_run
 from jolt.capture_workflow import get_capture_run, list_capture_runs, run_linkedin_fixture_capture
-from jolt.database import create_session_factory
+from jolt.database import Posting, create_session_factory
 from jolt.discovery_execution import recover_interrupted_discovery_executions
 from jolt.discovery_searches_api import build_discovery_searches_router
 from jolt.errors import JoltNotFoundError
@@ -286,6 +286,22 @@ def create_app(database_url: str | None = None) -> FastAPI:
         session: Annotated[Session, Depends(get_session)],
     ) -> list[dict[str, object]]:
         return list_identity_evidence(session)
+
+    @app.get("/api/opportunities/{posting_id}/source-description", tags=["review"])
+    def source_description(
+        posting_id: str,
+        session: Annotated[Session, Depends(get_session)],
+    ) -> dict[str, str]:
+        posting = session.get(Posting, posting_id)
+        if posting is None:
+            raise HTTPException(status_code=404, detail="Opportunity not found.")
+        return {
+            "posting_id": posting.id,
+            "title": posting.title,
+            "company": posting.company,
+            "location": posting.location,
+            "description": posting.description,
+        }
 
     @app.get("/api/opportunities/{posting_id}/identity-evidence", tags=["identity"])
     def identity_evidence(

@@ -347,7 +347,29 @@ describe("App AI review workflow", () => {
 
     expect(
       fetchMock,
-    ).toHaveBeenCalledTimes(1);
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads the persisted original description for an unreviewed imported job", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/ai-review/opportunity-index")) {
+        return jsonResponse([awaitingOpportunity]);
+      }
+      if (url.endsWith("/api/opportunities/posting-2/source-description")) {
+        return jsonResponse({
+          description: "Support Microsoft 365 and users from a remote service desk.",
+          location: "",
+        });
+      }
+      throw new Error("Unexpected request: " + url);
+    });
+    render(<App />);
+    await screen.findByText("Cloud Operations Analyst");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    const dialog = screen.getByRole("dialog", { name: "Cloud Operations Analyst" });
+    expect(await within(dialog).findByText("Support Microsoft 365 and users from a remote service desk.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Original job description")).toBeInTheDocument();
   });
 
   it("shows a hardline rejection before fit and suppresses misleading fit scores", async () => {

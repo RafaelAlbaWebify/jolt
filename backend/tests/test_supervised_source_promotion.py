@@ -69,6 +69,10 @@ def test_infojobs_explicit_import_is_idempotent(tmp_path) -> None:
         assert result["status"] == "imported_for_review"
         assert item.company == "Example Employer"
         assert item.location == "Madrid (Madrid)"
+        posting = session.get(Posting, item.posting_id)
+        assert posting is not None
+        assert posting.description.startswith("Support Windows, Microsoft 365")
+        assert "IT Support Engineer" not in posting.description
         assert "eligibility is NOT verified" in item.verification_reasons_json
         repeated = promote_supervised_item(session, item.id)
         assert repeated["status"] == "already_imported"
