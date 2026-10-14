@@ -44,6 +44,7 @@ type CaptureRun = CaptureRunSummary & {
 type Props = {
   apiBase: string;
   onError: (message: string) => void;
+  active?: boolean;
 };
 
 const ARCHIVED_CAPTURE_STATUS = "archived";
@@ -71,7 +72,7 @@ function externalCaptureUrl(value: string): string {
   return trimmed;
 }
 
-export function CaptureHistory({ apiBase, onError }: Props) {
+export function CaptureHistory({ apiBase, onError, active = true }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [runs, setRuns] = useState<CaptureRunSummary[]>([]);
   const [selected, setSelected] = useState<CaptureRun | null>(null);
@@ -95,7 +96,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   }, [apiBase]);
 
   useEffect(() => {
-    if (loaded) return;
+    if (loaded || !active) return;
 
     const load = () => {
       if (loaded) return;
@@ -121,7 +122,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
     details.addEventListener("toggle", loadWhenOpened);
     loadWhenOpened();
     return () => details.removeEventListener("toggle", loadWhenOpened);
-  }, [loaded, onError, refresh]);
+  }, [active, loaded, onError, refresh]);
 
   async function inspect(runId: string) {
     setBusy(true);

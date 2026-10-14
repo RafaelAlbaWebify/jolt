@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { CaptureHistory } from "./CaptureHistory";
 import { ReviewedDecisions } from "./ReviewedDecisions";
 
 type AISectionState = "no_evidence" | "not_analyzed" | "stale" | "current";
@@ -195,7 +194,6 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
         </section>
 
         <ReviewedDecisions apiBase={apiBase} onError={setError} />
-        <CaptureHistory apiBase={apiBase} onError={setError} />
       </div>
     );
   }
