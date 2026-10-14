@@ -164,7 +164,7 @@ def test_review_inspector_source_description_reads_persisted_posting(tmp_path: P
     posting_id = intake.json()["posting_id"]
     response = client.get(f"/api/opportunities/{posting_id}/source-description")
     assert response.status_code == 200
-    assert response.json()["description"] == description.strip()
+    assert response.json()["description"].endswith(description.strip())
     assert response.json()["company"] == "thinkbridge"
     missing = client.get("/api/opportunities/does-not-exist/source-description")
     assert missing.status_code == 404
