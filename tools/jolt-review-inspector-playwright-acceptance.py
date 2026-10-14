@@ -54,10 +54,11 @@ def run_audit(
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.on("request", lambda req: failures.append(f"Unexpected mutation: {req.method} {req.url}") if req.method in {"POST", "PUT", "PATCH", "DELETE"} else None)
         try:
             page.goto(app_url, wait_until="domcontentloaded", timeout=30000)
             page.get_by_role("button", name="Review Inbox", exact=True).click()
-            page.get_by_placeholder("Search inbox").fill(company)
+            page.get_by_placeholder("Search jobs by title, company, or location…").fill(company)
             page.get_by_text(title, exact=True).first.wait_for(timeout=15000)
             page.get_by_role("button", name="Inspect full details").click()
             dialog = page.get_by_role("dialog", name=title)
