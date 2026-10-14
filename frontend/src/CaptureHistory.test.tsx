@@ -132,4 +132,15 @@ describe("CaptureHistory", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Create opportunity for review" })).not.toBeInTheDocument());
   });
 
+  it("defers capture history retrieval until Capture Jobs is active", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse([capture]));
+    const { rerender } = render(
+      <CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} active={false} />,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    rerender(<CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} active />);
+    expect(await screen.findByText("3 observed · 3 requested")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
 });
