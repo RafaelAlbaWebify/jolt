@@ -137,7 +137,7 @@ export function CaptureHistory({ apiBase, onError }: Props) {
   }
 
   async function importObservedItem(itemId: string, runId: string) {
-    if (!window.confirm("Import this captured job for review? Source content must be checked. Remote work eligibility is NOT verified.")) return;
+    if (!window.confirm("Create a posting from this captured evidence? You must still verify eligibility and make the AI/human review decision. No application is created.")) return;
     setBusy(true);
     try {
       const response = await fetch(`${apiBase}/api/captures/observations/${itemId}/review-import`, { method: "POST" });
@@ -219,17 +219,12 @@ export function CaptureHistory({ apiBase, onError }: Props) {
                   </button>
                 )}
               </div>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {selected && (
-        <div className="capture-diagnostics" aria-live="polite">
-          <h3>Capture diagnostics</h3>
-          <p><strong>Capture bound:</strong> {captureBound(selected)}</p>
-          <p><strong>Status:</strong> {selected.status.replaceAll("_", " ")}</p>
-          <p><strong>Stop reason:</strong> {readableReason(selected.stop_reason)}</p>
+              {selected?.capture_run_id === run.capture_run_id && (
+                <div className="capture-diagnostics" aria-live="polite">
+          <h3>Captured opportunities · {selected.items.length}</h3>
+          
+          
+          
           {selected.search_url && <p><a href={externalCaptureUrl(selected.search_url)} target="_blank" rel="noreferrer">Open source search</a></p>}
           {selected.warnings.length > 0 && (
             <div>
@@ -237,30 +232,36 @@ export function CaptureHistory({ apiBase, onError }: Props) {
               <ul>{selected.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             </div>
           )}
-          <p>{selected.pages.map((page) => `Page ${page.page_number}: ${page.visible_job_ids.length} visible jobs; next ${page.next_control_enabled ? "enabled" : "not enabled"}`).join(" · ")}</p>
-          <div className="queue">
+          
+          <div className="capture-review-list">
             {selected.items.map((item) => (
-              <article key={item.capture_item_id}>
+              <article className="capture-review-item" key={item.capture_item_id}>
                 <div>
                   <h4>{item.title || `Captured job ${item.source_job_id}`}</h4>
-                  <p>{[item.company, item.location].filter(Boolean).join(" · ")}</p>
-                  {item.source_url && <a href={externalCaptureUrl(item.source_url)} target="_blank" rel="noreferrer">Open job</a>}
+                  <p className="capture-review-meta">{[item.company, item.location].filter(Boolean).join(" · ") || "Employer / location not recorded"}</p>
+                  <div className="capture-review-actions">
+                  {item.source_url && <a href={externalCaptureUrl(item.source_url)} target="_blank" rel="noreferrer">View original offer ↗</a>}
                   {selected.mode === "supervised_browser_observation" && ["infojobs", "jobgether"].includes(selected.source) && item.detail_status === "observed_unverified" && !item.posting_id && (
                     <button type="button" disabled={busy} onClick={() => void importObservedItem(item.capture_item_id, selected.capture_run_id)}>
-                      Import source evidence for review
+                      Create opportunity for review
                     </button>
                   )}
+                  </div>
                   {item.verification_reasons.length > 0 && (
-                    <ul>{item.verification_reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                    <details className="capture-review-flags"><summary>Evidence limitations ({item.verification_reasons.length})</summary><ul>{item.verification_reasons.map((reason) => <li key={reason}>{reason.replaceAll("_", " ")}</li>)}</ul></details>
                   )}
                 </div>
                 <div className="queue-status">
-                  <strong>{item.detail_status.replaceAll("_", " ")}</strong>
-                  <span>{item.posting_id ? "canonical posting created" : "not ingested"}</span>
+                  <strong>{item.posting_id ? "Opportunity created" : "Observation only"}</strong>
+                  <span>{item.posting_id ? "Evidence linked" : "Eligibility not verified"}</span>
                 </div>
               </article>
             ))}
           </div>
+                </div>
+              )}
+            </article>
+          ))}
         </div>
       )}
     </section>

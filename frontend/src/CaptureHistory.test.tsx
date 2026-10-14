@@ -47,11 +47,10 @@ describe("CaptureHistory", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Inspect capture" }));
 
-    expect(await screen.findByText("Capture diagnostics")).toBeInTheDocument();
-    expect(screen.getByText("Capture bound:")).toBeInTheDocument();
-    expect(screen.getByText("Stop reason:")).toBeInTheDocument();
-    expect(screen.getAllByText("3 observed · 3 requested")).toHaveLength(2);
-    expect(screen.getAllByText("requested limit reached")).toHaveLength(2);
+    expect(await screen.findByText("Captured opportunities · 0")).toBeInTheDocument();
+    expect(screen.getAllByText("3 observed · 3 requested")).toHaveLength(1);
+    const inspector = screen.getByText("Captured opportunities · 0");
+    expect(screen.getByRole("button", { name: "Inspect capture" }).closest("article")).toContainElement(inspector);
   });
 
   it("labels legacy runs without inventing a requested bound", async () => {
@@ -99,7 +98,7 @@ describe("CaptureHistory", () => {
     });
     render(<CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Inspect capture" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Import source evidence for review" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create opportunity for review" }));
     expect(confirm).toHaveBeenCalledOnce();
     expect(requests.some((url) => url.includes("/review-import"))).toBe(false);
   });
@@ -128,9 +127,9 @@ describe("CaptureHistory", () => {
     });
     render(<CaptureHistory apiBase="http://127.0.0.1:8000" onError={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Inspect capture" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Import source evidence for review" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create opportunity for review" }));
     await waitFor(() => expect(imported).toBe(true));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Import source evidence for review" })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Create opportunity for review" })).not.toBeInTheDocument());
   });
 
 });

@@ -151,3 +151,23 @@ button.filter-active, button.decision-active { background: #172033; border-color
   .dimension-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .queue-status { justify-items: start; text-align: left; }
 }
+
+/* Source-capture inspection: compact, readable cards and distinct actions. */
+.capture-runs > article { display: block; }
+.capture-runs .capture-diagnostics { margin-top: 1rem; padding: 1rem; border: 1px solid var(--border, #d8dfe9); border-radius: 12px; background: var(--surface, #fff); }
+.capture-review-list { display: grid; gap: .75rem; margin-top: 1rem; }
+.capture-review-list .capture-review-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; padding: 1rem; border: 1px solid var(--border, #d8dfe9); border-radius: 10px; background: var(--surface, #fff); }
+.capture-review-item > div:first-child { flex: 1 1 auto; min-width: 0; }
+.capture-review-item h4 { margin: 0 0 .35rem; line-height: 1.35; }
+.capture-review-meta { margin: 0 0 .75rem; color: var(--muted, #667085); }
+.capture-review-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin: .75rem 0; }
+.capture-review-actions a { display: inline-flex; align-items: center; }
+.capture-review-actions button { width: auto; max-width: 100%; }
+.capture-review-flags { margin-top: .75rem; font-size: .9rem; }
+.capture-review-flags summary { cursor: pointer; color: var(--muted, #667085); }
+.capture-review-flags ul { margin: .5rem 0 0; padding-left: 1.25rem; }
+.capture-review-item .queue-status { flex: 0 0 11rem; text-align: right; }
+@media (max-width: 760px) {
+  .capture-review-list .capture-review-item { display: block; }
+  .capture-review-item .queue-status { text-align: left; margin-top: .75rem; }
+}
