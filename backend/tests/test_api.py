@@ -150,8 +150,7 @@ def test_automated_review_rejects_verified_language_blocker(tmp_path: Path) -> N
 def test_review_inspector_source_description_reads_persisted_posting(tmp_path: Path) -> None:
     client = _client(tmp_path / "source_description.db")
     description = (
-        "Support Microsoft 365 incidents, endpoint management and customer escalations. "
-        * 5
+        "Support Microsoft 365 incidents, endpoint management and customer escalations. " * 5
     )
     intake = client.post(
         "/api/intake/manual",
