@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { CaptureHistory } from "./CaptureHistory";
 import { DiscoverySearchQueue } from "./DiscoverySearchQueue";
 import { LinkedInJobCaptureLauncher } from "./LinkedInJobCaptureLauncher";
 import { LinkedInSearchPortfolio } from "./LinkedInSearchPortfolio";
@@ -19,6 +21,7 @@ type Props = {
 };
 
 export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Props) {
+  const [captureError, setCaptureError] = useState("");
   return (
     <main className="professional-intelligence" aria-labelledby="job-capture-heading">
       <section className="panel professional-intelligence-overview">
@@ -34,6 +37,11 @@ export function ProfessionalIntelligence({ apiBase, active, onAIImported }: Prop
       </section>
 
       <DiscoverySearchQueue apiBase={apiBase} active={active} />
+
+      <section aria-label="Source capture history and review">
+        {captureError && <p className="error" role="alert">{captureError}</p>}
+        <CaptureHistory apiBase={apiBase} onError={setCaptureError} active={active} />
+      </section>
 
       <details className="panel professional-single-capture-fallback">
         <summary>LinkedIn advanced operations</summary>
