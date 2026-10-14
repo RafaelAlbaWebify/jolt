@@ -174,7 +174,7 @@ describe("App AI review workflow", () => {
 
     expect(
       fetchMock,
-    ).toHaveBeenCalledTimes(2);
+    ).toHaveBeenCalledTimes(1);
 
     expect(
       String(fetchMock.mock.calls[0][0]),
@@ -347,7 +347,7 @@ describe("App AI review workflow", () => {
 
     expect(
       fetchMock,
-    ).toHaveBeenCalledTimes(1);
+    ).toHaveBeenCalledTimes(2);
   });
 
   it("loads the persisted original description for an unreviewed imported job", async () => {
