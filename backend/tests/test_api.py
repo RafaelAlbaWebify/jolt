@@ -145,3 +145,26 @@ def test_automated_review_rejects_verified_language_blocker(tmp_path: Path) -> N
     assert opportunity["proposed_decision"] == "reject"
     assert opportunity["confidence"] == "high"
     assert opportunity["blockers"]
+
+
+def test_review_inspector_source_description_reads_persisted_posting(tmp_path: Path) -> None:
+    client = _client(tmp_path / "source_description.db")
+    description = (
+        "Support Microsoft 365 incidents, endpoint management and customer escalations. "
+        * 5
+    )
+    intake = client.post(
+        "/api/intake/manual",
+        json={
+            "source_url": "https://jobgether.com/offer/aaaaaaaaaaaaaaaaaaaaaaaa-support",
+            "raw_text": "Support Engineer\nthinkbridge\n" + description,
+        },
+    )
+    assert intake.status_code == 200
+    posting_id = intake.json()["posting_id"]
+    response = client.get(f"/api/opportunities/{posting_id}/source-description")
+    assert response.status_code == 200
+    assert response.json()["description"] == description.strip()
+    assert response.json()["company"] == "thinkbridge"
+    missing = client.get("/api/opportunities/does-not-exist/source-description")
+    assert missing.status_code == 404
