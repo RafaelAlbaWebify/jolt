@@ -136,7 +136,7 @@ export function Workbench() {
                 <summary>
                   <span>
                     <strong>Advanced</strong>
-                    <small>Strategy refresh, reviewed decisions, capture history and developer diagnostics</small>
+                    <small>Strategy refresh, reviewed decisions and developer diagnostics</small>
                   </span>
                   <span>Open tools</span>
                 </summary>
