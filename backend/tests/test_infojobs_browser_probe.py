@@ -86,7 +86,7 @@ def test_observation_retries_empty_document_then_succeeds() -> None:
         {"title": "", "text": "", "links": [], "ready_state": "loading"},
         {
             "title": "InfoJobs",
-            "text": "Jobs " * 30,
+            "text": "Jobs " * 90,
             "links": ["https://www.infojobs.net/oferta/abc"],
             "ready_state": "complete",
         },
@@ -105,8 +105,8 @@ def test_observation_retries_context_destruction() -> None:
         PlaywrightError("Execution context was destroyed"),
         {
             "title": "InfoJobs",
-            "text": "Jobs " * 30,
-            "links": [],
+            "text": "Jobs " * 90,
+            "links": ["https://www.infojobs.net/oferta/abc"],
             "ready_state": "complete",
         },
     ]
@@ -149,3 +149,19 @@ def test_detail_tab_never_substitutes_for_search_listing() -> None:
     detail = Mock(url="https://www.infojobs.net/madrid/support/of-i0123456789abcdef")
     browser.contexts = [Mock(pages=[detail])]
     assert select_infojobs_page(browser) is None
+
+def test_short_shell_waits_for_real_listing_and_keeps_evidence() -> None:
+    page = Mock()
+    shell = {
+        "title": "",
+        "text": "Please wait" * 12,
+        "links": [],
+        "ready_state": "complete",
+        "html_length": 180,
+    }
+    page.main_frame.evaluate.return_value = shell
+    result = observe_stable_page(page, attempts=2)
+    assert result["error"] == "document_not_ready"
+    assert result["text_excerpt"].startswith("Please wait")
+    assert len(result["observations"]) == 2
+    assert result["html_length"] == 180
