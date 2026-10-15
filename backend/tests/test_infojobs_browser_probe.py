@@ -150,6 +150,7 @@ def test_detail_tab_never_substitutes_for_search_listing() -> None:
     browser.contexts = [Mock(pages=[detail])]
     assert select_infojobs_page(browser) is None
 
+
 def test_short_shell_waits_for_real_listing_and_keeps_evidence() -> None:
     page = Mock()
     shell = {
