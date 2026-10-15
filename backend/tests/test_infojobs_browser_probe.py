@@ -127,7 +127,6 @@ def test_observation_exhaustion_stays_unresolved() -> None:
     assert result["error"] == "document_not_ready"
 
 
-
 def test_explicit_search_selects_correct_tab_with_multiple_listings() -> None:
     browser = Mock()
     wrong = Mock(url="https://www.infojobs.net/ofertas-trabajo/marketing")
@@ -141,8 +140,7 @@ def test_missing_requested_listing_does_not_fall_back_to_another_tab() -> None:
     other = Mock(url="https://www.infojobs.net/ofertas-trabajo/marketing")
     browser.contexts = [Mock(pages=[other])]
     assert (
-        select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it")
-        is None
+        select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it") is None
     )
 
 
