@@ -17,10 +17,11 @@ def test_discovery_is_bounded_deduplicated_and_domain_checked() -> None:
 
 def test_nonlisting_diagnostic_never_opens_details() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.title.return_value = "Access denied"
-    page.locator.return_value.first.count.return_value = 1
-    page.locator.return_value.first.inner_text.return_value = "CAPTCHA " * 30
-    page.locator.return_value.evaluate_all.return_value = []
+    page.main_frame.evaluate.return_value = {
+        "title": "Access denied",
+        "text": "CAPTCHA " * 30,
+        "links": [],
+    }
     result = capture_visible(page)
     assert result["stop_reason"] == "no_reliable_offer_links"
     assert result["offers"] == []
@@ -29,9 +30,11 @@ def test_nonlisting_diagnostic_never_opens_details() -> None:
 
 def test_detail_identity_mismatch_fails_closed() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.title.return_value = "InfoJobs"
-    page.locator.return_value.first.count.return_value = 1
-    page.locator.return_value.first.inner_text.return_value = "Available opportunities " * 25
+    page.main_frame.evaluate.return_value = {
+        "title": "InfoJobs",
+        "text": "Available opportunities " * 25,
+        "links": [OFFER],
+    }
     page.locator.return_value.evaluate_all.return_value = [OFFER]
     detail = Mock(url="https://www.infojobs.net/madrid/other/of-iabcdef0123456789abcdef0123456789")
     page.context.new_page.return_value = detail
@@ -43,9 +46,11 @@ def test_detail_identity_mismatch_fails_closed() -> None:
 
 def test_read_only_capture_keeps_source_text_but_not_verification() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.title.return_value = "InfoJobs"
-    page.locator.return_value.first.count.return_value = 1
-    page.locator.return_value.first.inner_text.return_value = "Available opportunities " * 25
+    page.main_frame.evaluate.return_value = {
+        "title": "InfoJobs",
+        "text": "Available opportunities " * 25,
+        "links": [OFFER],
+    }
     page.locator.return_value.evaluate_all.return_value = [OFFER]
     detail = Mock(url=OFFER)
     detail.locator.return_value.first.text_content.return_value = "Support Engineer"
