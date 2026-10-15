@@ -57,14 +57,14 @@ try {
         uv sync --all-groups
         if ($LASTEXITCODE -ne 0) { throw "uv sync failed." }
     }
-    uv run --no-sync python -m jolt.infojobs_browser_probe --cdp-endpoint $Endpoint
+    uv run --no-sync python -m jolt.infojobs_browser_probe --cdp-endpoint $Endpoint --search-url $SearchUrl
     if ($LASTEXITCODE -ne 0) { throw "InfoJobs access not yet certified; see diagnostics above." }
     if ($CommitObservations -and -not $StageObservations) { throw "-CommitObservations requires -StageObservations." }
     if ($StageObservations -and -not $Capture) { throw "-StageObservations requires -Capture." }
     if ($Capture) {
         $Stamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Output = Join-Path $HOME "Downloads\\JOLT_INFOJOBS_SUPERVISED_$Stamp.json"
-        uv run --no-sync python -m jolt.infojobs_supervised_capture --cdp-endpoint $Endpoint --limit $Limit --output $Output
+        uv run --no-sync python -m jolt.infojobs_supervised_capture --cdp-endpoint $Endpoint --search-url $SearchUrl --limit $Limit --output $Output
         if ($LASTEXITCODE -ne 0) { throw "No validated InfoJobs detail evidence was captured. Diagnostics are shown above." }
         Write-Host "Read-only InfoJobs evidence: $Output"
         if ($StageObservations) {
