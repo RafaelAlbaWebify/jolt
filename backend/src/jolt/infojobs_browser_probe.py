@@ -51,8 +51,17 @@ def select_infojobs_page(browser: Browser, search_url: str | None = None) -> Pag
     pages = [page for context in browser.contexts for page in context.pages]
     listings = [page for page in pages if _listing_identity(page.url) is not None]
     if wanted is not None:
+        # InfoJobs augments a listing URL with keyword/page/sort filters.
+        # If the requested URL has no query, identify its listing by path.
+        # Otherwise preserve exact query matching for explicit filtered searches.
         return next(
-            (page for page in reversed(listings) if _listing_identity(page.url) == wanted),
+            (
+                page
+                for page in reversed(listings)
+                if (identity := _listing_identity(page.url)) is not None
+                and identity[0] == wanted[0]
+                and (not wanted[1] or identity[1] == wanted[1])
+            ),
             None,
         )
     return listings[-1] if listings else None
