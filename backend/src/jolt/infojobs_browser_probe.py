@@ -10,9 +10,7 @@ import json
 import re
 from urllib.parse import urlparse
 
-from playwright.sync_api import Error as PlaywrightError
-
-from playwright.sync_api import Browser, Page, sync_playwright
+from playwright.sync_api import Browser, Error as PlaywrightError, Page, sync_playwright
 
 
 def is_infojobs_url(url: str) -> bool:
