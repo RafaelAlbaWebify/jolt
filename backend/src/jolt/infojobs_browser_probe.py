@@ -168,7 +168,11 @@ def main() -> int:
             result = (
                 diagnose_page(page)
                 if page is not None
-                else {"status": "unresolved", "reason": "requested_search_tab_missing", "requested_search_url": args.search_url}
+                else {
+                    "status": "unresolved",
+                    "reason": "requested_search_tab_missing",
+                    "requested_search_url": args.search_url,
+                }
             )
         finally:
             browser.close()
