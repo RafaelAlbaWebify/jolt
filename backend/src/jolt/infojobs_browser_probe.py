@@ -89,7 +89,9 @@ def diagnose_page(page: Page) -> dict[str, object]:
         if token in lowered
     ]
     raw_links = snapshot.get("links")
-    urls = [link for link in raw_links if isinstance(link, str)] if isinstance(raw_links, list) else []
+    urls = (
+        [link for link in raw_links if isinstance(link, str)] if isinstance(raw_links, list) else []
+    )
     offer_urls = sorted({link.split("?", 1)[0] for link in urls if is_offer_url(link)})
     domain_links = [link for link in urls if is_infojobs_url(link)]
     candidate_routes = sorted(
