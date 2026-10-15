@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 from playwright.sync_api import Browser, Page, sync_playwright
 
 from jolt.infojobs_browser_probe import (
+    DEFAULT_SEARCH_URL,
+    _listing_identity,
     diagnose_page,
     is_offer_url,
     select_infojobs_page,
@@ -113,17 +115,20 @@ def capture_visible(search_page: Page, limit: int = 5) -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cdp-endpoint", default="http://127.0.0.1:9223")
+    parser.add_argument("--search-url", default=DEFAULT_SEARCH_URL)
     parser.add_argument("--limit", type=int, choices=range(1, 6), default=5)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if _listing_identity(args.search_url) is None:
+        parser.error("--search-url must be an HTTPS InfoJobs listing URL")
     with sync_playwright() as playwright:
         browser: Browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10000)
         try:
-            search = select_infojobs_page(browser)
+            search = select_infojobs_page(browser, args.search_url)
             result = (
                 capture_visible(search, args.limit)
                 if search is not None
-                else {"status": "unresolved", "reason": "no_infojobs_tab"}
+                else {"status": "unresolved", "reason": "requested_search_tab_missing", "requested_search_url": args.search_url}
             )
         finally:
             browser.close()
