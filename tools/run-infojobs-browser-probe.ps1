@@ -26,14 +26,20 @@ $Candidates = @(
 $Chrome = $Candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 if (-not $Chrome) { throw "Chrome executable not found." }
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { throw "uv is required." }
-New-Item -ItemType Directory -Force -Path $Profile | Out-Null
-Start-Process -FilePath $Chrome -ArgumentList @(
-    "--remote-debugging-port=$DebugPort",
-    "--user-data-dir=$Profile",
-    "--no-first-run",
-    $SearchUrl
-) | Out-Null
 $Ready = $false
+try {
+    $Existing = Invoke-RestMethod -Uri "$Endpoint/json/version" -TimeoutSec 2
+    if ($Existing.webSocketDebuggerUrl) { $Ready = $true }
+} catch { }
+if (-not $Ready) {
+    New-Item -ItemType Directory -Force -Path $Profile | Out-Null
+    Start-Process -FilePath $Chrome -ArgumentList @(
+        "--remote-debugging-port=$DebugPort",
+        "--user-data-dir=$Profile",
+        "--no-first-run",
+        $SearchUrl
+    ) | Out-Null
+}
 for ($Attempt = 0; $Attempt -lt 40; $Attempt++) {
     try {
         $Response = Invoke-RestMethod -Uri "$Endpoint/json/version" -TimeoutSec 1
