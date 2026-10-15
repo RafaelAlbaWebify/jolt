@@ -49,10 +49,13 @@ def capture_visible(search_page: Page, limit: int = 5) -> dict[str, object]:
     if diagnostic.get("status") != "listing_links_observed":
         result["stop_reason"] = "no_reliable_offer_links"
         return result
-    anchors = search_page.locator("a[href]").evaluate_all(
-        "elements => elements.map(el => el.href).filter(Boolean)"
-    )
-    urls = discover_offer_urls(anchors, limit)
+    # Reuse URLs from the *same* stable document snapshot as the diagnostic.
+    # A second DOM read can race with client-side InfoJobs navigation.
+    observed = diagnostic.get("offer_url_samples")
+    if not isinstance(observed, list):
+        result["stop_reason"] = "missing_snapshot_links"
+        return result
+    urls = discover_offer_urls([url for url in observed if isinstance(url, str)], limit)
     offers: list[dict[str, object]] = []
     for expected_url in urls:
         detail = None
