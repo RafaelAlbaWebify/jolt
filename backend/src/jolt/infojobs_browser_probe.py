@@ -41,9 +41,10 @@ def select_infojobs_page(browser: Browser) -> Page | None:
     )
 
 
-def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
+def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
     """Retry transient navigations; never navigate or interact with the page."""
     last_error = ""
+    observations: list[dict[str, object]] = []
     for attempt in range(attempts):
         try:
             snapshot = page.main_frame.evaluate(
@@ -51,9 +52,17 @@ def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
                     title: document.title || "",
                     text: document.body?.innerText || "",
                     links: Array.from(document.querySelectorAll("a[href]"), a => a.href),
-                    ready_state: document.readyState
+                    ready_state: document.readyState,
+                    html_length: document.documentElement?.outerHTML?.length || 0
                 })"""
             )
+            if isinstance(snapshot, dict):
+                observations.append({
+                    "ready_state": str(snapshot.get("ready_state", "")),
+                    "text_length": len(str(snapshot.get("text") or "")),
+                    "html_length": snapshot.get("html_length", 0),
+                    "link_count": len(snapshot.get("links", [])) if isinstance(snapshot.get("links"), list) else 0,
+                })
             if (
                 isinstance(snapshot, dict)
                 and isinstance(snapshot.get("text"), str)
@@ -63,6 +72,7 @@ def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
             last_error = "document_not_ready"
         except PlaywrightError as exc:
             last_error = type(exc).__name__
+            observations.append({"error": str(exc)[:160]})
         if attempt < attempts - 1:
             page.wait_for_timeout(1000)
     return {
@@ -71,6 +81,7 @@ def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
         "links": [],
         "ready_state": "unresolved",
         "error": last_error,
+        "observations": observations,
     }
 
 
@@ -116,6 +127,7 @@ def diagnose_page(page: Page) -> dict[str, object]:
         "offer_url_samples": offer_urls[:5],
         "access_indicators": access_indicators,
         "observation_error": snapshot.get("error"),
+        "observation_attempts": snapshot.get("observations"),
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
     }
