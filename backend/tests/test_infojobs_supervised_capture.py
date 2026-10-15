@@ -35,12 +35,12 @@ def test_detail_identity_mismatch_fails_closed() -> None:
         "text": "Available opportunities " * 25,
         "links": [OFFER],
     }
-    page.locator.return_value.evaluate_all.return_value = [OFFER]
     detail = Mock(url="https://www.infojobs.net/madrid/other/of-iabcdef0123456789abcdef0123456789")
     page.context.new_page.return_value = detail
     result = capture_visible(page)
     assert result["offers"][0]["reason"] == "identity_mismatch"
     assert result["extracted_count"] == 0
+    page.locator.assert_not_called()
     detail.close.assert_called_once()
 
 
@@ -51,13 +51,13 @@ def test_read_only_capture_keeps_source_text_but_not_verification() -> None:
         "text": "Available opportunities " * 25,
         "links": [OFFER],
     }
-    page.locator.return_value.evaluate_all.return_value = [OFFER]
     detail = Mock(url=OFFER)
     detail.locator.return_value.first.text_content.return_value = "Support Engineer"
     detail.locator.return_value.inner_text.return_value = "Offer details " * 25
     page.context.new_page.return_value = detail
     result = capture_visible(page)
     assert result["extracted_count"] == 1
+    page.locator.assert_not_called()
     assert result["offers"][0]["title_observed"] == "Support Engineer"
     assert result["offers"][0]["source_evidence_verified"] is False
     assert result["offers"][0]["body_sha256"]
