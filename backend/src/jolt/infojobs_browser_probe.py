@@ -10,12 +10,8 @@ import json
 import re
 from urllib.parse import urlparse
 
-from playwright.sync_api import (
-    Browser,
-    Error as PlaywrightError,
-    Page,
-    sync_playwright,
-)
+from playwright.sync_api import Browser, Page, sync_playwright
+from playwright.sync_api import Error as PlaywrightError
 
 
 def is_infojobs_url(url: str) -> bool:
@@ -92,7 +88,8 @@ def diagnose_page(page: Page) -> dict[str, object]:
         for token in ("captcha", "access denied", "acceso denegado", "verifica que eres humano")
         if token in lowered
     ]
-    urls = [str(link) for link in snapshot.get("links", []) if link]
+    raw_links = snapshot.get("links")
+    urls = [link for link in raw_links if isinstance(link, str)] if isinstance(raw_links, list) else []
     offer_urls = sorted({link.split("?", 1)[0] for link in urls if is_offer_url(link)})
     domain_links = [link for link in urls if is_infojobs_url(link)]
     candidate_routes = sorted(
