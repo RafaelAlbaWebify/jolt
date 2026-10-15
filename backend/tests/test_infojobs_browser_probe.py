@@ -167,6 +167,7 @@ def test_short_shell_waits_for_real_listing_and_keeps_evidence() -> None:
     assert len(result["observations"]) == 2
     assert result["html_length"] == 180
 
+
 def test_tiny_ad_shell_is_never_reported_as_visible_listing() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
     page.main_frame.evaluate.return_value = {
