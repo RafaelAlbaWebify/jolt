@@ -31,7 +31,11 @@ def test_missing_tab_returns_none() -> None:
 
 def test_access_indicators_do_not_promote_source_evidence() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.main_frame.evaluate.return_value = {"title": "InfoJobs", "text": "CAPTCHA " + "x" * 150, "links": []}
+    page.main_frame.evaluate.return_value = {
+        "title": "InfoJobs",
+        "text": "CAPTCHA " + "x" * 150,
+        "links": [],
+    }
     result = diagnose_page(page)
     assert result["status"] == "access_restricted"
     assert result["source_evidence_verified"] is False
@@ -39,11 +43,15 @@ def test_access_indicators_do_not_promote_source_evidence() -> None:
 
 def test_public_links_are_diagnostic_only() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.main_frame.evaluate.return_value = {"title": "InfoJobs", "text": "Available jobs " * 20, "links": [
-        "https://www.infojobs.net/oferta/abc?tracking=1",
-        "https://www.infojobs.net/oferta/abc?tracking=2",
-        "https://evil.example/oferta/wrong",
-    ]}
+    page.main_frame.evaluate.return_value = {
+        "title": "InfoJobs",
+        "text": "Available jobs " * 20,
+        "links": [
+            "https://www.infojobs.net/oferta/abc?tracking=1",
+            "https://www.infojobs.net/oferta/abc?tracking=2",
+            "https://evil.example/oferta/wrong",
+        ],
+    }
     result = diagnose_page(page)
     assert result["status"] == "listing_links_observed"
     assert result["offer_links_observed"] == 1
@@ -59,10 +67,14 @@ def test_current_infojobs_job_permalinks_are_recognized() -> None:
 
 def test_current_permalinks_are_deduplicated_in_diagnostic() -> None:
     page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
-    page.main_frame.evaluate.return_value = {"title": "InfoJobs", "text": "Job results " * 30, "links": [
-        "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef?src=search",
-        "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef",
-    ]}
+    page.main_frame.evaluate.return_value = {
+        "title": "InfoJobs",
+        "text": "Job results " * 30,
+        "links": [
+            "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef?src=search",
+            "https://www.infojobs.net/madrid/support-engineer/of-i0123456789abcdef0123456789abcdef",
+        ],
+    }
     result = diagnose_page(page)
     assert result["status"] == "listing_links_observed"
     assert result["offer_links_observed"] == 1
@@ -105,7 +117,10 @@ def test_observation_retries_context_destruction() -> None:
 def test_observation_exhaustion_stays_unresolved() -> None:
     page = Mock()
     page.main_frame.evaluate.return_value = {
-        "title": "InfoJobs", "text": "", "links": [], "ready_state": "loading"
+        "title": "InfoJobs",
+        "text": "",
+        "links": [],
+        "ready_state": "loading",
     }
     result = observe_stable_page(page, attempts=2)
     assert result["ready_state"] == "unresolved"
