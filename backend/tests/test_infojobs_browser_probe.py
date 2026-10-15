@@ -166,3 +166,18 @@ def test_short_shell_waits_for_real_listing_and_keeps_evidence() -> None:
     assert result["text_excerpt"].startswith("Please wait")
     assert len(result["observations"]) == 2
     assert result["html_length"] == 180
+
+def test_tiny_ad_shell_is_never_reported_as_visible_listing() -> None:
+    page = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
+    page.main_frame.evaluate.return_value = {
+        "title": "",
+        "text": "NUEVA TEMPORADA YA DISPONIBLE SUSCRIBETE " * 3,
+        "links": [],
+        "ready_state": "complete",
+        "html_length": 7684,
+    }
+    result = diagnose_page(page)
+    assert result["status"] == "unresolved"
+    assert result["observation_error"] == "document_not_ready"
+    assert result["offer_links_observed"] == 0
+
