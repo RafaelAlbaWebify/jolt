@@ -181,3 +181,29 @@ def test_tiny_ad_shell_is_never_reported_as_visible_listing() -> None:
     assert result["observation_error"] == "document_not_ready"
     assert result["offer_links_observed"] == 0
 
+
+
+def test_infojobs_added_filters_keep_requested_listing_selectable() -> None:
+    browser = Mock()
+    listing = Mock(
+        url="https://www.infojobs.net/ofertas-trabajo/support-it?"
+        "keyword=support%20it&page=1&sortBy=PUBLICATION_DATE"
+    )
+    other = Mock(url="https://www.infojobs.net/ofertas-trabajo/marketing?page=1")
+    browser.contexts = [Mock(pages=[other, listing])]
+    assert (
+        select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it")
+        is listing
+    )
+
+
+def test_explicit_filtered_infojobs_search_requires_exact_query() -> None:
+    browser = Mock()
+    listing = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it?page=2")
+    browser.contexts = [Mock(pages=[listing])]
+    assert (
+        select_infojobs_page(
+            browser, "https://www.infojobs.net/ofertas-trabajo/support-it?page=1"
+        )
+        is None
+    )
