@@ -102,7 +102,7 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
                         "verifica que eres humano",
                     )
                 )
-                if restricted or (len(body_text) >= 300 and page_title and has_offer_links):
+                if restricted or (len(body_text) >= 150 and page_title and has_offer_links):
                     return snapshot
             last_error = "document_not_ready"
         except PlaywrightError as exc:
@@ -114,7 +114,7 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
         "title": str(last_snapshot.get("title") or ""),
         "text": str(last_snapshot.get("text") or ""),
         "links": [],
-        "ready_state": str(last_snapshot.get("ready_state") or "unresolved"),
+        "ready_state": "unresolved",
         "html_length": last_snapshot.get("html_length", 0),
         "text_excerpt": str(last_snapshot.get("text") or "")[:220],
         "error": last_error,
