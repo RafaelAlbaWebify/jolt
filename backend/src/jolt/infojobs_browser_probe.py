@@ -57,12 +57,16 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
                 })"""
             )
             if isinstance(snapshot, dict):
-                observations.append({
-                    "ready_state": str(snapshot.get("ready_state", "")),
-                    "text_length": len(str(snapshot.get("text") or "")),
-                    "html_length": snapshot.get("html_length", 0),
-                    "link_count": len(snapshot.get("links", [])) if isinstance(snapshot.get("links"), list) else 0,
-                })
+                observations.append(
+                    {
+                        "ready_state": str(snapshot.get("ready_state", "")),
+                        "text_length": len(str(snapshot.get("text") or "")),
+                        "html_length": snapshot.get("html_length", 0),
+                        "link_count": len(snapshot.get("links", []))
+                        if isinstance(snapshot.get("links"), list)
+                        else 0,
+                    }
+                )
             if (
                 isinstance(snapshot, dict)
                 and isinstance(snapshot.get("text"), str)
