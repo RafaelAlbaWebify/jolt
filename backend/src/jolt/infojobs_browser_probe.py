@@ -10,6 +10,8 @@ import json
 import re
 from urllib.parse import urlparse
 
+from playwright.sync_api import Error as PlaywrightError
+
 from playwright.sync_api import Browser, Page, sync_playwright
 
 
@@ -40,23 +42,48 @@ def select_infojobs_page(browser: Browser) -> Page | None:
     )
 
 
+def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
+    """Retry transient navigations; never navigate or interact with the page."""
+    last_error = ""
+    for attempt in range(attempts):
+        try:
+            snapshot = page.main_frame.evaluate(
+                """() => ({
+                    title: document.title || "",
+                    text: document.body?.innerText || "",
+                    links: Array.from(document.querySelectorAll("a[href]"), a => a.href),
+                    ready_state: document.readyState
+                })"""
+            )
+            if (
+                isinstance(snapshot, dict)
+                and isinstance(snapshot.get("text"), str)
+                and len(snapshot["text"].strip()) >= 100
+            ):
+                return snapshot
+            last_error = "document_not_ready"
+        except PlaywrightError as exc:
+            last_error = type(exc).__name__
+        if attempt < attempts - 1:
+            page.wait_for_timeout(1000)
+    return {"title": "", "text": "", "links": [], "ready_state": "unresolved", "error": last_error}
+
+
 def diagnose_page(page: Page) -> dict[str, object]:
     """Report observability without claiming that job details are verified."""
     url = page.url
     if not is_infojobs_url(url):
         return {"status": "unresolved", "reason": "not_infojobs"}
-    title = (page.title() or "").strip()
-    body = page.locator("body").first
-    text = (body.inner_text(timeout=5000) or "") if body.count() else ""
+    snapshot = observe_stable_page(page)
+    title = str(snapshot.get("title") or "").strip()
+    text = str(snapshot.get("text") or "")
     lowered = (title + " " + text[:2500]).casefold()
     access_indicators = [
         token
         for token in ("captcha", "access denied", "acceso denegado", "verifica que eres humano")
         if token in lowered
     ]
-    urls = page.locator("a[href]").evaluate_all(
-        "elements => elements.map(el => el.href).filter(Boolean)"
-    )
+    urls = [str(link) for link in snapshot.get("links", []) if link]
     offer_urls = sorted({link.split("?", 1)[0] for link in urls if is_offer_url(link)})
     domain_links = [link for link in urls if is_infojobs_url(link)]
     candidate_routes = sorted(
@@ -80,6 +107,7 @@ def diagnose_page(page: Page) -> dict[str, object]:
         "offer_links_observed": len(offer_urls),
         "offer_url_samples": offer_urls[:5],
         "access_indicators": access_indicators,
+        "observation_error": snapshot.get("error"),
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
     }
