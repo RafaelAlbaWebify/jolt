@@ -182,7 +182,6 @@ def test_tiny_ad_shell_is_never_reported_as_visible_listing() -> None:
     assert result["offer_links_observed"] == 0
 
 
-
 def test_infojobs_added_filters_keep_requested_listing_selectable() -> None:
     browser = Mock()
     listing = Mock(
@@ -202,8 +201,6 @@ def test_explicit_filtered_infojobs_search_requires_exact_query() -> None:
     listing = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it?page=2")
     browser.contexts = [Mock(pages=[listing])]
     assert (
-        select_infojobs_page(
-            browser, "https://www.infojobs.net/ofertas-trabajo/support-it?page=1"
-        )
+        select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it?page=1")
         is None
     )
