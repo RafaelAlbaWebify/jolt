@@ -30,15 +30,32 @@ def is_offer_url(url: str) -> bool:
     return "/oferta/" in path or bool(re.search(r"/of-i[0-9a-f]{12,}(?:/|$)", path))
 
 
-def select_infojobs_page(browser: Browser) -> Page | None:
-    """Prefer a listing page, otherwise an existing InfoJobs page."""
-    candidates = [
-        page for context in browser.contexts for page in context.pages if is_infojobs_url(page.url)
-    ]
-    return next(
-        (page for page in candidates if "/ofertas-trabajo" in urlparse(page.url).path),
-        candidates[0] if candidates else None,
-    )
+DEFAULT_SEARCH_URL = "https://www.infojobs.net/ofertas-trabajo/support-it"
+
+
+def _listing_identity(url: str) -> tuple[str, str] | None:
+    """Identify requested listing by path and query on a trusted InfoJobs host."""
+    if not is_infojobs_url(url):
+        return None
+    parsed = urlparse(url)
+    if not parsed.path.startswith("/ofertas-trabajo/"):
+        return None
+    return parsed.path.rstrip("/"), parsed.query
+
+
+def select_infojobs_page(browser: Browser, search_url: str | None = None) -> Page | None:
+    """Select the requested listing, never an unrelated or detail tab."""
+    wanted = _listing_identity(search_url) if search_url else None
+    if search_url and wanted is None:
+        return None
+    pages = [page for context in browser.contexts for page in context.pages]
+    listings = [page for page in pages if _listing_identity(page.url) is not None]
+    if wanted is not None:
+        return next(
+            (page for page in reversed(listings) if _listing_identity(page.url) == wanted),
+            None,
+        )
+    return listings[-1] if listings else None
 
 
 def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
@@ -140,15 +157,18 @@ def diagnose_page(page: Page) -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cdp-endpoint", default="http://127.0.0.1:9222")
+    parser.add_argument("--search-url", default=DEFAULT_SEARCH_URL)
     args = parser.parse_args()
+    if _listing_identity(args.search_url) is None:
+        parser.error("--search-url must be an HTTPS InfoJobs listing URL")
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_endpoint, timeout=10000)
         try:
-            page = select_infojobs_page(browser)
+            page = select_infojobs_page(browser, args.search_url)
             result = (
                 diagnose_page(page)
                 if page is not None
-                else {"status": "unresolved", "reason": "no_infojobs_tab"}
+                else {"status": "unresolved", "reason": "requested_search_tab_missing", "requested_search_url": args.search_url}
             )
         finally:
             browser.close()
