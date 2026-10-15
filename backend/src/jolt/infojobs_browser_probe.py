@@ -62,6 +62,7 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
     """Retry transient navigations; never navigate or interact with the page."""
     last_error = ""
     observations: list[dict[str, object]] = []
+    last_snapshot: dict[str, object] = {}
     for attempt in range(attempts):
         try:
             snapshot = page.main_frame.evaluate(
@@ -74,6 +75,7 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
                 })"""
             )
             if isinstance(snapshot, dict):
+                last_snapshot = snapshot
                 observations.append(
                     {
                         "ready_state": str(snapshot.get("ready_state", "")),
@@ -84,12 +86,24 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
                         else 0,
                     }
                 )
-            if (
-                isinstance(snapshot, dict)
-                and isinstance(snapshot.get("text"), str)
-                and len(snapshot["text"].strip()) >= 100
-            ):
-                return snapshot
+            if isinstance(snapshot, dict) and isinstance(snapshot.get("text"), str):
+                body_text = snapshot["text"].strip()
+                page_title = str(snapshot.get("title") or "").strip()
+                raw_links = snapshot.get("links")
+                has_offer_links = isinstance(raw_links, list) and any(
+                    isinstance(link, str) and is_offer_url(link) for link in raw_links
+                )
+                restricted = any(
+                    marker in (page_title + " " + body_text[:500]).casefold()
+                    for marker in (
+                        "captcha",
+                        "access denied",
+                        "acceso denegado",
+                        "verifica que eres humano",
+                    )
+                )
+                if restricted or (len(body_text) >= 300 and page_title and has_offer_links):
+                    return snapshot
             last_error = "document_not_ready"
         except PlaywrightError as exc:
             last_error = type(exc).__name__
@@ -97,10 +111,12 @@ def observe_stable_page(page: Page, attempts: int = 8) -> dict[str, object]:
         if attempt < attempts - 1:
             page.wait_for_timeout(1000)
     return {
-        "title": "",
-        "text": "",
+        "title": str(last_snapshot.get("title") or ""),
+        "text": str(last_snapshot.get("text") or ""),
         "links": [],
-        "ready_state": "unresolved",
+        "ready_state": str(last_snapshot.get("ready_state") or "unresolved"),
+        "html_length": last_snapshot.get("html_length", 0),
+        "text_excerpt": str(last_snapshot.get("text") or "")[:220],
         "error": last_error,
         "observations": observations,
     }
@@ -149,6 +165,8 @@ def diagnose_page(page: Page) -> dict[str, object]:
         "access_indicators": access_indicators,
         "observation_error": snapshot.get("error"),
         "observation_attempts": snapshot.get("observations"),
+        "html_length": snapshot.get("html_length"),
+        "text_excerpt": snapshot.get("text_excerpt"),
         "source_evidence_verified": False,
         "work_from_spain_verified": False,
     }
