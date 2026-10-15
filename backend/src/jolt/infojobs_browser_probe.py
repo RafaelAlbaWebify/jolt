@@ -10,7 +10,12 @@ import json
 import re
 from urllib.parse import urlparse
 
-from playwright.sync_api import Browser, Error as PlaywrightError, Page, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    Error as PlaywrightError,
+    Page,
+    sync_playwright,
+)
 
 
 def is_infojobs_url(url: str) -> bool:
@@ -64,7 +69,13 @@ def observe_stable_page(page: Page, attempts: int = 5) -> dict[str, object]:
             last_error = type(exc).__name__
         if attempt < attempts - 1:
             page.wait_for_timeout(1000)
-    return {"title": "", "text": "", "links": [], "ready_state": "unresolved", "error": last_error}
+    return {
+        "title": "",
+        "text": "",
+        "links": [],
+        "ready_state": "unresolved",
+        "error": last_error,
+    }
 
 
 def diagnose_page(page: Page) -> dict[str, object]:
