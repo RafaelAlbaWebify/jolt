@@ -125,3 +125,29 @@ def test_observation_exhaustion_stays_unresolved() -> None:
     result = observe_stable_page(page, attempts=2)
     assert result["ready_state"] == "unresolved"
     assert result["error"] == "document_not_ready"
+
+
+
+def test_explicit_search_selects_correct_tab_with_multiple_listings() -> None:
+    browser = Mock()
+    wrong = Mock(url="https://www.infojobs.net/ofertas-trabajo/marketing")
+    correct = Mock(url="https://www.infojobs.net/ofertas-trabajo/support-it")
+    browser.contexts = [Mock(pages=[correct, wrong])]
+    assert select_infojobs_page(browser, correct.url) is correct
+
+
+def test_missing_requested_listing_does_not_fall_back_to_another_tab() -> None:
+    browser = Mock()
+    other = Mock(url="https://www.infojobs.net/ofertas-trabajo/marketing")
+    browser.contexts = [Mock(pages=[other])]
+    assert (
+        select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it")
+        is None
+    )
+
+
+def test_detail_tab_never_substitutes_for_search_listing() -> None:
+    browser = Mock()
+    detail = Mock(url="https://www.infojobs.net/madrid/support/of-i0123456789abcdef")
+    browser.contexts = [Mock(pages=[detail])]
+    assert select_infojobs_page(browser) is None
