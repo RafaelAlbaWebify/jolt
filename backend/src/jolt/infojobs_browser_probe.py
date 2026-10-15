@@ -153,8 +153,10 @@ def diagnose_page(page: Page) -> dict[str, object]:
             if access_indicators
             else "listing_links_observed"
             if offer_urls
+            else "unresolved"
+            if snapshot.get("error")
             else "visible_page_no_offer_links"
-            if len(text.strip()) >= 100
+            if title and len(text.strip()) >= 100
             else "unresolved"
         ),
         "url": url,
