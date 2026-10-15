@@ -2,9 +2,9 @@ from unittest.mock import Mock
 
 from jolt.infojobs_browser_probe import (
     diagnose_page,
-    observe_stable_page,
     is_infojobs_url,
     is_offer_url,
+    observe_stable_page,
     select_infojobs_page,
 )
 
