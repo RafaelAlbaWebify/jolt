@@ -112,9 +112,7 @@ def test_guarded_cleanup_keeps_verified_history_after_disposable_posting_deleted
         plan = build_guarded_retention_cleanup_plan(session)
         assert plan["blocked"] is False
         assert plan["superseded_capture_run_count"] == 1
-        execute_guarded_retention_cleanup(
-            session, confirmation=str(plan["required_confirmation"])
-        )
+        execute_guarded_retention_cleanup(session, confirmation=str(plan["required_confirmation"]))
         session.commit()
     with factory() as session:
         assert session.get(Posting, posting) is None
