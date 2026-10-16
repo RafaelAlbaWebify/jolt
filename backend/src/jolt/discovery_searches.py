@@ -148,7 +148,9 @@ def list_discovery_searches(
         results.extend(_linkedin_response(item) for item in linkedin)
 
     if source != "linkedin":
-        statement = select(DiscoverySavedSearch)
+        statement = select(DiscoverySavedSearch).where(
+            DiscoverySavedSearch.source.in_(tuple(_SOURCE_CAPABILITIES))
+        )
         if source is not None:
             statement = statement.where(DiscoverySavedSearch.source == source)
         generic = session.scalars(
