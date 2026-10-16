@@ -3,10 +3,10 @@
 from datetime import datetime
 
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from jolt.database import Posting
-from jolt.sources.portal_observations import list_portal_observations
+from jolt.database import PortalSourceObservation, Posting
 from jolt.sources.source_identity_registry import list_posting_sources
 
 
@@ -55,7 +55,20 @@ def get_posting_source_history(
         )
         for source in list_posting_sources(session, posting_id)
     ]
-    receipts = list_portal_observations(session, posting_id)
+    total = int(
+        session.scalar(
+            select(func.count(PortalSourceObservation.id)).where(
+                PortalSourceObservation.posting_id_at_capture == posting_id
+            )
+        )
+        or 0
+    )
+    receipts = session.scalars(
+        select(PortalSourceObservation)
+        .where(PortalSourceObservation.posting_id_at_capture == posting_id)
+        .order_by(PortalSourceObservation.observed_at, PortalSourceObservation.id)
+        .limit(limit)
+    ).all()
     observations = [
         PostingSourceHistoryObservation(
             portal=item.portal,
@@ -67,12 +80,12 @@ def get_posting_source_history(
             artifact_sha256=item.artifact_sha256,
             observed_at=item.observed_at,
         )
-        for item in receipts[:limit]
+        for item in receipts
     ]
     return PostingSourceHistoryResponse(
         posting_id=posting_id,
         sources=sources,
         observations=observations,
-        total_observations=len(receipts),
-        truncated=len(receipts) > limit,
+        total_observations=total,
+        truncated=total > limit,
     )
