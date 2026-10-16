@@ -86,26 +86,30 @@ def test_source_history_lists_only_explicitly_confirmed_duplicate_links(tmp_path
         for number in ("300", "301"):
             request = LinkedInLiveCaptureRequest(
                 search_url="https://www.linkedin.com/jobs/search/",
-                items=[LinkedInLiveCaptureItemRequest(
-                    source_job_id=number,
-                    source_url=f"https://www.linkedin.com/jobs/view/{number}",
-                    title=f"Support Engineer {number}",
-                    company="Example",
-                    location="Vigo",
-                    description="Technical support incident handling and infrastructure operations.",
-                    identity_verified=True,
-                )],
+                items=[
+                    LinkedInLiveCaptureItemRequest(
+                        source_job_id=number,
+                        source_url=f"https://www.linkedin.com/jobs/view/{number}",
+                        title=f"Support Engineer {number}",
+                        company="Example",
+                        location="Vigo",
+                        description="Technical support incident handling and infrastructure operations.",
+                        identity_verified=True,
+                    )
+                ],
             )
             ids.append(run_linkedin_live_capture(session, request).items[0].posting_id)
         assert ids[0] is not None and ids[1] is not None
         left, right = sorted(ids)
-        session.add(ConfirmedDuplicateLink(
-            id="test-confirmed-link",
-            first_posting_id=left,
-            second_posting_id=right,
-            confirmed_at=utc_now(),
-            reason="Operator verified same vacancy",
-        ))
+        session.add(
+            ConfirmedDuplicateLink(
+                id="test-confirmed-link",
+                first_posting_id=left,
+                second_posting_id=right,
+                confirmed_at=utc_now(),
+                reason="Operator verified same vacancy",
+            )
+        )
         session.commit()
 
     for posting_id, linked_id in ((left, right), (right, left)):
