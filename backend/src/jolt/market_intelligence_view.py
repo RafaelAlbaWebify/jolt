@@ -91,12 +91,14 @@ def _provenance(session: Session) -> MarketEvidenceProvenance:
     oldest_evidence_at = session.scalar(select(func.min(MarketIntelligenceObservation.captured_at)))
     newest_evidence_at = session.scalar(select(func.max(MarketIntelligenceObservation.captured_at)))
     identity_rows = session.execute(
-        select(PostingSourceIdentity.portal, func.count(PostingSourceIdentity.id))
-        .group_by(PostingSourceIdentity.portal)
+        select(PostingSourceIdentity.portal, func.count(PostingSourceIdentity.id)).group_by(
+            PostingSourceIdentity.portal
+        )
     ).all()
     receipt_rows = session.execute(
-        select(PortalSourceObservation.portal, func.count(PortalSourceObservation.id))
-        .group_by(PortalSourceObservation.portal)
+        select(PortalSourceObservation.portal, func.count(PortalSourceObservation.id)).group_by(
+            PortalSourceObservation.portal
+        )
     ).all()
     identities_by_portal = {str(portal): int(count) for portal, count in identity_rows}
     receipts_by_portal = {str(portal): int(count) for portal, count in receipt_rows}
