@@ -24,14 +24,13 @@ def backup_local_database(directory: Path) -> Path:
     url = default_database_url()
     if not url.startswith("sqlite:///"):
         raise ValueError("Only local SQLite databases are supported by this operator workflow")
-    database = Path(url[len("sqlite:///"):])
+    database = Path(url[len("sqlite:///") :])
     if not database.is_file():
         raise FileNotFoundError(f"JOLT database not found: {database}")
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / f"jolt-before-infojobs-{datetime.now():%Y%m%d_%H%M%S_%f}.db"
-    with sqlite3.connect(str(database)) as source:
-        with sqlite3.connect(str(destination)) as target:
-            source.backup(target)
+    with sqlite3.connect(str(database)) as source, sqlite3.connect(str(destination)) as target:
+        source.backup(target)
     return destination
 
 
@@ -91,7 +90,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--commit", action="store_true")
-    parser.add_argument("--backup-dir", type=Path, default=Path.home() / "Downloads" / "JOLT_BACKUPS")
+    parser.add_argument(
+        "--backup-dir", type=Path, default=Path.home() / "Downloads" / "JOLT_BACKUPS"
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     report = json.loads(args.input.read_text(encoding="utf-8"))
