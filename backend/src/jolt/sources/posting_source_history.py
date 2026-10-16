@@ -90,12 +90,14 @@ def get_posting_source_history(
         for item in receipts
     ]
     links = session.scalars(
-        select(ConfirmedDuplicateLink).where(
+        select(ConfirmedDuplicateLink)
+        .where(
             or_(
                 ConfirmedDuplicateLink.first_posting_id == posting_id,
                 ConfirmedDuplicateLink.second_posting_id == posting_id,
             )
-        ).order_by(ConfirmedDuplicateLink.confirmed_at)
+        )
+        .order_by(ConfirmedDuplicateLink.confirmed_at)
     ).all()
     duplicates = [
         ConfirmedDuplicateReference(
