@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("Open", "Capture")]
+    [ValidateSet("Open", "Capture", "Run")]
     [string]$Mode = "Open",
     [string]$SearchUrl = "https://www.infojobs.net/ofertas-trabajo/support-it",
     [ValidateRange(1, 5)]
@@ -80,4 +80,16 @@ Write-Host "Read-only capture report: $output"
 Write-Host "Capture exit code: $exitCode"
 if ($exitCode -ne 0) {
     Write-Warning "No new reliable offer evidence captured. Review the JSON diagnostic; database was not changed."
+}
+
+if ($Mode -eq "Run" -and $exitCode -eq 0) {
+    $resultPath = Join-Path $HOME "Downloads\JOLT_INFOJOBS_RUN_$stamp.json"
+    & uv run --project $backend python -m jolt.infojobs_operational_run `
+        --input $output `
+        --commit `
+        --output $resultPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "InfoJobs import failed. No successful database commit confirmed; capture is saved at $output"
+    }
+    Write-Host "InfoJobs Review Inbox acceptance report: $resultPath"
 }
