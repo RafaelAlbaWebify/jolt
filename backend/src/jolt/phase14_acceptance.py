@@ -7,6 +7,7 @@ import json
 import shutil
 import sqlite3
 import tempfile
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,7 +25,7 @@ SOURCES = (
 
 
 def counts(path: Path) -> dict[str, int]:
-    with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as db:
+    with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as db:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         return {
             table: int(db.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
@@ -60,9 +61,14 @@ def accept(source: Path, output: Path) -> dict[str, object]:
         snapshot_before = counts(restored)
         shutil.copy2(restored, isolated)
         factory = create_session_factory(f"sqlite:///{isolated.as_posix()}")
-        with factory() as session:
-            dry = backfill_portal_observation_receipts(session).model_dump()
-            session.rollback()
+        try:
+            with factory() as session:
+                dry = backfill_portal_observation_receipts(session).model_dump()
+                session.rollback()
+        finally:
+            # Closing a Session does not close pooled SQLite connections.
+            # Windows refuses to delete temp files while the engine holds them.
+            factory.kw["bind"].dispose()
         after = counts(isolated)
         if not integrity(isolated):
             raise RuntimeError("Migrated isolated copy failed integrity check")
