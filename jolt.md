@@ -17,7 +17,7 @@
 
 ## PROJECT
 - Purpose: local-first, single-user Windows evidence workbench for job discovery, human review, applications, LinkedIn profile and market intelligence; ChatGPT handles judgment-heavy analysis.
-- Repository: `RafaelAlbaWebify/jolt`. Target branch: `main`. Documentation work: `docs/jolt-controlled-development-20261016`; PR pending creation.
+- Repository: `RafaelAlbaWebify/jolt`. Target branch: `main`. Documentation work: `docs/jolt-controlled-development-20261016`; draft PR #579: https://github.com/RafaelAlbaWebify/jolt/pull/579.
 - Existing repository authority: `AGENTS.md`, `.ai/` files, `PROJECT_MEMORY.md`, domain contracts. Historical `docs/roadmap.md` is not replaced.
 - Backend: Python 3.12, FastAPI/Pydantic, SQLAlchemy/SQLite, Alembic; `backend/src/jolt/`; uv, pytest, Ruff, Pyright.
 - Frontend: React/TypeScript/Vite, `frontend/src/`; Vitest/RTL; Playwright and GitHub Actions for UI/full-cycle validation.
