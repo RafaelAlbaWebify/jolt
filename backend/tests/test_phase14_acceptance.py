@@ -3,8 +3,8 @@
 import json
 import sqlite3
 
-from jolt.database import create_session_factory
 import jolt.phase14_acceptance as phase14
+from jolt.database import create_session_factory
 from jolt.phase14_acceptance import accept
 
 
