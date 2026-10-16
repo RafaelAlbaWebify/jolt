@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -80,7 +80,7 @@ def confirm_duplicate(
             left_post = postings[first_id]
             right_post = postings[second_id]
             left = NormalizedJobOffer(
-                portal=left_source.portal,
+                portal=cast(Portal, left_source.portal),
                 source_job_id=left_source.source_job_id,
                 source_url=left_source.source_url,
                 title=left_post.title,
@@ -91,7 +91,7 @@ def confirm_duplicate(
                 detail_verified=True,
             )
             right = NormalizedJobOffer(
-                portal=right_source.portal,
+                portal=cast(Portal, right_source.portal),
                 source_job_id=right_source.source_job_id,
                 source_url=right_source.source_url,
                 title=right_post.title,
