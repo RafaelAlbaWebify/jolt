@@ -9,7 +9,7 @@
 - Protect SQLite, user decisions, applications, source evidence, secrets, browser profiles, backups and local installations.
 - Merge ordinary development and documentation PRs into `main` autonomously after required exact-head CI passes, mergeability and acceptance are verified; no separate approval needed. Still request explicit approval for destructive actions, production-data changes, live outreach or other high-risk irreversible operations.
 - Follow `AGENTS.md` pre-PR gates: develop a coherent outcome, validate branch CI, inspect Ruff/format/Pyright/pytest, then open a PR.
-- Report a direct GitHub PR link after meaningful updates so CI and approval status remain visible.
+- EVERY development/CI update must include a clickable, direct GitHub checks URL for the exact active commit (`https://github.com/RafaelAlbaWebify/jolt/commit/<SHA>/checks`), showing live yellow/green/red results; also link the PR when it exists. Never leave the operator waiting without a checkable URL, including before PR creation.
 - Keep this file roughly 40–60 lines; replace stale facts, do not append a changelog.
 - Follow `docs/operations/controlled-development-roadmap.md`; `EA` lists all numbered subphases with fixed weights.
 - Roadmap completion is binary per subphase: 100% only after acceptance evidence, green exact-head CI and verified merge; otherwise 0%.
@@ -36,6 +36,7 @@
 - PR #572 merged into `main` at `ab52db98c61ae8c66f49aacd4ce4cea08eabd56b` after 11/11 green checks; InfoJobs supervised operator import is available, but unified Discovery execution is NOT.
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- NEXT: PR #580 merged at `deed36ca7422315f7b93713f777ce243542c6d20` after 11/11 checks; Phase 1.4 source history API in `feat/phase-1-4-posting-source-history-api-20261016`, branch CI pending.
+- PR #580 merged at `deed36ca7422315f7b93713f777ce243542c6d20` (11/11 green). Phase 1.4 source-history branch `b076f4c90f4921eb85fa32a0a44dfa7f9cbb8b3f` passed backend/frontend/Windows CI (3/3).
+- NEXT: open and validate Phase 1.4 source-history API PR; merge when exact-head checks pass.
 - AFTER: complete 1.4 backfill/recovery and operator history acceptance, then 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
