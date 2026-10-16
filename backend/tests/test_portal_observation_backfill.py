@@ -80,11 +80,12 @@ def test_receipt_remains_after_transient_artifact_and_item_removal(tmp_path) -> 
         posting, item_id = _capture(session, "historic-789")
         receipt = session.scalar(select(PortalSourceObservation))
         assert receipt is not None
+        saved_hash = receipt.artifact_sha256
         session.execute(delete(CaptureArtifact).where(CaptureArtifact.capture_item_id == item_id))
         session.execute(delete(CaptureItem).where(CaptureItem.id == item_id))
         session.commit()
     with factory() as session:
         history = get_posting_source_history(session, posting)
         assert history.total_observations == 1
-        assert history.observations[0].artifact_sha256 == receipt.artifact_sha256
+        assert history.observations[0].artifact_sha256 == saved_hash
         assert session.get(CaptureItem, item_id) is None
