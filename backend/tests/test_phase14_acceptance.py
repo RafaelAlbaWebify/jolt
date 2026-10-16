@@ -4,6 +4,7 @@ import json
 import sqlite3
 
 from jolt.database import create_session_factory
+import jolt.phase14_acceptance as phase14
 from jolt.phase14_acceptance import accept
 
 
@@ -24,3 +25,30 @@ def test_phase14_acceptance_preserves_original_and_verifies_backup(tmp_path) -> 
     assert report["production_database_modified"] is False
     assert report["owned_rows_preserved"] is True
     assert report["source_database_counts_at_start"] == report["snapshot_counts_before"]
+
+
+def test_phase14_acceptance_disposes_isolated_database_engine(tmp_path, monkeypatch) -> None:
+    original = tmp_path / "jolt.db"
+    factory = create_session_factory(f"sqlite:///{original.as_posix()}")
+    with factory() as session:
+        session.commit()
+    factory.kw["bind"].dispose()
+
+    disposed = []
+    original_factory = phase14.create_session_factory
+
+    def tracked_factory(url):
+        isolated_factory = original_factory(url)
+        engine = isolated_factory.kw["bind"]
+        original_dispose = engine.dispose
+
+        def dispose():
+            disposed.append(True)
+            original_dispose()
+
+        monkeypatch.setattr(engine, "dispose", dispose)
+        return isolated_factory
+
+    monkeypatch.setattr(phase14, "create_session_factory", tracked_factory)
+    assert accept(original, tmp_path / "reports")["status"] == "PASS"
+    assert disposed == [True]
