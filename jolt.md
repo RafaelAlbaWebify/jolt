@@ -39,6 +39,7 @@
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
 - PR #580 observation receipts merged at `deed36ca7422315f7b93713f777ce243542c6d20` (11/11 green); PR #581 read-only history API merged at `977cbcc741016ed7ea38dd7188eb586d367b5dfb` (11/11 green).
-- NEXT: Phase 1.4 retention/recovery and historical backfill policy: identify which historical capture evidence can be safely referenced without fabricating verified detail; add isolated migration/retention tests.
-- AFTER: complete Phase 1.4 operator visibility and real Windows acceptance; then Phase 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
+- PR #582 historical receipt backfill and guarded retention/restart tests merged at `9d3f915db2978a9fb408284fb8c5626406857106` after 11/11 green exact-head checks. Backfill is dry-run by default; never run against production data without explicit approval.
+- NEXT: Phase 1.4 acceptance on an isolated copy of the real operator Windows database: backup, migration, dry-run legacy evidence report, source history/restart and restore validation. Operator evidence is still missing; do not claim Phase 1.4 accepted.
+- AFTER: once isolated Windows acceptance is verified, mark Phase 1.4 complete (Phase 1 75%); then Phase 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
