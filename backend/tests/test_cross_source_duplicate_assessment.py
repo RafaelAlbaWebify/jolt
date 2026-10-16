@@ -1,7 +1,7 @@
 """Cross-source duplicate decisions preserve ambiguous vacancies."""
 
 from jolt.sources.duplicate_assessment import assess_duplicate
-from jolt.sources.normalized_offer import NormalizedJobOffer
+from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
 
 DESCRIPTION = (
     "Support enterprise cloud applications and troubleshoot customer incidents. "
@@ -10,7 +10,7 @@ DESCRIPTION = (
 
 
 def offer(
-    portal: str,
+    portal: Portal,
     identifier: str,
     *,
     company: str = "Example Technologies",
