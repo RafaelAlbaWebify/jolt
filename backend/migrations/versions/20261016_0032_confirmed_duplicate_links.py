@@ -19,8 +19,12 @@ def upgrade() -> None:
     op.create_table(
         "confirmed_duplicate_links",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("first_posting_id", sa.String(length=36), sa.ForeignKey("postings.id"), nullable=False),
-        sa.Column("second_posting_id", sa.String(length=36), sa.ForeignKey("postings.id"), nullable=False),
+        sa.Column(
+            "first_posting_id", sa.String(length=36), sa.ForeignKey("postings.id"), nullable=False
+        ),
+        sa.Column(
+            "second_posting_id", sa.String(length=36), sa.ForeignKey("postings.id"), nullable=False
+        ),
         sa.Column("confirmed_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("reason", sa.Text(), nullable=False),
         sa.UniqueConstraint(
