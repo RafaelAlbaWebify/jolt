@@ -70,12 +70,14 @@ def test_same_company_title_different_locations_needs_review() -> None:
 
 
 def test_missing_location_or_unverified_details_needs_review() -> None:
-    assert assess_duplicate(
-        offer("linkedin", "123"), offer("indeed", "456", location="")
-    ).decision == "needs_review"
-    assert assess_duplicate(
-        offer("linkedin", "123"), offer("indeed", "456", verified=False)
-    ).decision == "needs_review"
+    assert (
+        assess_duplicate(offer("linkedin", "123"), offer("indeed", "456", location="")).decision
+        == "needs_review"
+    )
+    assert (
+        assess_duplicate(offer("linkedin", "123"), offer("indeed", "456", verified=False)).decision
+        == "needs_review"
+    )
 
 
 def test_different_descriptions_are_distinct() -> None:
@@ -91,7 +93,10 @@ def test_different_descriptions_are_distinct() -> None:
 
 
 def test_different_titles_are_distinct() -> None:
-    assert assess_duplicate(
-        offer("linkedin", "123"),
-        offer("indeed", "456", title="Product Manager"),
-    ).decision == "distinct"
+    assert (
+        assess_duplicate(
+            offer("linkedin", "123"),
+            offer("indeed", "456", title="Product Manager"),
+        ).decision
+        == "distinct"
+    )
