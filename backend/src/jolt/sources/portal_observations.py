@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.database import (
     CaptureItem,
     CaptureRun,
@@ -31,6 +33,18 @@ def record_portal_observation(
         raise ValueError("Unsupported capture source")
     if not _SHA256.fullmatch(artifact_sha256):
         raise ValueError("A validated artifact SHA-256 is required")
+    artifact = session.scalar(
+        select(CaptureArtifact).where(
+            CaptureArtifact.capture_item_id == item.id,
+            CaptureArtifact.content_hash == artifact_sha256,
+        )
+    )
+    if (
+        artifact is None
+        or hashlib.sha256(artifact.raw_payload.encode("utf-8")).hexdigest()
+        != artifact_sha256
+    ):
+        raise ValueError("Capture evidence artifact hash mismatch")
     source = session.scalar(
         select(PostingSourceIdentity).where(
             PostingSourceIdentity.portal == run.source,
