@@ -14,9 +14,13 @@ from jolt.backup import create_backup, inspect_backup, restore_backup
 from jolt.database import create_session_factory
 from jolt.sources.portal_observation_backfill import backfill_portal_observation_receipts
 
-
 OWNED = ("applications", "review_decisions", "outcomes", "ai_reviews")
-SOURCES = ("posting_source_identities", "portal_source_observations", "capture_items", "capture_runs")
+SOURCES = (
+    "posting_source_identities",
+    "portal_source_observations",
+    "capture_items",
+    "capture_runs",
+)
 
 
 def counts(path: Path) -> dict[str, int]:
