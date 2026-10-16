@@ -1,21 +1,25 @@
 # JOLT — Operating Context
 
+## EXECUTION CONTRACT — 9/10 EFFICIENCY TARGET
+- Treat 9/10 as a measurable target, NOT an achieved score; assess over five successive accepted milestones. Never sacrifice source truthfulness, user data, or release safety to reduce turns.
+- One user request should drive one cohesive outcome: inspect current state, implement code/tests/UI/docs, validate, repair, merge if qualified, and record evidence without routine check-in requests.
+- At each chat restart, read `jolt.md`, `AGENTS.md`, `.ai/CONTEXT.md`, `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md`, `.ai/OPERABILITY.md` and controlled roadmap; verify current main SHA, branch divergence, open PRs and exact-head checks. GitHub is durable while operator PC is off.
+- Prioritize pre-PR quality gates: use `tools/dev-preflight.ps1` WHEN IMPLEMENTED; until then explicitly run Ruff lint/format, Pyright, pytest, frontend tests/build and relevant Windows/Playwright checks. Never state nonexistent scripts or checks have run.
+- Fix formatter/import/type/test expectation issues on the same branch BEFORE opening a PR; branch CI green first, then one coherent PR, exact-head PR CI and safe merge. Reconcile branch divergence before PR; no parallel writes to the same file.
+- Check CI at meaningful transitions, not rapid polling. Give exact active SHA checks link `https://github.com/RafaelAlbaWebify/jolt/commit/<SHA>/checks` and PR URL where available; distinguish queued/running/failed/green.
+- Use production-shaped disposable Windows/SQLite regression tests when touching migration, restore, database handles or retention; require real operator acceptance where roadmap specifies it. Never mutate live database or browser state without explicit authorization.
+- Design a future single-command operator acceptance runner producing a dated JSON report in Downloads, with current checkout/runtime SHA, safe read-only probes, retained record counts and failure evidence. Do not claim it exists until merged and tested.
+- Keep machine-readable status authoritative by scope: legacy local-first readiness in `.ai/OPERABILITY.md` is distinct from 4-portal controlled roadmap progress. Update `.ai/PROJECT_STATE.json` only with verified acceptance/CI/merge facts; do not overwrite prior history.
+- Objective metrics over five milestones: zero avoidable lint/format CI failures; <=1 operator intervention per ordinary milestone; >=90% first-PR success; >=95% regression capture for recurring known defects where measurable; 100% required evidence; zero protected-data incidents. Treat undefined baselines as unknown, not as passes.
+- Operator interventions only for unavailable authenticated Windows/browser proof, sensitive approvals or business decisions. Do not request routine GitHub checking, repeated output or unnecessary cloning.
+- Resume after power-off: all committed remote GitHub state persists, local uncommitted changes/SQLite remain on operator PC; cloud cannot claim live Windows acceptance when PC is off. On next session inspect GitHub, then ask for one minimal operator acceptance step only if required.
+
 ## GUARDRAILS
-- Local checkout policy: maintain ONE permanent repository folder per project (the canonical main working directory). Do not create another clone, worktree, or PR-specific folder unless strictly necessary AND explicitly approved by the user beforehand. Prefer branches and CI on GitHub for isolated development.
-- Temporary checkout lifecycle: document its reason and path, preserve local data and uncommitted changes, and remove it promptly once its approved purpose ends. Verify no orphan folders/worktrees remain. Never force-remove, reset, or clean user data.
-- Respond in concise, natural English; prioritize verified results and actionable next steps. When my English could sound more natural to a native speaker, suggest one concise correction and explain why in a short paragraph.
-- At the start of a new chat, read this file, `AGENTS.md`, and the authoritative `.ai/` control files; verify GitHub branch, latest commit, open PRs and CI.
-- “Continue” means execute the next concrete task, not merely propose it; investigate, edit, validate and fix autonomously.
-- Preserve `AGENTS.md`, `.ai/CONTEXT.md`, `.ai/PROJECT_STATE.json`, `.ai/KNOWN_ISSUES.md` and `.ai/OPERABILITY.md`; this concise file is an entry point, not their replacement.
-- Distinguish implemented, tested, CI-pending and merged. Never claim operational acceptance from fixtures or CI alone.
-- Protect SQLite, user decisions, applications, source evidence, secrets, browser profiles, backups and local installations.
-- Merge ordinary development and documentation PRs into `main` autonomously after required exact-head CI passes, mergeability and acceptance are verified; no separate approval needed. Still request explicit approval for destructive actions, production-data changes, live outreach or other high-risk irreversible operations.
-- Follow `AGENTS.md` pre-PR gates: develop a coherent outcome, validate branch CI, inspect Ruff/format/Pyright/pytest, then open a PR.
-- EVERY development/CI update must include a clickable, direct GitHub checks URL for the exact active commit (`https://github.com/RafaelAlbaWebify/jolt/commit/<SHA>/checks`), showing live yellow/green/red results; also link the PR when it exists. Never leave the operator waiting without a checkable URL, including before PR creation.
-- Keep this file roughly 40–60 lines; replace stale facts, do not append a changelog.
-- Follow `docs/operations/controlled-development-roadmap.md`; `EA` lists all numbered subphases with fixed weights.
-- Roadmap completion is binary per subphase: 100% only after acceptance evidence, green exact-head CI and verified merge; otherwise 0%.
-- Compute each phase's progress from fixed subphase weights; keep operational readiness separate from development completion.
+- Local checkout policy: ONE permanent canonical project folder; no other clone/worktree unless necessary and explicitly approved. Never force-remove/reset/clean user data.
+- Preserve `AGENTS.md`, `.ai/` controls, `PROJECT_MEMORY.md`, source contracts, secrets, browser profiles, local data, backups, user decisions and applications.
+- Follow `docs/operations/controlled-development-roadmap.md` fixed-weight binary per-subphase acceptance: 100% only when evidence, tests, exact-head CI, merge and required operator acceptance hold; otherwise 0%.
+- Ordinary qualified development/documentation PRs may merge autonomously. Destructive, live outreach, production-data changes and irreversible operations require explicit approval.
+- Use concise English. If a user's English correction is helpful, suggest a short, natural alternative without derailing engineering.
 
 ## PROJECT
 - Purpose: local-first, single-user Windows evidence workbench for job discovery, human review, applications, LinkedIn profile and market intelligence; ChatGPT handles judgment-heavy analysis.
@@ -30,12 +34,11 @@
 - Frontend checks (from `frontend/`): `npm test`, `npm run build`. CI: `.github/workflows/`.
 - Real portal credentials, work-from-Spain eligibility and actual user acceptance cannot be inferred from automated tests.
 
-## STATE
-- 2026-10-16 Phase 1.4 operator evidence PASS: isolated database backup, verified restore, SQLite integrity, schema migration 0030→0033, and unchanged owned records.
-- Approved live database migration confirmed schema `20261016_0033`, integrity `ok`, 51 applications, 133 human review decisions, 3 outcomes, 1,913 AI reviews, 6,929 legacy capture items and 293 legacy runs preserved.
-- First real supervised LinkedIn capture: 294 total runs, 6,932 items, 3 source identities and 3 immutable occurrence observations; second capture: 295 runs, 6,935 items, same 3 identities, 6 observations, all 3 seen across multiple runs. 51 applications and 133 human review decisions unchanged.
-- Phase 1.4 accepted: 20% fixed weight; Phase 1 now 75% (1.1–1.4). Phase 1.5 (15%) and 1.6 (10%) remain 0%.
-- Provenance implementation merged via PRs #580–#583. Real-Windows SQLite cleanup fixes via PRs #584 and #585, each with 11/11 checks green. Exact PR #585 head checks: https://github.com/RafaelAlbaWebify/jolt/commit/bd534d667e67690da95a6b4643bac33867ed3102/checks .
-- Dry-run legacy backfill found 0 eligible and 6,710 ineligible; no historical receipt fabrication or live backfill performed. Source-history tables began empty after migration; the verified fresh captures populate them.
-- NEXT: Phase 1.5 — add trustworthy source URL/identity/duplicate link visibility to human review and provenance-backed, de-duplicated Market Insights populations; test backend, frontend and Playwright before operator acceptance.
-- AFTER: Phase 1.6 four-source fixture, restart/retention/restore chain; Phase 2 independently accepts live operational behavior for each portal.
+## STATE — 2026-10-16 HANDOVER
+- Current verified `main`: `49879c7c939507b518dcd5cef1b2b41a059cc61c` (PR #587 merged; provenance-backed Market Insights unique source identities vs observations). Revalidate SHA next session.
+- Phase 1 = **75%** accepted (1.1=10, 1.2=20, 1.3=25, 1.4=20). Phase 1.5=0% (weight 15), 1.6=0% (weight 10); Phase 2=0%; Phase 3=0%. No overall cross-phase completion percentage defined.
+- Phase 1.4 real Windows PASS 2026-10-16: verified backup/restore, integrity, isolated migration 0030→0033, approved live 0033 migration; preserved 51 applications, 133 human decisions, 3 outcomes, 1,913 AI reviews. Supervised repeated LinkedIn evidence validated. Do not repeat this acceptance without a specific regression reason.
+- Operator's last report described 296 capture runs, 6,938 capture items, 4 source identities, 9 observations. This is handover-reported, not newly inspected local database evidence.
+- NEXT: Review Inbox Phase 1.5 branch `feat/phase15-review-source-history-20261016`, head `b901c656c2e16e6af3efb194dc2ae7d4228db502`; 6 commits ahead, 1 behind main when checked. Source URLs, verified identities and confirmed non-destructive duplicate links implemented in four changed files. CI green NOT confirmed; PR NOT opened. Reconcile with main, preflight, complete branch CI, open qualified PR, exact-head PR checks, merge, and collect integrated UI acceptance; only then accept 1.5.
+- AFTER: Phase 1.6 integrated four-source fixture, source-truth regression, restart/retention/restore rehearsal; then Phase 2 live LinkedIn, Indeed, InfoJobs, Jobgether independently; then Phase 3 multi-source review, analytics, recovery and release sign-off.
+- Efficiency implementation still pending: `tools/dev-preflight.ps1` and consolidated acceptance runner are PROPOSED deliverables, not implemented. This file establishes the workflow policy only.
