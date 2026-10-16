@@ -28,9 +28,7 @@ def upgrade() -> None:
         sa.Column("source_document_id_at_capture", sa.String(length=36), nullable=True),
         sa.Column("artifact_sha256", sa.String(length=64), nullable=False),
         sa.Column("observed_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "portal", "capture_item_id", name="uq_portal_source_observation_item"
-        ),
+        sa.UniqueConstraint("portal", "capture_item_id", name="uq_portal_source_observation_item"),
     )
     op.create_index(
         "ix_portal_source_observations_portal", "portal_source_observations", ["portal"]
@@ -47,7 +45,5 @@ def downgrade() -> None:
         "ix_portal_source_observations_posting_id_at_capture",
         table_name="portal_source_observations",
     )
-    op.drop_index(
-        "ix_portal_source_observations_portal", table_name="portal_source_observations"
-    )
+    op.drop_index("ix_portal_source_observations_portal", table_name="portal_source_observations")
     op.drop_table("portal_source_observations")
