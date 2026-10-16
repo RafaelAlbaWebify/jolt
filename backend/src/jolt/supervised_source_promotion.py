@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import cast
 from urllib.parse import urlparse
 
 from sqlalchemy import select
@@ -19,6 +20,8 @@ from jolt.database import CaptureItem, CaptureRun, Posting
 from jolt.infojobs_observations import inspect_offer
 from jolt.jobgether_preview import jobgether_identity
 from jolt.schemas import ManualIntakeRequest
+from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
+from jolt.sources.source_identity_registry import register_source_identity
 
 
 def _complete_evidence(
@@ -129,6 +132,22 @@ def promote_supervised_item(session: Session, capture_item_id: str) -> dict[str,
     item.detail_status = "verified"
     item.company = company
     item.location = location
+    register_source_identity(
+        session,
+        posting_id=intake.posting_id,
+        source_document_id=intake.source_document_id,
+        offer=NormalizedJobOffer(
+            portal=cast(Portal, run.source),
+            source_job_id=item.source_job_id,
+            source_url=item.source_url,
+            title=title,
+            company=company,
+            location=location,
+            description=description,
+            identity_verified=True,
+            detail_verified=True,
+        ),
+    )
     item.verification_reasons_json = json.dumps(
         [
             "Source URL, title and captured detail consistency checked",
