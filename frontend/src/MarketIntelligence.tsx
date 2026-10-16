@@ -435,10 +435,10 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                     <div><dt>Unique roles</dt><dd>{data.evidence_provenance.canonical_role_count.toLocaleString()}</dd></div>
                     <div><dt>Search runs</dt><dd>{data.evidence_provenance.capture_run_count.toLocaleString()}</dd></div>
                     <div><dt>Repeated observations</dt><dd>{data.evidence_provenance.duplicate_observation_count.toLocaleString()}</dd></div>
-                    <div><dt>Verified portal identities</dt><dd>{data.evidence_provenance.verified_source_identities.toLocaleString()}</dd></div>
-                    <div><dt>Unique verified postings</dt><dd>{data.evidence_provenance.verified_postings.toLocaleString()}</dd></div>
-                    <div><dt>Verified capture receipts</dt><dd>{data.evidence_provenance.verified_source_observations.toLocaleString()}</dd></div>
-                    {Object.entries(data.evidence_provenance.verified_by_portal).map(([portal, counts]) => (
+                    <div><dt>Verified portal identities</dt><dd>{(data.evidence_provenance.verified_source_identities ?? 0).toLocaleString()}</dd></div>
+                    <div><dt>Unique verified postings</dt><dd>{(data.evidence_provenance.verified_postings ?? 0).toLocaleString()}</dd></div>
+                    <div><dt>Verified capture receipts</dt><dd>{(data.evidence_provenance.verified_source_observations ?? 0).toLocaleString()}</dd></div>
+                    {Object.entries(data.evidence_provenance.verified_by_portal ?? {}).map(([portal, counts]) => (
                       <div key={portal}><dt>{portal} (identities / receipts)</dt><dd>{counts.identities} / {counts.observations}</dd></div>
                     ))}
 
