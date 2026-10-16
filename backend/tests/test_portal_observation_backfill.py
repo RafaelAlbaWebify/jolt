@@ -89,3 +89,40 @@ def test_receipt_remains_after_transient_artifact_and_item_removal(tmp_path) -> 
         assert history.total_observations == 1
         assert history.observations[0].artifact_sha256 == saved_hash
         assert session.get(CaptureItem, item_id) is None
+
+
+def test_guarded_cleanup_keeps_verified_history_after_disposable_posting_deleted(tmp_path) -> None:
+    from jolt.database import Posting
+    from jolt.retention_ownership import (
+        build_guarded_retention_cleanup_plan,
+        execute_guarded_retention_cleanup,
+    )
+
+    factory = create_session_factory(f"sqlite:///{(tmp_path / 'guarded.db').as_posix()}")
+    with factory() as session:
+        posting, old_item = _capture(session, "old-history")
+        _capture(session, "current-history")
+        original = session.scalar(
+            select(PortalSourceObservation).where(
+                PortalSourceObservation.capture_item_id == old_item
+            )
+        )
+        assert original is not None
+        digest = original.artifact_sha256
+        plan = build_guarded_retention_cleanup_plan(session)
+        assert plan["blocked"] is False
+        assert plan["superseded_capture_run_count"] == 1
+        execute_guarded_retention_cleanup(
+            session, confirmation=str(plan["required_confirmation"])
+        )
+        session.commit()
+    with factory() as session:
+        assert session.get(Posting, posting) is None
+        assert session.get(CaptureItem, old_item) is None
+        receipt = session.scalar(
+            select(PortalSourceObservation).where(
+                PortalSourceObservation.capture_item_id == old_item
+            )
+        )
+        assert receipt is not None
+        assert receipt.artifact_sha256 == digest
