@@ -48,10 +48,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_posting_source_identities_portal", table_name="posting_source_identities"
-    )
-    op.drop_index(
-        "ix_posting_source_identities_posting_id", table_name="posting_source_identities"
-    )
+    op.drop_index("ix_posting_source_identities_portal", table_name="posting_source_identities")
+    op.drop_index("ix_posting_source_identities_posting_id", table_name="posting_source_identities")
     op.drop_table("posting_source_identities")
