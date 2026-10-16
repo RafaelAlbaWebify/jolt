@@ -104,7 +104,7 @@ def build_discovery_searches_router(get_session: SessionProvider) -> APIRouter:
     ) -> PostingSourceHistoryResponse:
         try:
             return get_posting_source_history(session, posting_id, limit=limit)
-        except LookupError as exc:
+        except JoltNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
