@@ -28,7 +28,8 @@ def counts(path: Path) -> dict[str, int]:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         return {
             table: int(db.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
-            if table in tables else -1
+            if table in tables
+            else -1
             for table in OWNED + SOURCES
         }
 
@@ -71,7 +72,9 @@ def accept(source: Path, output: Path) -> dict[str, object]:
             raise RuntimeError("Capture items changed during read-only acceptance")
         if after["capture_runs"] != snapshot_before["capture_runs"]:
             raise RuntimeError("Capture runs changed during read-only acceptance")
-        if after["portal_source_observations"] < max(0, snapshot_before["portal_source_observations"]):
+        if after["portal_source_observations"] < max(
+            0, snapshot_before["portal_source_observations"]
+        ):
             raise RuntimeError("Historical portal receipts were lost")
         if not integrity(restored) or counts(restored) != snapshot_before:
             raise RuntimeError("Restore snapshot changed during isolated migration")
