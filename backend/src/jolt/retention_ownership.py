@@ -622,6 +622,14 @@ def execute_guarded_retention_cleanup(
             posting_ids,
         )
 
+        # Drop portal identity rows owned by capture-only postings before deleting
+        # those postings; identities of retained postings remain untouched.
+        deleted["posting_source_identities"] = delete_where_ids(
+            "posting_source_identities",
+            "posting_id",
+            posting_ids,
+        )
+
         deleted["postings"] = delete_where_ids(
             "postings",
             "id",
