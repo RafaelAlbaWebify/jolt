@@ -55,8 +55,14 @@ def test_source_history_preserves_repeated_observations_and_source_identity(tmp_
     assert bounded.json()["truncated"] is True
     assert bounded.json()["total_observations"] == 2
     assert len(bounded.json()["observations"]) == 1
-    assert client.get(f"/api/discovery-postings/{posting_id}/source-history?limit=0").status_code == 422
-    assert client.get(f"/api/discovery-postings/{posting_id}/source-history?limit=501").status_code == 422
+    assert (
+        client.get(f"/api/discovery-postings/{posting_id}/source-history?limit=0").status_code
+        == 422
+    )
+    assert (
+        client.get(f"/api/discovery-postings/{posting_id}/source-history?limit=501").status_code
+        == 422
+    )
     assert client.get("/api/discovery-postings/missing/source-history").status_code == 404
 
     with factory() as session:
