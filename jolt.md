@@ -1,6 +1,8 @@
 # JOLT — Operating Context
 
 ## GUARDRAILS
+- Local checkout policy: maintain ONE permanent repository folder per project (the canonical main working directory). Do not create another clone, worktree, or PR-specific folder unless strictly necessary AND explicitly approved by the user beforehand. Prefer branches and CI on GitHub for isolated development.
+- Temporary checkout lifecycle: document its reason and path, preserve local data and uncommitted changes, and remove it promptly once its approved purpose ends. Verify no orphan folders/worktrees remain. Never force-remove, reset, or clean user data.
 - Respond in concise, natural English; prioritize verified results and actionable next steps. When my English could sound more natural to a native speaker, suggest one concise correction and explain why in a short paragraph.
 - At the start of a new chat, read this file, `AGENTS.md`, and the authoritative `.ai/` control files; verify GitHub branch, latest commit, open PRs and CI.
 - “Continue” means execute the next concrete task, not merely propose it; investigate, edit, validate and fix autonomously.
