@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from urllib.parse import urlparse
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ from jolt.database import CaptureItem, CaptureRun, Posting
 from jolt.infojobs_observations import inspect_offer
 from jolt.jobgether_preview import jobgether_identity
 from jolt.schemas import ManualIntakeRequest
-from jolt.sources.normalized_offer import NormalizedJobOffer
+from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
 from jolt.sources.source_identity_registry import register_source_identity
 
 
@@ -136,7 +137,7 @@ def promote_supervised_item(session: Session, capture_item_id: str) -> dict[str,
         posting_id=intake.posting_id,
         source_document_id=intake.source_document_id,
         offer=NormalizedJobOffer(
-            portal=run.source,
+            portal=cast(Portal, run.source),
             source_job_id=item.source_job_id,
             source_url=item.source_url,
             title=title,
