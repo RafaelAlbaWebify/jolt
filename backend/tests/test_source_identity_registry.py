@@ -69,9 +69,7 @@ def test_multiple_portals_can_point_at_one_posting_without_deleting_evidence(tmp
         )
         assert repeated.id == one.id
         assert repeated.first_seen_at <= repeated.last_seen_at
-        register_source_identity(
-            session, posting_id=posting_id, offer=_offer("infojobs", "abc")
-        )
+        register_source_identity(session, posting_id=posting_id, offer=_offer("infojobs", "abc"))
         assert [item.portal for item in list_posting_sources(session, posting_id)] == [
             "infojobs",
             "linkedin",
@@ -90,9 +88,7 @@ def test_identity_cannot_silently_move_between_postings(tmp_path) -> None:
         second = _posting(session, "two")
         register_source_identity(session, posting_id=first, offer=_offer("linkedin", "123"))
         with pytest.raises(ValueError, match="already linked"):
-            register_source_identity(
-                session, posting_id=second, offer=_offer("linkedin", "123")
-            )
+            register_source_identity(session, posting_id=second, offer=_offer("linkedin", "123"))
         assert len(session.scalars(select(Posting)).all()) == 2
 
 
