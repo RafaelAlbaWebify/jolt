@@ -42,16 +42,12 @@ class SourceDocument(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
-
-
 class PostingSourceIdentity(Base):
     """Durable portal identity mapped to a Posting, without destroying source evidence."""
 
     __tablename__ = "posting_source_identities"
     __table_args__ = (
-        UniqueConstraint(
-            "portal", "source_job_id", name="uq_posting_source_identity_portal_job"
-        ),
+        UniqueConstraint("portal", "source_job_id", name="uq_posting_source_identity_portal_job"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
