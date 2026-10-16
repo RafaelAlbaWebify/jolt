@@ -26,7 +26,15 @@ def test_discovery_sources_expose_portal_capabilities(tmp_path: Path) -> None:
     assert sources["jobgether"]["transport"] == "api"
     assert sources["infojobs"]["transport"] == "api"
     assert "adzuna" not in sources
-    rejected = client.post("/api/discovery-searches", json={"source": "adzuna", "label": "Removed", "definition": {"keyword": "IT"}, "max_jobs": 5})
+    rejected = client.post(
+        "/api/discovery-searches",
+        json={
+            "source": "adzuna",
+            "label": "Removed",
+            "definition": {"keyword": "IT"},
+            "max_jobs": 5,
+        },
+    )
     assert rejected.status_code == 422
 
 
