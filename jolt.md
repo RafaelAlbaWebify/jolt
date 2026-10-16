@@ -36,6 +36,6 @@
 - PR #572 merged into `main` at `ab52db98c61ae8c66f49aacd4ce4cea08eabd56b` after 11/11 green checks; InfoJobs supervised operator import is available, but unified Discovery execution is NOT.
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- NEXT: PR #580 (https://github.com/RafaelAlbaWebify/jolt/pull/580), Phase 1.4A durable observation receipts; branch preflight green, full PR CI pending. Merge only after exact-head green checks.
-- AFTER: finish Phase 1.4 source-history acceptance, then 1.5 Review Inbox/Market Insights provenance visibility and outstanding InfoJobs Discovery execution.
+- NEXT: PR #580 merged at `deed36ca7422315f7b93713f777ce243542c6d20` after 11/11 checks; Phase 1.4 source history API in `feat/phase-1-4-posting-source-history-api-20261016`, branch CI pending.
+- AFTER: complete 1.4 backfill/recovery and operator history acceptance, then 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
