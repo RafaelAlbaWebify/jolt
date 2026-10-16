@@ -9,11 +9,25 @@ from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeFeedbackItem
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackRecord, list_ai_exchange_feedback
-from jolt.database import CaptureRun, MarketIntelligenceObservation
+from jolt.database import (
+    CaptureRun,
+    MarketIntelligenceObservation,
+    PortalSourceObservation,
+    PostingSourceIdentity,
+)
 from jolt.global_context import global_context_version, load_global_ai_context
 
 
+class VerifiedPortalBreakdown(BaseModel):
+    identities: int = 0
+    observations: int = 0
+
+
 class MarketEvidenceProvenance(BaseModel):
+    verified_source_identities: int = 0
+    verified_source_observations: int = 0
+    verified_postings: int = 0
+    verified_by_portal: dict[str, VerifiedPortalBreakdown] = Field(default_factory=dict)
     observation_count: int = 0
     canonical_role_count: int = 0
     duplicate_observation_count: int = 0
@@ -76,7 +90,31 @@ def _provenance(session: Session) -> MarketEvidenceProvenance:
     )
     oldest_evidence_at = session.scalar(select(func.min(MarketIntelligenceObservation.captured_at)))
     newest_evidence_at = session.scalar(select(func.max(MarketIntelligenceObservation.captured_at)))
+    identity_rows = session.execute(
+        select(PostingSourceIdentity.portal, func.count(PostingSourceIdentity.id))
+        .group_by(PostingSourceIdentity.portal)
+    ).all()
+    receipt_rows = session.execute(
+        select(PortalSourceObservation.portal, func.count(PortalSourceObservation.id))
+        .group_by(PortalSourceObservation.portal)
+    ).all()
+    identities_by_portal = {str(portal): int(count) for portal, count in identity_rows}
+    receipts_by_portal = {str(portal): int(count) for portal, count in receipt_rows}
+    verified_by_portal = {
+        portal: VerifiedPortalBreakdown(
+            identities=identities_by_portal.get(portal, 0),
+            observations=receipts_by_portal.get(portal, 0),
+        )
+        for portal in sorted(identities_by_portal.keys() | receipts_by_portal.keys())
+    }
+    verified_postings = int(
+        session.scalar(select(func.count(func.distinct(PostingSourceIdentity.posting_id)))) or 0
+    )
     return MarketEvidenceProvenance(
+        verified_source_identities=sum(identities_by_portal.values()),
+        verified_source_observations=sum(receipts_by_portal.values()),
+        verified_postings=verified_postings,
+        verified_by_portal=verified_by_portal,
         observation_count=observation_count,
         canonical_role_count=canonical_role_count,
         duplicate_observation_count=max(0, observation_count - canonical_role_count),
