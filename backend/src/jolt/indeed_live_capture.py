@@ -19,6 +19,7 @@ from jolt.schemas import (
 )
 from jolt.sources.normalized_offer import normalize_captured_offer
 from jolt.sources.source_identity_registry import register_source_identity
+from jolt.sources.portal_observations import record_portal_observation
 from jolt.strategy_runtime import ensure_strategy_review, load_active_strategy_profile
 
 
@@ -161,6 +162,10 @@ def run_indeed_live_capture(
                 content_type="application/json",
                 raw_payload=json.dumps(evidence.model_dump(mode="json"), sort_keys=True),
             )
+            if verified and evidence.source_url:
+                record_portal_observation(
+                    session, capture_item_id=item.id, artifact_sha256=artifact.content_hash
+                )
             responses.append(
                 CaptureItemResponse(
                     capture_item_id=item.id,
