@@ -18,6 +18,10 @@ type MarketData = {
   application_strategy: Record<string, unknown>;
   profile_strategy: Record<string, unknown>;
   evidence_provenance: {
+    verified_source_identities: number;
+    verified_source_observations: number;
+    verified_postings: number;
+    verified_by_portal: Record<string, { identities: number; observations: number }>;
     observation_count: number;
     canonical_role_count: number;
     duplicate_observation_count: number;
@@ -431,6 +435,13 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                     <div><dt>Unique roles</dt><dd>{data.evidence_provenance.canonical_role_count.toLocaleString()}</dd></div>
                     <div><dt>Search runs</dt><dd>{data.evidence_provenance.capture_run_count.toLocaleString()}</dd></div>
                     <div><dt>Repeated observations</dt><dd>{data.evidence_provenance.duplicate_observation_count.toLocaleString()}</dd></div>
+                    <div><dt>Verified portal identities</dt><dd>{(data.evidence_provenance.verified_source_identities ?? 0).toLocaleString()}</dd></div>
+                    <div><dt>Unique verified postings</dt><dd>{(data.evidence_provenance.verified_postings ?? 0).toLocaleString()}</dd></div>
+                    <div><dt>Verified capture receipts</dt><dd>{(data.evidence_provenance.verified_source_observations ?? 0).toLocaleString()}</dd></div>
+                    {Object.entries(data.evidence_provenance.verified_by_portal ?? {}).map(([portal, counts]) => (
+                      <div key={portal}><dt>{portal} (identities / receipts)</dt><dd>{counts.identities} / {counts.observations}</dd></div>
+                    ))}
+
                   </dl>
                 </article>
               </div>

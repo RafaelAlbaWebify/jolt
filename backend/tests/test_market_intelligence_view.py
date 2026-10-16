@@ -4,9 +4,15 @@ from datetime import UTC, datetime, timedelta
 
 from jolt.ai_exchange_contract import AIExchangeFeedbackItem
 from jolt.ai_exchange_feedback_store import AIExchangeFeedbackIndex, AIExchangeFeedbackRecord
-from jolt.database import CaptureRun, MarketIntelligenceObservation, create_session_factory
+from jolt.database import (
+    CaptureRun,
+    MarketIntelligenceObservation,
+    create_session_factory,
+)
 from jolt.global_context import GlobalAIContextOverlay
+from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence_view import build_market_intelligence_view
+from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 
 
 def _observation(
@@ -162,3 +168,36 @@ def test_market_view_is_current_when_market_analysis_is_newer_than_capture(
     assert view.freshness.status == "current"
     assert view.freshness.needs_analysis is False
     assert view.freshness.ai_updated_at == now
+
+
+def test_verified_portal_breakdown_deduplicates_repeat_captures(tmp_path, monkeypatch) -> None:
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'source-market.db').as_posix()}")()
+    monkeypatch.setattr(
+        "jolt.market_intelligence_view.list_ai_exchange_feedback",
+        lambda section: AIExchangeFeedbackIndex(total_import_count=0, records=[]),
+    )
+    capture = LinkedInLiveCaptureRequest(
+        search_url="https://www.linkedin.com/jobs/search/",
+        items=[
+            LinkedInLiveCaptureItemRequest(
+                source_job_id="phase15-123",
+                source_url="https://www.linkedin.com/jobs/view/123/",
+                title="Support Engineer",
+                company="Example",
+                location="Vigo",
+                description="Support infrastructure, resolve incidents and maintain operations.",
+                identity_verified=True,
+            )
+        ],
+    )
+    try:
+        run_linkedin_live_capture(session, capture)
+        run_linkedin_live_capture(session, capture)
+        view = build_market_intelligence_view(session)
+        assert view.evidence_provenance.verified_source_identities == 1
+        assert view.evidence_provenance.verified_postings == 1
+        assert view.evidence_provenance.verified_source_observations == 2
+        assert view.evidence_provenance.verified_by_portal["linkedin"].identities == 1
+        assert view.evidence_provenance.verified_by_portal["linkedin"].observations == 2
+    finally:
+        session.close()
