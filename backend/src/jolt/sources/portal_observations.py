@@ -41,8 +41,7 @@ def record_portal_observation(
     )
     if (
         artifact is None
-        or hashlib.sha256(artifact.raw_payload.encode("utf-8")).hexdigest()
-        != artifact_sha256
+        or hashlib.sha256(artifact.raw_payload.encode("utf-8")).hexdigest() != artifact_sha256
     ):
         raise ValueError("Capture evidence artifact hash mismatch")
     source = session.scalar(
