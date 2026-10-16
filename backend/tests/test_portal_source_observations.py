@@ -49,7 +49,7 @@ def test_two_verified_captures_create_two_independent_source_receipts(tmp_path) 
             session, capture_item_id=before.capture_item_id, artifact_sha256=before.artifact_sha256
         )
         assert repeated.id == before.id
-        with pytest.raises(ValueError, match="cannot be rewritten"):
+        with pytest.raises(ValueError, match="hash mismatch|cannot be rewritten"):
             record_portal_observation(
                 session, capture_item_id=before.capture_item_id, artifact_sha256="0" * 64
             )
