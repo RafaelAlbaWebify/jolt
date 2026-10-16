@@ -4,7 +4,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from jolt.capture_ingestion import ingest_capture_item
-from jolt.database import ConfirmedDuplicateLink, Posting, PostingSourceIdentity, create_session_factory
+from jolt.database import (
+    ConfirmedDuplicateLink,
+    Posting,
+    PostingSourceIdentity,
+    create_session_factory,
+)
 from jolt.main import create_app
 from jolt.schemas import ManualIntakeRequest
 from jolt.sources.normalized_offer import NormalizedJobOffer
