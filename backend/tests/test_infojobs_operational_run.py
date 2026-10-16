@@ -1,6 +1,7 @@
 """InfoJobs one-command import regression tests."""
 
 import hashlib
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
