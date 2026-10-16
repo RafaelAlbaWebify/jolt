@@ -12,7 +12,6 @@ from jolt.schemas import ManualIntakeRequest
 from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
 from jolt.sources.source_identity_registry import register_source_identity
 
-
 DESCRIPTION = (
     "Support enterprise business applications and troubleshoot incidents. "
     "Investigate logs, coordinate fixes with engineers and document resolutions. "
