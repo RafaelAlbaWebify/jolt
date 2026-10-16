@@ -9,10 +9,10 @@ from jolt.database import (
     MarketIntelligenceObservation,
     create_session_factory,
 )
-from jolt.live_capture_workflow import run_linkedin_live_capture
-from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 from jolt.global_context import GlobalAIContextOverlay
+from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.market_intelligence_view import build_market_intelligence_view
+from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
 
 
 def _observation(
@@ -172,7 +172,10 @@ def test_market_view_is_current_when_market_analysis_is_newer_than_capture(
 
 def test_verified_portal_breakdown_deduplicates_repeat_captures(tmp_path, monkeypatch) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'source-market.db').as_posix()}")()
-    monkeypatch.setattr("jolt.market_intelligence_view.list_ai_exchange_feedback", lambda section: AIExchangeFeedbackIndex(total_import_count=0, records=[]))
+    monkeypatch.setattr(
+        "jolt.market_intelligence_view.list_ai_exchange_feedback",
+        lambda section: AIExchangeFeedbackIndex(total_import_count=0, records=[]),
+    )
     capture = LinkedInLiveCaptureRequest(
         search_url="https://www.linkedin.com/jobs/search/",
         items=[
