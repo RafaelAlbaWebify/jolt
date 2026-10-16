@@ -9,7 +9,7 @@ This roadmap controls the **current multi-source expansion**, not a retroactive 
 - Every phase's percentage is the **sum of the fixed weights of its completed subphases**. No arbitrary partial percentages. No overall percentage spanning distinct phases unless separate cross-phase weights are explicitly approved.
 - Existing independently accepted features are not counted twice. PR counts, documentation changes and CI alone do not establish operational readiness; real portal Windows acceptance is independently gated.
 - Weights and IDs are frozen for this baseline. Changes require a documented scope-change approval, including the previous and replacement weights, rationale and acceptance impacts.
-- Work in coherent small PRs; follow `AGENTS.md` branch CI preflight and obtain explicit approval before merging to `main`. Never infer auth, employment eligibility, browser safety or source fidelity from mocks.
+- Work in coherent small PRs; follow `AGENTS.md` branch CI preflight, and autonomously merge green, qualified PRs into `main` without separate approval. Explicit approval remains necessary for destructive, production-data, live-outreach or high-risk irreversible actions. Never infer auth, employment eligibility, browser safety or source fidelity from mocks.
 
 ## Phase 1 — Unified multi-source contract, identity and provenance
 
@@ -48,10 +48,10 @@ This roadmap controls the **current multi-source expansion**, not a retroactive 
 
 ## Execution order and evidence ledger
 
-1. **Current task:** documentation-only context/roadmap PR from `docs/jolt-controlled-development-20261016`; verify CI and obtain explicit merge approval.
-2. **Next:** resolve #572 backend CI and reconcile InfoJobs scope with operational Phase 2.3.
-3. **Then:** 1.4 occurrence-level provenance; 1.5 Review Inbox/Market Insights source visibility; 1.6 integrated regressions.
-4. **Afterward:** Phase 2 live source acceptance, then Phase 3 workflow and release certification; no implied approval for real portal automation, outreach, data deletion or branch merging.
+1. **Completed:** context/roadmap PR #579 merged into `main` with 11/11 green checks. Continue maintaining `jolt.md` on `main` after meaningful changes.
+2. **Next:** #572 backend CI corrected and all 11 checks green; review its bounded supervised-import scope (not the full Discovery execution) and merge autonomously if still qualified.
+3. **Then:** finish Phase 1.4 occurrence-level provenance ledger branch CI and PR; continue 1.5 Review Inbox/Market Insights source visibility and 1.6 integrated regressions.
+4. **Afterward:** Phase 2 live source acceptance, then Phase 3 workflow and release certification; no implied approval for live outreach, data deletion, production-data modification or other high-risk irreversible actions; ordinary green PR merges are authorized.
 5. For each accepted subphase, record **PR URL, merge commit SHA, exact-head check results, test evidence, real Windows evidence if required**, and date. Keep historical detail in PRs/tests/acceptance reports, not an ever-growing `jolt.md`.
 
 ## EA reporting contract
