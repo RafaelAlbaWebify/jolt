@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from jolt.database import DiscoverySavedSearch, LinkedInSavedSearch, utc_now
 from jolt.errors import JoltNotFoundError
 
-DiscoverySource = Literal["linkedin", "indeed", "jobgether", "infojobs", "adzuna"]
+DiscoverySource = Literal["linkedin", "indeed", "jobgether", "infojobs"]
 
 _SOURCE_CAPABILITIES: dict[str, dict[str, Any]] = {
     "linkedin": {
@@ -36,12 +36,6 @@ _SOURCE_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "infojobs": {
         "label": "InfoJobs",
-        "transport": "api",
-        "saved_search_backend": "discovery",
-        "execution_available": False,
-    },
-    "adzuna": {
-        "label": "Adzuna",
         "transport": "api",
         "saved_search_backend": "discovery",
         "execution_available": False,
