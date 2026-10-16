@@ -122,15 +122,16 @@ def run_indeed_live_capture(
                 source_document_id = intake.source_document_id
                 posting_id = intake.posting_id
                 identity_status = intake.identity_status
-                register_source_identity(
-                    session,
-                    posting_id=posting_id,
-                    source_document_id=source_document_id,
-                    offer=normalize_captured_offer(
-                        "indeed",
-                        evidence.model_dump(mode="python"),
-                    ),
-                )
+                if evidence.source_url:
+                    register_source_identity(
+                        session,
+                        posting_id=posting_id,
+                        source_document_id=source_document_id,
+                        offer=normalize_captured_offer(
+                            "indeed",
+                            evidence.model_dump(mode="python"),
+                        ),
+                    )
                 if profile is not None:
                     posting = session.get(Posting, posting_id)
                     if posting is not None:
