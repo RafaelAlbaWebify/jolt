@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.database import PortalSourceObservation, Posting
+from jolt.errors import JoltNotFoundError
 from jolt.sources.source_identity_registry import list_posting_sources
 
 
@@ -44,7 +45,7 @@ def get_posting_source_history(
     if not 1 <= limit <= 500:
         raise ValueError("limit must be between 1 and 500")
     if session.get(Posting, posting_id) is None:
-        raise LookupError("Posting not found")
+        raise JoltNotFoundError("Posting not found")
     sources = [
         PostingSourceHistoryIdentity(
             portal=source.portal,
