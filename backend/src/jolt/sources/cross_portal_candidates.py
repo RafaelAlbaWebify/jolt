@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import cast
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -64,7 +65,7 @@ def list_cross_portal_duplicate_candidates(
                     continue
                 compared.add(pair)
                 first = NormalizedJobOffer(
-                    portal=first_source.portal,
+                    portal=cast(Portal, first_source.portal),
                     source_job_id=first_source.source_job_id,
                     source_url=first_source.source_url,
                     title=first_posting.title,
@@ -75,7 +76,7 @@ def list_cross_portal_duplicate_candidates(
                     detail_verified=True,
                 )
                 second = NormalizedJobOffer(
-                    portal=second_source.portal,
+                    portal=cast(Portal, second_source.portal),
                     source_job_id=second_source.source_job_id,
                     source_url=second_source.source_url,
                     title=second_posting.title,
