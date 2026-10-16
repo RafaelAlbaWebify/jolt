@@ -64,6 +64,7 @@ def test_unverified_capture_never_creates_portal_receipt(tmp_path) -> None:
         assert session.scalars(select(PortalSourceObservation)).all() == []
         with pytest.raises(ValueError, match="verified"):
             record_portal_observation(
-                session, capture_item_id=captured.items[0].capture_item_id,
+                session,
+                capture_item_id=captured.items[0].capture_item_id,
                 artifact_sha256="a" * 64,
             )
