@@ -33,6 +33,10 @@ from jolt.sources.cross_portal_candidates import (
     CrossPortalDuplicateCandidate,
     list_cross_portal_duplicate_candidates,
 )
+from jolt.sources.posting_source_history import (
+    PostingSourceHistoryResponse,
+    get_posting_source_history,
+)
 
 SessionProvider = Callable[[], Iterator[Session]]
 
@@ -86,6 +90,22 @@ def build_discovery_searches_router(get_session: SessionProvider) -> APIRouter:
     ) -> list[CrossPortalDuplicateCandidate]:
         try:
             return list_cross_portal_duplicate_candidates(session, limit=limit)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.get(
+        "/api/discovery-postings/{posting_id}/source-history",
+        response_model=PostingSourceHistoryResponse,
+    )
+    def discovery_posting_source_history(
+        posting_id: str,
+        limit: int = 100,
+        session: Session = session_dependency,
+    ) -> PostingSourceHistoryResponse:
+        try:
+            return get_posting_source_history(session, posting_id, limit=limit)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
