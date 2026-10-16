@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from types import SimpleNamespace
 
 import jolt.phase14_acceptance as phase14
 from jolt.database import create_session_factory
@@ -52,3 +53,30 @@ def test_phase14_acceptance_disposes_isolated_database_engine(tmp_path, monkeypa
     monkeypatch.setattr(phase14, "create_session_factory", tracked_factory)
     assert accept(original, tmp_path / "reports")["status"] == "PASS"
     assert disposed == [True]
+
+
+def test_integrity_closes_sqlite_file_handle_explicitly(tmp_path, monkeypatch) -> None:
+    original = tmp_path / "integrity.db"
+    with sqlite3.connect(original) as connection:
+        connection.execute("CREATE TABLE proof (id INTEGER PRIMARY KEY)")
+    closed: list[bool] = []
+    native_connect = sqlite3.connect
+
+    class TrackedConnection:
+        def __init__(self, path, **kwargs):
+            self.connection = native_connect(path, **kwargs)
+
+        def execute(self, sql):
+            return self.connection.execute(sql)
+
+        def close(self):
+            closed.append(True)
+            self.connection.close()
+
+    monkeypatch.setattr(
+        phase14,
+        "sqlite3",
+        SimpleNamespace(connect=lambda path, **kwargs: TrackedConnection(path, **kwargs)),
+    )
+    assert phase14.integrity(original) is True
+    assert closed == [True]
