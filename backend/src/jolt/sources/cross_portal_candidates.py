@@ -58,7 +58,10 @@ def list_cross_portal_duplicate_candidates(
                     continue
                 if first_posting.id == second_posting.id:
                     continue
-                pair = (min(first_posting.id, second_posting.id), max(first_posting.id, second_posting.id))
+                pair = (
+                    min(first_posting.id, second_posting.id),
+                    max(first_posting.id, second_posting.id),
+                )
                 if pair in compared:
                     continue
                 compared.add(pair)
