@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jolt.database import Posting, PostingSourceIdentity
+from jolt.database import ConfirmedDuplicateLink, Posting, PostingSourceIdentity
 from jolt.semantic_duplicates import normalize_duplicate_text
 from jolt.sources.duplicate_assessment import assess_duplicate
 from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
@@ -49,6 +49,10 @@ def list_cross_portal_duplicate_candidates(
         if all(key):
             buckets[key].append((source, posting))
 
+    confirmed = {
+        (link.first_posting_id, link.second_posting_id)
+        for link in session.scalars(select(ConfirmedDuplicateLink)).all()
+    }
     results: list[CrossPortalDuplicateCandidate] = []
     compared: set[tuple[str, str]] = set()
     for bucket in buckets.values():
@@ -62,7 +66,7 @@ def list_cross_portal_duplicate_candidates(
                     min(first_posting.id, second_posting.id),
                     max(first_posting.id, second_posting.id),
                 )
-                if pair in compared:
+                if pair in compared or pair in confirmed:
                     continue
                 compared.add(pair)
                 first = NormalizedJobOffer(
