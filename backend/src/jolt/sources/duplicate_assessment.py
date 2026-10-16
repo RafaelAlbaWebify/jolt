@@ -47,7 +47,9 @@ def assess_duplicate(
     first_location = normalize_duplicate_text(first.location)
     second_location = normalize_duplicate_text(second.location)
     if first_location and second_location and first_location != second_location:
-        return DuplicateAssessment("needs_review", "Different locations could reflect separate vacancies")
+        return DuplicateAssessment(
+            "needs_review", "Different locations could reflect separate vacancies"
+        )
     if not first_location or not second_location:
         return DuplicateAssessment("needs_review", "Location comparison is incomplete")
     if not first.description.strip() or not second.description.strip():
