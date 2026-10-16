@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from jolt.database import Base, Posting, PostingSourceIdentity, SourceDocument
-from jolt.sources.normalized_offer import NormalizedJobOffer
+from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
 from jolt.sources.source_identity_registry import (
     list_posting_sources,
     register_source_identity,
@@ -41,7 +41,7 @@ def _posting(session: Session, identifier: str) -> str:
     return posting.id
 
 
-def _offer(portal: str, identifier: str, verified: bool = True) -> NormalizedJobOffer:
+def _offer(portal: Portal, identifier: str, verified: bool = True) -> NormalizedJobOffer:
     hosts = {"linkedin": "www.linkedin.com", "infojobs": "www.infojobs.net"}
     return NormalizedJobOffer(
         portal=portal,
