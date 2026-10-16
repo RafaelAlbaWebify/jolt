@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from urllib.parse import urlparse
 from typing import cast
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
