@@ -38,7 +38,7 @@
 - PR #572 merged into `main` at `ab52db98c61ae8c66f49aacd4ce4cea08eabd56b` after 11/11 green checks; InfoJobs supervised operator import is available, but unified Discovery execution is NOT.
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- PR #580 merged at `deed36ca7422315f7b93713f777ce243542c6d20` (11/11 green). Phase 1.4 source-history branch `b076f4c90f4921eb85fa32a0a44dfa7f9cbb8b3f` passed backend/frontend/Windows CI (3/3).
-- NEXT: open and validate Phase 1.4 source-history API PR; merge when exact-head checks pass.
-- AFTER: complete 1.4 backfill/recovery and operator history acceptance, then 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
+- PR #580 observation receipts merged at `deed36ca7422315f7b93713f777ce243542c6d20` (11/11 green); PR #581 read-only history API merged at `977cbcc741016ed7ea38dd7188eb586d367b5dfb` (11/11 green).
+- NEXT: Phase 1.4 retention/recovery and historical backfill policy: identify which historical capture evidence can be safely referenced without fabricating verified detail; add isolated migration/retention tests.
+- AFTER: complete Phase 1.4 operator visibility and real Windows acceptance; then Phase 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
