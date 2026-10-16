@@ -18,8 +18,8 @@ from jolt.schemas import (
     ManualIntakeRequest,
 )
 from jolt.sources.normalized_offer import normalize_captured_offer
-from jolt.sources.source_identity_registry import register_source_identity
 from jolt.sources.portal_observations import record_portal_observation
+from jolt.sources.source_identity_registry import register_source_identity
 from jolt.strategy_runtime import ensure_strategy_review, load_active_strategy_profile
 
 
