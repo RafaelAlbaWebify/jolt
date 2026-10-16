@@ -33,9 +33,9 @@
 - Existing core local-first product has prior bounded real Windows acceptance; this does NOT establish current four-source end-to-end readiness.
 - Merged source work: normalized offer hand-off, cross-portal duplicate assessment, durable portal identities, live LinkedIn/Indeed registry, candidate API, operator-confirmed non-destructive links (PRs #573–#578).
 - Existing InfoJobs/Jobgether supervised promotion is evidence-gated; metadata observation does not prove a verified description or Spain eligibility.
-- Open PR #572: `feat/infojobs-one-command-20261015`, ready for review, head `ab18310b7f031adf130fe429386ca5841329f195`; 11/11 exact-head CI checks green; scope excludes unified Discovery execution.
+- PR #572 merged into `main` at `ab52db98c61ae8c66f49aacd4ce4cea08eabd56b` after 11/11 green checks; InfoJobs supervised operator import is available, but unified Discovery execution is NOT.
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- NEXT: validate the Phase 1.4 observation-ledger branch, open its PR once branch preflight is green, and merge qualified green PRs autonomously.
-- AFTER: handle #572 as a bounded supervised InfoJobs foundation (not complete Discovery integration); finish 1.4 provenance history and 1.5 source visibility.
+- NEXT: PR #580 (https://github.com/RafaelAlbaWebify/jolt/pull/580), Phase 1.4A durable observation receipts; branch preflight green, full PR CI pending. Merge only after exact-head green checks.
+- AFTER: finish Phase 1.4 source-history acceptance, then 1.5 Review Inbox/Market Insights provenance visibility and outstanding InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
