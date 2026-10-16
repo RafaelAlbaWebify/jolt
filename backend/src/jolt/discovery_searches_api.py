@@ -24,6 +24,11 @@ from jolt.discovery_searches import (
     update_discovery_search,
 )
 from jolt.errors import JoltNotFoundError
+from jolt.sources.confirmed_duplicates import (
+    ConfirmDuplicateRequest,
+    ConfirmDuplicateResponse,
+    confirm_duplicate,
+)
 from jolt.sources.cross_portal_candidates import (
     CrossPortalDuplicateCandidate,
     list_cross_portal_duplicate_candidates,
@@ -57,6 +62,19 @@ def _run_discovery_execution_background(
 def build_discovery_searches_router(get_session: SessionProvider) -> APIRouter:
     router = APIRouter(tags=["discovery"])
     session_dependency = Depends(get_session)
+
+    @router.post(
+        "/api/discovery-confirm-duplicate",
+        response_model=ConfirmDuplicateResponse,
+    )
+    def confirm_discovery_duplicate(
+        request: ConfirmDuplicateRequest,
+        session: Session = session_dependency,
+    ) -> ConfirmDuplicateResponse:
+        try:
+            return confirm_duplicate(session, request)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.get(
         "/api/discovery-duplicate-candidates",
