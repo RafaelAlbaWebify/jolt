@@ -36,7 +36,7 @@ def counts(path: Path) -> dict[str, int]:
 
 
 def integrity(path: Path) -> bool:
-    with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as db:
+    with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as db:
         return db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
 
 
