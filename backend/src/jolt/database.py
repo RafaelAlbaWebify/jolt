@@ -83,6 +83,26 @@ class ConfirmedDuplicateLink(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class PortalSourceObservation(Base):
+    """Immutable capture occurrence; survives cleanup of transient capture rows."""
+
+    __tablename__ = "portal_source_observations"
+    __table_args__ = (
+        UniqueConstraint("portal", "capture_item_id", name="uq_portal_source_observation_item"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    portal: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    source_job_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    posting_id_at_capture: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    capture_run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    capture_item_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    source_document_id_at_capture: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    artifact_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class CaptureRun(Base):
     __tablename__ = "capture_runs"
 
