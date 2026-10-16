@@ -31,17 +31,11 @@
 - Real portal credentials, work-from-Spain eligibility and actual user acceptance cannot be inferred from automated tests.
 
 ## STATE
-- Verified 2026-10-16: PR #579 merged into `main` at `eaee931a859576098bc0c09a03baaae5b6370863`; 11/11 PR checks passed at head `027482812df7fc4471bc5739bc2630c5eb477239`.
-- Existing core local-first product has prior bounded real Windows acceptance; this does NOT establish current four-source end-to-end readiness.
-- Merged source work: normalized offer hand-off, cross-portal duplicate assessment, durable portal identities, live LinkedIn/Indeed registry, candidate API, operator-confirmed non-destructive links (PRs #573–#578).
-- Existing InfoJobs/Jobgether supervised promotion is evidence-gated; metadata observation does not prove a verified description or Spain eligibility.
-- PR #572 merged into `main` at `ab52db98c61ae8c66f49aacd4ce4cea08eabd56b` after 11/11 green checks; InfoJobs supervised operator import is available, but unified Discovery execution is NOT.
-- No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
-- Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- PR #580 observation receipts merged at `deed36ca7422315f7b93713f777ce243542c6d20` (11/11 green); PR #581 read-only history API merged at `977cbcc741016ed7ea38dd7188eb586d367b5dfb` (11/11 green).
-- PR #582 historical receipt backfill and guarded retention/restart tests merged at `9d3f915db2978a9fb408284fb8c5626406857106` after 11/11 green exact-head checks. Backfill is dry-run by default; never run against production data without explicit approval.
-- PR #583 isolated Windows Phase 1.4 acceptance tool merged at `581ee0ab5fa217291a2d2870b87fec1477a6d594` after 11/11 green CI; run `tools/accept-phase14.ps1` on the operator's existing Windows checkout after safe fast-forward update.
-- NEXT: collect `Downloads/JOLT_PHASE_1_4_ACCEPTANCE.json`, inspect real-database backup/migration/restore and historical receipt results; do not claim operator acceptance until evidence is reviewed.
-- AFTER: once isolated Windows acceptance is verified, mark Phase 1.4 complete (Phase 1 75%); then Phase 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
-- Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
-- PR #585 merged at `83281f902f85d67e568dfd033c38b42b50ad1c68` after 11/11 green exact-head PR checks. Windows acceptance `integrity()` now explicitly closes sqlite3 connection; earlier #584 also closed pooled SQLAlchemy connection and `counts()`. Operator `WinError 32` remained after #584; Windows rerun against latest main is required before acceptance.
+- 2026-10-16 Phase 1.4 operator evidence PASS: isolated database backup, verified restore, SQLite integrity, schema migration 0030→0033, and unchanged owned records.
+- Approved live database migration confirmed schema `20261016_0033`, integrity `ok`, 51 applications, 133 human review decisions, 3 outcomes, 1,913 AI reviews, 6,929 legacy capture items and 293 legacy runs preserved.
+- First real supervised LinkedIn capture: 294 total runs, 6,932 items, 3 source identities and 3 immutable occurrence observations; second capture: 295 runs, 6,935 items, same 3 identities, 6 observations, all 3 seen across multiple runs. 51 applications and 133 human review decisions unchanged.
+- Phase 1.4 accepted: 20% fixed weight; Phase 1 now 75% (1.1–1.4). Phase 1.5 (15%) and 1.6 (10%) remain 0%.
+- Provenance implementation merged via PRs #580–#583. Real-Windows SQLite cleanup fixes via PRs #584 and #585, each with 11/11 checks green. Exact PR #585 head checks: https://github.com/RafaelAlbaWebify/jolt/commit/bd534d667e67690da95a6b4643bac33867ed3102/checks .
+- Dry-run legacy backfill found 0 eligible and 6,710 ineligible; no historical receipt fabrication or live backfill performed. Source-history tables began empty after migration; the verified fresh captures populate them.
+- NEXT: Phase 1.5 — add trustworthy source URL/identity/duplicate link visibility to human review and provenance-backed, de-duplicated Market Insights populations; test backend, frontend and Playwright before operator acceptance.
+- AFTER: Phase 1.6 four-source fixture, restart/retention/restore chain; Phase 2 independently accepts live operational behavior for each portal.
