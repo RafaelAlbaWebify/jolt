@@ -300,8 +300,7 @@ def _guarded_retention_cleanup_state(
 
     durable_posting_ids = (
         confirmed_posting_ids
-        |
-        current_posting_ids
+        | current_posting_ids
         | manual_posting_ids
         | application_posting_ids
         | review_posting_ids
