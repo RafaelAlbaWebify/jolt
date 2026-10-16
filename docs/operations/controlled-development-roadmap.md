@@ -18,11 +18,11 @@ This roadmap controls the **current multi-source expansion**, not a retroactive 
 | 1.1 | Source and model audit | 10% | **100%** | Current four-source boundaries and removal of active Adzuna catalog documented; merged #573 and green exact-head CI. |
 | 1.2 | Normalized offer contract | 20% | **100%** | Typed `NormalizedJobOffer` for four source adapters, strict verification/provenance distinctions and fixture tests; merged #573 and green exact-head CI. |
 | 1.3 | Cross-portal duplicate safety | 25% | **100%** | Conservative classifier, durable portal IDs, read-only candidates and explicitly confirmed *non-destructive* duplicate links; merged #574–#578 with CI. Does **not** claim automatic physical merging or real UI acceptance. |
-| 1.4 | Source observation history | 20% | **0%** | For every accepted source observation, persist portal URL, stable ID, first/last seen, independent immutable evidence and repeat occurrence history; tests for re-observation, retention/restart, idempotency and migration; exact-head green CI and merge. Existing portal-identity table is implementation groundwork, not acceptance. |
+| 1.4 | Source observation history | 20% | **100%** | PRs #580–#585 merged with green CI; real Windows 2026-10-16 backup/restore and isolated migration `0030→0033` PASS; live upgrade `0033` integrity OK, 51 applications and 133 human decisions preserved; 2 supervised LinkedIn runs produced 3 identities, 6 observations and 3 identities observed in multiple runs. Existing unverifiable history was not backfilled; four-portal operational acceptance remains Phase 2. |
 | 1.5 | Portal visibility and Market Insights | 15% | **0%** | Operator can see all source URLs and duplicate links in review, with provenance-backed source breakdowns and no double-counted populations; backend/frontend tests, Playwright evidence, green CI and merge. |
 | 1.6 | Integrated regression and evidence chain | 10% | **0%** | Four-source fixture pipeline; cross-site duplicate review, no loss of human decisions/applications, restart and guarded retention/backup rehearsal; source truthfulness tests, exact-head CI and merge. Existing individual test suites are not end-to-end acceptance. |
 
-**Phase 1 total: 55%** (10 + 20 + 25). Remaining 45% is unaccepted under binary criteria.
+**Phase 1 total: 75%** (10 + 20 + 25 + 20). Remaining 25% is Phase 1.5 and 1.6.
 
 ## Phase 2 — Operational source integration
 
