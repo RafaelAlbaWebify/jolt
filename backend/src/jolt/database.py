@@ -62,6 +62,27 @@ class PostingSourceIdentity(Base):
     )
 
 
+class ConfirmedDuplicateLink(Base):
+    """Operator-confirmed equivalence; original Postings remain independent."""
+
+    __tablename__ = "confirmed_duplicate_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "first_posting_id", "second_posting_id", name="uq_confirmed_duplicate_pair"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    first_posting_id: Mapped[str] = mapped_column(
+        ForeignKey("postings.id"), nullable=False, index=True
+    )
+    second_posting_id: Mapped[str] = mapped_column(
+        ForeignKey("postings.id"), nullable=False, index=True
+    )
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class CaptureRun(Base):
     __tablename__ = "capture_runs"
 

@@ -290,8 +290,17 @@ def _guarded_retention_cleanup_state(
         """
     )
 
+    confirmed_posting_ids = values(
+        """
+        SELECT first_posting_id FROM confirmed_duplicate_links
+        UNION
+        SELECT second_posting_id FROM confirmed_duplicate_links
+        """
+    )
+
     durable_posting_ids = (
-        current_posting_ids
+        confirmed_posting_ids
+        | current_posting_ids
         | manual_posting_ids
         | application_posting_ids
         | review_posting_ids
