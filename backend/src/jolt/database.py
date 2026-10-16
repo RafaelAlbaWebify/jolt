@@ -62,13 +62,14 @@ class PostingSourceIdentity(Base):
     )
 
 
-
 class ConfirmedDuplicateLink(Base):
     """Operator-confirmed equivalence; original Postings remain independent."""
 
     __tablename__ = "confirmed_duplicate_links"
     __table_args__ = (
-        UniqueConstraint("first_posting_id", "second_posting_id", name="uq_confirmed_duplicate_pair"),
+        UniqueConstraint(
+            "first_posting_id", "second_posting_id", name="uq_confirmed_duplicate_pair"
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
