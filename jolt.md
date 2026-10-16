@@ -33,9 +33,9 @@
 - Existing core local-first product has prior bounded real Windows acceptance; this does NOT establish current four-source end-to-end readiness.
 - Merged source work: normalized offer hand-off, cross-portal duplicate assessment, durable portal identities, live LinkedIn/Indeed registry, candidate API, operator-confirmed non-destructive links (PRs #573–#578).
 - Existing InfoJobs/Jobgether supervised promotion is evidence-gated; metadata observation does not prove a verified description or Spain eligibility.
-- Open PR #572: `feat/infojobs-one-command-20261015`, draft, latest inspected head `a7030143e93ea1f6e34455274e382e6446005c5e`; backend CI failing.
+- Open PR #572: `feat/infojobs-one-command-20261015`, draft, head `ab18310b7f031adf130fe429386ca5841329f195`; prior backend Ruff errors fixed, new exact-head CI pending.
 - No independent local Windows acceptance of the expanded four-portal workflow has been verified in this audit.
 - Roadmap baseline: Phase 1.1–1.3 merged and CI-validated; 1.4–1.6 remain unaccepted under binary completion rules.
-- NEXT: finish documentation PR checks and obtain approval before merging the controlled-development files into `main`.
-- AFTER: diagnose PR #572 backend failures; then implement 1.4 source observation history and 1.5 portal/Market Insights visibility, with new acceptance tests.
+- NEXT: PR #579 full CI was green at `9a6860e`; this STATE update requires new exact-head checks; obtain explicit approval before merging documentation into `main`.
+- AFTER: verify amended PR #572 CI and resolve remaining issues; then implement 1.4 source observation history and 1.5 portal/Market Insights visibility.
 - After this documentation PR is merged, replace the baseline/head and active-PR entries above with newly verified facts.
