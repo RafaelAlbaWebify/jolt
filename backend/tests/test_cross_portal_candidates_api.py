@@ -1,5 +1,7 @@
 """Discovery duplicate suggestions never merge postings or discard source evidence."""
 
+from typing import cast
+
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
@@ -7,7 +9,7 @@ from jolt.capture_ingestion import ingest_capture_item
 from jolt.database import Posting, PostingSourceIdentity, create_session_factory
 from jolt.main import create_app
 from jolt.schemas import ManualIntakeRequest
-from jolt.sources.normalized_offer import NormalizedJobOffer
+from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
 from jolt.sources.source_identity_registry import register_source_identity
 
 
@@ -43,7 +45,7 @@ def test_cross_portal_candidates_are_read_only_and_conservative(tmp_path) -> Non
                 posting_id=intake.posting_id,
                 source_document_id=intake.source_document_id,
                 offer=NormalizedJobOffer(
-                    portal=portal,
+                    portal=cast(Portal, portal),
                     source_job_id=job_id,
                     source_url=address,
                     title="Application Support Engineer",
