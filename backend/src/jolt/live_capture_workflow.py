@@ -19,6 +19,8 @@ from jolt.schemas import (
     LinkedInLiveCaptureRequest,
     ManualIntakeRequest,
 )
+from jolt.sources.normalized_offer import normalize_captured_offer
+from jolt.sources.source_identity_registry import register_source_identity
 from jolt.strategy_runtime import ensure_strategy_review, load_active_strategy_profile
 
 
@@ -155,6 +157,16 @@ def run_linkedin_live_capture(
                 source_document_id = intake.source_document_id
                 posting_id = intake.posting_id
                 identity_status = intake.identity_status
+                if evidence.source_url:
+                    register_source_identity(
+                        session,
+                        posting_id=posting_id,
+                        source_document_id=source_document_id,
+                        offer=normalize_captured_offer(
+                            "linkedin",
+                            evidence.model_dump(mode="python"),
+                        ),
+                    )
                 if profile is not None:
                     posting = session.get(Posting, posting_id)
                     if posting is not None:
