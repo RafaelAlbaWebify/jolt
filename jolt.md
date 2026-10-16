@@ -44,3 +44,4 @@
 - NEXT: collect `Downloads/JOLT_PHASE_1_4_ACCEPTANCE.json`, inspect real-database backup/migration/restore and historical receipt results; do not claim operator acceptance until evidence is reviewed.
 - AFTER: once isolated Windows acceptance is verified, mark Phase 1.4 complete (Phase 1 75%); then Phase 1.5 Review Inbox/Market Insights provenance visibility and InfoJobs Discovery execution.
 - Refresh this STATE when PR merges or acceptance evidence changes; preserve the fixed roadmap weights.
+- PR #585 merged at `83281f902f85d67e568dfd033c38b42b50ad1c68` after 11/11 green exact-head PR checks. Windows acceptance `integrity()` now explicitly closes sqlite3 connection; earlier #584 also closed pooled SQLAlchemy connection and `counts()`. Operator `WinError 32` remained after #584; Windows rerun against latest main is required before acceptance.
