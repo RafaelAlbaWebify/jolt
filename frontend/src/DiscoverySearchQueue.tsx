@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type DiscoverySourceId = "linkedin" | "indeed" | "jobgether" | "infojobs" | "adzuna";
+type DiscoverySourceId = "linkedin" | "indeed" | "jobgether" | "infojobs";
 
 type DiscoverySource = {
   source: DiscoverySourceId;
@@ -62,7 +62,6 @@ function sourceLabel(source: DiscoverySourceId) {
     case "indeed": return "Indeed";
     case "jobgether": return "Jobgether";
     case "infojobs": return "InfoJobs";
-    case "adzuna": return "Adzuna";
   }
 }
 
