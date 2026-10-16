@@ -21,6 +21,7 @@ from jolt.infojobs_observations import inspect_offer
 from jolt.jobgether_preview import jobgether_identity
 from jolt.schemas import ManualIntakeRequest
 from jolt.sources.normalized_offer import NormalizedJobOffer, Portal
+from jolt.sources.portal_observations import record_portal_observation
 from jolt.sources.source_identity_registry import register_source_identity
 
 
@@ -147,6 +148,9 @@ def promote_supervised_item(session: Session, capture_item_id: str) -> dict[str,
             identity_verified=True,
             detail_verified=True,
         ),
+    )
+    record_portal_observation(
+        session, capture_item_id=item.id, artifact_sha256=artifact.content_hash
     )
     item.verification_reasons_json = json.dumps(
         [
