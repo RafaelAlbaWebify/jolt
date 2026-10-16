@@ -40,9 +40,7 @@ def list_cross_portal_duplicate_candidates(
         .join(Posting, Posting.id == PostingSourceIdentity.posting_id)
         .order_by(PostingSourceIdentity.portal, PostingSourceIdentity.source_job_id)
     ).all()
-    buckets: dict[tuple[str, str], list[tuple[PostingSourceIdentity, Posting]]] = (
-        defaultdict(list)
-    )
+    buckets: dict[tuple[str, str], list[tuple[PostingSourceIdentity, Posting]]] = defaultdict(list)
     for source, posting in rows:
         key = (
             normalize_duplicate_text(posting.company),
@@ -60,7 +58,7 @@ def list_cross_portal_duplicate_candidates(
                     continue
                 if first_posting.id == second_posting.id:
                     continue
-                pair = tuple(sorted((first_posting.id, second_posting.id)))
+                pair = (min(first_posting.id, second_posting.id), max(first_posting.id, second_posting.id))
                 if pair in compared:
                     continue
                 compared.add(pair)
