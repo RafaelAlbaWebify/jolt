@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import sys
 import subprocess
+import sys
 import threading
 import time
 import zipfile
@@ -94,7 +94,9 @@ def create_discovery_execution(
     request: DiscoveryExecutionCreateRequest,
 ) -> DiscoveryExecutionResponse:
     if request.source not in {"indeed", "infojobs", "jobgether"}:
-        raise ValueError("This execution endpoint supports Indeed, InfoJobs and Jobgether saved searches only.")
+        raise ValueError(
+            "This execution endpoint supports Indeed, InfoJobs and Jobgether saved searches only."
+        )
 
     search = session.get(DiscoverySavedSearch, request.saved_search_id)
     if search is None or search.source != request.source:
@@ -131,7 +133,11 @@ def create_discovery_execution(
         current_page=0,
         pages_visited=0,
         captured_count=0,
-        target_jobs=min(search.max_jobs, 5) if request.source in {"infojobs", "jobgether"} else search.max_jobs,
+        target_jobs=(
+            min(search.max_jobs, 5)
+            if request.source in {"infojobs", "jobgether"}
+            else search.max_jobs
+        ),
         max_pages=max_pages,
         error="",
         started_at=None,
@@ -301,7 +307,6 @@ def run_indeed_saved_search(
     return _capture_run_id(output_zip)
 
 
-
 def run_infojobs_saved_search(
     search: DiscoverySavedSearch,
     execution_id: str,
@@ -441,7 +446,6 @@ def run_infojobs_saved_search(
 
 
 
-
 def run_jobgether_saved_search(
     search: DiscoverySavedSearch,
     execution_id: str,
@@ -530,7 +534,6 @@ def run_jobgether_saved_search(
     if result.get("review_inbox_verified", 0) < 1:
         raise RuntimeError("Jobgether did not produce any reviewable job opportunities.")
     return result.get("capture_run_id")
-
 
 
 def execute_discovery_execution(
