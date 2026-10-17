@@ -388,15 +388,35 @@ def run_infojobs_saved_search(
             + (diagnostic or capture.stderr or capture.stdout)[-1800:]
         )
 
+    from jolt.infojobs_observations import inspect_offer
+
+    raw_report = json.loads(capture_path.read_text(encoding="utf-8"))
+    accepted: list[dict] = []
+    for offer in raw_report.get("offers", []):
+        try:
+            inspect_offer(offer)
+        except (TypeError, ValueError, AttributeError):
+            continue
+        accepted.append(offer)
+    if not accepted:
+        raise RuntimeError(
+            "InfoJobs returned no job descriptions meeting JOLT's evidence checks. "
+            "The original read-only report was retained."
+        )
+    prepared_path = evidence_dir / "infojobs_validated_offers.json"
+    prepared_path.write_text(
+        json.dumps({**raw_report, "offers": accepted}, ensure_ascii=False),
+        encoding="utf-8",
+    )
     if phase_callback is not None:
-        phase_callback("capturing", 1, max_jobs)
+        phase_callback("capturing", 1, len(accepted))
     imported = subprocess.run(
         [
             sys.executable,
             "-m",
             "jolt.infojobs_operational_run",
             "--input",
-            str(capture_path),
+            str(prepared_path),
             "--commit",
             "--output",
             str(import_path),
