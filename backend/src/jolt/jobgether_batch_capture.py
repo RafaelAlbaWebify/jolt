@@ -38,7 +38,6 @@ def select_search_page(browser: Browser, search_url: str) -> Page | None:
     return None
 
 
-
 def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[str]:
     """Inspect actual clickable card titles, never Apply controls or guessed URLs.
 
@@ -94,9 +93,7 @@ def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[
             heading.click(timeout=5_000)
             detail.wait_for_timeout(900)
             urls = [detail.url]
-            urls.extend(
-                page.url for page in detail.context.pages if page not in prior_pages
-            )
+            urls.extend(page.url for page in detail.context.pages if page not in prior_pages)
             for url in urls:
                 if jobgether_identity(url) is not None:
                     found.append(url)
@@ -107,7 +104,6 @@ def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[
             if detail is not None:
                 detail.close()
     return discover_offer_urls(found, limit=limit)
-
 
 
 def capture_batch(search_page: Page, *, limit: int = 5) -> dict[str, object]:
