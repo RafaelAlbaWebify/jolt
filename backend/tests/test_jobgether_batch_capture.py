@@ -158,9 +158,11 @@ def test_cli_requires_real_extracted_description(
     browser.contexts = [Mock(pages=[page])]
     playwright = Mock()
     playwright.chromium.connect_over_cdp.return_value = browser
-    controller = Mock()
-    controller.__enter__ = Mock(return_value=playwright)
-    controller.__exit__ = Mock(return_value=False)
+    from unittest.mock import MagicMock
+
+    controller = MagicMock()
+    controller.__enter__.return_value = playwright
+    controller.__exit__.return_value = False
     monkeypatch.setattr(module, "sync_playwright", lambda: controller)
     monkeypatch.setattr(
         module,
