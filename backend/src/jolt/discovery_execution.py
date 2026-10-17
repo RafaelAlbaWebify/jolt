@@ -117,6 +117,8 @@ def create_discovery_execution(
 
     definition = json.loads(search.definition_json)
     max_pages = max(1, min(10, int(definition.get("max_pages", 3) or 3)))
+    if request.source in {"infojobs", "jobgether"}:
+        max_pages = 1
 
     now = utc_now()
     execution = DiscoveryExecution(
