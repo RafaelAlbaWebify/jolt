@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **103 / 333 = 30.93%** reviewed at source level. **230 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md).
+**Progress:** **110 / 333 = 33.03%** reviewed at source level. **223 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -184,24 +184,24 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 170 | `frontend/src/ApplicationContacts.test.tsx` | PENDING |
 | 171 | `frontend/src/ApplicationContacts.tsx` | PENDING |
 | 172 | `frontend/src/ApplicationDashboard.test.tsx` | PENDING |
-| 173 | `frontend/src/ApplicationDashboard.tsx` | PENDING |
+| 173 | `frontend/src/ApplicationDashboard.tsx` | AUDITED-ISSUES |
 | 174 | `frontend/src/ApplicationDocuments.test.tsx` | PENDING |
-| 175 | `frontend/src/ApplicationDocuments.tsx` | PENDING |
+| 175 | `frontend/src/ApplicationDocuments.tsx` | AUDITED-ISSUES |
 | 176 | `frontend/src/ApplicationInterviews.test.tsx` | PENDING |
-| 177 | `frontend/src/ApplicationInterviews.tsx` | PENDING |
+| 177 | `frontend/src/ApplicationInterviews.tsx` | AUDITED-ISSUES |
 | 178 | `frontend/src/ApplicationMetadataEditor.test.tsx` | PENDING |
-| 179 | `frontend/src/ApplicationMetadataEditor.tsx` | PENDING |
+| 179 | `frontend/src/ApplicationMetadataEditor.tsx` | AUDITED-ISSUES |
 | 180 | `frontend/src/ApplicationOverviewAutoExpand.ts` | PENDING |
 | 181 | `frontend/src/ApplicationPipelineBoard.css` | PENDING |
 | 182 | `frontend/src/ApplicationReadiness.tsx` | PENDING |
 | 183 | `frontend/src/ApplicationResources.test.tsx` | PENDING |
 | 184 | `frontend/src/ApplicationTasks.test.tsx` | PENDING |
-| 185 | `frontend/src/ApplicationTasks.tsx` | PENDING |
+| 185 | `frontend/src/ApplicationTasks.tsx` | AUDITED-ISSUES |
 | 186 | `frontend/src/ApplicationTimeline.test.tsx` | PENDING |
 | 187 | `frontend/src/ApplicationWorkItems.css` | PENDING |
 | 188 | `frontend/src/ApplicationWorkItems.test.tsx` | PENDING |
 | 189 | `frontend/src/ApplicationWorkflow.test.tsx` | PENDING |
-| 190 | `frontend/src/ApplicationWorkflow.tsx` | PENDING |
+| 190 | `frontend/src/ApplicationWorkflow.tsx` | AUDITED-ISSUES |
 | 191 | `frontend/src/ApplicationWorkspace.css` | PENDING |
 | 192 | `frontend/src/AutomatedReview.tsx` | PENDING |
 | 193 | `frontend/src/CaptureHistory.test.tsx` | PENDING |
@@ -255,7 +255,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 241 | `frontend/src/ReadinessHistory.test.tsx` | PENDING |
 | 242 | `frontend/src/ReadinessHistory.tsx` | PENDING |
 | 243 | `frontend/src/ReleaseBlockingUx.css` | PENDING |
-| 244 | `frontend/src/ReviewedDecisions.tsx` | PENDING |
+| 244 | `frontend/src/ReviewedDecisions.tsx` | AUDITED-ISSUES |
 | 245 | `frontend/src/RuntimeIdentity.css` | PENDING |
 | 246 | `frontend/src/RuntimeIdentity.test.tsx` | PENDING |
 | 247 | `frontend/src/RuntimeIdentity.tsx` | PENDING |
