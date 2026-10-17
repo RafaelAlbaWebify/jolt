@@ -36,9 +36,9 @@ _SOURCE_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "infojobs": {
         "label": "InfoJobs",
-        "transport": "api",
+        "transport": "browser",
         "saved_search_backend": "discovery",
-        "execution_available": False,
+        "execution_available": True,
     },
 }
 
