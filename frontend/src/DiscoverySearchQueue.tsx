@@ -314,7 +314,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       },
     );
     if (finished.status === "failed") {
-      throw new Error(finished.error || `Indeed search failed: ${search.label}`);
+      throw new Error(finished.error || `${sourceLabel(search.source)} search failed: ${search.label}`);
     }
   }
 
