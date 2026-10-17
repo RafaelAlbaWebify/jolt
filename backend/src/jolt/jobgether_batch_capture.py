@@ -50,7 +50,10 @@ def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[
         "h2, h3, [role='heading'], [class*='job-title'], [class*='jobTitle']"
     )
     candidates: list[str] = []
-    for index in range(min(headings.count(), 40)):
+    count = headings.count()
+    if not isinstance(count, int):
+        return []
+    for index in range(min(count, 40)):
         heading = headings.nth(index)
         try:
             if not heading.is_visible(timeout=500):
