@@ -17,7 +17,6 @@ try {
     if ($Front.StatusCode -ne 200) { throw "Frontend is not healthy." }
 
     $RepoCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
-    $BackendCommit = [string]$Health.git_commit
     $Metadata = [ordered]@{
         generated_at = (Get-Date).ToString("o")
         repository_commit = $RepoCommit
