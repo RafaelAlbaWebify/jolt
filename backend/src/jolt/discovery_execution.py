@@ -131,7 +131,7 @@ def create_discovery_execution(
         current_page=0,
         pages_visited=0,
         captured_count=0,
-        target_jobs=search.max_jobs,
+        target_jobs=min(search.max_jobs, 5) if request.source in {"infojobs", "jobgether"} else search.max_jobs,
         max_pages=max_pages,
         error="",
         started_at=None,
