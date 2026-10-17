@@ -50,6 +50,12 @@ type OpportunityIndex = {
   imported_at: string | null;
 };
 
+type PortalSourceHistory = {
+  sources: Array<{ portal: string; source_job_id: string; source_url: string; first_seen_at: string; last_seen_at: string }>;
+  total_observations: number;
+  confirmed_duplicates: Array<{ posting_id: string; confirmed_at: string }>;
+};
+
 type IntakeResult = {
   posting_id: string;
   identity_status: string;
@@ -335,6 +341,8 @@ export function App({
   const [previewOpportunityId, setPreviewOpportunityId] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("overview");
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
+  const [portalHistory, setPortalHistory] = useState<PortalSourceHistory | null>(null);
+  const [portalHistoryError, setPortalHistoryError] = useState("");
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -402,6 +410,24 @@ export function App({
     };
   }, [selectedOpportunityId]);
 
+
+  useEffect(() => {
+    setPortalHistory(null);
+    setPortalHistoryError("");
+    if (!selectedOpportunityId) return;
+    const controller = new AbortController();
+    void fetch(`${API_BASE}/api/discovery-postings/${encodeURIComponent(selectedOpportunityId)}/source-history`, {
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) throw new Error("Source history is currently unavailable.");
+      setPortalHistory((await response.json()) as PortalSourceHistory);
+    }).catch((caught: unknown) => {
+      if (!controller.signal.aborted) {
+        setPortalHistoryError(caught instanceof Error ? caught.message : "Source history is unavailable.");
+      }
+    });
+    return () => controller.abort();
+  }, [selectedOpportunityId]);
 
   const selectedOpportunity = useMemo(
     () =>
@@ -1227,6 +1253,38 @@ export function App({
                 </a>
               )}
             </div>
+
+            <section aria-label="Verified portal sources" className="automated-review">
+              <div className="automated-review-heading"><strong>Verified portal sources</strong></div>
+              {portalHistoryError && <p role="status">{portalHistoryError}</p>}
+              {!portalHistoryError && !portalHistory && <p>Loading verified source history…</p>}
+              {portalHistory && (
+                <>
+                  <p>{portalHistory.sources.length} verified portal identity records · {portalHistory.total_observations} capture observations</p>
+                  {portalHistory.sources.length === 0 && <p>No independently verified portal identity available for this job.</p>}
+                  <ul>
+                    {portalHistory.sources.map((source) => (
+                      <li key={`${source.portal}:${source.source_job_id}`}>
+                        <strong>{source.portal}</strong>{" "}
+                        <a href={externalSourceUrl(source.source_url)} target="_blank" rel="noreferrer">
+                          Source job {source.source_job_id}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  {portalHistory.confirmed_duplicates.length > 0 && (
+                    <div>
+                      <strong>Operator-confirmed same vacancy</strong>
+                      <ul>
+                        {portalHistory.confirmed_duplicates.map((link) => (
+                          <li key={link.posting_id}>Linked posting {link.posting_id}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
 
             {selectedOpportunity.ai_review_status ===
             "awaiting_ai_review" ? (

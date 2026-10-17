@@ -3,7 +3,13 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from jolt.database import PortalSourceObservation, PostingSourceIdentity, create_session_factory
+from jolt.database import (
+    ConfirmedDuplicateLink,
+    PortalSourceObservation,
+    PostingSourceIdentity,
+    create_session_factory,
+    utc_now,
+)
 from jolt.live_capture_workflow import run_linkedin_live_capture
 from jolt.main import create_app
 from jolt.schemas import LinkedInLiveCaptureItemRequest, LinkedInLiveCaptureRequest
@@ -39,6 +45,7 @@ def test_source_history_preserves_repeated_observations_and_source_identity(tmp_
     assert response.status_code == 200
     data = response.json()
     assert data["posting_id"] == posting_id
+    assert data["confirmed_duplicates"] == []
     assert len(data["sources"]) == 1
     assert data["sources"][0]["source_job_id"] == "9988"
     assert data["sources"][0]["first_seen_at"] <= data["sources"][0]["last_seen_at"]
@@ -68,3 +75,46 @@ def test_source_history_preserves_repeated_observations_and_source_identity(tmp_
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(PortalSourceObservation)) == 2
         assert session.scalar(select(func.count()).select_from(PostingSourceIdentity)) == 1
+
+
+def test_source_history_lists_only_explicitly_confirmed_duplicate_links(tmp_path) -> None:
+    url = f"sqlite:///{(tmp_path / 'confirmed-history.db').as_posix()}"
+    client = TestClient(create_app(url))
+    factory = create_session_factory(url)
+    with factory() as session:
+        ids = []
+        for number in ("300", "301"):
+            request = LinkedInLiveCaptureRequest(
+                search_url="https://www.linkedin.com/jobs/search/",
+                items=[
+                    LinkedInLiveCaptureItemRequest(
+                        source_job_id=number,
+                        source_url=f"https://www.linkedin.com/jobs/view/{number}",
+                        title=f"Support Engineer {number}",
+                        company="Example",
+                        location="Vigo",
+                        description="Technical support incident handling and infrastructure operations.",
+                        identity_verified=True,
+                    )
+                ],
+            )
+            ids.append(run_linkedin_live_capture(session, request).items[0].posting_id)
+        assert ids[0] is not None and ids[1] is not None
+        left, right = sorted(ids)
+        session.add(
+            ConfirmedDuplicateLink(
+                id="test-confirmed-link",
+                first_posting_id=left,
+                second_posting_id=right,
+                confirmed_at=utc_now(),
+                reason="Operator verified same vacancy",
+            )
+        )
+        session.commit()
+
+    for posting_id, linked_id in ((left, right), (right, left)):
+        response = client.get(f"/api/discovery-postings/{posting_id}/source-history")
+        assert response.status_code == 200
+        duplicates = response.json()["confirmed_duplicates"]
+        assert len(duplicates) == 1
+        assert duplicates[0]["posting_id"] == linked_id

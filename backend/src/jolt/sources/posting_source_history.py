@@ -3,10 +3,10 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from jolt.database import PortalSourceObservation, Posting
+from jolt.database import ConfirmedDuplicateLink, PortalSourceObservation, Posting
 from jolt.errors import JoltNotFoundError
 from jolt.sources.source_identity_registry import list_posting_sources
 
@@ -30,11 +30,17 @@ class PostingSourceHistoryObservation(BaseModel):
     observed_at: datetime
 
 
+class ConfirmedDuplicateReference(BaseModel):
+    posting_id: str
+    confirmed_at: datetime
+
+
 class PostingSourceHistoryResponse(BaseModel):
     posting_id: str
     sources: list[PostingSourceHistoryIdentity]
     observations: list[PostingSourceHistoryObservation]
     total_observations: int
+    confirmed_duplicates: list[ConfirmedDuplicateReference] = []
     truncated: bool
 
 
@@ -83,7 +89,29 @@ def get_posting_source_history(
         )
         for item in receipts
     ]
+    links = session.scalars(
+        select(ConfirmedDuplicateLink)
+        .where(
+            or_(
+                ConfirmedDuplicateLink.first_posting_id == posting_id,
+                ConfirmedDuplicateLink.second_posting_id == posting_id,
+            )
+        )
+        .order_by(ConfirmedDuplicateLink.confirmed_at)
+    ).all()
+    duplicates = [
+        ConfirmedDuplicateReference(
+            posting_id=(
+                link.second_posting_id
+                if link.first_posting_id == posting_id
+                else link.first_posting_id
+            ),
+            confirmed_at=link.confirmed_at,
+        )
+        for link in links
+    ]
     return PostingSourceHistoryResponse(
+        confirmed_duplicates=duplicates,
         posting_id=posting_id,
         sources=sources,
         observations=observations,

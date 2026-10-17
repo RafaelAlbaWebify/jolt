@@ -307,9 +307,12 @@ describe("App AI review workflow", () => {
   it("shows imported AI reasoning in the inspector without fetching Python analysis", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        jsonResponse([reviewedOpportunity]),
-      );
+      .mockImplementation(async (input) => {
+        if (String(input).includes("/source-history")) {
+          return jsonResponse({ sources: [], total_observations: 0, confirmed_duplicates: [] });
+        }
+        return jsonResponse([reviewedOpportunity]);
+      });
 
     render(<App />);
 
@@ -345,9 +348,8 @@ describe("App AI review workflow", () => {
       within(dialog).getByText("eligible"),
     ).toBeInTheDocument();
 
-    expect(
-      fetchMock,
-    ).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/source-history"))).toBe(true);
+    expect(fetchMock.mock.calls.every(([input]) => !String(input).includes("/python-analysis"))).toBe(true);
   });
 
   it("loads the persisted original description for an unreviewed imported job", async () => {
