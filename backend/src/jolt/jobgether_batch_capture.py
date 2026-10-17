@@ -90,13 +90,12 @@ def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[
             heading = detail.get_by_text(title, exact=True).first
             if not heading.is_visible(timeout=5_000):
                 continue
+            prior_pages = set(detail.context.pages)
             heading.click(timeout=5_000)
             detail.wait_for_timeout(900)
             urls = [detail.url]
             urls.extend(
-                page.url
-                for page in detail.context.pages
-                if page is not search_page and page is not detail
+                page.url for page in detail.context.pages if page not in prior_pages
             )
             for url in urls:
                 if jobgether_identity(url) is not None:
