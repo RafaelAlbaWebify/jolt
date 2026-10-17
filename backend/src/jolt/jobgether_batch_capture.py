@@ -204,8 +204,8 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(payload + "\n", encoding="utf-8")
     print(payload)
-    captured_count = result.get("captured_count")
-    return 0 if isinstance(captured_count, int) and captured_count > 0 else 2
+    extracted_count = result.get("extracted_count")
+    return 0 if isinstance(extracted_count, int) and extracted_count > 0 else 2
 
 
 if __name__ == "__main__":
