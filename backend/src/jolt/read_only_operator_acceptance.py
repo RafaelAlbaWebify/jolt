@@ -25,7 +25,6 @@ def verify_loaded_commit(identity: object, expected: str) -> str:
     return actual
 
 
-
 def fetch(path):
     with urlopen(API + path, timeout=15) as response:  # noqa: S310
         return json.loads(response.read())
