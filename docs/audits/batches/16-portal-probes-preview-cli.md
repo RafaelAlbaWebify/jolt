@@ -1,0 +1,20 @@
+# Batch 16 — Jobgether/InfoJobs diagnostic and staging helpers (10 components)
+
+**Source baseline:** b21316878b471778cffb0b6e126fb0c99fc446e5 (2026-10-17). Static file-by-file review of complete source control paths, read-only vs staging semantics, evidence and failure contracts. No authenticated production browser or user database access in this batch.
+
+| File | Reviewed flow and findings |
+|---|---|
+| backend/src/jolt/jobgether_browser_probe.py (131 lines) | 17–61 summarize JSON-LD without full description, 62–106 inspect visible tab, 107–131 CDP CLI. **JG-09 Medium:** visible_page_observed (91) reports page visibility, not verified description or accepted job; UI and run receipts must keep this distinction. Canonical offer identity check (65–67) is appropriate. |
+| backend/src/jolt/jobgether_detail_probe.py (36) | 16–36 URL identity, detail-fetch diagnostic and CLI status. **JG-10 Low:** success requires structured_detail_present (31); real SPA detail visible without structured data remains unresolved by design, not automatically fake. |
+| backend/src/jolt/jobgether_triage.py (60) | 9–60 preview observation classification. **JG-11 Positive safeguard:** full_description_verified=False for preview-only records (42), preventing API listing metadata being silently upgraded to verified evidence. |
+| backend/src/jolt/jobgether_batch_audit.py (108) | 11–88 report cross-check against previous batch artifacts; 89–108 loading history. **JG-12 Medium:** known-in-previous-report (63–83) is a weak local history signal, not proof of an ingested Posting. Distinguish prior observed vs confirmed imported source identity in user report. |
+| backend/src/jolt/jobgether_local_audit.py (48) | 9–26 read-only SQLite source ID lookup, 27–48 preview labeling. **JG-13 Medium:** not_seen_in_jobgether_captures means absent from inspected DB, not guaranteed new vacancy worldwide; browser and SQLite paths may point at different databases. Runtime DB identity must be checked. |
+| backend/src/jolt/jobgether_capture_cli.py (66) | 18–41 API preview/capture entry and transaction, 42–66 CLI. **JG-14 Medium:** separate API listing intake from authenticated browser detail pipeline; a commit of preview metadata is not certification of complete description or Spain eligibility. |
+| backend/src/jolt/jobgether_observations.py (119) | 16–38 constrained 1..25 observations, identity validation, 39–119 staging items and recorded evidence. **JG-15 Positive boundary:** observed_unverified (93) and warning about absent verified descriptions/eligibility (95). Avoid automatic promotion of this preview-only status; source IDs alone are insufficient. |
+| backend/src/jolt/infojobs_preview_cli.py (54) | 11–54 credentialed API preview CLI prints candidate source and description length. **IJ-08 Medium:** description_characters (40) measures quantity, not source authenticity; API preview must remain separate from supervised extracted detail/promotion. |
+| backend/src/jolt/linkedin_access.py (92) | 40–77 login/challenge detection, 78–92 exception classification. **LD-06 Medium:** broad catch in detection (56+) can classify unreadable page as not explicitly blocked; terminal capture must not infer identity verified merely from absence of detected challenge. |
+| backend/src/jolt/linkedin_failure_acceptance.py (196) | 28–170 login/network failure and recovery acceptance, 171–196 CLI. **LD-07 Medium:** real-site acceptance deliberately navigates browser (85–144), so it is not a passive static test. Keep operator-controlled and out of default CI; route failures must be reported, not mistaken for application logic regressions. |
+
+**Cross-portal invariant:** a job observed in listing, canonical identity found, HTML opened, full description verified, staged evidence, Posting imported and human/AI reviewed are distinct states. The API/CLI paths above do not all reach the last stages and must never report themselves as full end-to-end capture.
+
+**Cumulative:** 130 / 333 = **39.04%** source-reviewed, **203 pending**. Audit percentage is not operational coverage, count of resolved defects or test/migration coverage.

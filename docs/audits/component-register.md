@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **110 / 333 = 33.03%** reviewed at source level. **223 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md).
+**Progress:** **130 / 333 = 39.04%** reviewed at source level. **203 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -69,30 +69,30 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 55 | `backend/src/jolt/infojobs_browser_probe.py` | AUDITED-ISSUES |
 | 56 | `backend/src/jolt/infojobs_observations.py` | AUDITED-ISSUES |
 | 57 | `backend/src/jolt/infojobs_operational_run.py` | AUDITED-ISSUES |
-| 58 | `backend/src/jolt/infojobs_preview_cli.py` | PENDING |
+| 58 | `backend/src/jolt/infojobs_preview_cli.py` | AUDITED-ISSUES |
 | 59 | `backend/src/jolt/infojobs_supervised_capture.py` | AUDITED-ISSUES |
 | 60 | `backend/src/jolt/job_search_preferences.py` | AUDITED-ISSUES |
-| 61 | `backend/src/jolt/jobgether_batch_audit.py` | PENDING |
+| 61 | `backend/src/jolt/jobgether_batch_audit.py` | AUDITED-ISSUES |
 | 62 | `backend/src/jolt/jobgether_batch_capture.py` | AUDITED-ISSUES |
-| 63 | `backend/src/jolt/jobgether_browser_probe.py` | PENDING |
-| 64 | `backend/src/jolt/jobgether_capture_cli.py` | PENDING |
+| 63 | `backend/src/jolt/jobgether_browser_probe.py` | AUDITED-ISSUES |
+| 64 | `backend/src/jolt/jobgether_capture_cli.py` | AUDITED-ISSUES |
 | 65 | `backend/src/jolt/jobgether_detail_fetch.py` | AUDITED-ISSUES |
-| 66 | `backend/src/jolt/jobgether_detail_probe.py` | PENDING |
+| 66 | `backend/src/jolt/jobgether_detail_probe.py` | AUDITED-ISSUES |
 | 67 | `backend/src/jolt/jobgether_detail_validation.py` | AUDITED-ISSUES |
-| 68 | `backend/src/jolt/jobgether_local_audit.py` | PENDING |
-| 69 | `backend/src/jolt/jobgether_observations.py` | PENDING |
+| 68 | `backend/src/jolt/jobgether_local_audit.py` | AUDITED-ISSUES |
+| 69 | `backend/src/jolt/jobgether_observations.py` | AUDITED-ISSUES |
 | 70 | `backend/src/jolt/jobgether_operational_run.py` | AUDITED-ISSUES |
 | 71 | `backend/src/jolt/jobgether_preview.py` | AUDITED-ISSUES |
 | 72 | `backend/src/jolt/jobgether_structured_offer.py` | AUDITED-ISSUES |
 | 73 | `backend/src/jolt/jobgether_supervised_stage.py` | AUDITED-ISSUES |
-| 74 | `backend/src/jolt/jobgether_triage.py` | PENDING |
+| 74 | `backend/src/jolt/jobgether_triage.py` | AUDITED-ISSUES |
 | 75 | `backend/src/jolt/language_hardline.py` | AUDITED-ISSUES |
-| 76 | `backend/src/jolt/linkedin_access.py` | PENDING |
+| 76 | `backend/src/jolt/linkedin_access.py` | AUDITED-ISSUES |
 | 77 | `backend/src/jolt/linkedin_batch_review.py` | AUDITED-ISSUES |
 | 78 | `backend/src/jolt/linkedin_capture.py` | AUDITED-ISSUES |
 | 79 | `backend/src/jolt/linkedin_command_center.py` | PENDING |
 | 80 | `backend/src/jolt/linkedin_discovery_batch.py` | AUDITED-ISSUES |
-| 81 | `backend/src/jolt/linkedin_failure_acceptance.py` | PENDING |
+| 81 | `backend/src/jolt/linkedin_failure_acceptance.py` | AUDITED-ISSUES |
 | 82 | `backend/src/jolt/linkedin_playwright_capture.py` | PENDING |
 | 83 | `backend/src/jolt/linkedin_profile_exchange.py` | PENDING |
 | 84 | `backend/src/jolt/linkedin_profile_exchange_api.py` | PENDING |
@@ -205,33 +205,33 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 191 | `frontend/src/ApplicationWorkspace.css` | PENDING |
 | 192 | `frontend/src/AutomatedReview.tsx` | PENDING |
 | 193 | `frontend/src/CaptureHistory.test.tsx` | PENDING |
-| 194 | `frontend/src/CaptureHistory.tsx` | PENDING |
+| 194 | `frontend/src/CaptureHistory.tsx` | AUDITED-ISSUES |
 | 195 | `frontend/src/CompactInspectorOverrides.css` | PENDING |
 | 196 | `frontend/src/CompactOpportunityWorkspace.css` | PENDING |
 | 197 | `frontend/src/DataTools.test.tsx` | PENDING |
-| 198 | `frontend/src/DataTools.tsx` | PENDING |
+| 198 | `frontend/src/DataTools.tsx` | AUDITED-ISSUES |
 | 199 | `frontend/src/DiscoverySearchQueue.css` | PENDING |
 | 200 | `frontend/src/DiscoverySearchQueue.test.tsx` | PENDING |
 | 201 | `frontend/src/DiscoverySearchQueue.tsx` | AUDITED-ISSUES |
 | 202 | `frontend/src/EvidenceWorkspace.css` | PENDING |
 | 203 | `frontend/src/IdentityEvidenceDashboard.test.tsx` | PENDING |
-| 204 | `frontend/src/IdentityEvidenceDashboard.tsx` | PENDING |
+| 204 | `frontend/src/IdentityEvidenceDashboard.tsx` | AUDITED-ISSUES |
 | 205 | `frontend/src/JobPreferences.css` | PENDING |
 | 206 | `frontend/src/JobPreferences.test.tsx` | PENDING |
-| 207 | `frontend/src/JobPreferences.tsx` | PENDING |
+| 207 | `frontend/src/JobPreferences.tsx` | AUDITED-ISSUES |
 | 208 | `frontend/src/LinkedInAIAnalysisStatus.test.tsx` | PENDING |
-| 209 | `frontend/src/LinkedInAIAnalysisStatus.tsx` | PENDING |
+| 209 | `frontend/src/LinkedInAIAnalysisStatus.tsx` | AUDITED-ISSUES |
 | 210 | `frontend/src/LinkedInCommandCenter.css` | PENDING |
 | 211 | `frontend/src/LinkedInCommandCenter.test.tsx` | PENDING |
-| 212 | `frontend/src/LinkedInCommandCenter.tsx` | PENDING |
+| 212 | `frontend/src/LinkedInCommandCenter.tsx` | AUDITED-ISSUES |
 | 213 | `frontend/src/LinkedInJobCaptureLauncher.test.tsx` | PENDING |
-| 214 | `frontend/src/LinkedInJobCaptureLauncher.tsx` | PENDING |
+| 214 | `frontend/src/LinkedInJobCaptureLauncher.tsx` | AUDITED-ISSUES |
 | 215 | `frontend/src/LinkedInSearchPortfolio.css` | PENDING |
 | 216 | `frontend/src/LinkedInSearchPortfolio.test.tsx` | PENDING |
-| 217 | `frontend/src/LinkedInSearchPortfolio.tsx` | PENDING |
+| 217 | `frontend/src/LinkedInSearchPortfolio.tsx` | AUDITED-ISSUES |
 | 218 | `frontend/src/MarketIntelligence.css` | PENDING |
 | 219 | `frontend/src/MarketIntelligence.test.tsx` | PENDING |
-| 220 | `frontend/src/MarketIntelligence.tsx` | PENDING |
+| 220 | `frontend/src/MarketIntelligence.tsx` | AUDITED-ISSUES |
 | 221 | `frontend/src/OpportunityApplicationHandoff.css` | PENDING |
 | 222 | `frontend/src/OpportunityApplicationHandoff.test.tsx` | PENDING |
 | 223 | `frontend/src/OpportunityApplicationHandoff.tsx` | PENDING |
@@ -258,7 +258,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 244 | `frontend/src/ReviewedDecisions.tsx` | AUDITED-ISSUES |
 | 245 | `frontend/src/RuntimeIdentity.css` | PENDING |
 | 246 | `frontend/src/RuntimeIdentity.test.tsx` | PENDING |
-| 247 | `frontend/src/RuntimeIdentity.tsx` | PENDING |
+| 247 | `frontend/src/RuntimeIdentity.tsx` | AUDITED-ISSUES |
 | 248 | `frontend/src/Workbench.css` | PENDING |
 | 249 | `frontend/src/Workbench.test.tsx` | PENDING |
 | 250 | `frontend/src/Workbench.tsx` | AUDITED-ISSUES |
