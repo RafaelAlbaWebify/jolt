@@ -205,3 +205,16 @@ def test_explicit_filtered_infojobs_search_requires_exact_query() -> None:
         select_infojobs_page(browser, "https://www.infojobs.net/ofertas-trabajo/support-it?page=1")
         is None
     )
+
+
+def test_current_filtered_search_page_route_is_recognized() -> None:
+    from jolt.infojobs_browser_probe import _listing_identity
+
+    url = (
+        "https://www.infojobs.net/ofertas-trabajo?"
+        "keyword=Administrador%2Fa%20de%20sistemas&page=1&sortBy=RELEVANCE"
+    )
+    assert _listing_identity(url) == ("/ofertas-trabajo", "keyword=Administrador%2Fa%20de%20sistemas&page=1&sortBy=RELEVANCE")
+    browser = Mock()
+    browser.contexts = [Mock(pages=[Mock(url=url)])]
+    assert select_infojobs_page(browser, url).url == url
