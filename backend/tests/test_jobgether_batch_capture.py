@@ -133,3 +133,48 @@ def test_card_title_navigation_rejects_noncanonical_page() -> None:
     detail.context.pages = [search, detail]
     detail.get_by_text.return_value.first.is_visible.return_value = True
     assert discover_card_navigation_urls(search, limit=1) == []
+
+
+@pytest.mark.parametrize(
+    ("extracted", "expected_exit"),
+    [(0, 2), (1, 0)],
+)
+def test_cli_requires_real_extracted_description(
+    monkeypatch, tmp_path, extracted: int, expected_exit: int
+) -> None:
+    import sys
+    from pathlib import Path
+
+    from jolt import jobgether_batch_capture as module
+
+    target = tmp_path / "report.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["jobgether_batch_capture", "--output", str(target)],
+    )
+    browser = Mock()
+    page = Mock(url="https://jobgether.com/talent/matches")
+    browser.contexts = [Mock(pages=[page])]
+    playwright = Mock()
+    playwright.chromium.connect_over_cdp.return_value = browser
+    controller = Mock()
+    controller.__enter__ = Mock(return_value=playwright)
+    controller.__exit__ = Mock(return_value=False)
+    monkeypatch.setattr(module, "sync_playwright", lambda: controller)
+    monkeypatch.setattr(
+        module,
+        "capture_batch",
+        lambda search, limit: {
+            "source": "jobgether",
+            "mode": "supervised_search_tab_read_only",
+            "search_url": page.url,
+            "offers": [{"status": "unresolved"}],
+            "captured_count": 1,
+            "extracted_count": extracted,
+        },
+    )
+    monkeypatch.setattr(module, "load_previous_reports", lambda *args, **kwargs: [])
+    monkeypatch.setattr(module, "audit_batch", lambda *args: {})
+    assert module.main() == expected_exit
+    assert Path(target).is_file()
