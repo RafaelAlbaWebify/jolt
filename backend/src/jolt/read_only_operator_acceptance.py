@@ -1,4 +1,5 @@
 """Read-only browser acceptance of the running local JOLT application."""
+
 import argparse
 import json
 from datetime import UTC, datetime
@@ -29,12 +30,14 @@ def accept(destination):
     for record in records[:5]:
         pid = record["posting_id"]
         source = fetch(f"/api/discovery-postings/{pid}/source-history")
-        observations.append({
-            "posting_id": pid,
-            "source_count": len(source["sources"]),
-            "observations": source["total_observations"],
-            "confirmed_duplicates": len(source["confirmed_duplicates"]),
-        })
+        observations.append(
+            {
+                "posting_id": pid,
+                "source_count": len(source["sources"]),
+                "observations": source["total_observations"],
+                "confirmed_duplicates": len(source["confirmed_duplicates"]),
+            }
+        )
     blocked = []
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
