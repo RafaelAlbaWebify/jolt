@@ -508,8 +508,12 @@ def run_jobgether_saved_search(
             "Inspect the isolated Chrome listing before retrying. "
             + (diagnostic or capture.stderr or capture.stdout)[-1800:]
         )
+    from jolt.jobgether_operational_run import validated_offers
+
+    raw_report = json.loads(capture_path.read_text(encoding="utf-8"))
+    accepted_count = len(validated_offers(raw_report))
     if phase_callback is not None:
-        phase_callback("capturing", 1, max_jobs)
+        phase_callback("capturing", 1, accepted_count)
     imported = subprocess.run(
         [
             sys.executable,
