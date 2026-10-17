@@ -1,7 +1,7 @@
 """Read-only browser acceptance of the running local JOLT application."""
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -66,7 +66,7 @@ def accept(destination):
         errors.append(f"Browser attempted {len(blocked)} blocked mutations")
     return {
         "schema": "jolt-read-only-operator-acceptance-v1",
-        "generated_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_utc": datetime.now(UTC).isoformat(),
         "health": health,
         "opportunity_count": len(records),
         "provenance_samples": observations,
