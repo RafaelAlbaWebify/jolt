@@ -127,3 +127,28 @@ def test_infojobs_runner_rejects_untrusted_search_url(tmp_path: Path) -> None:
         assert "InfoJobs listing URL" in str(exc)
     else:
         raise AssertionError("Expected cross-site URL to be rejected.")
+
+
+def test_jobgether_saved_search_uses_existing_execution_lifecycle(tmp_path: Path) -> None:
+    with _session(tmp_path) as session:
+        search = create_discovery_search(
+            session,
+            DiscoverySavedSearchRequest(
+                source="jobgether",
+                label="Jobgether remote support",
+                definition={"search_url": "https://jobgether.com/talent/matches", "max_pages": 1},
+                max_jobs=5,
+            ),
+        )
+        execution = create_discovery_execution(
+            session,
+            DiscoveryExecutionCreateRequest(source="jobgether", saved_search_id=search.id),
+        )
+        assert execution.max_pages == 1
+        assert execution.target_jobs == 5
+        execute_discovery_execution(
+            session,
+            execution.id,
+            runner=lambda saved_search, execution_id: "jobgether-run",
+        )
+        assert get_discovery_execution(session, execution.id).capture_run_id == "jobgether-run"
