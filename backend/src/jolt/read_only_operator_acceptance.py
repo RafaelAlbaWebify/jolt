@@ -136,9 +136,7 @@ def main():
             "result": "FAIL",
             "error_type": type(exc).__name__,
             "errors": [str(exc)],
-            "last_completed_stage": (
-                "pre-browser API verification; see request path in error" 
-            ),
+            "last_completed_stage": ("pre-browser API verification; see request path in error"),
         }
     (args.output_dir / "acceptance.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
