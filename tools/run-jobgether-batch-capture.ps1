@@ -5,7 +5,9 @@ param(
     [int]$DebugPort = 9222,
     [switch]$SkipSync,
     [switch]$StageObservations,
-    [switch]$CommitObservations
+    [switch]$CommitObservations,
+    [switch]$NoPrompt,
+    [string]$OutputPath = ""
 )
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -13,7 +15,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $BackendRoot = Join-Path $RepoRoot "backend"
 $ChromeProfileDir = Join-Path $RepoRoot ".jolt\chrome-jobgether-cdp"
 $Downloads = Join-Path $HOME "Downloads"
-$Output = Join-Path $Downloads ("JOLT_JOBGETHER_BATCH_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json")
+$Output = if ($OutputPath) { $OutputPath } else { Join-Path $Downloads ("JOLT_JOBGETHER_BATCH_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json") }
 $Endpoint = "http://127.0.0.1:$DebugPort"
 $Parsed = [uri]$SearchUrl
 if ($Parsed.Scheme -ne "https" -or $Parsed.Host -notin @("jobgether.com", "www.jobgether.com")) {
@@ -59,7 +61,9 @@ Start-Process -FilePath $ChromePath -ArgumentList @(
 ) | Out-Null
 Write-Host "Open the Jobgether search results in the supervised Chrome window."
 Write-Host "Complete any normal login or verification manually; do not bypass portal blocks."
-[void](Read-Host "When results are visible, press Enter")
+if (-not $NoPrompt) {
+    [void](Read-Host "When results are visible, press Enter")
+}
 Push-Location $BackendRoot
 try {
     if (-not $SkipSync) {
