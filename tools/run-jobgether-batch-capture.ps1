@@ -61,7 +61,9 @@ Start-Process -FilePath $ChromePath -ArgumentList @(
 ) | Out-Null
 Write-Host "Open the Jobgether search results in the supervised Chrome window."
 Write-Host "Complete any normal login or verification manually; do not bypass portal blocks."
-if (-not $NoPrompt) {
+if ($NoPrompt) {
+    Start-Sleep -Seconds 5
+} else {
     [void](Read-Host "When results are visible, press Enter")
 }
 Push-Location $BackendRoot
