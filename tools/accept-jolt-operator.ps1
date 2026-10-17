@@ -17,9 +17,15 @@ try {
     if ($Front.StatusCode -ne 200) { throw "Frontend is not healthy." }
 
     $RepoCommit = (& git -C $RepoRoot rev-parse HEAD).Trim()
+    $LoadedIdentity = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/runtime-identity" -TimeoutSec 10
+    $LoadedCommit = [string]$LoadedIdentity.loaded_git.commit_sha
+    if ($LoadedCommit -ne $RepoCommit) {
+        throw "Stale backend: loaded $LoadedCommit, checkout $RepoCommit. Restart JOLT using tools/start-jolt.ps1 before acceptance."
+    }
     $Metadata = [ordered]@{
         generated_at = (Get-Date).ToString("o")
         repository_commit = $RepoCommit
+        backend_loaded_commit = $LoadedCommit
         backend_health = $Health
         frontend_http_status = $Front.StatusCode
         read_only = $true
@@ -29,7 +35,7 @@ try {
 
     Push-Location $BackendRoot
     try {
-        uv run --no-sync python -m jolt.read_only_operator_acceptance --output-dir $Stage
+        uv run --no-sync python -m jolt.read_only_operator_acceptance --output-dir $Stage --expected-commit $RepoCommit
         $AcceptanceCode = $LASTEXITCODE
     }
     finally { Pop-Location }
