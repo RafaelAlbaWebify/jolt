@@ -66,7 +66,7 @@ function sourceLabel(source: DiscoverySourceId) {
 }
 
 function editorSupported(source: DiscoverySourceId) {
-  return source === "linkedin" || source === "indeed";
+  return source === "linkedin" || source === "indeed" || source === "infojobs" || source === "jobgether";
 }
 
 function responseError(response: Response, fallback: string) {
@@ -152,8 +152,8 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       search_url: "",
       notes: "",
       enabled: true,
-      max_jobs: source === "linkedin" ? 50 : 30,
-      max_pages: source === "linkedin" ? 5 : 3,
+      max_jobs: source === "infojobs" || source === "jobgether" ? 5 : source === "linkedin" ? 50 : 30,
+      max_pages: source === "infojobs" || source === "jobgether" ? 1 : source === "linkedin" ? 5 : 3,
     });
     setError("");
     setNotice("");
@@ -292,9 +292,9 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
     const createResponse = await fetch(`${apiBase}/api/discovery-executions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: "indeed", saved_search_id: search.id }),
+      body: JSON.stringify({ source: search.source, saved_search_id: search.id }),
     });
-    if (!createResponse.ok) throw await responseError(createResponse, "Indeed discovery execution could not start.");
+    if (!createResponse.ok) throw await responseError(createResponse, `${sourceLabel(search.source)} discovery execution could not start.`);
     const created = (await createResponse.json()) as DiscoveryExecution;
     const finished = await pollUntilTerminal<DiscoveryExecution>(
       `${apiBase}/api/discovery-executions/${created.id}`,
@@ -303,18 +303,18 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
         const phaseText: Record<string, string> = {
           queued: "Queued",
           starting_chrome: "Starting Chrome",
-          waiting_results: "Waiting for visible Indeed results",
-          capturing: "Capturing Indeed jobs",
+          waiting_results: `Waiting for visible ${sourceLabel(search.source)} results`,
+          capturing: `Capturing ${sourceLabel(search.source)} jobs`,
         };
         let detail = phaseText[current.status] ?? current.status;
         if (current.status === "capturing" && current.current_page > 0) {
           detail = `Page ${current.current_page}/${current.max_pages} · ${current.captured_count}/${current.target_jobs} jobs captured`;
         }
-        setNotice(`Indeed · ${search.label}: ${detail}…`);
+        setNotice(`${sourceLabel(search.source)} · ${search.label}: ${detail}…`);
       },
     );
     if (finished.status === "failed") {
-      throw new Error(finished.error || `Indeed search failed: ${search.label}`);
+      throw new Error(finished.error || `${sourceLabel(search.source)} search failed: ${search.label}`);
     }
   }
 
@@ -337,8 +337,8 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
           await runLinkedInChunk(chunk);
           continue;
         }
-        if (search.source === "indeed") {
-          setNotice(`Running Indeed search ${index + 1} of ${selected.length}: ${search.label}`);
+        if (search.source === "indeed" || search.source === "infojobs" || search.source === "jobgether") {
+          setNotice(`Running ${sourceLabel(search.source)} search ${index + 1} of ${selected.length}: ${search.label}`);
           await runIndeedSearch(search);
           index += 1;
           continue;
@@ -382,7 +382,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 disabled={Boolean(draft.id)}
                 onChange={(event) => {
                   const source = event.target.value as DiscoverySourceId;
-                  setDraft({ ...draft, source });
+                  setDraft({ ...draft, source, max_jobs: source === "infojobs" || source === "jobgether" ? 5 : 30, max_pages: source === "infojobs" || source === "jobgether" ? 1 : 3 });
                 }}
               >
                 {editorSources.map((source) => (
@@ -395,21 +395,24 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
               <input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
             </label>
             <label className="full-width">
-              {draft.source === "linkedin" ? "LinkedIn search URL" : "Indeed search URL"}
+              {`${sourceLabel(draft.source)} search URL`}
               <input
                 type="url"
                 value={draft.search_url}
                 onChange={(event) => setDraft({ ...draft, search_url: event.target.value })}
-                placeholder={draft.source === "linkedin" ? "https://www.linkedin.com/jobs/search/?..." : "https://es.indeed.com/jobs?q=..."}
+                placeholder={draft.source === "jobgether" ? "https://jobgether.com/talent/matches" : draft.source === "infojobs" ? "https://www.infojobs.net/ofertas-trabajo/support-it" : draft.source === "linkedin" ? "https://www.linkedin.com/jobs/search/?..." : "https://es.indeed.com/jobs?q=..."}
               />
             </label>
             <label>
               Maximum jobs
-              <input type="number" min={1} max={100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
+              <input type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 5 : 100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
             </label>
             <label>
               Maximum pages
-              <input aria-label="Maximum pages" type="number" min={1} max={10} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              <input aria-label="Maximum pages" type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 1 : 10} disabled={draft.source === "infojobs" || draft.source === "jobgether"} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              {(draft.source === "infojobs" || draft.source === "jobgether") && (
+                <small>{sourceLabel(draft.source)} uses an isolated supervised Chrome window and captures up to five visible offers per search.</small>
+              )}
               {draft.source === "indeed" && (
                 <small>
                   Indeed stops as soon as Maximum jobs is reached. Use more than 15 jobs if you want the capture to continue beyond page 1.

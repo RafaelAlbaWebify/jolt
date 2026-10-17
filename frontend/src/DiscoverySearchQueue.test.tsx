@@ -281,3 +281,96 @@ it("shows the live Indeed phase while a capture is running", async () => {
     ),
   ).toBeInTheDocument();
 });
+
+
+it("runs a saved InfoJobs search from the unified queue", async () => {
+  const calls: string[] = [];
+  const infojobs = {
+    id: "ij-1",
+    source: "infojobs",
+    label: "InfoJobs IT Support",
+    definition: { search_url: "https://www.infojobs.net/ofertas-trabajo/support-it", max_pages: 1 },
+    notes: "",
+    enabled: true,
+    max_jobs: 5,
+    created_at: "2026-10-17T00:00:00Z",
+    updated_at: "2026-10-17T00:00:00Z",
+    execution_available: true,
+  };
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify([
+        ...sources,
+        { source: "infojobs", label: "InfoJobs", transport: "browser", saved_search_backend: "discovery", execution_available: true },
+      ]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches")) {
+      return new Response(JSON.stringify([infojobs]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
+      const payload = JSON.parse(String(init.body));
+      expect(payload).toEqual({ source: "infojobs", saved_search_id: "ij-1" });
+      calls.push("infojobs:create");
+      return new Response(JSON.stringify({ id: "ij-exec", status: "queued" }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions/ij-exec")) {
+      calls.push("infojobs:complete");
+      return new Response(JSON.stringify({ id: "ij-exec", status: "completed", error: "", capture_run_id: "ij-capture" }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  await screen.findByText("InfoJobs IT Support");
+  fireEvent.click(screen.getByLabelText("Select InfoJobs · InfoJobs IT Support"));
+  fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
+  expect(await screen.findByText("Discovery completed in the requested order: 1 search.")).toBeInTheDocument();
+  expect(calls).toEqual(["infojobs:create", "infojobs:complete"]);
+});
+
+
+it("runs a saved Jobgether search from the unified queue", async () => {
+  const jobgether = {
+    id: "jg-1",
+    source: "jobgether",
+    label: "Jobgether remote support",
+    definition: { search_url: "https://jobgether.com/talent/matches", max_pages: 1 },
+    notes: "",
+    enabled: true,
+    max_jobs: 5,
+    created_at: "2026-10-17T00:00:00Z",
+    updated_at: "2026-10-17T00:00:00Z",
+    execution_available: true,
+  };
+  const requests: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify([
+        ...sources,
+        { source: "jobgether", label: "Jobgether", transport: "browser", saved_search_backend: "discovery", execution_available: true },
+      ]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches")) {
+      return new Response(JSON.stringify([jobgether]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
+      const payload = JSON.parse(String(init.body));
+      expect(payload).toEqual({ source: "jobgether", saved_search_id: "jg-1" });
+      requests.push("jobgether:create");
+      return new Response(JSON.stringify({ id: "jg-exec", status: "queued" }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-executions/jg-exec")) {
+      requests.push("jobgether:complete");
+      return new Response(JSON.stringify({ id: "jg-exec", status: "completed", error: "", capture_run_id: "jg-run" }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  await screen.findByText("Jobgether remote support");
+  fireEvent.click(screen.getByLabelText("Select Jobgether · Jobgether remote support"));
+  fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
+  expect(await screen.findByText("Discovery completed in the requested order: 1 search.")).toBeInTheDocument();
+  expect(requests).toEqual(["jobgether:create", "jobgether:complete"]);
+});

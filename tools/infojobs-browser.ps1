@@ -53,6 +53,11 @@ if (-not (Test-Cdp)) {
     Write-Host "Isolated JOLT Chrome launched on port $DebugPort."
 } else {
     Write-Host "Existing isolated JOLT Chrome session detected on port $DebugPort."
+    Start-Process -FilePath $chrome -ArgumentList @(
+        "--remote-debugging-port=$DebugPort",
+        "--user-data-dir=`"$profile`"",
+        $SearchUrl
+    ) | Out-Null
 }
 
 Write-Host "Use ONLY that isolated Chrome window for InfoJobs."

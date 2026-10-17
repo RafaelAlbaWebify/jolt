@@ -30,15 +30,15 @@ _SOURCE_CAPABILITIES: dict[str, dict[str, Any]] = {
     },
     "jobgether": {
         "label": "Jobgether",
-        "transport": "api",
+        "transport": "browser",
         "saved_search_backend": "discovery",
-        "execution_available": False,
+        "execution_available": True,
     },
     "infojobs": {
         "label": "InfoJobs",
-        "transport": "api",
+        "transport": "browser",
         "saved_search_backend": "discovery",
-        "execution_available": False,
+        "execution_available": True,
     },
 }
 
