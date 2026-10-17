@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **120 / 333 = 36.04%** reviewed at source level. **213 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md).
+**Progress:** **130 / 333 = 39.04%** reviewed at source level. **203 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -69,30 +69,30 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 55 | `backend/src/jolt/infojobs_browser_probe.py` | AUDITED-ISSUES |
 | 56 | `backend/src/jolt/infojobs_observations.py` | AUDITED-ISSUES |
 | 57 | `backend/src/jolt/infojobs_operational_run.py` | AUDITED-ISSUES |
-| 58 | `backend/src/jolt/infojobs_preview_cli.py` | PENDING |
+| 58 | `backend/src/jolt/infojobs_preview_cli.py` | AUDITED-ISSUES |
 | 59 | `backend/src/jolt/infojobs_supervised_capture.py` | AUDITED-ISSUES |
 | 60 | `backend/src/jolt/job_search_preferences.py` | AUDITED-ISSUES |
-| 61 | `backend/src/jolt/jobgether_batch_audit.py` | PENDING |
+| 61 | `backend/src/jolt/jobgether_batch_audit.py` | AUDITED-ISSUES |
 | 62 | `backend/src/jolt/jobgether_batch_capture.py` | AUDITED-ISSUES |
-| 63 | `backend/src/jolt/jobgether_browser_probe.py` | PENDING |
-| 64 | `backend/src/jolt/jobgether_capture_cli.py` | PENDING |
+| 63 | `backend/src/jolt/jobgether_browser_probe.py` | AUDITED-ISSUES |
+| 64 | `backend/src/jolt/jobgether_capture_cli.py` | AUDITED-ISSUES |
 | 65 | `backend/src/jolt/jobgether_detail_fetch.py` | AUDITED-ISSUES |
-| 66 | `backend/src/jolt/jobgether_detail_probe.py` | PENDING |
+| 66 | `backend/src/jolt/jobgether_detail_probe.py` | AUDITED-ISSUES |
 | 67 | `backend/src/jolt/jobgether_detail_validation.py` | AUDITED-ISSUES |
-| 68 | `backend/src/jolt/jobgether_local_audit.py` | PENDING |
-| 69 | `backend/src/jolt/jobgether_observations.py` | PENDING |
+| 68 | `backend/src/jolt/jobgether_local_audit.py` | AUDITED-ISSUES |
+| 69 | `backend/src/jolt/jobgether_observations.py` | AUDITED-ISSUES |
 | 70 | `backend/src/jolt/jobgether_operational_run.py` | AUDITED-ISSUES |
 | 71 | `backend/src/jolt/jobgether_preview.py` | AUDITED-ISSUES |
 | 72 | `backend/src/jolt/jobgether_structured_offer.py` | AUDITED-ISSUES |
 | 73 | `backend/src/jolt/jobgether_supervised_stage.py` | AUDITED-ISSUES |
-| 74 | `backend/src/jolt/jobgether_triage.py` | PENDING |
+| 74 | `backend/src/jolt/jobgether_triage.py` | AUDITED-ISSUES |
 | 75 | `backend/src/jolt/language_hardline.py` | AUDITED-ISSUES |
-| 76 | `backend/src/jolt/linkedin_access.py` | PENDING |
+| 76 | `backend/src/jolt/linkedin_access.py` | AUDITED-ISSUES |
 | 77 | `backend/src/jolt/linkedin_batch_review.py` | AUDITED-ISSUES |
 | 78 | `backend/src/jolt/linkedin_capture.py` | AUDITED-ISSUES |
 | 79 | `backend/src/jolt/linkedin_command_center.py` | PENDING |
 | 80 | `backend/src/jolt/linkedin_discovery_batch.py` | AUDITED-ISSUES |
-| 81 | `backend/src/jolt/linkedin_failure_acceptance.py` | PENDING |
+| 81 | `backend/src/jolt/linkedin_failure_acceptance.py` | AUDITED-ISSUES |
 | 82 | `backend/src/jolt/linkedin_playwright_capture.py` | PENDING |
 | 83 | `backend/src/jolt/linkedin_profile_exchange.py` | PENDING |
 | 84 | `backend/src/jolt/linkedin_profile_exchange_api.py` | PENDING |
