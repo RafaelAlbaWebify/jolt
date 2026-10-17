@@ -23,7 +23,8 @@ def test_discovery_sources_expose_portal_capabilities(tmp_path: Path) -> None:
     assert sources["linkedin"]["transport"] == "browser"
     assert sources["indeed"]["transport"] == "browser"
     assert sources["indeed"]["execution_available"] is True
-    assert sources["jobgether"]["transport"] == "api"
+    assert sources["jobgether"]["transport"] == "browser"
+    assert sources["jobgether"]["execution_available"] is True
     assert sources["infojobs"]["transport"] == "browser"
     assert sources["infojobs"]["execution_available"] is True
     assert "adzuna" not in sources
