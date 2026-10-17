@@ -114,7 +114,6 @@ def test_navigate_search_page_reuses_open_cdp_page() -> None:
     ]
 
 
-
 def test_indeed_verification_document_timeout_does_not_abort_capture() -> None:
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
@@ -144,9 +143,7 @@ def test_indeed_navigation_timeout_on_unrelated_page_fails_closed() -> None:
 
     page.goto = timed_out  # type: ignore[method-assign]
     with pytest.raises(PlaywrightTimeoutError):
-        _navigate_search_page(
-            context, page, "https://es.indeed.com/jobs?q=application+support"
-        )  # type: ignore[arg-type]
+        _navigate_search_page(context, page, "https://es.indeed.com/jobs?q=application+support")  # type: ignore[arg-type]
 
 
 def test_page_search_url_advances_indeed_pagination() -> None:
