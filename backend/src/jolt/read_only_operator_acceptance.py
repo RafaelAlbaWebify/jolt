@@ -13,16 +13,30 @@ APP = "http://127.0.0.1:5173"
 SECTIONS = ("Capture Jobs", "Review Inbox", "Applications", "Market Insights")
 
 
+def verify_loaded_commit(identity: object, expected: str) -> str:
+    if not isinstance(identity, dict):
+        raise RuntimeError("Runtime identity must be a JSON object")
+    loaded = identity.get("loaded_git")
+    if not isinstance(loaded, dict) or not isinstance(loaded.get("commit_sha"), str):
+        raise RuntimeError("Runtime identity missing loaded_git.commit_sha")
+    actual = loaded["commit_sha"].strip()
+    if actual != expected:
+        raise RuntimeError(f"Stale backend: loaded {actual}, checkout {expected}; restart JOLT")
+    return actual
+
+
 def fetch(path):
     with urlopen(API + path, timeout=15) as response:  # noqa: S310
         return json.loads(response.read())
 
 
-def accept(destination):
+def accept(destination, expected_commit):
     destination.mkdir(parents=True, exist_ok=True)
     errors = []
     screenshots = {}
     health = fetch("/api/health")
+    runtime = fetch("/api/runtime-identity")
+    loaded_commit = verify_loaded_commit(runtime, expected_commit)
     records = fetch("/api/opportunity-index")
     if not isinstance(records, list):
         raise RuntimeError("Opportunity index was not a list")
@@ -58,6 +72,22 @@ def accept(destination):
                 try:
                     page.get_by_role("button", name=label, exact=True).first.click()
                     page.wait_for_timeout(700)
+                    if page.get_by_text("JOLT restart required", exact=False).count():
+                        errors.append(f"{label}: stale backend warning is visible")
+                    if label == "Market Insights":
+                        try:
+                            page.get_by_text("Loading market insights…", exact=True).wait_for(
+                                state="hidden", timeout=15000
+                            )
+                        except Exception:  # noqa: BLE001
+                            errors.append("Market Insights remained in loading state")
+                    if label == "Review Inbox":
+                        try:
+                            page.get_by_text("Refreshing…", exact=True).wait_for(
+                                state="hidden", timeout=15000
+                            )
+                        except Exception:  # noqa: BLE001
+                            errors.append("Review Inbox remained in loading state")
                     filename = label.lower().replace(" ", "-") + ".png"
                     page.screenshot(path=str(destination / filename), full_page=True)
                     screenshots[label] = filename
@@ -71,6 +101,8 @@ def accept(destination):
         "schema": "jolt-read-only-operator-acceptance-v1",
         "generated_utc": datetime.now(UTC).isoformat(),
         "health": health,
+        "loaded_commit": loaded_commit,
+        "expected_commit": expected_commit,
         "opportunity_count": len(records),
         "provenance_samples": observations,
         "screenshots": screenshots,
@@ -87,10 +119,11 @@ def accept(destination):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--expected-commit", required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        result = accept(args.output_dir)
+        result = accept(args.output_dir, args.expected_commit)
     except Exception as exc:  # noqa: BLE001
         result = {"result": "FAIL", "errors": [str(exc)]}
     (args.output_dir / "acceptance.json").write_text(
