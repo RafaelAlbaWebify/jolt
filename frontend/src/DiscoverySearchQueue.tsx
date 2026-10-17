@@ -66,7 +66,7 @@ function sourceLabel(source: DiscoverySourceId) {
 }
 
 function editorSupported(source: DiscoverySourceId) {
-  return source === "linkedin" || source === "indeed" || source === "infojobs";
+  return true;
 }
 
 function responseError(response: Response, fallback: string) {
@@ -152,8 +152,8 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       search_url: "",
       notes: "",
       enabled: true,
-      max_jobs: source === "infojobs" ? 5 : source === "linkedin" ? 50 : 30,
-      max_pages: source === "infojobs" ? 1 : source === "linkedin" ? 5 : 3,
+      max_jobs: source === "infojobs" || source === "jobgether" ? 5 : source === "linkedin" ? 50 : 30,
+      max_pages: source === "infojobs" || source === "jobgether" ? 1 : source === "linkedin" ? 5 : 3,
     });
     setError("");
     setNotice("");
@@ -337,7 +337,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
           await runLinkedInChunk(chunk);
           continue;
         }
-        if (search.source === "indeed" || search.source === "infojobs") {
+        if (search.source === "indeed" || search.source === "infojobs" || search.source === "jobgether") {
           setNotice(`Running ${sourceLabel(search.source)} search ${index + 1} of ${selected.length}: ${search.label}`);
           await runIndeedSearch(search);
           index += 1;
@@ -382,7 +382,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 disabled={Boolean(draft.id)}
                 onChange={(event) => {
                   const source = event.target.value as DiscoverySourceId;
-                  setDraft({ ...draft, source, max_jobs: source === "infojobs" ? 5 : 30, max_pages: source === "infojobs" ? 1 : 3 });
+                  setDraft({ ...draft, source, max_jobs: source === "infojobs" || source === "jobgether" ? 5 : 30, max_pages: source === "infojobs" || source === "jobgether" ? 1 : 3 });
                 }}
               >
                 {editorSources.map((source) => (
@@ -400,18 +400,18 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 type="url"
                 value={draft.search_url}
                 onChange={(event) => setDraft({ ...draft, search_url: event.target.value })}
-                placeholder={draft.source === "infojobs" ? "https://www.infojobs.net/ofertas-trabajo/support-it" : draft.source === "linkedin" ? "https://www.linkedin.com/jobs/search/?..." : "https://es.indeed.com/jobs?q=..."}
+                placeholder={draft.source === "jobgether" ? "https://jobgether.com/talent/matches" : draft.source === "infojobs" ? "https://www.infojobs.net/ofertas-trabajo/support-it" : draft.source === "linkedin" ? "https://www.linkedin.com/jobs/search/?..." : "https://es.indeed.com/jobs?q=..."}
               />
             </label>
             <label>
               Maximum jobs
-              <input type="number" min={1} max={draft.source === "infojobs" ? 5 : 100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
+              <input type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 5 : 100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
             </label>
             <label>
               Maximum pages
-              <input aria-label="Maximum pages" type="number" min={1} max={draft.source === "infojobs" ? 1 : 10} disabled={draft.source === "infojobs"} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
-              {draft.source === "infojobs" && (
-                <small>InfoJobs uses an isolated supervised Chrome window and captures up to five visible offers per search.</small>
+              <input aria-label="Maximum pages" type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 1 : 10} disabled={draft.source === "infojobs" || draft.source === "jobgether"} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              {(draft.source === "infojobs" || draft.source === "jobgether") && (
+                <small>{sourceLabel(draft.source)} uses an isolated supervised Chrome window and captures up to five visible offers per search.</small>
               )}
               {draft.source === "indeed" && (
                 <small>
