@@ -38,7 +38,9 @@ def _listing_identity(url: str) -> tuple[str, str] | None:
     if not is_infojobs_url(url):
         return None
     parsed = urlparse(url)
-    if parsed.path.rstrip("/") != "/ofertas-trabajo" and not parsed.path.startswith("/ofertas-trabajo/"):
+    if parsed.path.rstrip("/") != "/ofertas-trabajo" and not parsed.path.startswith(
+        "/ofertas-trabajo/"
+    ):
         return None
     return parsed.path.rstrip("/"), parsed.query
 
