@@ -61,3 +61,11 @@ def test_read_only_capture_keeps_source_text_but_not_verification() -> None:
     assert result["offers"][0]["title_observed"] == "Support Engineer"
     assert result["offers"][0]["source_evidence_verified"] is False
     assert result["offers"][0]["body_sha256"]
+
+
+def test_filtered_search_listings_are_eligible_for_capture() -> None:
+    from jolt.infojobs_browser_probe import _listing_identity
+
+    assert _listing_identity(
+        "https://www.infojobs.net/ofertas-trabajo?keyword=soporte&page=1"
+    ) is not None
