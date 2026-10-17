@@ -65,6 +65,16 @@ def test_select_search_page_requires_requested_listing() -> None:
     assert select_search_page(browser, "https://jobgether.com/talent/saved") is None
 
 
+
+def test_select_search_page_prefers_freshest_matching_tab() -> None:
+    browser = Mock()
+    old = Mock(url="https://jobgether.com/talent/matches")
+    newest = Mock(url="https://jobgether.com/talent/matches?sort=date")
+    browser.contexts = [Mock(pages=[old, newest])]
+    assert select_search_page(browser, "https://jobgether.com/talent/matches") is newest
+
+
+
 def test_supervised_batch_keeps_real_description_evidence(monkeypatch) -> None:
     search = Mock(url="https://jobgether.com/talent/matches")
     search.locator.return_value.evaluate_all.return_value = [FIRST]
