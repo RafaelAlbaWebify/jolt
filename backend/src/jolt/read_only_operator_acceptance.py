@@ -26,8 +26,11 @@ def verify_loaded_commit(identity: object, expected: str) -> str:
 
 
 def fetch(path):
-    with urlopen(API + path, timeout=15) as response:  # noqa: S310
-        return json.loads(response.read())
+    try:
+        with urlopen(API + path, timeout=15) as response:  # noqa: S310
+            return json.loads(response.read())
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"GET {path} failed: {type(exc).__name__}: {exc}") from exc
 
 
 def accept(destination, expected_commit):
@@ -43,7 +46,11 @@ def accept(destination, expected_commit):
     observations = []
     for record in records[:5]:
         pid = record["posting_id"]
-        source = fetch(f"/api/discovery-postings/{pid}/source-history")
+        try:
+            source = fetch(f"/api/discovery-postings/{pid}/source-history")
+        except RuntimeError as exc:
+            errors.append(str(exc))
+            continue
         observations.append(
             {
                 "posting_id": pid,
@@ -125,7 +132,14 @@ def main():
     try:
         result = accept(args.output_dir, args.expected_commit)
     except Exception as exc:  # noqa: BLE001
-        result = {"result": "FAIL", "errors": [str(exc)]}
+        result = {
+            "result": "FAIL",
+            "error_type": type(exc).__name__,
+            "errors": [str(exc)],
+            "last_completed_stage": (
+                "pre-browser API verification; see request path in error" 
+            ),
+        }
     (args.output_dir / "acceptance.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
     )
