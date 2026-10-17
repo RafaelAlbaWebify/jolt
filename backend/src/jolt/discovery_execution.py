@@ -93,8 +93,8 @@ def create_discovery_execution(
     session: Session,
     request: DiscoveryExecutionCreateRequest,
 ) -> DiscoveryExecutionResponse:
-    if request.source not in {"indeed", "infojobs"}:
-        raise ValueError("This execution endpoint supports Indeed and InfoJobs saved searches only.")
+    if request.source not in {"indeed", "infojobs", "jobgether"}:
+        raise ValueError("This execution endpoint supports Indeed, InfoJobs and Jobgether saved searches only.")
 
     search = session.get(DiscoverySavedSearch, request.saved_search_id)
     if search is None or search.source != request.source:
@@ -439,6 +439,98 @@ def run_infojobs_saved_search(
 
 
 
+
+def run_jobgether_saved_search(
+    search: DiscoverySavedSearch,
+    execution_id: str,
+    *,
+    phase_callback: Callable[[str, int | None, int | None], None] | None = None,
+) -> str | None:
+    """Capture a supervised Jobgether search and import only complete descriptions."""
+    from urllib.parse import urlparse
+
+    from jolt.jobgether_preview import jobgether_identity
+
+    definition = json.loads(search.definition_json)
+    search_url = str(definition.get("search_url", "") or "").strip()
+    parsed = urlparse(search_url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"jobgether.com", "www.jobgether.com"}
+        or jobgether_identity(search_url)
+    ):
+        raise ValueError("Jobgether requires a verified HTTPS listing URL.")
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    if shell is None:
+        raise RuntimeError("PowerShell is required for supervised Jobgether discovery.")
+    root = _repo_root()
+    evidence_dir = root / ".jolt" / "discovery-executions" / execution_id
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    capture_path = evidence_dir / "jobgether_observations.json"
+    import_path = evidence_dir / "jobgether_import.json"
+    max_jobs = min(5, max(1, search.max_jobs))
+
+    if phase_callback is not None:
+        phase_callback("starting_chrome", None, None)
+    capture = subprocess.run(
+        [
+            shell,
+            "-NoProfile",
+            "-File",
+            str(root / "tools" / "run-jobgether-batch-capture.ps1"),
+            "-SearchUrl",
+            search_url,
+            "-MaxJobs",
+            str(max_jobs),
+            "-NoPrompt",
+            "-SkipSync",
+            "-OutputPath",
+            str(capture_path),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=240,
+        check=False,
+    )
+    if capture.returncode != 0:
+        diagnostic = capture_path.read_text(encoding="utf-8") if capture_path.exists() else ""
+        raise RuntimeError(
+            "Jobgether did not expose reliable job details. "
+            "Inspect the isolated Chrome listing before retrying. "
+            + (diagnostic or capture.stderr or capture.stdout)[-1800:]
+        )
+    if phase_callback is not None:
+        phase_callback("capturing", 1, max_jobs)
+    imported = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "jolt.jobgether_operational_run",
+            "--input",
+            str(capture_path),
+            "--commit",
+            "--output",
+            str(import_path),
+        ],
+        cwd=root / "backend",
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    if imported.returncode != 0 or not import_path.exists():
+        raise RuntimeError(
+            "Jobgether evidence import failed: "
+            + (imported.stderr or imported.stdout)[-1800:]
+        )
+    result = json.loads(import_path.read_text(encoding="utf-8"))
+    if result.get("review_inbox_verified", 0) < 1:
+        raise RuntimeError("Jobgether did not produce any reviewable job opportunities.")
+    return result.get("capture_run_id")
+
+
+
 def execute_discovery_execution(
     session: Session,
     execution_id: str,
@@ -476,9 +568,12 @@ def execute_discovery_execution(
             current.captured_count = captured_count
         session.commit()
 
-    selected_runner = runner or (
-        run_infojobs_saved_search if execution.source == "infojobs" else run_indeed_saved_search
-    )
+    portal_runners = {
+        "indeed": run_indeed_saved_search,
+        "infojobs": run_infojobs_saved_search,
+        "jobgether": run_jobgether_saved_search,
+    }
+    selected_runner = runner or portal_runners[execution.source]
     try:
         if runner is None:
             capture_run_id = selected_runner(
