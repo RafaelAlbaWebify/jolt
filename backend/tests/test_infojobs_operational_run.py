@@ -74,10 +74,11 @@ def test_operational_import_rollback_on_tampered_evidence(tmp_path) -> None:
 
 
 def test_filtered_infojobs_listing_enters_same_stage_validation(tmp_path) -> None:
-    from jolt.infojobs_observations import stage_report
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
+
     from jolt.database import Base
+    from jolt.infojobs_observations import stage_report
 
     engine = create_engine(f"sqlite:///{(tmp_path / 'filter.db').as_posix()}")
     Base.metadata.create_all(engine)
