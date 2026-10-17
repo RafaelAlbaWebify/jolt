@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **28 / 333 = 8.41%** reviewed at source level. **305 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md).
+**Progress:** **40 / 333 = 12.01%** reviewed at source level. **293 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -16,7 +16,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 2 | `backend/src/jolt/ai_exchange_contract.py` | PENDING |
 | 3 | `backend/src/jolt/ai_exchange_feedback_store.py` | PENDING |
 | 4 | `backend/src/jolt/ai_review_import.py` | PENDING |
-| 5 | `backend/src/jolt/ai_review_opportunity_index.py` | PENDING |
+| 5 | `backend/src/jolt/ai_review_opportunity_index.py` | AUDITED-ISSUES |
 | 6 | `backend/src/jolt/ai_review_pack.py` | PENDING |
 | 7 | `backend/src/jolt/ai_status.py` | PENDING |
 | 8 | `backend/src/jolt/ai_status_api.py` | PENDING |
@@ -45,14 +45,14 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 31 | `backend/src/jolt/capture_evidence_audit_cli.py` | PENDING |
 | 32 | `backend/src/jolt/capture_ingestion.py` | AUDITED-ISSUES |
 | 33 | `backend/src/jolt/capture_metadata_repair.py` | PENDING |
-| 34 | `backend/src/jolt/capture_workflow.py` | PENDING |
+| 34 | `backend/src/jolt/capture_workflow.py` | AUDITED-ISSUES |
 | 35 | `backend/src/jolt/certification_isolation.py` | PENDING |
 | 36 | `backend/src/jolt/data_quality_exchange.py` | PENDING |
 | 37 | `backend/src/jolt/data_quality_exchange_api.py` | PENDING |
 | 38 | `backend/src/jolt/database.py` | PENDING |
 | 39 | `backend/src/jolt/discovery_execution.py` | AUDITED-ISSUES |
-| 40 | `backend/src/jolt/discovery_searches.py` | PENDING |
-| 41 | `backend/src/jolt/discovery_searches_api.py` | PENDING |
+| 40 | `backend/src/jolt/discovery_searches.py` | AUDITED-ISSUES |
+| 41 | `backend/src/jolt/discovery_searches_api.py` | AUDITED-ISSUES |
 | 42 | `backend/src/jolt/employment_geography.py` | PENDING |
 | 43 | `backend/src/jolt/errors.py` | PENDING |
 | 44 | `backend/src/jolt/evaluation_authority.py` | PENDING |
@@ -113,7 +113,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 99 | `backend/src/jolt/market_preparation_pack.py` | PENDING |
 | 100 | `backend/src/jolt/multipage_capture.py` | PENDING |
 | 101 | `backend/src/jolt/opportunity_experience_audit.py` | PENDING |
-| 102 | `backend/src/jolt/opportunity_index.py` | PENDING |
+| 102 | `backend/src/jolt/opportunity_index.py` | AUDITED-ISSUES |
 | 103 | `backend/src/jolt/opportunity_workbench.py` | PENDING |
 | 104 | `backend/src/jolt/pending_inbox_cleanup.py` | PENDING |
 | 105 | `backend/src/jolt/phase14_acceptance.py` | PENDING |
@@ -154,7 +154,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 140 | `backend/src/jolt/semantic_duplicates.py` | PENDING |
 | 141 | `backend/src/jolt/skills_preparation_exchange.py` | PENDING |
 | 142 | `backend/src/jolt/skills_preparation_exchange_api.py` | PENDING |
-| 143 | `backend/src/jolt/source_revalidation.py` | PENDING |
+| 143 | `backend/src/jolt/source_revalidation.py` | AUDITED-ISSUES |
 | 144 | `backend/src/jolt/sources/__init__.py` | PENDING |
 | 145 | `backend/src/jolt/sources/confirmed_duplicates.py` | AUDITED-ISSUES |
 | 146 | `backend/src/jolt/sources/contracts.py` | PENDING |
@@ -164,7 +164,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 150 | `backend/src/jolt/sources/normalized_offer.py` | AUDITED-ISSUES |
 | 151 | `backend/src/jolt/sources/portal_observation_backfill.py` | PENDING |
 | 152 | `backend/src/jolt/sources/portal_observations.py` | AUDITED-ISSUES |
-| 153 | `backend/src/jolt/sources/posting_source_history.py` | PENDING |
+| 153 | `backend/src/jolt/sources/posting_source_history.py` | AUDITED-ISSUES |
 | 154 | `backend/src/jolt/sources/source_identity_registry.py` | AUDITED-ISSUES |
 | 155 | `backend/src/jolt/strategy_runtime.py` | PENDING |
 | 156 | `backend/src/jolt/supervised_capture.py` | PENDING |
@@ -178,7 +178,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 164 | `backend/src/jolt/workflow.py` | PENDING |
 | 165 | `backend/src/jolt/workspace_navigation_audit.py` | PENDING |
 | 166 | `frontend/src/App.test.tsx` | PENDING |
-| 167 | `frontend/src/App.tsx` | PENDING |
+| 167 | `frontend/src/App.tsx` | AUDITED-ISSUES |
 | 168 | `frontend/src/ApplicationArchivedReadOnly.test.tsx` | PENDING |
 | 169 | `frontend/src/ApplicationCardSignals.test.tsx` | PENDING |
 | 170 | `frontend/src/ApplicationContacts.test.tsx` | PENDING |
@@ -212,7 +212,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 198 | `frontend/src/DataTools.tsx` | PENDING |
 | 199 | `frontend/src/DiscoverySearchQueue.css` | PENDING |
 | 200 | `frontend/src/DiscoverySearchQueue.test.tsx` | PENDING |
-| 201 | `frontend/src/DiscoverySearchQueue.tsx` | PENDING |
+| 201 | `frontend/src/DiscoverySearchQueue.tsx` | AUDITED-ISSUES |
 | 202 | `frontend/src/EvidenceWorkspace.css` | PENDING |
 | 203 | `frontend/src/IdentityEvidenceDashboard.test.tsx` | PENDING |
 | 204 | `frontend/src/IdentityEvidenceDashboard.tsx` | PENDING |
@@ -261,7 +261,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 247 | `frontend/src/RuntimeIdentity.tsx` | PENDING |
 | 248 | `frontend/src/Workbench.css` | PENDING |
 | 249 | `frontend/src/Workbench.test.tsx` | PENDING |
-| 250 | `frontend/src/Workbench.tsx` | PENDING |
+| 250 | `frontend/src/Workbench.tsx` | AUDITED-ISSUES |
 | 251 | `frontend/src/WorkflowRefinement.css` | PENDING |
 | 252 | `frontend/src/main.tsx` | PENDING |
 | 253 | `frontend/src/styles.css` | PENDING |
@@ -293,7 +293,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 279 | `tools/configure-linkedin-search-portfolio.ps1` | PENDING |
 | 280 | `tools/dev-preflight.ps1` | PENDING |
 | 281 | `tools/finish_ai_session.py` | PENDING |
-| 282 | `tools/infojobs-browser.ps1` | PENDING |
+| 282 | `tools/infojobs-browser.ps1` | AUDITED-ISSUES |
 | 283 | `tools/install_ai_desktop_shortcuts.ps1` | PENDING |
 | 284 | `tools/jolt-archive-imported-capture-batches.py` | PENDING |
 | 285 | `tools/jolt-daily-workflow-audit.py` | PENDING |
@@ -329,7 +329,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 315 | `tools/run-indeed-curated-search.ps1` | PENDING |
 | 316 | `tools/run-indeed-search-benchmark.ps1` | PENDING |
 | 317 | `tools/run-infojobs-browser-probe.ps1` | PENDING |
-| 318 | `tools/run-jobgether-batch-capture.ps1` | PENDING |
+| 318 | `tools/run-jobgether-batch-capture.ps1` | AUDITED-ISSUES |
 | 319 | `tools/run-jobgether-browser-probe.ps1` | PENDING |
 | 320 | `tools/run-jolt-live-ui-audit.ps1` | PENDING |
 | 321 | `tools/run-jolt-stage-reversal-audit.ps1` | PENDING |
