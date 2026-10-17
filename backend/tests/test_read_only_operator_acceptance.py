@@ -1,4 +1,5 @@
 """Acceptance must reject stale runtime evidence instead of giving false PASS."""
+
 import pytest
 
 from jolt.read_only_operator_acceptance import verify_loaded_commit
