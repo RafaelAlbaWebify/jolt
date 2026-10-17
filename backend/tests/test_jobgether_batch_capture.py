@@ -2,7 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from jolt.jobgether_batch_capture import capture_batch, discover_offer_urls, select_search_page
+from jolt.jobgether_batch_capture import (
+    capture_batch,
+    discover_card_navigation_urls,
+    discover_offer_urls,
+    select_search_page,
+)
 
 FIRST = "https://jobgether.com/offer/aaaaaaaaaaaaaaaaaaaaaaaa-first"
 SECOND = "https://jobgether.com/offer/bbbbbbbbbbbbbbbbbbbbbbbb-second"
@@ -94,3 +99,37 @@ def test_supervised_batch_keeps_real_description_evidence(monkeypatch) -> None:
     assert result["extracted_count"] == 1
     assert result["offers"][0]["description"].startswith("Verified observation text")
     assert result["work_from_spain_verified"] is False
+
+
+def test_card_title_navigation_retains_only_real_canonical_jobgether_url() -> None:
+    search = Mock(url="https://jobgether.com/talent/matches")
+    headings = search.locator.return_value
+    headings.count.return_value = 1
+    heading = headings.nth.return_value
+    heading.is_visible.return_value = True
+    heading.inner_text.return_value = "Level 2 IT Support Specialist"
+    heading.evaluate.return_value = True
+
+    detail = search.context.new_page.return_value
+    detail.url = FIRST
+    detail.get_by_text.return_value.first.is_visible.return_value = True
+    detail.context.pages = [search, detail]
+    result = discover_card_navigation_urls(search, limit=1)
+    assert result == [FIRST]
+    detail.get_by_text.assert_called_once_with("Level 2 IT Support Specialist", exact=True)
+    detail.close.assert_called_once()
+
+
+def test_card_title_navigation_rejects_noncanonical_page() -> None:
+    search = Mock(url="https://jobgether.com/talent/matches")
+    headings = search.locator.return_value
+    headings.count.return_value = 1
+    heading = headings.nth.return_value
+    heading.is_visible.return_value = True
+    heading.inner_text.return_value = "Technical Engineer"
+    heading.evaluate.return_value = True
+    detail = search.context.new_page.return_value
+    detail.url = "https://jobgether.com/talent/matches"
+    detail.context.pages = [search, detail]
+    detail.get_by_text.return_value.first.is_visible.return_value = True
+    assert discover_card_navigation_urls(search, limit=1) == []

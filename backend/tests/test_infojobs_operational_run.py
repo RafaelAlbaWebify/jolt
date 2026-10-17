@@ -71,3 +71,29 @@ def test_operational_import_rollback_on_tampered_evidence(tmp_path) -> None:
     with Session(engine) as session:
         assert session.scalars(select(Posting)).all() == []
         assert session.scalars(select(CaptureItem)).all() == []
+
+
+def test_filtered_infojobs_listing_enters_same_stage_validation(tmp_path) -> None:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from jolt.database import Base
+    from jolt.infojobs_observations import stage_report
+
+    engine = create_engine(f"sqlite:///{(tmp_path / 'filter.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        try:
+            stage_report(
+                session,
+                {
+                    "source": "infojobs",
+                    "mode": "supervised_browser_evidence_read_only",
+                    "search_url": "https://www.infojobs.net/ofertas-trabajo?keyword=soporte&page=1",
+                    "offers": [{}],
+                },
+            )
+        except ValueError as exc:
+            assert str(exc) != "invalid bounded InfoJobs report"
+        else:
+            raise AssertionError("Incomplete evidence should still be rejected")

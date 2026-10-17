@@ -38,12 +38,84 @@ def select_search_page(browser: Browser, search_url: str) -> Page | None:
     return None
 
 
+def discover_card_navigation_urls(search_page: Page, *, limit: int = 5) -> list[str]:
+    """Inspect actual clickable card titles, never Apply controls or guessed URLs.
+
+    Some logged-in Jobgether matches render card titles without /offer/ anchors.
+    Follow at most five observed title interactions, accepting only a browser
+    navigation to a canonical, same-site Jobgether offer.
+    """
+    headings = search_page.locator(
+        "h2, h3, [role='heading'], [class*='job-title'], [class*='jobTitle']"
+    )
+    candidates: list[str] = []
+    count = headings.count()
+    if not isinstance(count, int):
+        return []
+    for index in range(min(count, 40)):
+        heading = headings.nth(index)
+        try:
+            if not heading.is_visible(timeout=500):
+                continue
+            title = (heading.inner_text(timeout=500) or "").strip()
+            if not 5 <= len(title) <= 180 or title.casefold() in {"apply", "get early access"}:
+                continue
+            is_job_card = heading.evaluate(
+                """element => {
+                    let ancestor = element.parentElement;
+                    for (let depth = 0; ancestor && depth < 5; depth++, ancestor = ancestor.parentElement) {
+                        const buttons = Array.from(ancestor.querySelectorAll('button'));
+                        if (buttons.some(button => /^apply$/i.test((button.innerText || '').trim()))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }"""
+            )
+            if is_job_card and title not in candidates:
+                candidates.append(title)
+            if len(candidates) >= limit:
+                break
+        except Exception:
+            continue
+    found: list[str] = []
+    for title in candidates:
+        # Open the observed listing in a separate tab; never disturb the
+        # authenticated user's original page or click any Apply action.
+        detail = None
+        try:
+            detail = search_page.context.new_page()
+            detail.goto(search_page.url, wait_until="domcontentloaded", timeout=30_000)
+            heading = detail.get_by_text(title, exact=True).first
+            if not heading.is_visible(timeout=5_000):
+                continue
+            prior_pages = set(detail.context.pages)
+            heading.click(timeout=5_000)
+            detail.wait_for_timeout(900)
+            urls = [detail.url]
+            urls.extend(page.url for page in detail.context.pages if page not in prior_pages)
+            for url in urls:
+                if jobgether_identity(url) is not None:
+                    found.append(url)
+                    break
+        except Exception:
+            continue
+        finally:
+            if detail is not None:
+                detail.close()
+    return discover_offer_urls(found, limit=limit)
+
+
 def capture_batch(search_page: Page, *, limit: int = 5) -> dict[str, object]:
     """Read at most five discovered offers without writing to JOLT."""
     links = search_page.locator('a[href*="/offer/"]').evaluate_all(
         "elements => elements.map(el => el.href).filter(Boolean)"
     )
     urls = discover_offer_urls(links, limit=limit)
+    discovery_method = "canonical_links"
+    if not urls:
+        urls = discover_card_navigation_urls(search_page, limit=limit)
+        discovery_method = "observed_card_navigation"
     offers: list[dict[str, object]] = []
     for url in urls:
         page = None
@@ -82,6 +154,7 @@ def capture_batch(search_page: Page, *, limit: int = 5) -> dict[str, object]:
         "search_url": search_page.url,
         "observed_at": datetime.now(UTC).isoformat(),
         "discovered_count": len(urls),
+        "discovery_method": discovery_method,
         "captured_count": len(offers),
         "extracted_count": sum(x.get("status") == "extracted_unverified" for x in offers),
         "source_evidence_verified": False,

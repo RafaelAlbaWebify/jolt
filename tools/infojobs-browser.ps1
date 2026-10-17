@@ -12,7 +12,7 @@ Set-StrictMode -Version Latest
 
 $parsed = [uri]$SearchUrl
 if ($parsed.Scheme -ne "https" -or $parsed.Host -notin @("www.infojobs.net", "infojobs.net") -or
-    -not $parsed.AbsolutePath.StartsWith("/ofertas-trabajo/")) {
+    ($parsed.AbsolutePath.TrimEnd("/") -ne "/ofertas-trabajo" -and -not $parsed.AbsolutePath.StartsWith("/ofertas-trabajo/"))) {
     throw "Expected an HTTPS InfoJobs search results URL."
 }
 
