@@ -66,7 +66,7 @@ def test_execution_rejects_non_indeed_source(tmp_path: Path) -> None:
             create_discovery_execution(
                 session,
                 DiscoveryExecutionCreateRequest(
-                    source="jobgether",
+                    source="linkedin",
                     saved_search_id="not-used",
                 ),
             )
