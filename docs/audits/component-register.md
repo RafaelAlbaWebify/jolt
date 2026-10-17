@@ -1,10 +1,12 @@
 # JOLT component audit register
 
-**Baseline:** `27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29` (main, 2026-10-17). This register inventories production code files: Python modules under `backend/src/jolt/`, TS/TSX/CSS under `frontend/src/`, and executable .ps1/.py/.bat files directly in `tools/`. The inventory is reproducible from GitHub's recursive tree. Tests (245+), fixtures, migrations and documentation are **not counted as audited production components**; they will be reviewed as dependencies during each batch and separately inventoried once production audit closes. If the production file list changes, adjust denominator and note the change; do not retain fictitious percentages.
+**Inventory baseline:** `27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29` (main, 2026-10-17). This register inventories production code files: Python modules under `backend/src/jolt/`, TS/TSX/CSS under `frontend/src/`, and executable .ps1/.py/.bat files directly in `tools/`. The inventory is reproducible from GitHub's recursive tree. Tests (245+), fixtures, migrations and documentation are **not counted as audited production components**; they will be reviewed as dependencies during each batch and separately inventoried once production audit closes. If the production file list changes, adjust denominator and note the change; do not retain fictitious percentages.
+
+**Source revision:** batches 02–04 audited `3e90b5f241ef176a86f26887c70cebb08890aa00`; batch 01 used inventory baseline. **A later revision requires targeted revalidation; historical audit status is not a certification of latest code.**
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **7 / 333 = 2.10%** reviewed at source level. **326 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Batch 01 detailed findings: [01-ingestion-and-provenance.md](./batches/01-ingestion-and-provenance.md).
+**Progress:** **28 / 333 = 8.41%** reviewed at source level. **305 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -38,7 +40,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 26 | `backend/src/jolt/candidate_evidence.py` | PENDING |
 | 27 | `backend/src/jolt/capture_analysis_pack.py` | PENDING |
 | 28 | `backend/src/jolt/capture_archival.py` | PENDING |
-| 29 | `backend/src/jolt/capture_artifacts.py` | PENDING |
+| 29 | `backend/src/jolt/capture_artifacts.py` | AUDITED-ISSUES |
 | 30 | `backend/src/jolt/capture_evidence_audit.py` | PENDING |
 | 31 | `backend/src/jolt/capture_evidence_audit_cli.py` | PENDING |
 | 32 | `backend/src/jolt/capture_ingestion.py` | AUDITED-ISSUES |
@@ -48,7 +50,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 36 | `backend/src/jolt/data_quality_exchange.py` | PENDING |
 | 37 | `backend/src/jolt/data_quality_exchange_api.py` | PENDING |
 | 38 | `backend/src/jolt/database.py` | PENDING |
-| 39 | `backend/src/jolt/discovery_execution.py` | PENDING |
+| 39 | `backend/src/jolt/discovery_execution.py` | AUDITED-ISSUES |
 | 40 | `backend/src/jolt/discovery_searches.py` | PENDING |
 | 41 | `backend/src/jolt/discovery_searches_api.py` | PENDING |
 | 42 | `backend/src/jolt/employment_geography.py` | PENDING |
@@ -60,36 +62,36 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 48 | `backend/src/jolt/hardline_evidence.py` | PENDING |
 | 49 | `backend/src/jolt/hardline_revalidation.py` | PENDING |
 | 50 | `backend/src/jolt/identity_evidence.py` | PENDING |
-| 51 | `backend/src/jolt/indeed_capture.py` | PENDING |
-| 52 | `backend/src/jolt/indeed_chrome_attach.py` | PENDING |
-| 53 | `backend/src/jolt/indeed_live_capture.py` | PENDING |
-| 54 | `backend/src/jolt/infojobs_adapter.py` | PENDING |
-| 55 | `backend/src/jolt/infojobs_browser_probe.py` | PENDING |
+| 51 | `backend/src/jolt/indeed_capture.py` | AUDITED-ISSUES |
+| 52 | `backend/src/jolt/indeed_chrome_attach.py` | AUDITED-ISSUES |
+| 53 | `backend/src/jolt/indeed_live_capture.py` | AUDITED-ISSUES |
+| 54 | `backend/src/jolt/infojobs_adapter.py` | AUDITED-ISSUES |
+| 55 | `backend/src/jolt/infojobs_browser_probe.py` | AUDITED-ISSUES |
 | 56 | `backend/src/jolt/infojobs_observations.py` | AUDITED-ISSUES |
 | 57 | `backend/src/jolt/infojobs_operational_run.py` | AUDITED-ISSUES |
 | 58 | `backend/src/jolt/infojobs_preview_cli.py` | PENDING |
-| 59 | `backend/src/jolt/infojobs_supervised_capture.py` | PENDING |
+| 59 | `backend/src/jolt/infojobs_supervised_capture.py` | AUDITED-ISSUES |
 | 60 | `backend/src/jolt/job_search_preferences.py` | PENDING |
 | 61 | `backend/src/jolt/jobgether_batch_audit.py` | PENDING |
-| 62 | `backend/src/jolt/jobgether_batch_capture.py` | PENDING |
+| 62 | `backend/src/jolt/jobgether_batch_capture.py` | AUDITED-ISSUES |
 | 63 | `backend/src/jolt/jobgether_browser_probe.py` | PENDING |
 | 64 | `backend/src/jolt/jobgether_capture_cli.py` | PENDING |
-| 65 | `backend/src/jolt/jobgether_detail_fetch.py` | PENDING |
+| 65 | `backend/src/jolt/jobgether_detail_fetch.py` | AUDITED-ISSUES |
 | 66 | `backend/src/jolt/jobgether_detail_probe.py` | PENDING |
-| 67 | `backend/src/jolt/jobgether_detail_validation.py` | PENDING |
+| 67 | `backend/src/jolt/jobgether_detail_validation.py` | AUDITED-ISSUES |
 | 68 | `backend/src/jolt/jobgether_local_audit.py` | PENDING |
 | 69 | `backend/src/jolt/jobgether_observations.py` | PENDING |
 | 70 | `backend/src/jolt/jobgether_operational_run.py` | AUDITED-ISSUES |
-| 71 | `backend/src/jolt/jobgether_preview.py` | PENDING |
+| 71 | `backend/src/jolt/jobgether_preview.py` | AUDITED-ISSUES |
 | 72 | `backend/src/jolt/jobgether_structured_offer.py` | AUDITED-ISSUES |
-| 73 | `backend/src/jolt/jobgether_supervised_stage.py` | PENDING |
+| 73 | `backend/src/jolt/jobgether_supervised_stage.py` | AUDITED-ISSUES |
 | 74 | `backend/src/jolt/jobgether_triage.py` | PENDING |
 | 75 | `backend/src/jolt/language_hardline.py` | PENDING |
 | 76 | `backend/src/jolt/linkedin_access.py` | PENDING |
 | 77 | `backend/src/jolt/linkedin_batch_review.py` | PENDING |
-| 78 | `backend/src/jolt/linkedin_capture.py` | PENDING |
+| 78 | `backend/src/jolt/linkedin_capture.py` | AUDITED-ISSUES |
 | 79 | `backend/src/jolt/linkedin_command_center.py` | PENDING |
-| 80 | `backend/src/jolt/linkedin_discovery_batch.py` | PENDING |
+| 80 | `backend/src/jolt/linkedin_discovery_batch.py` | AUDITED-ISSUES |
 | 81 | `backend/src/jolt/linkedin_failure_acceptance.py` | PENDING |
 | 82 | `backend/src/jolt/linkedin_playwright_capture.py` | PENDING |
 | 83 | `backend/src/jolt/linkedin_profile_exchange.py` | PENDING |
@@ -99,7 +101,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 87 | `backend/src/jolt/linkedin_search_portfolio.py` | PENDING |
 | 88 | `backend/src/jolt/linkedin_search_portfolio_api.py` | PENDING |
 | 89 | `backend/src/jolt/linkedin_source_urls.py` | PENDING |
-| 90 | `backend/src/jolt/live_capture_workflow.py` | PENDING |
+| 90 | `backend/src/jolt/live_capture_workflow.py` | AUDITED-ISSUES |
 | 91 | `backend/src/jolt/local_linkedin_capture.py` | PENDING |
 | 92 | `backend/src/jolt/main.py` | PENDING |
 | 93 | `backend/src/jolt/market_intelligence.py` | PENDING |
@@ -154,14 +156,14 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 142 | `backend/src/jolt/skills_preparation_exchange_api.py` | PENDING |
 | 143 | `backend/src/jolt/source_revalidation.py` | PENDING |
 | 144 | `backend/src/jolt/sources/__init__.py` | PENDING |
-| 145 | `backend/src/jolt/sources/confirmed_duplicates.py` | PENDING |
+| 145 | `backend/src/jolt/sources/confirmed_duplicates.py` | AUDITED-ISSUES |
 | 146 | `backend/src/jolt/sources/contracts.py` | PENDING |
-| 147 | `backend/src/jolt/sources/cross_portal_candidates.py` | PENDING |
-| 148 | `backend/src/jolt/sources/duplicate_assessment.py` | PENDING |
+| 147 | `backend/src/jolt/sources/cross_portal_candidates.py` | AUDITED-ISSUES |
+| 148 | `backend/src/jolt/sources/duplicate_assessment.py` | AUDITED-ISSUES |
 | 149 | `backend/src/jolt/sources/linkedin.py` | PENDING |
-| 150 | `backend/src/jolt/sources/normalized_offer.py` | PENDING |
+| 150 | `backend/src/jolt/sources/normalized_offer.py` | AUDITED-ISSUES |
 | 151 | `backend/src/jolt/sources/portal_observation_backfill.py` | PENDING |
-| 152 | `backend/src/jolt/sources/portal_observations.py` | PENDING |
+| 152 | `backend/src/jolt/sources/portal_observations.py` | AUDITED-ISSUES |
 | 153 | `backend/src/jolt/sources/posting_source_history.py` | PENDING |
 | 154 | `backend/src/jolt/sources/source_identity_registry.py` | AUDITED-ISSUES |
 | 155 | `backend/src/jolt/strategy_runtime.py` | PENDING |
