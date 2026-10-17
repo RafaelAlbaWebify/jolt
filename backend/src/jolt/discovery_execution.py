@@ -445,7 +445,6 @@ def run_infojobs_saved_search(
     return result.get("capture_run_id")
 
 
-
 def run_jobgether_saved_search(
     search: DiscoverySavedSearch,
     execution_id: str,
@@ -533,8 +532,7 @@ def run_jobgether_saved_search(
     )
     if imported.returncode != 0 or not import_path.exists():
         raise RuntimeError(
-            "Jobgether evidence import failed: "
-            + (imported.stderr or imported.stdout)[-1800:]
+            "Jobgether evidence import failed: " + (imported.stderr or imported.stdout)[-1800:]
         )
     result = json.loads(import_path.read_text(encoding="utf-8"))
     if result.get("review_inbox_verified", 0) < 1:
