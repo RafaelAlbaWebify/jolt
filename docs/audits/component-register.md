@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **50 / 333 = 15.02%** reviewed at source level. **283 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md).
+**Progress:** **58 / 333 = 17.42%** reviewed at source level. **275 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -22,19 +22,19 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 8 | `backend/src/jolt/ai_status_api.py` | PENDING |
 | 9 | `backend/src/jolt/analysis_pack.py` | PENDING |
 | 10 | `backend/src/jolt/api.py` | PENDING |
-| 11 | `backend/src/jolt/application_archival.py` | PENDING |
-| 12 | `backend/src/jolt/application_cleanup.py` | PENDING |
+| 11 | `backend/src/jolt/application_archival.py` | AUDITED-ISSUES |
+| 12 | `backend/src/jolt/application_cleanup.py` | AUDITED-ISSUES |
 | 13 | `backend/src/jolt/application_metadata.py` | PENDING |
 | 14 | `backend/src/jolt/application_outcomes_exchange.py` | PENDING |
 | 15 | `backend/src/jolt/application_outcomes_exchange_api.py` | PENDING |
 | 16 | `backend/src/jolt/application_preparation_pack.py` | PENDING |
-| 17 | `backend/src/jolt/application_readiness.py` | PENDING |
-| 18 | `backend/src/jolt/application_records.py` | PENDING |
+| 17 | `backend/src/jolt/application_readiness.py` | AUDITED-ISSUES |
+| 18 | `backend/src/jolt/application_records.py` | AUDITED-ISSUES |
 | 19 | `backend/src/jolt/application_resources.py` | PENDING |
 | 20 | `backend/src/jolt/application_response.py` | PENDING |
-| 21 | `backend/src/jolt/application_work_items.py` | PENDING |
+| 21 | `backend/src/jolt/application_work_items.py` | AUDITED-ISSUES |
 | 22 | `backend/src/jolt/application_work_items_api.py` | PENDING |
-| 23 | `backend/src/jolt/automated_review.py` | PENDING |
+| 23 | `backend/src/jolt/automated_review.py` | AUDITED-ISSUES |
 | 24 | `backend/src/jolt/backup.py` | PENDING |
 | 25 | `backend/src/jolt/calibration_semantics.py` | PENDING |
 | 26 | `backend/src/jolt/candidate_evidence.py` | PENDING |
@@ -55,7 +55,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 41 | `backend/src/jolt/discovery_searches_api.py` | AUDITED-ISSUES |
 | 42 | `backend/src/jolt/employment_geography.py` | PENDING |
 | 43 | `backend/src/jolt/errors.py` | PENDING |
-| 44 | `backend/src/jolt/evaluation_authority.py` | PENDING |
+| 44 | `backend/src/jolt/evaluation_authority.py` | AUDITED-ISSUES |
 | 45 | `backend/src/jolt/evaluation_strategy.py` | PENDING |
 | 46 | `backend/src/jolt/global_context.py` | PENDING |
 | 47 | `backend/src/jolt/global_context_api.py` | PENDING |
@@ -142,7 +142,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 128 | `backend/src/jolt/read_only_operator_acceptance.py` | PENDING |
 | 129 | `backend/src/jolt/readiness_workflow.py` | PENDING |
 | 130 | `backend/src/jolt/retention_ownership.py` | PENDING |
-| 131 | `backend/src/jolt/reversible_application_workflow.py` | PENDING |
+| 131 | `backend/src/jolt/reversible_application_workflow.py` | AUDITED-ISSUES |
 | 132 | `backend/src/jolt/review_audit.py` | PENDING |
 | 133 | `backend/src/jolt/review_inbox_exchange.py` | PENDING |
 | 134 | `backend/src/jolt/review_inbox_exchange_api.py` | PENDING |
