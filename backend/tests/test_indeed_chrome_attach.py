@@ -48,8 +48,9 @@ def test_parse_args_rejects_more_than_ten_pages(tmp_path) -> None:
 
 
 class _FakePage:
-    def __init__(self, *, closed: bool = False) -> None:
+    def __init__(self, *, closed: bool = False, url: str = "about:blank") -> None:
         self._closed = closed
+        self.url = url
         self.goto_calls: list[tuple[str, str, int]] = []
 
     def is_closed(self) -> bool:
@@ -85,7 +86,7 @@ def test_navigate_search_page_replaces_closed_cdp_page() -> None:
     assert replacement.goto_calls == [
         (
             "https://es.indeed.com/jobs?q=IT+Support&start=10",
-            "domcontentloaded",
+            "commit",
             60_000,
         )
     ]
@@ -107,10 +108,42 @@ def test_navigate_search_page_reuses_open_cdp_page() -> None:
     assert open_page.goto_calls == [
         (
             "https://es.indeed.com/jobs?q=application+support",
-            "domcontentloaded",
+            "commit",
             60_000,
         )
     ]
+
+
+def test_indeed_verification_document_timeout_does_not_abort_capture() -> None:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    target = "https://es.indeed.com/jobs?q=application+support&l=Espa%C3%B1a"
+    page = _FakePage(url=target)
+    replacement = _FakePage()
+    context = _FakeContext(replacement)
+
+    def timed_out(url: str, *, wait_until: str, timeout: int) -> None:
+        page.goto_calls.append((url, wait_until, timeout))
+        raise PlaywrightTimeoutError("Cloudflare verification pending")
+
+    page.goto = timed_out  # type: ignore[method-assign]
+    selected = _navigate_search_page(context, page, target)  # type: ignore[arg-type]
+    assert selected is page
+    assert context.new_page_calls == 0
+
+
+def test_indeed_navigation_timeout_on_unrelated_page_fails_closed() -> None:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page = _FakePage(url="https://es.indeed.com/")
+    context = _FakeContext(_FakePage())
+
+    def timed_out(url: str, *, wait_until: str, timeout: int) -> None:
+        raise PlaywrightTimeoutError("Navigation never committed")
+
+    page.goto = timed_out  # type: ignore[method-assign]
+    with pytest.raises(PlaywrightTimeoutError):
+        _navigate_search_page(context, page, "https://es.indeed.com/jobs?q=application+support")  # type: ignore[arg-type]
 
 
 def test_page_search_url_advances_indeed_pagination() -> None:

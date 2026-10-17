@@ -56,18 +56,34 @@ def _navigate_search_page(
     page: Page,
     target_url: str,
 ) -> Page:
+    """Allow human verification to finish without treating a slow document as failure."""
     if page.is_closed():
         page = context.new_page()
 
+    def navigate(selected: Page) -> Page:
+        # Cloudflare may keep the document loading until the user verifies access.
+        # Wait only for navigation to commit; actual job listings are awaited
+        # separately, where the operator gets time to complete verification.
+        try:
+            selected.goto(target_url, wait_until="commit", timeout=60_000)
+        except playwright_sync_api.TimeoutError:
+            actual = urlparse(selected.url)
+            wanted = urlparse(target_url)
+            if (
+                actual.scheme != wanted.scheme
+                or actual.hostname != wanted.hostname
+                or actual.path != wanted.path
+                or dict(parse_qsl(actual.query)) != dict(parse_qsl(wanted.query))
+            ):
+                raise
+        return selected
+
     try:
-        page.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
-        return page
+        return navigate(page)
     except playwright_sync_api.Error as exc:
         if "closed" not in str(exc).casefold():
             raise
-        replacement = context.new_page()
-        replacement.goto(target_url, wait_until="domcontentloaded", timeout=60_000)
-        return replacement
+        return navigate(context.new_page())
 
 
 def _page_search_url(search_url: str, page_number: int) -> str:
@@ -86,7 +102,7 @@ def _wait_for_visible_results(
     page: Page,
     max_jobs: int,
     *,
-    timeout_ms: int = 180_000,
+    timeout_ms: int = 600_000,
     evidence_dir: Path | None = None,
     diagnostic_label: str = "indeed_wait",
 ) -> list[dict[str, str]]:
@@ -134,7 +150,8 @@ def _wait_for_visible_results(
             )
 
     raise RuntimeError(
-        "Timed out waiting for visible Indeed job results in the attached Chrome tab."
+        "Indeed did not show job results after the supervised verification window. "
+        "Complete verification manually in the isolated Chrome session and retry."
     )
 
 
