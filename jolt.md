@@ -1,5 +1,12 @@
 # JOLT — Operating Context
 
+## ACTIVE PRODUCT PRIORITY — 2026-10-17
+- Deliver usable job searches from LinkedIn, Indeed, InfoJobs and Jobgether **inside JOLT**, with captured job descriptions and truthful Review Inbox entries. This objective outranks test-harness refinements and incidental refactoring.
+- InfoJobs and Jobgether now have a development implementation connecting saved searches to existing supervised browser capture and provenance-checked Review Inbox import. **Not operationally accepted until latest branch/main CI and real Windows evidence.** Browser login/verification remains user-supervised; never bypass it.
+- Each source must run from the same Discovery queue. Treat the presence of source adapters, mocked tests, or a "Ready" badge as insufficient proof of real portal availability.
+- A source is complete only with a real portal capture, preserved job description/URL, review visibility, truthful failure reporting, no duplicate or overwritten decisions, green CI and merged changes.
+- Do not spend another operator iteration refining generic acceptance tooling unless it blocks one of these concrete portal outcomes.
+
 ## EXECUTION CONTRACT — 9/10 EFFICIENCY TARGET
 - Treat 9/10 as a measurable target, NOT an achieved score; assess over five successive accepted milestones. Never sacrifice source truthfulness, user data, or release safety to reduce turns.
 - One user request should drive one cohesive outcome: inspect current state, implement code/tests/UI/docs, validate, repair, merge if qualified, and record evidence without routine check-in requests.
