@@ -2,8 +2,8 @@
 
 ## SOURCE AUDIT REGISTER — 2026-10-17
 - Durable component-by-component static audit: `docs/audits/component-register.md`; reviewed components, precise source findings, live-vs-static limitations and planned batches in `docs/audits/batches/`.
-- Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **69 of 333 inventoried production components (20.72%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
-- Batches 01–09 documented in `docs/audits/batches/`; 264 pending production components; batch 01 concerns include blind duplicate description overwrite, InfoJobs retry starvation and Jobgether JSON-LD-only extraction. Read this register before modifications; never lose unfinished findings in a chat handover.
+- Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **76 of 333 inventoried production components (22.82%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
+- Batches 01–10 documented in `docs/audits/batches/`; 257 pending production components; batch 01 concerns include blind duplicate description overwrite, InfoJobs retry starvation and Jobgether JSON-LD-only extraction. Read this register before modifications; never lose unfinished findings in a chat handover.
 
 ## ACTIVE PRODUCT PRIORITY — 2026-10-17
 - Deliver usable job searches from LinkedIn, Indeed, InfoJobs and Jobgether **inside JOLT**, with captured job descriptions and truthful Review Inbox entries. This objective outranks test-harness refinements and incidental refactoring.
