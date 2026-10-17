@@ -44,7 +44,15 @@ def import_report(session, report: dict) -> dict[str, object]:
         .join(CaptureRun, CaptureRun.id == CaptureItem.capture_run_id)
         .where(CaptureRun.source == "infojobs", CaptureItem.source_job_id.in_(identities))
     ).all()
-    by_identity = {item.source_job_id: item for item in items}
+    by_identity: dict[str, CaptureItem] = {}
+    for item in items:
+        previous = by_identity.get(item.source_job_id)
+        if (
+            previous is None
+            or (staged["capture_run_id"] and item.capture_run_id == staged["capture_run_id"])
+            or (item.posting_id is not None and previous.posting_id is None)
+        ):
+            by_identity[item.source_job_id] = item
     if len(by_identity) != len(identities):
         raise ValueError("Not all InfoJobs capture items were staged")
 
