@@ -326,7 +326,7 @@ def run_infojobs_saved_search(
     if (
         parsed.scheme != "https"
         or parsed.hostname not in {"www.infojobs.net", "infojobs.net"}
-        or not parsed.path.startswith("/ofertas-trabajo/")
+        or (parsed.path.rstrip("/") != "/ofertas-trabajo" and not parsed.path.startswith("/ofertas-trabajo/"))
     ):
         raise ValueError("InfoJobs requires an HTTPS InfoJobs listing URL.")
 
