@@ -1,0 +1,7 @@
+# Batch 22 — LinkedIn profile scroll helper (1 component)
+
+Baseline main `3caefe090dfe4b71ebd8eab16a2f2811ad6b5cd7`. Full static file read and consumer-contract follow-up to live profile capture history.
+
+`backend/src/jolt/linkedin_profile_scroll.py` uses browser-evaluated JavaScript to find scrollable DOM containers. Reset chooses the visible scrollable candidate with the longest rendered text; subsequent advance independently rescans and chooses another candidate by the same ranking. **LS-01 Medium:** when lazy loading changes text lengths/DOM, the preferred container may change between reset and advance, making scroll progress metrics discontinuous or falsely concluding the scan reached the end. Validate against virtualized/nested LinkedIn layouts, pin intended element when safe, and preserve diagnostics. **LS-02 Low:** `overflowY` detection only accepts auto/scroll/overlay, so custom scroll surfaces can fall back to window. **LS-03 Positive:** advances by bounded viewport fraction rather than jumping to bottom, preserving intermediate lazy-load triggers; report includes before/after and end conditions. The wrappers normalize non-object evaluate outputs to an unknown strategy, but browser errors still propagate to the calling capture logic.
+
+No runtime test performed; do not confuse source coverage with production capture completeness. Coverage proposed **145/333 = 43.54%**, 188 pending.
