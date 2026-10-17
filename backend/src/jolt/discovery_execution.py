@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import sys
 import subprocess
 import threading
 import time
@@ -92,8 +93,8 @@ def create_discovery_execution(
     session: Session,
     request: DiscoveryExecutionCreateRequest,
 ) -> DiscoveryExecutionResponse:
-    if request.source != "indeed":
-        raise ValueError("This execution endpoint currently supports Indeed saved searches only.")
+    if request.source not in {"indeed", "infojobs"}:
+        raise ValueError("This execution endpoint supports Indeed and InfoJobs saved searches only.")
 
     search = session.get(DiscoverySavedSearch, request.saved_search_id)
     if search is None or search.source != request.source:
@@ -104,7 +105,7 @@ def create_discovery_execution(
     active = session.scalar(
         select(DiscoveryExecution.id)
         .where(
-            DiscoveryExecution.source == "indeed",
+            DiscoveryExecution.source == request.source,
             DiscoveryExecution.status.in_(
                 ("queued", "starting_chrome", "waiting_results", "capturing")
             ),
@@ -112,7 +113,7 @@ def create_discovery_execution(
         .limit(1)
     )
     if active is not None:
-        raise ValueError("Another Indeed discovery execution is already active.")
+        raise ValueError(f"Another {request.source} discovery execution is already active.")
 
     definition = json.loads(search.definition_json)
     max_pages = max(1, min(10, int(definition.get("max_pages", 3) or 3)))
@@ -298,6 +299,126 @@ def run_indeed_saved_search(
     return _capture_run_id(output_zip)
 
 
+
+def run_infojobs_saved_search(
+    search: DiscoverySavedSearch,
+    execution_id: str,
+    *,
+    phase_callback: Callable[[str, int | None, int | None], None] | None = None,
+) -> str | None:
+    """Run a bounded supervised InfoJobs listing through its existing evidence pipeline.
+
+    The operator can use the isolated Chrome window if InfoJobs needs authentication.
+    A blocked listing fails truthfully; no job is promoted without validated detail.
+    """
+    from urllib.parse import urlparse
+
+    definition = json.loads(search.definition_json)
+    search_url = str(definition.get("search_url", "") or "").strip()
+    parsed = urlparse(search_url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"www.infojobs.net", "infojobs.net"}
+        or not parsed.path.startswith("/ofertas-trabajo/")
+    ):
+        raise ValueError("InfoJobs requires an HTTPS InfoJobs listing URL.")
+
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    if shell is None:
+        raise RuntimeError("PowerShell is required to open the supervised InfoJobs browser.")
+
+    root = _repo_root()
+    evidence_dir = root / ".jolt" / "discovery-executions" / execution_id
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    capture_path = evidence_dir / "infojobs_observations.json"
+    import_path = evidence_dir / "infojobs_import.json"
+    max_jobs = min(5, max(1, search.max_jobs))
+
+    if phase_callback is not None:
+        phase_callback("starting_chrome", None, None)
+    launch = subprocess.run(
+        [
+            shell,
+            "-NoProfile",
+            "-File",
+            str(root / "tools" / "infojobs-browser.ps1"),
+            "-Mode",
+            "Open",
+            "-SearchUrl",
+            search_url,
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    if launch.returncode != 0:
+        raise RuntimeError(
+            "InfoJobs Chrome could not open: " + (launch.stderr or launch.stdout)[-1500:]
+        )
+
+    if phase_callback is not None:
+        phase_callback("waiting_results", None, None)
+    capture = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "jolt.infojobs_supervised_capture",
+            "--cdp-endpoint",
+            "http://127.0.0.1:9223",
+            "--search-url",
+            search_url,
+            "--limit",
+            str(max_jobs),
+            "--output",
+            str(capture_path),
+        ],
+        cwd=root / "backend",
+        capture_output=True,
+        text=True,
+        timeout=210,
+        check=False,
+    )
+    if capture.returncode != 0:
+        diagnostic = capture_path.read_text(encoding="utf-8") if capture_path.exists() else ""
+        raise RuntimeError(
+            "InfoJobs did not expose enough reliable job detail. "
+            "Check the isolated Chrome listing and try again. "
+            + (diagnostic or capture.stderr or capture.stdout)[-1800:]
+        )
+
+    if phase_callback is not None:
+        phase_callback("capturing", 1, max_jobs)
+    imported = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "jolt.infojobs_operational_run",
+            "--input",
+            str(capture_path),
+            "--commit",
+            "--output",
+            str(import_path),
+        ],
+        cwd=root / "backend",
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    if imported.returncode != 0 or not import_path.exists():
+        raise RuntimeError(
+            "InfoJobs evidence validation/import failed: "
+            + (imported.stderr or imported.stdout)[-1800:]
+        )
+    result = json.loads(import_path.read_text(encoding="utf-8"))
+    if result.get("review_inbox_verified", 0) < 1:
+        raise RuntimeError("InfoJobs did not produce any reviewable job opportunities.")
+    return result.get("capture_run_id")
+
+
+
 def execute_discovery_execution(
     session: Session,
     execution_id: str,
@@ -335,7 +456,9 @@ def execute_discovery_execution(
             current.captured_count = captured_count
         session.commit()
 
-    selected_runner = runner or run_indeed_saved_search
+    selected_runner = runner or (
+        run_infojobs_saved_search if execution.source == "infojobs" else run_indeed_saved_search
+    )
     try:
         if runner is None:
             capture_run_id = selected_runner(
