@@ -214,7 +214,10 @@ def test_current_filtered_search_page_route_is_recognized() -> None:
         "https://www.infojobs.net/ofertas-trabajo?"
         "keyword=Administrador%2Fa%20de%20sistemas&page=1&sortBy=RELEVANCE"
     )
-    assert _listing_identity(url) == ("/ofertas-trabajo", "keyword=Administrador%2Fa%20de%20sistemas&page=1&sortBy=RELEVANCE")
+    assert _listing_identity(url) == (
+        "/ofertas-trabajo",
+        "keyword=Administrador%2Fa%20de%20sistemas&page=1&sortBy=RELEVANCE",
+    )
     browser = Mock()
     browser.contexts = [Mock(pages=[Mock(url=url)])]
     assert select_infojobs_page(browser, url).url == url
