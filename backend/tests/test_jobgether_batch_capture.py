@@ -1,4 +1,6 @@
-from unittest.mock import Mock
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -142,9 +144,6 @@ def test_card_title_navigation_rejects_noncanonical_page() -> None:
 def test_cli_requires_real_extracted_description(
     monkeypatch, tmp_path, extracted: int, expected_exit: int
 ) -> None:
-    import sys
-    from pathlib import Path
-
     from jolt import jobgether_batch_capture as module
 
     target = tmp_path / "report.json"
@@ -158,8 +157,6 @@ def test_cli_requires_real_extracted_description(
     browser.contexts = [Mock(pages=[page])]
     playwright = Mock()
     playwright.chromium.connect_over_cdp.return_value = browser
-    from unittest.mock import MagicMock
-
     controller = MagicMock()
     controller.__enter__.return_value = playwright
     controller.__exit__.return_value = False
