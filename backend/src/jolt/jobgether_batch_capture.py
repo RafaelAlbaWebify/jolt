@@ -31,8 +31,8 @@ def discover_offer_urls(links: list[str], *, limit: int = 5) -> list[str]:
 
 def select_search_page(browser: Browser, search_url: str) -> Page | None:
     """Select the requested listing, never an unrelated Jobgether tab."""
-    for context in browser.contexts:
-        for page in context.pages:
+    for context in reversed(browser.contexts):
+        for page in reversed(context.pages):
             if page.url.split("?", 1)[0].rstrip("/") == search_url.split("?", 1)[0].rstrip("/"):
                 return page
     return None
