@@ -374,3 +374,36 @@ it("runs a saved Jobgether search from the unified queue", async () => {
   expect(await screen.findByText("Discovery completed in the requested order: 1 search.")).toBeInTheDocument();
   expect(requests).toEqual(["jobgether:create", "jobgether:complete"]);
 });
+
+
+it("creates preconfigured InfoJobs and Jobgether searches without typing portal URLs", async () => {
+  const created: Array<{ source: string; definition: { search_url: string } }> = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/api/discovery-sources")) {
+      return new Response(JSON.stringify([
+        ...sources,
+        { source: "infojobs", label: "InfoJobs", transport: "browser", saved_search_backend: "discovery", execution_available: true },
+        { source: "jobgether", label: "Jobgether", transport: "browser", saved_search_backend: "discovery", execution_available: true },
+      ]), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body));
+      created.push(body);
+      return new Response(JSON.stringify({ ...body, id: body.source, execution_available: true }), { status: 200 });
+    }
+    if (url.endsWith("/api/discovery-searches")) {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add InfoJobs starter search" }));
+  await waitFor(() => expect(created).toHaveLength(1));
+  fireEvent.click(screen.getByRole("button", { name: "Add Jobgether starter search" }));
+  await waitFor(() => expect(created).toHaveLength(2));
+  expect(created[0].definition.search_url).toBe("https://www.infojobs.net/ofertas-trabajo/soporte-informatico");
+  expect(created[1].definition.search_url).toBe("https://jobgether.com/talent/matches");
+  expect(created.every((item) => item.definition.search_url.startsWith("https://"))).toBe(true);
+});
+
