@@ -488,6 +488,8 @@ def run_jobgether_saved_search(
             search_url,
             "-MaxJobs",
             str(max_jobs),
+            "-DebugPort",
+            "9224",
             "-NoPrompt",
             "-SkipSync",
             "-OutputPath",
