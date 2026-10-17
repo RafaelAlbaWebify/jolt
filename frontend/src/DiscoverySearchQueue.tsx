@@ -66,7 +66,7 @@ function sourceLabel(source: DiscoverySourceId) {
 }
 
 function editorSupported(source: DiscoverySourceId) {
-  return true;
+  return source === "linkedin" || source === "indeed" || source === "infojobs" || source === "jobgether";
 }
 
 function responseError(response: Response, fallback: string) {
