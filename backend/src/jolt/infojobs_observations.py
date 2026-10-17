@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from jolt.capture_artifacts import stage_capture_artifact
 from jolt.database import CaptureItem, CapturePage, CaptureRun, create_session_factory, utc_now
-from jolt.infojobs_browser_probe import is_offer_url
+from jolt.infojobs_browser_probe import _listing_identity, is_offer_url
 
 _ID_RE = re.compile(r"/of-i([0-9a-f]{30})(?:/|$)", re.IGNORECASE)
 
@@ -74,7 +74,7 @@ def stage_report(session: Session, report: dict) -> dict[str, object]:
         report.get("source") != "infojobs"
         or report.get("mode") != "supervised_browser_evidence_read_only"
         or not isinstance(search_url, str)
-        or not search_url.startswith("https://www.infojobs.net/ofertas-trabajo/")
+        or _listing_identity(search_url) is None
         or not isinstance(offers, list)
         or not 1 <= len(offers) <= 5
     ):
