@@ -65,6 +65,11 @@ function sourceLabel(source: DiscoverySourceId) {
   }
 }
 
+const starterSearches: Partial<Record<DiscoverySourceId, { label: string; search_url: string }>> = {
+  infojobs: { label: "IT Support / Helpdesk — Spain", search_url: "https://www.infojobs.net/ofertas-trabajo/soporte-informatico" },
+  jobgether: { label: "Remote opportunities — Jobgether matches", search_url: "https://jobgether.com/talent/matches" },
+};
+
 function editorSupported(source: DiscoverySourceId) {
   return source === "linkedin" || source === "indeed" || source === "infojobs" || source === "jobgether";
 }
@@ -148,8 +153,8 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
     setDraft({
       id: null,
       source,
-      label: "",
-      search_url: "",
+      label: starterSearches[source]?.label ?? "",
+      search_url: starterSearches[source]?.search_url ?? "",
       notes: "",
       enabled: true,
       max_jobs: source === "infojobs" || source === "jobgether" ? 5 : source === "linkedin" ? 50 : 30,
@@ -224,6 +229,35 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
       setNotice("Saved search updated.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The saved search could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addStarterSearch(source: DiscoverySourceId) {
+    const starter = starterSearches[source];
+    if (!starter || searches.some((item) => item.source === source && item.definition.search_url === starter.search_url)) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`${apiBase}/api/discovery-searches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source,
+          label: starter.label,
+          definition: { search_url: starter.search_url, max_pages: 1 },
+          notes: "Starter search; portal access may require a supervised Chrome login.",
+          enabled: true,
+          max_jobs: 5,
+        }),
+      });
+      if (!response.ok) throw await responseError(response, `${sourceLabel(source)} starter search could not be saved.`);
+      await load();
+      setNotice(`${sourceLabel(source)} starter search saved. Select it to run discovery.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to add starter search.");
     } finally {
       setBusy(false);
     }
@@ -382,7 +416,7 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
                 disabled={Boolean(draft.id)}
                 onChange={(event) => {
                   const source = event.target.value as DiscoverySourceId;
-                  setDraft({ ...draft, source, max_jobs: source === "infojobs" || source === "jobgether" ? 5 : 30, max_pages: source === "infojobs" || source === "jobgether" ? 1 : 3 });
+                  setDraft({ ...draft, source, label: starterSearches[source]?.label ?? "", search_url: starterSearches[source]?.search_url ?? "", max_jobs: source === "infojobs" || source === "jobgether" ? 5 : 30, max_pages: source === "infojobs" || source === "jobgether" ? 1 : 3 });
                 }}
               >
                 {editorSources.map((source) => (
@@ -454,6 +488,17 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
           <button type="button" className="secondary" disabled={!filtered.length} onClick={() => setSelectedIds(filtered.map((item) => item.id))}>Select visible</button>
           <button type="button" className="secondary" disabled={!selectedIds.length} onClick={() => setSelectedIds([])}>Clear</button>
         </div>
+      </div>
+
+      <div className="button-row" aria-label="Starter portal searches">
+        {(["infojobs", "jobgether"] as const).filter((source) =>
+          !searches.some((item) => item.source === source && item.definition.search_url === starterSearches[source]?.search_url)
+        ).map((source) => (
+          <button key={source} type="button" className="secondary" disabled={busy}
+            onClick={() => void addStarterSearch(source)}>
+            Add {sourceLabel(source)} starter search
+          </button>
+        ))}
       </div>
 
       <div className="discovery-source-status-grid" aria-label="Discovery source status">
