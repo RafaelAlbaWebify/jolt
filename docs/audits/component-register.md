@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **157 / 333 = 47.15%** reviewed at source level. **176 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md).
+**Progress:** **164 / 333 = 49.25%** reviewed at source level. **169 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -125,18 +125,18 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 111 | `backend/src/jolt/professional_intelligence_bounded_capture.py` | PENDING |
 | 112 | `backend/src/jolt/professional_intelligence_capture_deletion.py` | AUDITED-ISSUES |
 | 113 | `backend/src/jolt/professional_intelligence_capture_plan.py` | AUDITED-ISSUES |
-| 114 | `backend/src/jolt/professional_intelligence_capture_runs.py` | PENDING |
-| 115 | `backend/src/jolt/professional_intelligence_evidence_contract.py` | PENDING |
-| 116 | `backend/src/jolt/professional_intelligence_evidence_review.py` | PENDING |
+| 114 | `backend/src/jolt/professional_intelligence_capture_runs.py` | AUDITED-ISSUES |
+| 115 | `backend/src/jolt/professional_intelligence_evidence_contract.py` | AUDITED-ISSUES |
+| 116 | `backend/src/jolt/professional_intelligence_evidence_review.py` | AUDITED-ISSUES |
 | 117 | `backend/src/jolt/professional_intelligence_evidence_root.py` | AUDITED-ISSUES |
-| 118 | `backend/src/jolt/professional_intelligence_opportunity_import.py` | PENDING |
+| 118 | `backend/src/jolt/professional_intelligence_opportunity_import.py` | AUDITED-ISSUES |
 | 119 | `backend/src/jolt/professional_intelligence_plan_api.py` | PENDING |
-| 120 | `backend/src/jolt/professional_intelligence_records.py` | PENDING |
-| 121 | `backend/src/jolt/professional_intelligence_registry.py` | PENDING |
+| 120 | `backend/src/jolt/professional_intelligence_records.py` | AUDITED-ISSUES |
+| 121 | `backend/src/jolt/professional_intelligence_registry.py` | AUDITED-ISSUES |
 | 122 | `backend/src/jolt/professional_intelligence_retention.py` | AUDITED-ISSUES |
 | 123 | `backend/src/jolt/professional_intelligence_routing_summary.py` | AUDITED-ISSUES |
 | 124 | `backend/src/jolt/professional_intelligence_sources.py` | AUDITED-ISSUES |
-| 125 | `backend/src/jolt/professional_intelligence_structured_extraction.py` | PENDING |
+| 125 | `backend/src/jolt/professional_intelligence_structured_extraction.py` | AUDITED-ISSUES |
 | 126 | `backend/src/jolt/professional_intelligence_supervised_capture.py` | PENDING |
 | 127 | `backend/src/jolt/professional_intelligence_supervised_runtime.py` | PENDING |
 | 128 | `backend/src/jolt/read_only_operator_acceptance.py` | PENDING |
