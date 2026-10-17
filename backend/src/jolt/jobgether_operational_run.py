@@ -24,8 +24,11 @@ def validated_offers(report: dict) -> list[dict]:
     offers = report.get("offers")
     if report.get("source") != "jobgether" or not isinstance(offers, list):
         raise ValueError("Expected supervised Jobgether evidence")
+    if not 1 <= len(offers) <= 5:
+        raise ValueError("Expected at most five supervised offers")
     accepted = []
-    for offer in offers[:5]:
+    seen: set[str] = set()
+    for offer in offers:
         if not isinstance(offer, dict):
             continue
         identifier = offer.get("source_job_id")
@@ -36,6 +39,7 @@ def validated_offers(report: dict) -> list[dict]:
             or not isinstance(identifier, str)
             or not isinstance(url, str)
             or jobgether_identity(url) != identifier
+            or identifier in seen
             or not isinstance(offer.get("title"), str)
             or not offer["title"].strip()
             or not isinstance(offer.get("company"), str)
@@ -44,6 +48,7 @@ def validated_offers(report: dict) -> list[dict]:
             or len(offer["description"].strip()) < 150
         ):
             continue
+        seen.add(identifier)
         accepted.append(offer)
     return accepted
 
@@ -59,7 +64,15 @@ def import_report(session, report: dict) -> dict:
         .join(CaptureRun, CaptureItem.capture_run_id == CaptureRun.id)
         .where(CaptureRun.source == "jobgether", CaptureItem.source_job_id.in_(identities))
     ).all()
-    by_identity = {item.source_job_id: item for item in items}
+    by_identity = {}
+    for item in items:
+        previous = by_identity.get(item.source_job_id)
+        if (
+            previous is None
+            or item.capture_run_id == staged["capture_run_id"]
+            or (item.posting_id and not previous.posting_id)
+        ):
+            by_identity[item.source_job_id] = item
     if any(identifier not in by_identity for identifier in identities):
         raise ValueError("Missing preserved Jobgether source evidence")
     imported = []
