@@ -1,5 +1,10 @@
 # JOLT — Operating Context
 
+## SOURCE AUDIT REGISTER — 2026-10-17
+- Durable component-by-component static audit: `docs/audits/component-register.md`; reviewed components, precise source findings, live-vs-static limitations and planned batches in `docs/audits/batches/`.
+- Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **7 of 333 inventoried production components (2.10%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
+- Batch 01: `docs/audits/batches/01-ingestion-and-provenance.md`; concerns include blind duplicate description overwrite, InfoJobs retry starvation and Jobgether JSON-LD-only extraction. Read this register before modifications; never lose unfinished findings in a chat handover.
+
 ## ACTIVE PRODUCT PRIORITY — 2026-10-17
 - Deliver usable job searches from LinkedIn, Indeed, InfoJobs and Jobgether **inside JOLT**, with captured job descriptions and truthful Review Inbox entries. This objective outranks test-harness refinements and incidental refactoring.
 - InfoJobs and Jobgether now have a development implementation connecting saved searches to existing supervised browser capture and provenance-checked Review Inbox import. **Not operationally accepted until latest branch/main CI and real Windows evidence.** Browser login/verification remains user-supervised; never bypass it.
