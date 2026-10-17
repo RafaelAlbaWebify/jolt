@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Progress:** **191 / 333 = 57.36%** reviewed at source level. **142 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md).
+**Progress:** **196 / 333 = 58.86%** reviewed at source level. **137 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md), [batch 33](./batches/33-runtime-tests-styles.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -180,8 +180,8 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 166 | `frontend/src/App.test.tsx` | PENDING |
 | 167 | `frontend/src/App.tsx` | AUDITED-ISSUES |
 | 168 | `frontend/src/ApplicationArchivedReadOnly.test.tsx` | PENDING |
-| 169 | `frontend/src/ApplicationCardSignals.test.tsx` | PENDING |
-| 170 | `frontend/src/ApplicationContacts.test.tsx` | PENDING |
+| 169 | `frontend/src/ApplicationCardSignals.test.tsx` | AUDITED-ISSUES |
+| 170 | `frontend/src/ApplicationContacts.test.tsx` | AUDITED-ISSUES |
 | 171 | `frontend/src/ApplicationContacts.tsx` | AUDITED-ISSUES |
 | 172 | `frontend/src/ApplicationDashboard.test.tsx` | PENDING |
 | 173 | `frontend/src/ApplicationDashboard.tsx` | AUDITED-ISSUES |
@@ -219,7 +219,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 205 | `frontend/src/JobPreferences.css` | AUDITED-NO-BLOCKER-FOUND |
 | 206 | `frontend/src/JobPreferences.test.tsx` | PENDING |
 | 207 | `frontend/src/JobPreferences.tsx` | AUDITED-ISSUES |
-| 208 | `frontend/src/LinkedInAIAnalysisStatus.test.tsx` | PENDING |
+| 208 | `frontend/src/LinkedInAIAnalysisStatus.test.tsx` | AUDITED-ISSUES |
 | 209 | `frontend/src/LinkedInAIAnalysisStatus.tsx` | AUDITED-ISSUES |
 | 210 | `frontend/src/LinkedInCommandCenter.css` | PENDING |
 | 211 | `frontend/src/LinkedInCommandCenter.test.tsx` | PENDING |
@@ -245,7 +245,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 231 | `frontend/src/ProfessionalEvidenceRoot.test.tsx` | AUDITED-ISSUES |
 | 232 | `frontend/src/ProfessionalEvidenceRoot.tsx` | AUDITED-ISSUES |
 | 233 | `frontend/src/ProfessionalExecutionReadiness.tsx` | AUDITED-ISSUES |
-| 234 | `frontend/src/ProfessionalIntelligence.css` | PENDING |
+| 234 | `frontend/src/ProfessionalIntelligence.css` | AUDITED-ISSUES |
 | 235 | `frontend/src/ProfessionalIntelligence.test.tsx` | AUDITED-ISSUES |
 | 236 | `frontend/src/ProfessionalIntelligence.tsx` | AUDITED-ISSUES |
 | 237 | `frontend/src/ProfessionalSourceEditor.tsx` | AUDITED-ISSUES |
@@ -257,7 +257,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 243 | `frontend/src/ReleaseBlockingUx.css` | PENDING |
 | 244 | `frontend/src/ReviewedDecisions.tsx` | AUDITED-ISSUES |
 | 245 | `frontend/src/RuntimeIdentity.css` | PENDING |
-| 246 | `frontend/src/RuntimeIdentity.test.tsx` | PENDING |
+| 246 | `frontend/src/RuntimeIdentity.test.tsx` | AUDITED-ISSUES |
 | 247 | `frontend/src/RuntimeIdentity.tsx` | AUDITED-ISSUES |
 | 248 | `frontend/src/Workbench.css` | PENDING |
 | 249 | `frontend/src/Workbench.test.tsx` | PENDING |
