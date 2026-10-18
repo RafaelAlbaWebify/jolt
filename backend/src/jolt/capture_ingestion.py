@@ -56,7 +56,9 @@ def ingest_capture_item(
         # An incomplete later observation must never destroy verified prior detail.
         new_description = parsed.description.strip()
         old_description = (duplicate.description or "").strip()
-        if new_description and len(new_description) >= len(old_description):
+        if request.source_type != "indeed_live" or (
+            new_description and len(new_description) >= len(old_description)
+        ):
             duplicate.description = parsed.description
 
         profile = ensure_default_profile(session)
