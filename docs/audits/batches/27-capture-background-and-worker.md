@@ -1,0 +1,13 @@
+# Batch 27 — Professional capture API, worker and compatibility entrypoint (3 components)
+
+**Baseline:** main `a1481ee131f6305d20dd8ebf4a547a7904cdc906`. Full module reads for the three named files. Static observations, not Windows operator acceptance.
+
+| Module | Source findings |
+|---|---|
+| `backend/src/jolt/professional_intelligence_plan_api.py` | **PI-27 High concurrency risk:** POST `capture-runs/{run_id}/start` checks `run.status == "authorized"` but only enqueues `BackgroundTasks` and returns a locally patched response showing `running`; this handler does not persist a queued/running claim before return. Two near-simultaneous requests may both enqueue work. Test concurrent start requests and validate atomic claim in execution service. **PI-28 Medium:** exception handler in `_run_professional_capture_background` rolls back and commits terminal `failed`, but its own DB failure could escape; ensure recoverable terminal state after crash. **Positive:** rich explicit API validation, authorization, cancellation, read-only evidence endpoints, and manual deletion confirmation. |
+| `backend/src/jolt/professional_intelligence_bounded_capture.py` | **PI-29 Medium evidence accuracy:** `_bounded_items` hides DOM cards beyond the limit with `style.display = 'none'` to bound screenshot/text, then retains a persistent Chromium context. Since page is closed only indirectly and captured DOM is modified, confirm scope stays per-page and diagnostics distinguish hidden/excluded cards from absent jobs. **PI-30 Medium:** `_capture_with_context` scrolls `window` based on body height; nested scroll containers may be missed, despite bounded item count. **PI-31 Medium privacy/retention:** persistent Chromium user data directory lives under current working directory; `_browser_profile_dir` does not implement profile retention controls. Confirm authorized reuse, cleanup and avoidance of secrets in exported artifacts. **Positive:** dedicated single-thread Playwright worker and owner diagnostics, login/checkpoint detection, bounded options, human-visible browser. |
+| `backend/src/jolt/professional_intelligence_supervised_runtime.py` | **No blocker found in this compatibility shim.** Reexports the bounded capture entrypoint and session class; remaining risks reside in the imported implementations. |
+
+Suggested tests: concurrency of two starts for one authorized run; browser session restart/profile cleanup; nested scroll source; failure when background terminal-status commit errors. No live browser/data changes.
+
+**Coverage:** 167/333 = 50.15%, 166 pending. Source-audited only, no operability assertion.
