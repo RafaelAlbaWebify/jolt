@@ -145,7 +145,7 @@ def sample_references(connection: sqlite3.Connection, fk: dict[str, Any], limit:
 
 
 def audit_database(db_path: Path, sample_limit: int) -> dict[str, Any]:
-    connection = sqlite3.connect(str(db_path))
+    connection = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
         tables = table_names(connection)
