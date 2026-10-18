@@ -203,7 +203,7 @@ function inboxFilterMatches(opportunity: OpportunityIndex, filter: InboxFilter) 
   if (filter === "priority") return opportunity.decision === "strong_pursue";
   if (filter === "pursue") return opportunity.decision === "pursue";
   if (filter === "hold") return opportunity.decision === "conditional";
-  return opportunity.decision === "reject" || hardlineStopped(opportunity);
+  return opportunity.decision === "reject";
 }
 
 function reviewNotice(decision: ReviewChoice, title: string) {
@@ -913,7 +913,7 @@ export function App({
                       </button>
                       <div className="review-inbox-card-score">
                         <strong>{hardlineStopped(opportunity) ? hardlineIcon(opportunity) : opportunity.priority_score ?? "—"}</strong>
-                        <span>{hardlineStopped(opportunity) ? "Check" : opportunity.ai_review_status === "reviewed" ? aiDecisionLabel(opportunity) : "Pending"}</span>
+                        <span>{opportunity.ai_review_status === "reviewed" ? aiDecisionLabel(opportunity) : "Pending"}</span>
                       </div>
                       <div className="review-inbox-card-ai">
                         <strong>{opportunity.ai_review_status === "reviewed" ? "AI reviewed" : "Needs AI review"}</strong>
@@ -974,7 +974,7 @@ export function App({
                     </div>
                     <div className="review-preview-score">
                       <strong>{hardlineStopped(previewOpportunity) ? hardlineIcon(previewOpportunity) : previewOpportunity.priority_score ?? "—"}</strong>
-                      <span>{hardlineStopped(previewOpportunity) ? hardlineLabel(previewOpportunity) : previewOpportunity.ai_review_status === "reviewed" ? aiDecisionLabel(previewOpportunity) : "Pending"}</span>
+                      <span>{previewOpportunity.ai_review_status === "reviewed" ? aiDecisionLabel(previewOpportunity) : "Pending"}</span>
                     </div>
                   </header>
 
@@ -1008,7 +1008,7 @@ export function App({
 
                           <div className="review-preview-evidence-grid">
                             <section className="review-preview-signal-card">
-                              <h4>Why it looks promising</h4>
+                              <h4>{previewOpportunity.decision === "reject" ? "Why this role was rejected" : previewOpportunity.decision === "conditional" ? "Why it needs review" : "Why it looks promising"}</h4>
                               {previewOpportunity.reasons.length ? (
                                 <ul>{previewOpportunity.reasons.slice(0, 4).map((reason) => <li key={reason}>{reason}</li>)}</ul>
                               ) : (
