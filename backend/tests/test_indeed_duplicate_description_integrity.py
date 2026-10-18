@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from jolt.database import Posting, create_session_factory
+from jolt.discovery_execution import (
+    DiscoveryExecutionCreateRequest,
+    create_discovery_execution,
+    execute_discovery_execution,
+    get_discovery_execution,
+    recover_interrupted_discovery_executions,
+)
+from jolt.discovery_searches import DiscoverySavedSearchRequest, create_discovery_search
 from jolt.main import create_app
 
 
@@ -140,3 +149,52 @@ def test_indeed_capture_ai_review_round_trip_survives_restart(tmp_path: Path) ->
     )
     assert reviewed["ai_review_status"] == "reviewed"
     assert reviewed["decision"] == "reject"
+
+
+def test_indeed_discovery_failure_and_restart_recovery_are_truthful(tmp_path: Path) -> None:
+    url = f"sqlite:///{(tmp_path / 'indeed-execution.db').as_posix()}"
+    factory = create_session_factory(url)
+    with factory() as session:
+        search = create_discovery_search(
+            session,
+            DiscoverySavedSearchRequest(
+                source="indeed",
+                label="Indeed acceptance fixture",
+                definition={"search_url": "https://es.indeed.com/jobs?q=support"},
+                enabled=True,
+                max_jobs=5,
+            ),
+        )
+        execution = create_discovery_execution(
+            session,
+            DiscoveryExecutionCreateRequest(
+                source="indeed",
+                saved_search_id=search.id,
+            ),
+        )
+
+        def fail_capture(_search: object, _execution_id: str) -> str:
+            raise RuntimeError("Simulated Indeed portal block")
+
+        with pytest.raises(RuntimeError, match="Simulated Indeed portal block"):
+            execute_discovery_execution(session, execution.id, runner=fail_capture)
+
+        failed = get_discovery_execution(session, execution.id)
+        assert failed.status == "failed"
+        assert "Simulated Indeed portal block" in failed.error
+
+        interrupted = create_discovery_execution(
+            session,
+            DiscoveryExecutionCreateRequest(
+                source="indeed",
+                saved_search_id=search.id,
+            ),
+        )
+        assert interrupted.status == "queued"
+
+    with factory() as restarted:
+        assert recover_interrupted_discovery_executions(restarted) == 1
+        assert get_discovery_execution(restarted, execution.id).status == "failed"
+        recovered = get_discovery_execution(restarted, interrupted.id)
+        assert recovered.status == "failed"
+        assert "interrupted" in recovered.error.lower()
