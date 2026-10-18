@@ -2,8 +2,11 @@
 
 ## SOURCE AUDIT REGISTER — 2026-10-17
 - Durable component-by-component static audit: `docs/audits/component-register.md`; reviewed components, precise source findings, live-vs-static limitations and planned batches in `docs/audits/batches/`.
-- Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **219 of 300 non-test register entries (73.00%; source-depth verification pending); 231 of 333 total register entries (69.37%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
-- Batches 01–41 documented in `docs/audits/batches/`; 102 pending register entries; batch 01 concerns include blind duplicate description overwrite, InfoJobs retry starvation and Jobgether JSON-LD-only extraction. Read this register before modifications; never lose unfinished findings in a chat handover.
+- Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **232 of 300 non-test register entries (77.33%; source-depth verification pending); 244 of 333 total register entries (73.27%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
+- Batches 01–44 documented in `docs/audits/batches/`; 89 pending register entries; batch 01 concerns include blind duplicate description overwrite, InfoJobs retry starvation and Jobgether JSON-LD-only extraction. Read this register before modifications; never lose unfinished findings in a chat handover.
+
+## OUTCOME-BASED PRODUCT PRIORITY — 2026-10-18
+- The active evidence-based improvement scorecard is `docs/OUTCOME_BASELINE.md`. Sequential file review percentages are historical and are no longer a product goal. Prioritize operational safety, measured daily job-search outcomes and tested simplification. Do not claim real-portal success from CI.
 
 ## ACTIVE PRODUCT PRIORITY — 2026-10-17
 - Deliver usable job searches from LinkedIn, Indeed, InfoJobs and Jobgether **inside JOLT**, with captured job descriptions and truthful Review Inbox entries. This objective outranks test-harness refinements and incidental refactoring.
