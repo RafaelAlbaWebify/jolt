@@ -50,6 +50,16 @@ def test_indeed_duplicate_does_not_replace_full_description_with_shorter_capture
         assert len(postings) == 1
         assert postings[0].description == full
 
+    exchange = client.get("/api/ai-work-package/export")
+    assert exchange.status_code == 200
+    review_inbox = exchange.json()["review_inbox"]
+    assert review_inbox is not None
+    assert any(
+        job["posting_id"] == first_item["posting_id"]
+        and full in job["analysis_text"]
+        for job in review_inbox["jobs"]
+    )
+
     restarted = TestClient(create_app(url))
     assert restarted.get("/api/opportunities").status_code == 200
     with create_session_factory(url)() as session:
