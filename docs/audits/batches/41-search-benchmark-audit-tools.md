@@ -11,4 +11,4 @@ Full-file source inspection against main `21461c90f057a8312e1250735c25888278a161
 
 **Architecture notes:** multiple tools separately decode captures, SQLite review state, timestamps and report JSON; actual helper extraction requires consumer compatibility tests. No proven safe deletions.
 
-**Count:** +4 unique non-test files; 219/300 (73.00%) marked reviewed, 81 pending; 231/333 (69.37%) total including 12 frontend tests, 102 pending. These tags remain source review coverage, not runtime certification.
+**Count:** +4 unique non-test files; 215/300 (71.67%) marked reviewed on this branch, 85 pending; 227/333 (68.17%) total including 12 frontend tests, 106 pending. Batch 40 separately proposes four further unique files, making 219/300 across both open PRs if both merge. These tags remain source review coverage, not runtime certification.
