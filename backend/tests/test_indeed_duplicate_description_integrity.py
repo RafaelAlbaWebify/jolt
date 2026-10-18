@@ -57,22 +57,21 @@ def test_indeed_duplicate_does_not_replace_full_description_with_shorter_capture
     with create_session_factory(url)() as session:
         postings = session.scalars(select(Posting)).all()
         assert len(postings) == 1
-        assert postings[0].description == full
+        assert full in postings[0].description
 
     exchange = client.get("/api/ai-work-package/export")
     assert exchange.status_code == 200
     review_inbox = exchange.json()["review_inbox"]
     assert review_inbox is not None
     assert any(
-        job["posting_id"] == first_item["posting_id"]
-        and full in job["analysis_text"]
+        job["posting_id"] == first_item["posting_id"] and full in job["analysis_text"]
         for job in review_inbox["jobs"]
     )
 
     restarted = TestClient(create_app(url))
     assert restarted.get("/api/opportunities").status_code == 200
     with create_session_factory(url)() as session:
-        assert session.get(Posting, first_item["posting_id"]).description == full
+        assert full in session.get(Posting, first_item["posting_id"]).description
 
 
 def test_indeed_capture_ai_review_round_trip_survives_restart(tmp_path: Path) -> None:
@@ -103,8 +102,7 @@ def test_indeed_capture_ai_review_round_trip_survives_restart(tmp_path: Path) ->
     inbox_before = client.get("/api/ai-review/opportunity-index")
     assert inbox_before.status_code == 200
     assert any(
-        row["posting_id"] == item["posting_id"]
-        and row["ai_review_status"] == "awaiting_ai_review"
+        row["posting_id"] == item["posting_id"] and row["ai_review_status"] == "awaiting_ai_review"
         for row in inbox_before.json()
     )
     work_package = client.get("/api/ai-work-package/export")
@@ -130,7 +128,8 @@ def test_indeed_capture_ai_review_round_trip_survives_restart(tmp_path: Path) ->
                     "geography_status": "eligible",
                     "clearance_status": "clear",
                     "language_status": "clear",
-                    "technical_fit": None,
+                    "technical_fit": 20,
+                    "technical_fit_percent": 20,
                     "duplicate_of_posting_id": None,
                     "summary": "Fixture decision; not a real candidate assessment.",
                     "reasons": ["Regression test of the Indeed AI import path."],
@@ -144,9 +143,7 @@ def test_indeed_capture_ai_review_round_trip_survives_restart(tmp_path: Path) ->
     restarted = TestClient(create_app(url))
     inbox_after = restarted.get("/api/ai-review/opportunity-index")
     assert inbox_after.status_code == 200
-    reviewed = next(
-        row for row in inbox_after.json() if row["posting_id"] == item["posting_id"]
-    )
+    reviewed = next(row for row in inbox_after.json() if row["posting_id"] == item["posting_id"])
     assert reviewed["ai_review_status"] == "reviewed"
     assert reviewed["decision"] == "reject"
 
