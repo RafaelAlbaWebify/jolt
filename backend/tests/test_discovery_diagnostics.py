@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "diagnose_discovery_pipeline.py"
 spec = importlib.util.spec_from_file_location("discovery_diagnosis", SCRIPT)
