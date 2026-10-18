@@ -16,6 +16,7 @@ New-Item -ItemType Directory -Force -Path $Out | Out-Null
 Push-Location (Join-Path $Repo "backend")
 try {
     uv run python ../tools/jolt-live-ui-playwright-audit.py --output-dir $Out
+    if ($LASTEXITCODE -ne 0) { throw "JOLT live UI audit failed (exit $LASTEXITCODE). Evidence directory: $Out" }
 }
 finally {
     Pop-Location
