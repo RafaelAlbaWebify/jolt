@@ -53,7 +53,13 @@ def ingest_capture_item(
         duplicate.title = parsed.title
         duplicate.company = parsed.company
         duplicate.location = parsed.location
-        duplicate.description = parsed.description
+        # An incomplete later observation must never destroy verified prior detail.
+        new_description = parsed.description.strip()
+        old_description = (duplicate.description or "").strip()
+        if request.source_type != "indeed_live" or (
+            new_description and len(new_description) >= len(old_description)
+        ):
+            duplicate.description = parsed.description
 
         profile = ensure_default_profile(session)
         recommendation, confidence, score, reasons = evaluate_text(parsed.description)
