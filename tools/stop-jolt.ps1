@@ -26,7 +26,7 @@ function Stop-RecordedProcess {
     # checking its command line AND that it belongs to this JOLT checkout.
     $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
     if ($null -eq $processInfo) {
-        Write-Warning "Skipping $DisplayName PID $processId: process identity unavailable."
+        Write-Warning "Skipping $DisplayName PID ${processId}: process identity unavailable."
         return
     }
     $commandLine = [string]$processInfo.CommandLine
@@ -37,7 +37,7 @@ function Stop-RecordedProcess {
         $commandLine -match 'vite|npm|node'
     }
     if (-not ($isRepoProcess -and $isExpectedRole)) {
-        Write-Warning "Skipping $DisplayName PID $processId: command line does not match this JOLT checkout."
+        Write-Warning "Skipping $DisplayName PID ${processId}: command line does not match this JOLT checkout."
         return
     }
     Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
