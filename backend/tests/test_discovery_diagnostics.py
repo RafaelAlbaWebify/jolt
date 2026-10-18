@@ -1,4 +1,5 @@
 """Contract tests for the read-only discovery architecture diagnosis."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -22,7 +23,8 @@ def test_portal_import_path_and_readonly_report(tmp_path: Path) -> None:
     backend.mkdir(parents=True)
     (backend / "linkedin_capture.py").write_text(
         "from jolt.capture_ingestion import ingest_capture_item\n"
-        "def get_description():\n    return 'description'\n", encoding="utf-8"
+        "def get_description():\n    return 'description'\n",
+        encoding="utf-8",
     )
     (backend / "capture_ingestion.py").write_text(
         "def ingest_capture_item():\n    return None\n", encoding="utf-8"
