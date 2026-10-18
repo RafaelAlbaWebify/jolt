@@ -59,9 +59,13 @@ function Stop-JoltListener {
         }
 
         $commandLine = [string]$processInfo.CommandLine
-        $isJolt = $commandLine -match [regex]::Escape($RepoRoot) -or
-            ($Port -eq 8000 -and $commandLine -match "uvicorn.+jolt\.main:app") -or
-            ($Port -eq 5173 -and $commandLine -match "vite.+127\.0\.0\.1")
+        $matchesCheckout = $commandLine.IndexOf($RepoRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        $matchesService = if ($Port -eq 8000) {
+            $commandLine -match 'uvicorn|jolt\.main:app|uv'
+        } else {
+            $commandLine -match 'vite|npm|node'
+        }
+        $isJolt = $matchesCheckout -and $matchesService
 
         if ($isJolt) {
             Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
