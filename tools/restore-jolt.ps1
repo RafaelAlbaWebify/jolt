@@ -23,7 +23,10 @@ if (Test-Path -LiteralPath $TargetPath) {
 Push-Location $BackendRoot
 try {
     uv run python -m jolt.backup verify --backup $BackupPath | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "JOLT backup verification failed (exit $LASTEXITCODE): $BackupPath" }
+
     uv run python -m jolt.backup restore --backup $BackupPath --target $TargetPath
+    if ($LASTEXITCODE -ne 0) { throw "JOLT restore failed (exit $LASTEXITCODE): $TargetPath" }
 }
 finally {
     Pop-Location
