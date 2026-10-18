@@ -203,7 +203,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 189 | `frontend/src/ApplicationWorkflow.test.tsx` | PENDING |
 | 190 | `frontend/src/ApplicationWorkflow.tsx` | AUDITED-ISSUES |
 | 191 | `frontend/src/ApplicationWorkspace.css` | PENDING |
-| 192 | `frontend/src/AutomatedReview.tsx` | PENDING |
+| 192 | `frontend/src/AutomatedReview.tsx` | AUDITED-ISSUES |
 | 193 | `frontend/src/CaptureHistory.test.tsx` | PENDING |
 | 194 | `frontend/src/CaptureHistory.tsx` | AUDITED-ISSUES |
 | 195 | `frontend/src/CompactInspectorOverrides.css` | PENDING |
@@ -221,7 +221,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 207 | `frontend/src/JobPreferences.tsx` | AUDITED-ISSUES |
 | 208 | `frontend/src/LinkedInAIAnalysisStatus.test.tsx` | AUDITED-ISSUES |
 | 209 | `frontend/src/LinkedInAIAnalysisStatus.tsx` | AUDITED-ISSUES |
-| 210 | `frontend/src/LinkedInCommandCenter.css` | PENDING |
+| 210 | `frontend/src/LinkedInCommandCenter.css` | AUDITED-ISSUES |
 | 211 | `frontend/src/LinkedInCommandCenter.test.tsx` | PENDING |
 | 212 | `frontend/src/LinkedInCommandCenter.tsx` | AUDITED-ISSUES |
 | 213 | `frontend/src/LinkedInJobCaptureLauncher.test.tsx` | PENDING |
@@ -229,7 +229,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 215 | `frontend/src/LinkedInSearchPortfolio.css` | AUDITED-ISSUES |
 | 216 | `frontend/src/LinkedInSearchPortfolio.test.tsx` | PENDING |
 | 217 | `frontend/src/LinkedInSearchPortfolio.tsx` | AUDITED-ISSUES |
-| 218 | `frontend/src/MarketIntelligence.css` | PENDING |
+| 218 | `frontend/src/MarketIntelligence.css` | AUDITED-ISSUES |
 | 219 | `frontend/src/MarketIntelligence.test.tsx` | PENDING |
 | 220 | `frontend/src/MarketIntelligence.tsx` | AUDITED-ISSUES |
 | 221 | `frontend/src/OpportunityApplicationHandoff.css` | AUDITED-ISSUES |
