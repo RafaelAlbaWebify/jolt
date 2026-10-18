@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Reconciled counts from the 333 register rows (2026-10-18):** 33 frontend `.test.tsx` entries, 12 marked reviewed; 300 non-test entries, 205 marked reviewed (**68.33% of this register's non-test entries**). The legacy all-row metric is 217/333 (65.17%). This categorization excludes named `.test.tsx` entries only; it is not a fresh Git tree inventory or assurance of audit depth. Tests are supporting evidence and should not inflate production audit coverage. Reconcile the tree inventory and revalidate prior caller/test depth before claiming a strict production-code audit.\n\n**Progress:** **217 / 333 = 65.17%** reviewed at source level. **116 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md), [batch 33](./batches/33-runtime-tests-styles.md), [batch 34](./batches/34-runtime-and-readiness-ui.md), [batch 35](./batches/35-compact-frontend-styles.md), [batch 36](./batches/36-css-layering-overlaps.md), [batch 37](./batches/37-automated-review-market-styling.md), [batch 38](./batches/38-developer-tools-context.md).
+**Reconciled counts from the 333 register rows (2026-10-18):** 33 frontend `.test.tsx` entries, 12 marked reviewed; 300 non-test entries, 211 marked reviewed (**70.33% of this register's non-test entries**). The legacy all-row metric is 223/333 (66.97%). This categorization excludes named `.test.tsx` entries only; it is not a fresh Git tree inventory or assurance of audit depth. Tests are supporting evidence and should not inflate production audit coverage. Reconcile the tree inventory and revalidate prior caller/test depth before claiming a strict production-code audit.\n\n**Progress:** **223 / 333 = 66.97%** reviewed at source level. **110 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md), [batch 33](./batches/33-runtime-tests-styles.md), [batch 34](./batches/34-runtime-and-readiness-ui.md), [batch 35](./batches/35-compact-frontend-styles.md), [batch 36](./batches/36-css-layering-overlaps.md), [batch 37](./batches/37-automated-review-market-styling.md), [batch 38](./batches/38-developer-tools-context.md), [batch 39](./batches/39-windows-runtime-lifecycle.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -279,12 +279,12 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 265 | `tools/audit-historical-hardlines.py` | PENDING |
 | 266 | `tools/audit-indeed-persistence.py` | PENDING |
 | 267 | `tools/audit-jolt-sensitive-data.ps1` | PENDING |
-| 268 | `tools/audit-jolt.ps1` | PENDING |
+| 268 | `tools/audit-jolt.ps1` | AUDITED-ISSUES |
 | 269 | `tools/audit-language-hardlines.py` | PENDING |
 | 270 | `tools/audit-opportunity-experience.ps1` | PENDING |
 | 271 | `tools/audit-remote-source-verification.py` | PENDING |
 | 272 | `tools/audit-workspace-navigation.ps1` | PENDING |
-| 273 | `tools/backup-jolt.ps1` | PENDING |
+| 273 | `tools/backup-jolt.ps1` | AUDITED-ISSUES |
 | 274 | `tools/build-jolt-release.py` | PENDING |
 | 275 | `tools/build_ai_context.py` | AUDITED-ISSUES |
 | 276 | `tools/calibrate-jolt.ps1` | PENDING |
@@ -305,7 +305,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 291 | `tools/jolt-full-cycle-playwright-certification-runner.py` | PENDING |
 | 292 | `tools/jolt-full-cycle-playwright-certification-settled.py` | PENDING |
 | 293 | `tools/jolt-full-cycle-playwright-certification.py` | PENDING |
-| 294 | `tools/jolt-launcher-status.ps1` | PENDING |
+| 294 | `tools/jolt-launcher-status.ps1` | AUDITED-ISSUES |
 | 295 | `tools/jolt-linkedin-user-present-capture.py` | PENDING |
 | 296 | `tools/jolt-live-ui-playwright-audit.py` | PENDING |
 | 297 | `tools/jolt-real-prospect-acceptance.py` | PENDING |
@@ -340,8 +340,8 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 326 | `tools/run-linkedin-search-experiment-v3.ps1` | PENDING |
 | 327 | `tools/run-linkedin-search-experiment.ps1` | PENDING |
 | 328 | `tools/run-professional-lifecycle-certification.ps1` | PENDING |
-| 329 | `tools/start-jolt.ps1` | PENDING |
-| 330 | `tools/stop-jolt.ps1` | PENDING |
+| 329 | `tools/start-jolt.ps1` | AUDITED-ISSUES |
+| 330 | `tools/stop-jolt.ps1` | AUDITED-ISSUES |
 | 331 | `tools/test_ai_workflow.py` | PENDING |
-| 332 | `tools/validate-jolt.ps1` | PENDING |
+| 332 | `tools/validate-jolt.ps1` | AUDITED-ISSUES |
 | 333 | `tools/validate-windows-launchers.ps1` | PENDING |

@@ -1,0 +1,16 @@
+# Batch 39 — Backup, runtime lifecycle and audit packaging (6 scripts)
+
+Read full content of six source files from main commit `38b60ecde663ce95ebc3f2d748fd4725c22b60e3`. Findings are static source risks, not reproduced Windows failures.
+
+| Source | Source-level observations |
+|---|---|
+| `tools/backup-jolt.ps1` | **TOOL-08 High:** executes `uv run python -m jolt.backup create` then `verify` without checking `$LASTEXITCODE`. Native nonzero exit does not reliably throw under the script's `$ErrorActionPreference = 'Stop'`; it may print `Verified JOLT backup` even after failure. Add explicit status checks and a test of failure handling. |
+| `tools/audit-jolt.ps1` | **TOOL-09 Medium:** gathers diagnostics, Playwright screenshots, an independently verified SQLite snapshot hash and a ZIP. Copies `.jolt/logs` to archive, while provenance declares `absolute_user_paths_included = false` and README says no absolute user paths; logs may contain user paths or sensitive data. Validate/sanitize ZIP recursively before sharing. Summary intentionally states DB contents not included; snapshot ZIP is temporary, not bundled. |
+| `tools/validate-jolt.ps1` | **TOOL-10 Medium:** captures full command outputs, process command lines and log directory to archive, with privacy warning. This may reveal tokens or user paths; prevent unconditional sharing. SQLite snapshot hashed and removed, positive. **TOOL-11 Low:** validation ZIP is created even when health endpoints are unreachable and migration is not at head; package creation must not be confused with PASS. |
+| `tools/start-jolt.ps1` | **TOOL-12 Medium:** starts after verifying supported runtime, backup-before-migration, exact Git-loaded backend identity, and route list. However kills recorded processes through `stop-jolt.ps1` before startup; if service PID has been reused, unvalidated recorded PID can refer to unrelated application (see TOOL-13). Dependencies are freshly synced and npm CI invoked each launch; measurable startup cost, no savings estimate. |
+| `tools/stop-jolt.ps1` | **TOOL-13 High:** `Stop-RecordedProcess` kills the recorded PID if it exists without verifying owner/process command line. Stale `services.json` with reused PID could terminate a non-JOLT process. Port-owner termination has a command-line heuristic, but fallback patterns `uvicorn.+jolt.main:app` and `vite.+127.0.0.1` may match another checkout. Add process identity validation and narrowly scoped tests. |
+| `tools/jolt-launcher-status.ps1` | **TOOL-14 Low:** diagnostics print full process command line and detailed connectivity errors to console (not persistent archive). Could disclose environment secrets if command arguments contain them; restrict export/logging. Correctly separates HTTP success and port listening status. |
+
+**Architecture simplification evidence:** startup / stop / audit / validation duplicate HTTP endpoint and Git/process inspection; these are distinct operational contracts. Extract shared runtime inspection helpers only after tracing invocation and consumer requirements. Zero demonstrated lines safe to remove.
+
+**Proposed register:** 211/300 non-test entries (70.33%), 89 pending; 223/333 all-row entries (66.97%), 110 pending. A reviewed status records source inspection, not validated audit depth, runtime execution or remediation.
