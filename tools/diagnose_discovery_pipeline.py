@@ -20,11 +20,11 @@ STAGES = {
     "review": ("review", "opportunity_index", "evaluation", "readiness"),
 }
 RISK_TERMS = {
-    "description": r"\\bdescription\\b",
+    "description": r"\bdescription\b",
     "source_identity": r"source_job_id|canonical_url|source_url",
     "provenance": r"provenance|source_document|capture_artifact",
     "retry": r"retry|backoff|attempts?",
-    "persistence": r"session\\.(?:add|commit|flush)|sqlite|ingest_capture",
+    "persistence": r"session\.(?:add|commit|flush)|sqlite|ingest_capture",
 }
 
 
@@ -33,7 +33,7 @@ def tracked(root: Path) -> list[str]:
         ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
     )
     return sorted(
-        p.decode("utf-8") for p in proc.stdout.split(b"\\0") if p
+        p.decode("utf-8") for p in proc.stdout.split(b"\0") if p
     )
 
 
