@@ -6,7 +6,7 @@
 
 **Definition of AUDITED:** complete source file read against the named main SHA; callers/callees and external effects traced; branches/rejection conditions and data/provenance risk classified; relevant tests considered; findings with exact locations written in a batch file. *Audited is not equivalent to fixed or live-operational.* Never mark a component audited from grep, a code excerpt or a successful CI check alone.
 
-**Reconciled counts from the 333 register rows (2026-10-18):** 33 frontend `.test.tsx` entries, 12 marked reviewed; 300 non-test entries, 191 marked reviewed (**63.67% of this register's non-test entries**). The legacy all-row metric is 203/333 (60.96%). This categorization excludes named `.test.tsx` entries only; it is not a fresh Git tree inventory or assurance of audit depth. Tests are supporting evidence and should not inflate production audit coverage. Reconcile the tree inventory and revalidate prior caller/test depth before claiming a strict production-code audit.\n\n**Progress:** **203 / 333 = 60.96%** reviewed at source level. **130 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md), [batch 33](./batches/33-runtime-tests-styles.md), [batch 34](./batches/34-runtime-and-readiness-ui.md), [batch 35](./batches/35-compact-frontend-styles.md).
+**Reconciled counts from the 333 register rows (2026-10-18):** 33 frontend `.test.tsx` entries, 12 marked reviewed; 300 non-test entries, 197 marked reviewed (**65.67% of this register's non-test entries**). The legacy all-row metric is 209/333 (62.76%). This categorization excludes named `.test.tsx` entries only; it is not a fresh Git tree inventory or assurance of audit depth. Tests are supporting evidence and should not inflate production audit coverage. Reconcile the tree inventory and revalidate prior caller/test depth before claiming a strict production-code audit.\n\n**Progress:** **209 / 333 = 62.76%** reviewed at source level. **124 remaining.** Backend 165, frontend 89, tools 79. This is audit coverage, not JOLT product operability or accepted roadmap progress. Audits: [batch 01](./batches/01-ingestion-and-provenance.md), [batch 02](./batches/02-linkedin-indeed-discovery.md), [batch 03](./batches/03-infojobs-jobgether-adapters.md), [batch 04](./batches/04-normalization-provenance-duplicates.md), [batch 05](./batches/05-search-review-history.md), [batch 06](./batches/06-ui-windows-entrypoints.md), [batch 07](./batches/07-retention-linkedin-market.md), [batch 08](./batches/08-applications-readiness-evaluation.md), [batch 09](./batches/09-ai-review-database-exchange.md), [batch 10](./batches/10-application-api-resources.md), [batch 11](./batches/11-hardline-identity-retention.md), [batch 12](./batches/12-candidate-evidence-strategy.md), [batch 13](./batches/13-human-workflows-routing.md), [batch 14](./batches/14-application-frontend.md), [batch 15](./batches/15-capture-market-operator-ui.md), [batch 16](./batches/16-portal-probes-preview-cli.md), [batch 17](./batches/17-analysis-export-isolation-legacy-apis.md), [batch 18](./batches/18-linkedin-market-persistence.md), [batch 19](./batches/19-performance-compatibility.md), [batch 20](./batches/20-linkedin-portfolio-legacy-routes.md), [batch 21](./batches/21-market-intelligence-exchange.md), [batch 22](./batches/22-linkedin-profile-scroll.md), [batch 23](./batches/23-professional-exchange-retention.md), [batch 24](./batches/24-professional-filesystem-lifecycle.md), [batch 25](./batches/25-professional-evidence-candidates.md), [batch 26](./batches/26-professional-capture-runs.md), [batch 27](./batches/27-capture-background-and-worker.md), [batch 28](./batches/28-frontend-entry-and-readiness.md), [batch 29](./batches/29-professional-frontend-workflows.md), [batch 30](./batches/30-professional-frontend-test-gaps.md), [batch 31](./batches/31-application-contacts-regression.md), [batch 32](./batches/32-front-end-styling.md), [batch 33](./batches/33-runtime-tests-styles.md), [batch 34](./batches/34-runtime-and-readiness-ui.md), [batch 35](./batches/35-compact-frontend-styles.md), [batch 36](./batches/36-css-layering-overlaps.md).
 
 Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUDITED-NO-BLOCKER-FOUND` means no evident blocker in static inspection, not a guarantee; `PENDING` means not yet audited.
 
@@ -192,22 +192,22 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 178 | `frontend/src/ApplicationMetadataEditor.test.tsx` | PENDING |
 | 179 | `frontend/src/ApplicationMetadataEditor.tsx` | AUDITED-ISSUES |
 | 180 | `frontend/src/ApplicationOverviewAutoExpand.ts` | AUDITED-ISSUES |
-| 181 | `frontend/src/ApplicationPipelineBoard.css` | PENDING |
+| 181 | `frontend/src/ApplicationPipelineBoard.css` | AUDITED-ISSUES |
 | 182 | `frontend/src/ApplicationReadiness.tsx` | AUDITED-ISSUES |
 | 183 | `frontend/src/ApplicationResources.test.tsx` | PENDING |
 | 184 | `frontend/src/ApplicationTasks.test.tsx` | PENDING |
 | 185 | `frontend/src/ApplicationTasks.tsx` | AUDITED-ISSUES |
 | 186 | `frontend/src/ApplicationTimeline.test.tsx` | PENDING |
-| 187 | `frontend/src/ApplicationWorkItems.css` | PENDING |
+| 187 | `frontend/src/ApplicationWorkItems.css` | AUDITED-ISSUES |
 | 188 | `frontend/src/ApplicationWorkItems.test.tsx` | PENDING |
 | 189 | `frontend/src/ApplicationWorkflow.test.tsx` | PENDING |
 | 190 | `frontend/src/ApplicationWorkflow.tsx` | AUDITED-ISSUES |
-| 191 | `frontend/src/ApplicationWorkspace.css` | PENDING |
+| 191 | `frontend/src/ApplicationWorkspace.css` | AUDITED-ISSUES |
 | 192 | `frontend/src/AutomatedReview.tsx` | PENDING |
 | 193 | `frontend/src/CaptureHistory.test.tsx` | PENDING |
 | 194 | `frontend/src/CaptureHistory.tsx` | AUDITED-ISSUES |
-| 195 | `frontend/src/CompactInspectorOverrides.css` | PENDING |
-| 196 | `frontend/src/CompactOpportunityWorkspace.css` | PENDING |
+| 195 | `frontend/src/CompactInspectorOverrides.css` | AUDITED-ISSUES |
+| 196 | `frontend/src/CompactOpportunityWorkspace.css` | AUDITED-ISSUES |
 | 197 | `frontend/src/DataTools.test.tsx` | PENDING |
 | 198 | `frontend/src/DataTools.tsx` | AUDITED-ISSUES |
 | 199 | `frontend/src/DiscoverySearchQueue.css` | AUDITED-ISSUES |
@@ -262,7 +262,7 @@ Statuses: `AUDITED-ISSUES` means examined with unresolved documented risks; `AUD
 | 248 | `frontend/src/Workbench.css` | PENDING |
 | 249 | `frontend/src/Workbench.test.tsx` | PENDING |
 | 250 | `frontend/src/Workbench.tsx` | AUDITED-ISSUES |
-| 251 | `frontend/src/WorkflowRefinement.css` | PENDING |
+| 251 | `frontend/src/WorkflowRefinement.css` | AUDITED-ISSUES |
 | 252 | `frontend/src/main.tsx` | AUDITED-ISSUES |
 | 253 | `frontend/src/styles.css` | PENDING |
 | 254 | `frontend/src/test/setup.ts` | AUDITED-NO-BLOCKER-FOUND |
