@@ -23,7 +23,10 @@ $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 Push-Location $BackendRoot
 try {
     uv run python -m jolt.backup create --database $DatabasePath --output $OutputPath
+    if ($LASTEXITCODE -ne 0) { throw "JOLT backup creation failed (exit $LASTEXITCODE): $OutputPath" }
+
     uv run python -m jolt.backup verify --backup $OutputPath | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "JOLT backup verification failed (exit $LASTEXITCODE): $OutputPath" }
 }
 finally {
     Pop-Location
