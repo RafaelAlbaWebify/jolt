@@ -16,16 +16,32 @@ function Stop-RecordedProcess {
     )
 
     $property = $State.PSObject.Properties[$PropertyName]
-    if ($null -eq $property) {
-        return
-    }
+    if ($null -eq $property) { return }
 
     $processId = [int]$property.Value
     $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
-    if ($null -ne $process) {
-        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-        Write-Host "Stopped $DisplayName (PID $processId)."
+    if ($null -eq $process) { return }
+
+    # PID values can be reused after a crash. Never stop a recorded PID without
+    # checking its command line AND that it belongs to this JOLT checkout.
+    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+    if ($null -eq $processInfo) {
+        Write-Warning "Skipping $DisplayName PID $processId: process identity unavailable."
+        return
     }
+    $commandLine = [string]$processInfo.CommandLine
+    $isRepoProcess = $commandLine.IndexOf($RepoRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+    $isExpectedRole = if ($PropertyName -eq "backend_pid") {
+        $commandLine -match 'uvicorn|jolt\.main:app|uv'
+    } else {
+        $commandLine -match 'vite|npm|node'
+    }
+    if (-not ($isRepoProcess -and $isExpectedRole)) {
+        Write-Warning "Skipping $DisplayName PID $processId: command line does not match this JOLT checkout."
+        return
+    }
+    Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+    Write-Host "Stopped $DisplayName (PID $processId)."
 }
 
 function Stop-JoltListener {
