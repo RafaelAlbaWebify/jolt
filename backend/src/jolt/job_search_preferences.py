@@ -41,13 +41,13 @@ class JobSearchPreferences(BaseModel):
             "English": "professional",
         }
     )
-    expected_salary_eur_min: int | None = Field(default=35000, ge=0, le=250000)
+    expected_salary_eur_min: int | None = Field(default=17094, ge=0, le=250000)
     expected_salary_eur_target: int | None = Field(default=45000, ge=0, le=250000)
     preferred_shifts: list[ShiftPreference] = Field(
         default_factory=lambda: ["business_hours", "flexible"]
     )
     excluded_shifts: list[ShiftPreference] = Field(
-        default_factory=lambda: ["night", "rotating", "weekend"]
+        default_factory=list
     )
     preferred_workload: WorkloadPreference = "normal"
     excluded_keywords: list[str] = Field(
@@ -65,7 +65,11 @@ class JobSearchPreferences(BaseModel):
             "powershell",
         ]
     )
-    notes: str = "Prefer stable remote or hybrid support roles that bridge IT operations and application/software support. Avoid irrelevant dispatch-style work."
+    notes: str = ("Two-track search: primary IT and office-based bridge employment. "
+                  "Spanish 2026 full-time SMI is EUR 17094 gross per year; part-time "
+                  "pay is prorated. Prefer Vigo within 30 km for onsite/hybrid "
+                  "or genuinely Spain-eligible remote. Review physical demands "
+                  "and high-pressure sales. Preserve user-configured shift choices.")
 
 
 def load_job_search_preferences() -> JobSearchPreferences:
