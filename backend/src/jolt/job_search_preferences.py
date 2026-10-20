@@ -26,9 +26,16 @@ class JobSearchPreferences(BaseModel):
             "Production Support Engineer",
             "SaaS Support Engineer",
             "Enterprise Application Support",
+            "Service Desk Analyst",
+            "IT Coordinator",
+            "Administrative Assistant",
+            "Back Office Specialist",
+            "Customer Support Specialist",
+            "Service Coordinator",
+            "Order Management Specialist",
         ]
     )
-    preferred_work_modes: list[WorkMode] = Field(default_factory=lambda: ["remote", "hybrid"])
+    preferred_work_modes: list[WorkMode] = Field(default_factory=lambda: ["remote", "hybrid", "onsite"])
     base_locality: str = "Vigo, Galicia, Spain"
     max_hybrid_distance_km: int = Field(default=30, ge=0, le=500)
     countries: list[str] = Field(
@@ -51,7 +58,7 @@ class JobSearchPreferences(BaseModel):
     )
     preferred_workload: WorkloadPreference = "normal"
     excluded_keywords: list[str] = Field(
-        default_factory=lambda: ["dispatch", "field sales", "door to door", "commission only"]
+        default_factory=lambda: ["door to door", "commission only"]
     )
     preferred_keywords: list[str] = Field(
         default_factory=lambda: [
