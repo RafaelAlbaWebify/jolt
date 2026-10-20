@@ -114,6 +114,12 @@ class AIReviewJob(BaseModel):
     mandatory_requirements: list[MandatoryRequirementResult] = Field(default_factory=list)
     mandatory_requirement_results: list[MandatoryRequirementResult] = Field(default_factory=list)
     employment_constraints: list[str] = Field(default_factory=list)
+    # Optional v1.2-compatible review evidence. Missing data is never a rejection.
+    employment_track: Literal["primary_it", "bridge", "unknown"] = "unknown"
+    physical_demand_status: Literal["compatible", "incompatible", "uncertain"] = "uncertain"
+    physical_demand_evidence: list[str] = Field(default_factory=list)
+    commercial_pressure_status: Literal["low", "high", "uncertain"] = "uncertain"
+    commercial_pressure_evidence: list[str] = Field(default_factory=list)
     fit_analysis_allowed: bool = True
     technical_fit_percent: int | None = Field(default=None, ge=0, le=100)
     final_decision: AIReviewDecision | None = None
