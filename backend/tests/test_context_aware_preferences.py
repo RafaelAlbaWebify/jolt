@@ -223,14 +223,12 @@ def test_temporary_employee_benefits_are_not_temporary_employment(monkeypatch) -
     assert preference_blockers(text) == []
 
 
-def test_explicit_temporary_contract_still_blocks(monkeypatch) -> None:
+def test_explicit_temporary_contract_no_longer_blocks(monkeypatch) -> None:
     monkeypatch.setattr(
         "jolt.preference_aware_evaluation.load_job_search_preferences", _preferences
     )
 
-    assert preference_blockers("This is a temporary contract for six months.") == [
-        "temporary or fixed-term employment"
-    ]
+    assert preference_blockers("This is a temporary contract for six months.") == []
 
 
 def test_default_hybrid_radius_is_30_km() -> None:
@@ -405,14 +403,12 @@ def test_amazon_benefits_status_example_is_not_temporary_job(
     assert preference_blockers(text) == []
 
 
-def test_explicit_temporary_employment_duration_still_blocks(
+def test_explicit_temporary_employment_duration_no_longer_blocks(
     monkeypatch,
 ) -> None:
     _install_preferences(monkeypatch)
 
-    assert preference_blockers("This is temporary employment for six months.") == [
-        "temporary or fixed-term employment"
-    ]
+    assert preference_blockers("This is temporary employment for six months.") == []
 
 
 def test_legacy_20km_uncertainty_is_removed_from_remote_role(
