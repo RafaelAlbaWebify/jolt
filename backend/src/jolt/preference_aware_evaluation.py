@@ -173,25 +173,10 @@ _RELOCATION_PATTERNS = (
     r"\breubicaci[oó]n\s+(?:a|en)\b",
 )
 
+# Exclude only genuine eligibility restrictions. Temporary, fixed-term and
+# internship labels require review of pay and access, not blanket rejection.
 _EXCLUDED_EMPLOYMENT_PATTERNS = (
-    (
-        r"\binternship\b|"
-        r"\bpraktikum\b|"
-        r"\btrainee\s+internship\b|"
-        r"\b(?:it|software|engineering|technical|support|data|security|cloud|network|"
-        r"systems?|product|operations?)\s+intern\b|"
-        r"\bintern\s+(?:role|position|job|programme|program|opportunity)\b",
-        "internship",
-    ),
-    (
-        r"\btemporary\s+(?:role|position|contract|assignment|job)\b|"
-        r"\b(?:employment|job|contract)\s+type\s*[:\-]?\s*temporary\b|"
-        r"\btemporary\s+employment\s+(?:for|lasting|until)\b|"
-        r"\bfixed[-\s]term\b|\bbefristet\b|"
-        r"\barbeitnehmerüberlassung\b|\barbeitnehmerueberlassung\b",
-        "temporary or fixed-term employment",
-    ),
-    (r"\bcategorie protette\b|\bprotected categor(?:y|ies)\b", "protected-category restriction"),
+    (r"\\bcategorie protette\\b|\\bprotected categor(?:y|ies)\\b", "protected-category restriction"),
 )
 
 _FOREIGN_LOCATION_TERMS = (
