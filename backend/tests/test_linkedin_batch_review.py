@@ -4,8 +4,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 from jolt.database import (
+    AIReview,
     Application,
     CaptureItem,
     CaptureRun,
