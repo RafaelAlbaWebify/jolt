@@ -367,3 +367,33 @@ def test_environment_and_citizenship_language_words_are_not_requirements() -> No
         for item in result.requirements
     )
     assert not any(item.languages == ("Spanish",) for item in result.requirements)
+
+
+def test_pilot_sixt_german_es_un_plus_is_not_mandatory() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "Agent Customer Services. Idiomas Dominio de español e inglés, "
+            "alemán es un plus. Se requiere atención al cliente."
+        ),
+        preferences=_preferences(),
+    )
+    assert result.hardline_reject is False
+    assert not any(
+        "German" in item.languages and item.classification == "required"
+        for item in result.requirements
+    )
+
+
+def test_pilot_segula_english_or_french_b2_alternatives() -> None:
+    result = analyze_language_evidence(
+        source_text=(
+            "Técnico electrónico junior en Vigo. "
+            "Imprescindible mínimo nivel B2 de inglés y/o francés."
+        ),
+        preferences=_preferences(),
+    )
+    assert result.hardline_reject is False
+    assert any(
+        set(item.languages) == {"English", "French"} and item.classification == "required"
+        for item in result.requirements
+    )
