@@ -74,6 +74,9 @@ _EXPLICIT_HYBRID_WORK_PATTERNS = (
     r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*hybrid\b",
     r"\(\s*hybrid\s*\)",
     r"(?m)(?:^|[·|/,])\s*hybrid\s*$",
+    r"\b(?:trabajo|modalidad|modelo)\s+h[ií]brid[oa]\b",
+    r"\b\d+\s+d[ií]as?\s+(?:de\s+)?teletrabajo\s+a\s+la\s+semana\b",
+    r"\b(?:hasta\s+)?\d+\s+d[ií]as?\s+(?:de\s+)?(?:teletrabajo|trabajar\s+desde\s+casa)\s+al\s+mes\b",
 )
 
 _EXPLICIT_ONSITE_WORK_PATTERNS = (
@@ -82,6 +85,8 @@ _EXPLICIT_ONSITE_WORK_PATTERNS = (
     r"\bwork(?:place)?\s*(?:type|mode)?\s*[:\-]\s*(?:on[- ]?site|onsite)\b",
     r"\(\s*(?:on[- ]?site|onsite)\s*\)",
     r"(?m)(?:^|[·|/,])\s*(?:on[- ]?site|onsite)\s*$",
+    r"\b(?:empleo|trabajo|puesto|modalidad)\s+presencial\b",
+    r"\b(?:full[- ]time\s+)?office[- ]based\s+role\b",
 )
 
 _VIGO_LOCAL_LOCATION_TERMS = (
