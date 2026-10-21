@@ -119,6 +119,8 @@ _PREFERRED_MARKERS = (
     "nice to have",
     "a plus",
     "is a plus",
+    "es un plus",
+    "es un extra",
     "strong plus",
     "advantage",
     "advantageous",
@@ -509,6 +511,8 @@ def _language_mentions(segment: str) -> list[tuple[str, int, int]]:
 
 def _list_connector(segment: str, left_end: int, right_start: int) -> tuple[bool, bool]:
     between = segment[left_end:right_start].casefold()
+    if re.fullmatch(r"\s*y\s*/\s*o\s*", between):
+        return True, True
     if not re.fullmatch(
         r"\s*(?:[,/;]\s*)?(?:(?:and|y|und|et|e|or|o|oder|ou|oppure)\s*)?",
         between,
