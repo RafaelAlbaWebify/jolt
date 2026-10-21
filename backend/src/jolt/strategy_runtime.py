@@ -77,6 +77,7 @@ _EXPLICIT_HYBRID_WORK_PATTERNS = (
     r"\b(?:trabajo|modalidad|modelo)\s+h[ií]brid[oa]\b",
     r"\b\d+\s+d[ií]as?\s+(?:de\s+)?teletrabajo\s+a\s+la\s+semana\b",
     r"\b(?:hasta\s+)?\d+\s+d[ií]as?\s+(?:de\s+)?(?:teletrabajo|trabajar\s+desde\s+casa)\s+al\s+mes\b",
+    r"\btrabajar\s+desde\s+casa\s+(?:hasta\s+)?\d+\s+d[ií]as?\s+al\s+mes\b",
 )
 
 _EXPLICIT_ONSITE_WORK_PATTERNS = (
