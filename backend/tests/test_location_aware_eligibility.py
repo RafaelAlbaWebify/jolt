@@ -114,3 +114,41 @@ def test_existing_ineligible_assessment_is_preserved() -> None:
     )
 
     assert result == original
+
+
+def test_pilot_madrid_office_based_role_is_not_vigo_local() -> None:
+    from jolt.strategy_runtime import _apply_local_work_mode_eligibility
+
+    result = _apply_local_work_mode_eligibility(
+        _assessment(),
+        title="Operations Administrator (Spanish and English)",
+        location="Colmenar Viejo, Madrid provincia",
+        description="This is a full-time, office-based role. Work Location: On-site.",
+    )
+    assert result.eligibility == "ineligible"
+    assert result.recommendation == "do_not_pursue"
+
+
+def test_pilot_sixt_limited_remote_days_does_not_mean_fully_remote() -> None:
+    from jolt.strategy_runtime import _apply_local_work_mode_eligibility
+
+    result = _apply_local_work_mode_eligibility(
+        _assessment(),
+        title="Agent Customer Services",
+        location="Teletrabajo in Madrid, Madrid provincia",
+        description="Horarios flexibles con la opción de trabajar desde casa hasta 6 días al mes.",
+    )
+    assert result.eligibility == "ineligible"
+
+
+def test_spanish_remote_spain_role_preserved() -> None:
+    from jolt.strategy_runtime import _apply_local_work_mode_eligibility
+
+    original = _assessment()
+    result = _apply_local_work_mode_eligibility(
+        original,
+        title="Application Support Engineer",
+        location="España",
+        description="Modalidad 100% remoto desde España.",
+    )
+    assert result == original
