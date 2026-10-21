@@ -269,10 +269,12 @@ def test_ai_review_import_is_durable_and_preserves_application_state(
     session, capture, posting_1, posting_2, application = _seed_capture(tmp_path)
 
     try:
-        result = import_ai_review(
-            session,
-            _request(capture.id),
-        )
+        request = _request(capture.id)
+        request.jobs[0].employment_track = "primary_it"
+        request.jobs[0].physical_demand_status = "compatible"
+        request.jobs[0].physical_demand_evidence = ["Desk-based IT support"]
+        request.jobs[0].commercial_pressure_status = "low"
+        result = import_ai_review(session, request)
 
         assert result.received_count == 2
         assert result.created_count == 2
@@ -288,6 +290,10 @@ def test_ai_review_import_is_durable_and_preserves_application_state(
         assert first.decision == "strong_pursue"
         assert first.priority_score == 94
         assert first.review_source == "chatgpt_source_first"
+        assert first.employment_track == "primary_it"
+        assert first.physical_demand_status == "compatible"
+        assert first.physical_demand_evidence_json == '["Desk-based IT support"]'
+        assert first.commercial_pressure_status == "low"
 
         retained_application = session.get(
             Application,
