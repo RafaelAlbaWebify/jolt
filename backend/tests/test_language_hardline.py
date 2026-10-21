@@ -394,7 +394,6 @@ def test_pilot_segula_english_or_french_b2_alternatives() -> None:
     )
     assert result.hardline_reject is False
     assert any(
-        set(item.languages) == {"English", "French"}
-        and item.classification == "required"
+        set(item.languages) == {"English", "French"} and item.classification == "required"
         for item in result.requirements
     )
