@@ -176,7 +176,10 @@ _RELOCATION_PATTERNS = (
 # Exclude only genuine eligibility restrictions. Temporary, fixed-term and
 # internship labels require review of pay and access, not blanket rejection.
 _EXCLUDED_EMPLOYMENT_PATTERNS = (
-    (r"\\bcategorie protette\\b|\\bprotected categor(?:y|ies)\\b", "protected-category restriction"),
+    (
+        r"\\bcategorie protette\\b|\\bprotected categor(?:y|ies)\\b",
+        "protected-category restriction",
+    ),
 )
 
 _FOREIGN_LOCATION_TERMS = (

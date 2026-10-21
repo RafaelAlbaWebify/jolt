@@ -3,6 +3,7 @@
 Revision ID: 20261020_0034
 Revises: 20261016_0033
 """
+
 import sqlalchemy as sa
 from alembic import op
 
@@ -24,5 +25,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for name in ("commercial_pressure_evidence_json", "commercial_pressure_status", "physical_demand_evidence_json", "physical_demand_status", "employment_track"):
+    for name in (
+        "commercial_pressure_evidence_json",
+        "commercial_pressure_status",
+        "physical_demand_evidence_json",
+        "physical_demand_status",
+        "employment_track",
+    ):
         op.drop_column("ai_reviews", name)

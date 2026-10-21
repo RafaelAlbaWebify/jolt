@@ -12,8 +12,10 @@ def test_two_track_discovery_fallback_salary_and_shifts():
 
 
 def test_existing_shift_preferences_are_respected():
-    preferences = JobSearchPreferences.model_validate({
-        "excluded_shifts": ["night", "weekend"],
-        "expected_salary_eur_min": 17094,
-    })
+    preferences = JobSearchPreferences.model_validate(
+        {
+            "excluded_shifts": ["night", "weekend"],
+            "expected_salary_eur_min": 17094,
+        }
+    )
     assert preferences.excluded_shifts == ["night", "weekend"]

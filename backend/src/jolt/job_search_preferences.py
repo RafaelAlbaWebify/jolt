@@ -35,7 +35,9 @@ class JobSearchPreferences(BaseModel):
             "Order Management Specialist",
         ]
     )
-    preferred_work_modes: list[WorkMode] = Field(default_factory=lambda: ["remote", "hybrid", "onsite"])
+    preferred_work_modes: list[WorkMode] = Field(
+        default_factory=lambda: ["remote", "hybrid", "onsite"]
+    )
     base_locality: str = "Vigo, Galicia, Spain"
     max_hybrid_distance_km: int = Field(default=30, ge=0, le=500)
     countries: list[str] = Field(
@@ -53,9 +55,7 @@ class JobSearchPreferences(BaseModel):
     preferred_shifts: list[ShiftPreference] = Field(
         default_factory=lambda: ["business_hours", "flexible"]
     )
-    excluded_shifts: list[ShiftPreference] = Field(
-        default_factory=list
-    )
+    excluded_shifts: list[ShiftPreference] = Field(default_factory=list)
     preferred_workload: WorkloadPreference = "normal"
     excluded_keywords: list[str] = Field(
         default_factory=lambda: ["door to door", "commission only"]
@@ -72,11 +72,13 @@ class JobSearchPreferences(BaseModel):
             "powershell",
         ]
     )
-    notes: str = ("Two-track search: primary IT and office-based bridge employment. "
-                  "Spanish 2026 full-time SMI is EUR 17094 gross per year; part-time "
-                  "pay is prorated. Prefer Vigo within 30 km for onsite/hybrid "
-                  "or genuinely Spain-eligible remote. Review physical demands "
-                  "and high-pressure sales. Preserve user-configured shift choices.")
+    notes: str = (
+        "Two-track search: primary IT and office-based bridge employment. "
+        "Spanish 2026 full-time SMI is EUR 17094 gross per year; part-time "
+        "pay is prorated. Prefer Vigo within 30 km for onsite/hybrid "
+        "or genuinely Spain-eligible remote. Review physical demands "
+        "and high-pressure sales. Preserve user-configured shift choices."
+    )
 
 
 def load_job_search_preferences() -> JobSearchPreferences:

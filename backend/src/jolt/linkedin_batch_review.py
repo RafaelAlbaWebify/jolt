@@ -574,9 +574,13 @@ def import_batch_ai_review(
             ),
             "employment_track": job.employment_track,
             "physical_demand_status": job.physical_demand_status,
-            "physical_demand_evidence_json": json.dumps(job.physical_demand_evidence, ensure_ascii=False),
+            "physical_demand_evidence_json": json.dumps(
+                job.physical_demand_evidence, ensure_ascii=False
+            ),
             "commercial_pressure_status": job.commercial_pressure_status,
-            "commercial_pressure_evidence_json": json.dumps(job.commercial_pressure_evidence, ensure_ascii=False),
+            "commercial_pressure_evidence_json": json.dumps(
+                job.commercial_pressure_evidence, ensure_ascii=False
+            ),
             "fit_analysis_allowed": job.fit_analysis_allowed,
             "decision_reason": job.decision_reason,
             "duplicate_of_posting_id": job.duplicate_of_posting_id,
