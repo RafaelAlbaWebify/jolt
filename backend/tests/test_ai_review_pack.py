@@ -218,3 +218,17 @@ def test_ai_review_json_excludes_human_decided_jobs_from_latest_capture(tmp_path
         assert document["counts"]["excluded_already_reviewed_or_decided"] == 1
     finally:
         session.close()
+
+
+def test_ai_review_export_template_has_work_demand_fields(tmp_path) -> None:
+    session, capture, _, _ = _seed_ai_review_capture(tmp_path)
+    try:
+        document = json.loads(build_ai_review_json(session))
+        template = document["response_template"]["jobs"][0]
+        assert template["employment_track"] == "primary_it|bridge|unknown"
+        assert template["physical_demand_status"] == "compatible|incompatible|uncertain"
+        assert template["physical_demand_evidence"] == []
+        assert template["commercial_pressure_status"] == "low|high|uncertain"
+        assert template["commercial_pressure_evidence"] == []
+    finally:
+        session.close()

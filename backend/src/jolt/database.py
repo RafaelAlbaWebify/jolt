@@ -410,6 +410,17 @@ class AIReview(Base):
         Text, default="[]", nullable=False
     )
     employment_constraints_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    employment_track: Mapped[str] = mapped_column(String(24), default="unknown", nullable=False)
+    physical_demand_status: Mapped[str] = mapped_column(
+        String(24), default="uncertain", nullable=False
+    )
+    physical_demand_evidence_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    commercial_pressure_status: Mapped[str] = mapped_column(
+        String(24), default="uncertain", nullable=False
+    )
+    commercial_pressure_evidence_json: Mapped[str] = mapped_column(
+        Text, default="[]", nullable=False
+    )
     fit_analysis_allowed: Mapped[bool] = mapped_column(default=True, nullable=False)
     decision_reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
     duplicate_of_posting_id: Mapped[str | None] = mapped_column(

@@ -69,7 +69,9 @@ def _latest_capture_at(session: Session) -> datetime | None:
     if not runs:
         return None
     run = runs[0]
-    return run.completed_at or run.started_at
+    timestamp = run.completed_at or run.started_at
+    # SQLite strips timezone offsets; stored datetimes follow the UTC convention.
+    return timestamp.replace(tzinfo=UTC) if timestamp.tzinfo is None else timestamp.astimezone(UTC)
 
 
 def _provenance(session: Session) -> MarketEvidenceProvenance:

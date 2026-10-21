@@ -298,6 +298,11 @@ def _build_ai_review_payloads(
                     }
                 ],
                 "employment_constraints": [],
+                "employment_track": "primary_it|bridge|unknown",
+                "physical_demand_status": "compatible|incompatible|uncertain",
+                "physical_demand_evidence": [],
+                "commercial_pressure_status": "low|high|uncertain",
+                "commercial_pressure_evidence": [],
                 "fit_analysis_allowed": True,
                 "technical_fit_percent": None,
                 "final_decision": "strong_pursue|pursue|conditional|reject",

@@ -4,8 +4,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 from jolt.database import (
+    AIReview,
     Application,
     CaptureItem,
     CaptureRun,
@@ -287,10 +289,18 @@ def test_batch_review_import_requires_exact_frozen_set(tmp_path: Path) -> None:
                 ],
             }
         )
+        complete.jobs[0].employment_track = "bridge"
+        complete.jobs[0].physical_demand_status = "incompatible"
+        complete.jobs[0].physical_demand_evidence = ["Regular 25 kg lifting"]
         result = import_batch_ai_review(session, complete)
         assert result.received_count == 2
         assert result.created_count == 2
         assert result.updated_count == 0
+        review = session.scalar(select(AIReview).where(AIReview.posting_id == "posting-1"))
+        assert review is not None
+        assert review.employment_track == "bridge"
+        assert review.physical_demand_status == "incompatible"
+        assert review.physical_demand_evidence_json == '["Regular 25 kg lifting"]'
 
         retry = import_batch_ai_review(session, complete)
         assert retry.created_count == 0

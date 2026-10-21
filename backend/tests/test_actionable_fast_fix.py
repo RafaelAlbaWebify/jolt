@@ -50,7 +50,7 @@ def test_country_restricted_remote_and_relocation_are_blocked(monkeypatch) -> No
     assert "relocation is required" in cyprus
 
 
-def test_internship_temporary_and_foreign_onsite_are_blocked(monkeypatch) -> None:
+def test_internship_temporary_accepted_but_foreign_onsite_blocked(monkeypatch) -> None:
     monkeypatch.setattr(
         preference_module,
         "load_job_search_preferences",
@@ -65,8 +65,8 @@ def test_internship_temporary_and_foreign_onsite_are_blocked(monkeypatch) -> Non
         "Germany remote listing. Vor Ort Installationen und Hardwaretausch."
     )
 
-    assert "internship" in internship
-    assert "temporary or fixed-term employment" in temporary
+    assert internship == []
+    assert temporary == []
     assert "onsite duties are required outside the configured locality" in onsite
 
 
@@ -158,7 +158,7 @@ def test_european_internal_wording_is_not_an_internship(monkeypatch) -> None:
     assert "internship" not in german
 
 
-def test_explicit_intern_job_titles_remain_blocked(monkeypatch) -> None:
+def test_intern_job_titles_require_review_not_automatic_rejection(monkeypatch) -> None:
     monkeypatch.setattr(
         preference_module,
         "load_job_search_preferences",
@@ -178,4 +178,4 @@ def test_explicit_intern_job_titles_remain_blocked(monkeypatch) -> None:
 
     for text in examples:
         blockers = preference_module.preference_blockers(text)
-        assert "internship" in blockers
+        assert "internship" not in blockers
