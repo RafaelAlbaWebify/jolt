@@ -1,10 +1,10 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from jolt.database import Base, AIReview
+from jolt.database import AIReview, Base
 
 
 def test_work_demand_columns_roundtrip(tmp_path):
@@ -20,7 +20,7 @@ def test_work_demand_columns_roundtrip(tmp_path):
             employment_track="bridge", physical_demand_status="incompatible",
             physical_demand_evidence_json=json.dumps(["Regularly lift 25 kg boxes"]),
             commercial_pressure_status="low", commercial_pressure_evidence_json="[]",
-            reviewed_at=datetime.now(timezone.utc), imported_at=datetime.now(timezone.utc),
+            reviewed_at=datetime.now(UTC), imported_at=datetime.now(UTC),
         ))
         # ORM schema accepts the structured evidence. No human review state is edited.
         session.flush()
