@@ -236,16 +236,20 @@ def run_indeed_saved_search(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         bufsize=1,
     )
     output_lines: list[str] = []
-    output_queue: Queue[str | None] = Queue()
+    output_queue: Queue[str | Exception | None] = Queue()
 
     def read_output() -> None:
         assert process.stdout is not None
         try:
             for line in process.stdout:
                 output_queue.put(line.rstrip())
+        except Exception as exc:
+            output_queue.put(exc)
         finally:
             output_queue.put(None)
 
@@ -261,6 +265,10 @@ def run_indeed_saved_search(
 
         try:
             text_line = output_queue.get(timeout=0.25)
+            if isinstance(text_line, Exception):
+                process.kill()
+                process.wait(timeout=5)
+                raise RuntimeError("Indeed output reader failed; child process stopped.") from text_line
             if text_line is None:
                 stream_finished = True
             elif text_line:
