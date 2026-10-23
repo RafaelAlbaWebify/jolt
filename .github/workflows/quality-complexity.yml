@@ -1,0 +1,36 @@
+name: Complexity and Performance Gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  quality-metrics:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests for quality gate
+        run: python -m unittest discover -s tools -p 'test_quality_complexity_gate.py' -v
+      - name: Complexity inventory and synthetic performance smoke
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            python tools/quality_complexity_gate.py --base "$BASE_SHA" --strict --output artifacts/quality-metrics.json
+          else
+            python tools/quality_complexity_gate.py --output artifacts/quality-metrics.json
+          fi
+      - name: Upload quality metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-complexity-metrics
+          path: artifacts/quality-metrics.json
+          if-no-files-found: warn
