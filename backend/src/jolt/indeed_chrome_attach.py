@@ -155,6 +155,46 @@ def _wait_for_visible_results(
     )
 
 
+def _save_partial_checkpoint(
+    staging_dir: Path,
+    cards: list[CapturedCard],
+    pages: list[dict[str, object]],
+    *,
+    stop_reason: str,
+) -> None:
+    """Keep recoverable, unsubmitted capture evidence after each completed page.
+
+    Checkpoints are packaged in the output ZIP even if a later page fails.
+    Do not POST these items automatically: operator review is required.
+    """
+    payload = {
+        "contract": "jolt-indeed-partial-checkpoint-v1",
+        "status": "partial_unsubmitted",
+        "stop_reason": stop_reason,
+        "captured_count": len(cards),
+        "verified_count": sum(card.identity_verified for card in cards),
+        "pages": pages,
+        "items": [
+            {
+                "source_job_id": card.source_job_id,
+                "source_url": card.source_url,
+                "title": card.title,
+                "company": card.company,
+                "location": card.location,
+                "description": card.description,
+                "identity_verified": card.identity_verified,
+                "verification_reason": card.verification_reason,
+                "page_number": card.page_number,
+            }
+            for card in cards
+        ],
+    }
+    checkpoint = staging_dir / "partial_checkpoint.json"
+    temporary = staging_dir / "partial_checkpoint.json.tmp"
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(checkpoint)
+
+
 def _verified_known_job_ids(source_ids: list[str]) -> set[str]:
     """Read verified local identities; on uncertainty, never skip."""
     if not source_ids or os.getenv("JOLT_DATABASE_URL"):
@@ -466,6 +506,9 @@ def run_capture(
                         )
                     )
 
+                _save_partial_checkpoint(
+                    staging_dir, cards, pages, stop_reason="page_completed"
+                )
                 print(
                     f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
                 )
@@ -535,6 +578,10 @@ def run_capture(
 
         return package_run(staging_dir, output_zip)
     except Exception as exc:
+        if "cards" in locals() and "pages" in locals():
+            _save_partial_checkpoint(
+                staging_dir, cards, pages, stop_reason="interrupted_before_submission"
+            )
         (staging_dir / "failure.json").write_text(
             json.dumps({"error_type": type(exc).__name__, "error": str(exc)}, indent=2),
             encoding="utf-8",
@@ -558,9 +605,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-pause", action="store_true")
     args = parser.parse_args(argv)
     if args.max_jobs < 1 or args.max_jobs > 200:
-        parser.error("--max-jobs must be between 1 and 100.")
+        parser.error("--max-jobs must be between 1 and 200.")
     if args.max_pages < 1 or args.max_pages > 20:
-        parser.error("--max-pages must be between 1 and 10.")
+        parser.error("--max-pages must be between 1 and 20.")
     return args
 
 
