@@ -24,9 +24,10 @@ def audit(zip_path: Path, db_path: Path) -> dict:
     if not db_path.is_file():
         raise ValueError("Database not found. Explicitly provide the active JOLT DB path.")
     before = hashlib.sha256(db_path.read_bytes()).hexdigest()
-    uri = db_path.resolve().as_uri() + "?mode=ro&immutable=1"
+    uri = db_path.resolve().as_uri() + "?mode=ro"
     connection = sqlite3.connect(uri, uri=True)
     try:
+        connection.execute("PRAGMA query_only=ON")
         tables = {row[0] for row in connection.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         )}
