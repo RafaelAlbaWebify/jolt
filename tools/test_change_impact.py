@@ -82,3 +82,36 @@ def test_static_http_route_and_db_model_boundaries(tmp_path: Path):
     graph = boundary_edges(tmp_path, set(sources))
     assert "backend/src/jolt/main.py" in graph["frontend/src/App.tsx"]
     assert "backend/src/jolt/database.py" in graph["backend/src/jolt/reader.py"]
+
+
+def test_backup_files_are_not_impact_graph_roots(tmp_path: Path):
+    sources = {
+        "backend/src/jolt/schemas.py": "class Capture: pass\n",
+        "backend/src/jolt/dependent.py": "from jolt.schemas import Capture\n",
+        "backend/src/jolt/schemas.py.bak_20261023": "old code",
+        "frontend/src/App.tsx": "export default 1\n",
+    }
+    for relative, value in sources.items():
+        file = tmp_path / relative
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(value, encoding="utf-8")
+    result = analyze(tmp_path, ["backend/src/jolt/schemas.py.bak_20261023"])
+    assert result["active_changed"] == []
+    assert result["affected_dependents"] == []
+    assert result["non_source_changes"] == ["backend/src/jolt/schemas.py.bak_20261023"]
+
+
+def test_direct_dependents_are_separate_from_transitive_dependents(tmp_path: Path):
+    sources = {
+        "backend/src/jolt/schemas.py": "class Capture: pass\n",
+        "backend/src/jolt/dependent.py": "from jolt.schemas import Capture\n",
+        "backend/tests/test_dependent.py": "from jolt.dependent import x\n",
+        "frontend/src/App.tsx": "export default 1\n",
+    }
+    for relative, value in sources.items():
+        file = tmp_path / relative
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(value, encoding="utf-8")
+    report = analyze(tmp_path, ["backend/src/jolt/schemas.py"])
+    assert report["direct_dependents"] == ["backend/src/jolt/dependent.py"]
+    assert "backend/tests/test_dependent.py" in report["affected_dependents"]
