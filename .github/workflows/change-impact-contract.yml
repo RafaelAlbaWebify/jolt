@@ -1,0 +1,37 @@
+name: Change impact contract
+on:
+  pull_request:
+    paths:
+      - 'tools/change_impact.py'
+      - 'tools/test_change_impact.py'
+      - '.github/workflows/change-impact-contract.yml'
+  push:
+    branches:
+      - 'quality/change-impact-gate-20261024'
+jobs:
+  analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile analyzer
+        run: python -m py_compile tools/change_impact.py tools/test_change_impact.py
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Unit regression
+        run: python -m pytest tools/test_change_impact.py -q
+      - name: Analyze real checkout
+        run: python tools/change_impact.py --changed backend/src/jolt/schemas.py --output /tmp/jolt-impact.json
+      - name: Assert nonempty impact
+        run: |
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/jolt-impact.json'))
+          assert data['inventory_files'] >= 100
+          assert data['resolved_edges'] >= 100
+          assert data['affected_dependents']
+          assert data['test_candidates']
+          print('Impact graph smoke PASS')
+          PY
