@@ -98,6 +98,21 @@ def _page_search_url(search_url: str, page_number: int) -> str:
     return urlunparse(parsed._replace(query=urlencode(pairs, doseq=True)))
 
 
+def _indeed_login_visible(page: Page) -> bool:
+    """Identify the Indeed account interstitial without automating login."""
+    location = urlparse(page.url or "")
+    if location.hostname and location.hostname.endswith("indeed.com"):
+        if location.path.startswith(("/account", "/auth", "/login")):
+            return True
+    with contextlib.suppress(playwright_sync_api.Error):
+        title = page.title().casefold()
+        return (
+            ("sign in" in title or "iniciar sesión" in title or "iniciar sesion" in title)
+            and "indeed" in title
+        )
+    return False
+
+
 def _wait_for_visible_results(
     page: Page,
     max_jobs: int,
@@ -114,8 +129,9 @@ def _wait_for_visible_results(
             return candidates
 
         warning = _access_warning(page)
-        if warning and not announced_verification:
-            print("Indeed verification is visible. Complete it manually in Chrome.")
+        login_visible = _indeed_login_visible(page)
+        if (warning or login_visible) and not announced_verification:
+            print("Indeed login or verification page detected. Sign in manually if needed.")
             print("JOLT will continue automatically when job results become available.")
             announced_verification = True
 
@@ -149,9 +165,15 @@ def _wait_for_visible_results(
                 encoding="utf-8",
             )
 
+    if _indeed_login_visible(page):
+        raise RuntimeError(
+            "Indeed login page remained visible; results were unavailable. "
+            "Previous pages are preserved in the partial checkpoint ZIP. "
+            "Complete sign-in manually before a new attempt."
+        )
     raise RuntimeError(
         "Indeed did not show job results after the supervised verification window. "
-        "Complete verification manually in the isolated Chrome session and retry."
+        "Previous pages are preserved in the partial checkpoint ZIP."
     )
 
 
