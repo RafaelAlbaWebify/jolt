@@ -586,6 +586,11 @@ def run_capture(
                     )
 
             api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
+            if api_result.get("capture_run_id") and api_result.get("status") in {
+                "completed",
+                "completed_with_warnings",
+            }:
+                (staging_dir / "partial_checkpoint.json").unlink(missing_ok=True)
             (staging_dir / "api_result.json").write_text(
                 json.dumps(api_result, indent=2, ensure_ascii=True),
                 encoding="utf-8",
