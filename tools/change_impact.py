@@ -168,8 +168,10 @@ def analyze(root: Path, changed: list[str]) -> dict:
     for caller, dependencies in graph.items():
         for dependency in dependencies:
             reverse[dependency].add(caller)
-    seen = set(changed)
-    queue = deque((p, 0) for p in changed)
+    active_changes = [p for p in changed if p in known]
+    ignored_changes = sorted(set(changed) - set(active_changes))
+    seen = set(active_changes)
+    queue = deque((p, 0) for p in active_changes)
     distances = {}
     while queue:
         item, depth = queue.popleft()
@@ -193,7 +195,9 @@ def analyze(root: Path, changed: list[str]) -> dict:
         uncertain.append("PowerShell subprocess argument and encoding boundaries require runtime contract tests.")
     return {"contract": "jolt-change-impact-v1", "inventory_files": len(known),
             "resolved_edges": sum(map(len, graph.values())), "changed": changed,
-            "affected_dependents": sorted(distances), "test_candidates": tests,
+            "active_changed": active_changes, "non_source_changes": ignored_changes,
+            "affected_dependents": sorted(distances), "direct_dependents": sorted(p for p, d in distances.items() if d == 1),
+            "test_candidates": tests,
             "domains": domains, "warnings": warnings, "unresolved_relationships": uncertain,
             "critical_changed": sorted(set(changed) & set(CRITICAL))}
 
