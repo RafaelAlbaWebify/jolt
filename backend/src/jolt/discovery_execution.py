@@ -118,7 +118,7 @@ def create_discovery_execution(
         raise ValueError(f"Another {request.source} discovery execution is already active.")
 
     definition = json.loads(search.definition_json)
-    max_pages = max(1, min(10, int(definition.get("max_pages", 3) or 3)))
+    max_pages = max(1, min(20 if request.source == "indeed" else 10, int(definition.get("max_pages", 3) or 3)))
     if request.source in {"infojobs", "jobgether"}:
         max_pages = 1
 
@@ -198,7 +198,7 @@ def run_indeed_saved_search(
     if not search_url:
         raise ValueError("Indeed saved search is missing search_url.")
     max_pages = int(definition.get("max_pages", 3) or 3)
-    max_pages = max(1, min(10, max_pages))
+    max_pages = max(1, min(20, max_pages))
 
     shell = shutil.which("pwsh") or shutil.which("powershell")
     if shell is None:
