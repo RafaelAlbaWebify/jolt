@@ -101,9 +101,12 @@ def _page_search_url(search_url: str, page_number: int) -> str:
 def _indeed_login_visible(page: Page) -> bool:
     """Identify the Indeed account interstitial without automating login."""
     location = urlparse(page.url or "")
-    if location.hostname and location.hostname.endswith("indeed.com"):
-        if location.path.startswith(("/account", "/auth", "/login")):
-            return True
+    if (
+        location.hostname
+        and location.hostname.endswith("indeed.com")
+        and location.path.startswith(("/account", "/auth", "/login"))
+    ):
+        return True
     with contextlib.suppress(playwright_sync_api.Error):
         title = page.title().casefold()
         return (
