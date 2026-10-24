@@ -9,7 +9,7 @@ def test_indeed_accepts_161_items_across_20_pages():
          "description": "Verified description", "identity_verified": True}
         for n in range(161)
     ]
-    pages = [{"page_number": n, "visible_job_ids": []} for n in range(1, 21)]
+    pages = [{"page_number": n, "visible_job_ids": [f"verified-{i}" for i in range((n - 1) * 9, min(n * 9, 161))]} for n in range(1, 21)]
     validated = IndeedLiveCaptureRequest.model_validate({
         "search_url": "https://es.indeed.com/jobs?q=it",
         "items": items, "pages": pages, "requested_item_limit": 200,
@@ -30,5 +30,5 @@ def test_indeed_rejects_201_items():
 
 
 def test_linkedin_remains_bounded_at_100_and_10():
-    assert LinkedInLiveCaptureRequest.model_fields["items"].metadata[1].max_length == 100
-    assert LinkedInLiveCaptureRequest.model_fields["pages"].metadata[0].max_length == 10
+    assert LinkedInLiveCaptureRequest.model_json_schema()["properties"]["items"]["maxItems"] == 100
+    assert LinkedInLiveCaptureRequest.model_json_schema()["properties"]["pages"]["maxItems"] == 10
