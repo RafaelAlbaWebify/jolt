@@ -29,6 +29,13 @@ jobs:
           else
             python tools/change_impact.py --changed backend/src/jolt/schemas.py --output /tmp/jolt-impact.json
           fi
+      - name: Upload impact report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jolt-change-impact
+          path: /tmp/jolt-impact.json
+          if-no-files-found: warn
       - name: Smoke core schema impact
         run: python tools/change_impact.py --changed backend/src/jolt/schemas.py --output /tmp/jolt-schema-impact.json
       - name: Enforce known capture contract consistency when configured
