@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Literal, cast
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -57,7 +57,13 @@ class DiscoverySavedSearchRequest(BaseModel):
     definition: dict[str, Any]
     notes: str = Field(default="", max_length=1000)
     enabled: bool = True
-    max_jobs: int = Field(default=50, ge=1, le=100)
+    max_jobs: int = Field(default=50, ge=1, le=200)
+
+    @model_validator(mode="after")
+    def validate_source_limit(self) -> DiscoverySavedSearchRequest:
+        if self.source != "indeed" and self.max_jobs > 100:
+            raise ValueError("Only Indeed saved searches support more than 100 jobs")
+        return self
 
 
 class DiscoverySavedSearchResponse(BaseModel):
