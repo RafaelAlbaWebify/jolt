@@ -24,6 +24,18 @@ jobs:
         run: python -m pytest tools/test_change_impact.py -q
       - name: Analyze real checkout
         run: python tools/change_impact.py --changed backend/src/jolt/schemas.py --output /tmp/jolt-impact.json
+      - name: Enforce known capture contract consistency when configured
+        run: |
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/jolt-impact.json'))
+          risks=data.get('capture_contract_risks', [])
+          mismatches=[r for r in risks if r['status']=='incompatible']
+          if mismatches:
+              print('Capture contract mismatches:', mismatches)
+              raise SystemExit(1)
+          print('Capture contract check: no proven incompatibilities; unknowns remain visible')
+          PY
       - name: Assert nonempty impact
         run: |
           python - <<'PY'
