@@ -116,9 +116,11 @@ def edges(root: Path, known: set[str]) -> tuple[dict[str, set[str]], list[str]]:
 def git_changes(root: Path, base: str) -> list[str]:
     result = subprocess.run(["git", "-C", str(root), "diff", "--name-only", base, "--"],
                             capture_output=True, text=True, check=True)
+    staged = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only", base, "--"],
+                            capture_output=True, text=True, check=True)
     unstaged = subprocess.run(["git", "-C", str(root), "ls-files", "--others", "--exclude-standard"],
                               capture_output=True, text=True, check=True)
-    return sorted({normalize(x) for x in (result.stdout + "\n" + unstaged.stdout).splitlines() if x.strip()})
+    return sorted({normalize(x) for x in (result.stdout + "\n" + staged.stdout + "\n" + unstaged.stdout).splitlines() if x.strip()})
 
 
 def analyze(root: Path, changed: list[str]) -> dict:
@@ -231,7 +233,7 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
-    return 2 if args.strict_contracts and any(r["status"] == "incompatible" for r in report["capture_contract_risks"]) else 0
+    return 2 if args.strict_contracts and any(r["status"] in {"incompatible", "unknown"} for r in report["capture_contract_risks"]) else 0
 
 
 if __name__ == "__main__":
