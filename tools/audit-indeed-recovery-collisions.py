@@ -49,11 +49,24 @@ def audit(zip_path: Path, db_path: Path) -> dict:
         urls = {row[0] for row in connection.execute(
             "SELECT canonical_url FROM postings WHERE canonical_url LIKE '%indeed.com/%'"
         )}
+        captured = {row[0] for row in connection.execute(
+            "SELECT ci.source_job_id FROM capture_items ci "
+            "JOIN capture_runs cr ON cr.id = ci.capture_run_id "
+            "WHERE cr.source = ?", ("indeed",)
+        )} if {"capture_items", "capture_runs"} <= tables else set()
+        legacy_documents = {row[0] for row in connection.execute(
+            "SELECT source_url FROM source_documents WHERE source_type LIKE ?",
+            ("indeed%",),
+        )} if "source_documents" in tables else set()
         potential = []
         for item in items:
             key = item["source_job_id"]
             if key in new and any(("jk=" + key) in url for url in urls if isinstance(url, str)):
                 potential.append(key)
+        historical = incoming & captured
+        legacy = {item["source_job_id"] for item in items if item["source_job_id"] in new
+                  and any(("jk=" + item["source_job_id"]) in url for url in legacy_documents
+                          if isinstance(url, str))}
     finally:
         connection.close()
     after = hashlib.sha256(db_path.read_bytes()).hexdigest()
@@ -67,6 +80,8 @@ def audit(zip_path: Path, db_path: Path) -> dict:
         "already_registered": len(matched),
         "not_registered": len(new),
         "possible_unregistered_url_duplicates": len(potential),
+        "previously_captured_identifiers": len(historical),
+        "legacy_source_document_matches": len(legacy),
         "safe_to_import_automatically": False,
         "requires_transactional_idempotent_importer": True,
     }
