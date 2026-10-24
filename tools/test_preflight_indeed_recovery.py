@@ -5,7 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from tools.preflight_indeed_recovery import inspect_archive
+import importlib.util
+
+SCRIPT = Path(__file__).with_name("preflight-indeed-recovery.py")
+spec = importlib.util.spec_from_file_location("preflight_indeed_recovery", SCRIPT)
+assert spec is not None and spec.loader is not None
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+inspect_archive = module.inspect_archive
 
 
 def archive_with_payload(path: Path, items: list[dict]) -> None:
