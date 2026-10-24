@@ -180,7 +180,7 @@ def capture_contract_risks(root: Path) -> list[dict[str, str]]:
     reports = []
     for source in ("indeed", "linkedin"):
         producer = config.get(source, {})
-        model_name = source.capitalize() + "LiveCaptureRequest"
+        model_name = ("LinkedIn" if source == "linkedin" else "Indeed") + "LiveCaptureRequest"
         model = next((n for n in schema_tree.body
                       if isinstance(n, ast.ClassDef) and n.name == model_name), None)
         if model is None:
@@ -218,6 +218,7 @@ def main() -> int:
     parser.add_argument("--base", default="HEAD")
     parser.add_argument("--changed", nargs="*", help="Explicit paths; default: git diff plus untracked")
     parser.add_argument("--output", type=Path, help="Optional JSON report")
+    parser.add_argument("--strict-contracts", action="store_true", help="Fail on confirmed capture-contract mismatches")
     args = parser.parse_args()
     root = args.root.resolve()
     if not (root / "backend/src/jolt").is_dir() or not (root / "frontend/src").is_dir():
@@ -230,7 +231,7 @@ def main() -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
-    return 0
+    return 2 if args.strict_contracts and any(r["status"] == "incompatible" for r in report["capture_contract_risks"]) else 0
 
 
 if __name__ == "__main__":
