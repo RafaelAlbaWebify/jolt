@@ -55,17 +55,21 @@ def test_evidence_root_is_provisioned_persists_and_accepts_custom_path(tmp_path:
 
 
 def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: Path) -> None:
-    client = _client(tmp_path)
+    # Use independent HTTP clients while preserving same-database concurrency.
+    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
+    clients = [TestClient(create_app(database_url)) for _ in range(2)]
     barrier = Barrier(2)
 
-    def request(path: str):
+    def request(client: TestClient, path: str):
         barrier.wait(timeout=5)
         return client.get(path)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        evidence_future = executor.submit(request, "/api/professional-intelligence/evidence-root")
+        evidence_future = executor.submit(
+            request, clients[0], "/api/professional-intelligence/evidence-root"
+        )
         readiness_future = executor.submit(
-            request, "/api/professional-intelligence/execution-readiness"
+            request, clients[1], "/api/professional-intelligence/execution-readiness"
         )
         evidence = evidence_future.result(timeout=10)
         readiness = readiness_future.result(timeout=10)
