@@ -160,6 +160,49 @@ def analyze(root: Path, changed: list[str]) -> dict:
             "critical_changed": sorted(set(changed) & set(CRITICAL))}
 
 
+
+def capture_contract_risks(root: Path) -> list[dict[str, str]]:
+    """Compare active saved-search limits against live ingestion contracts.
+
+    Only report a mismatch if a concrete producer limit exceeds its receiver.
+    Legacy capture entrypoints are not silently assumed to share the same limits.
+    """
+    try:
+        import sys
+        from importlib import import_module
+        from pydantic import TypeAdapter
+        original = list(sys.path)
+        try:
+            sys.path.insert(0, str(root / "backend/src"))
+            limits = import_module("jolt.capture_limits")
+            schemas = import_module("jolt.schemas")
+            reports = []
+            for source in ("indeed", "linkedin"):
+                producer_jobs = getattr(limits, source.upper() + "_MAX_JOBS")
+                producer_pages = getattr(limits, source.upper() + "_MAX_PAGES")
+                model = getattr(schemas, source.capitalize() + "LiveCaptureRequest")
+                for field, producer_limit, label in (
+                    ("items", producer_jobs, "jobs"),
+                    ("requested_item_limit", producer_jobs, "jobs"),
+                    ("pages", producer_pages, "pages"),
+                ):
+                    schema = TypeAdapter(model).json_schema()
+                    prop = schema["properties"][field]
+                    consumer_limit = prop.get("maxItems" if field != "requested_item_limit" else "maximum")
+                    if consumer_limit is None:
+                        reports.append({"source": source, "field": field, "status": "unknown",
+                                        "reason": "Schema does not declare explicit maximum"})
+                    elif producer_limit > consumer_limit:
+                        reports.append({"source": source, "field": field, "status": "incompatible",
+                                        "reason": f"Producer allows {producer_limit} {label}; receiver allows {consumer_limit}"})
+            return reports
+        finally:
+            sys.path[:] = original
+    except (ImportError, AttributeError, KeyError, ValueError) as exc:
+        return [{"source": "capture", "field": "schema", "status": "unknown",
+                 "reason": f"Unable to verify runtime contract: {type(exc).__name__}: {exc}"}]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
@@ -172,6 +215,7 @@ def main() -> int:
         parser.error("invalid JOLT repository root")
     changed = [normalize(p) for p in args.changed] if args.changed is not None else git_changes(root, args.base)
     report = analyze(root, sorted(set(changed)))
+    report["capture_contract_risks"] = capture_contract_risks(root)
     rendered = json.dumps(report, indent=2, ensure_ascii=False)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
