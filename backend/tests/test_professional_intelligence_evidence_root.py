@@ -55,7 +55,8 @@ def test_evidence_root_is_provisioned_persists_and_accepts_custom_path(tmp_path:
 
 
 def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: Path) -> None:
-    # Separate TestClient instances avoid sharing one client transport across threads.\n    # Both apps still race on the same SQLite database and singleton setting.\n    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
+    # Use independent HTTP clients while preserving same-database concurrency.
+    database_url = f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}"
     clients = [TestClient(create_app(database_url)) for _ in range(2)]
     barrier = Barrier(2)
 
@@ -64,7 +65,9 @@ def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: 
         return client.get(path)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        evidence_future = executor.submit(request, clients[0], "/api/professional-intelligence/evidence-root")
+        evidence_future = executor.submit(
+            request, clients[0], "/api/professional-intelligence/evidence-root"
+        )
         readiness_future = executor.submit(
             request, clients[1], "/api/professional-intelligence/execution-readiness"
         )
@@ -75,7 +78,6 @@ def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: 
     assert readiness.status_code == 200
     assert evidence.json()["root_path"] == str((tmp_path / "professional-evidence").resolve())
     assert readiness.json()["ready"] is True
-
 
 @pytest.mark.parametrize("conflict_type", [IntegrityError, OperationalError])
 def test_default_provisioning_waits_until_concurrent_winner_is_visible(
