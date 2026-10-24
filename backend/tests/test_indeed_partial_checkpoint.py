@@ -1,4 +1,5 @@
 """Regression for recoverable Indeed checkpoints and login interstitial detection."""
+
 from __future__ import annotations
 
 import json
@@ -24,9 +25,7 @@ def test_checkpoint_preserves_full_verified_payload_without_submission(tmp_path)
         card_index=0,
     )
     pages = [{"page_number": 1, "visible_job_ids": ["job-123"]}]
-    _save_partial_checkpoint(
-        tmp_path, [card], pages, stop_reason="interrupted_before_submission"
-    )
+    _save_partial_checkpoint(tmp_path, [card], pages, stop_reason="interrupted_before_submission")
     checkpoint = json.loads((tmp_path / "partial_checkpoint.json").read_text(encoding="utf-8"))
     assert checkpoint["contract"] == "jolt-indeed-partial-checkpoint-v1"
     assert checkpoint["status"] == "partial_unsubmitted"
@@ -44,7 +43,9 @@ def test_login_detection_based_on_url_or_title():
         SimpleNamespace(url="https://secure.indeed.com/account/login", title=lambda: "")
     )
     assert _indeed_login_visible(
-        SimpleNamespace(url="https://es.indeed.com/jobs?q=it", title=lambda: "Iniciar sesión | Cuentas Indeed")
+        SimpleNamespace(
+            url="https://es.indeed.com/jobs?q=it", title=lambda: "Iniciar sesión | Cuentas Indeed"
+        )
     )
     assert not _indeed_login_visible(
         SimpleNamespace(url="https://es.indeed.com/jobs?q=it", title=lambda: "IT Support - Indeed")
