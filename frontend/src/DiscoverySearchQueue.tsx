@@ -439,11 +439,11 @@ export function DiscoverySearchQueue({ apiBase, active }: Props) {
             </label>
             <label>
               Maximum jobs
-              <input type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 5 : 100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
+              <input type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 5 : draft.source === "indeed" ? 200 : 100} value={draft.max_jobs} onChange={(event) => setDraft({ ...draft, max_jobs: Number(event.target.value) })} />
             </label>
             <label>
               Maximum pages
-              <input aria-label="Maximum pages" type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 1 : 10} disabled={draft.source === "infojobs" || draft.source === "jobgether"} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
+              <input aria-label="Maximum pages" type="number" min={1} max={draft.source === "infojobs" || draft.source === "jobgether" ? 1 : draft.source === "indeed" ? 20 : 10} disabled={draft.source === "infojobs" || draft.source === "jobgether"} value={draft.max_pages} onChange={(event) => setDraft({ ...draft, max_pages: Number(event.target.value) })} />
               {(draft.source === "infojobs" || draft.source === "jobgether") && (
                 <small>{sourceLabel(draft.source)} uses an isolated supervised Chrome window and captures up to five visible offers per search.</small>
               )}
