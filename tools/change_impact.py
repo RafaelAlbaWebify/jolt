@@ -162,45 +162,54 @@ def analyze(root: Path, changed: list[str]) -> dict:
 
 
 def capture_contract_risks(root: Path) -> list[dict[str, str]]:
-    """Compare active saved-search limits against live ingestion contracts.
+    """Statically compare configured capture limits with API reception limits.
 
-    Only report a mismatch if a concrete producer limit exceeds its receiver.
-    Legacy capture entrypoints are not silently assumed to share the same limits.
+    A missing shared limit file is an explicit unknown, not a passing result.
     """
+    config_path = root / "frontend/src/capture-limits.json"
+    schema_path = root / "backend/src/jolt/schemas.py"
+    if not config_path.is_file() or not schema_path.is_file():
+        return [{"source": "capture", "field": "limits", "status": "unknown",
+                 "reason": "Shared limits JSON or receiver schemas.py is absent"}]
     try:
-        import sys
-        from importlib import import_module
-        from pydantic import TypeAdapter
-        original = list(sys.path)
-        try:
-            sys.path.insert(0, str(root / "backend/src"))
-            limits = import_module("jolt.capture_limits")
-            schemas = import_module("jolt.schemas")
-            reports = []
-            for source in ("indeed", "linkedin"):
-                producer_jobs = getattr(limits, source.upper() + "_MAX_JOBS")
-                producer_pages = getattr(limits, source.upper() + "_MAX_PAGES")
-                model = getattr(schemas, source.capitalize() + "LiveCaptureRequest")
-                for field, producer_limit, label in (
-                    ("items", producer_jobs, "jobs"),
-                    ("requested_item_limit", producer_jobs, "jobs"),
-                    ("pages", producer_pages, "pages"),
-                ):
-                    schema = TypeAdapter(model).json_schema()
-                    prop = schema["properties"][field]
-                    consumer_limit = prop.get("maxItems" if field != "requested_item_limit" else "maximum")
-                    if consumer_limit is None:
-                        reports.append({"source": source, "field": field, "status": "unknown",
-                                        "reason": "Schema does not declare explicit maximum"})
-                    elif producer_limit > consumer_limit:
-                        reports.append({"source": source, "field": field, "status": "incompatible",
-                                        "reason": f"Producer allows {producer_limit} {label}; receiver allows {consumer_limit}"})
-            return reports
-        finally:
-            sys.path[:] = original
-    except (ImportError, AttributeError, KeyError, ValueError) as exc:
-        return [{"source": "capture", "field": "schema", "status": "unknown",
-                 "reason": f"Unable to verify runtime contract: {type(exc).__name__}: {exc}"}]
+        config = json.loads(config_path.read_text(encoding="utf-8-sig"))
+        schema_tree = ast.parse(schema_path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, SyntaxError) as exc:
+        return [{"source": "capture", "field": "limits", "status": "unknown",
+                 "reason": f"Contract parsing failed: {type(exc).__name__}: {exc}"}]
+    reports = []
+    for source in ("indeed", "linkedin"):
+        producer = config.get(source, {})
+        model_name = source.capitalize() + "LiveCaptureRequest"
+        model = next((n for n in schema_tree.body
+                      if isinstance(n, ast.ClassDef) and n.name == model_name), None)
+        if model is None:
+            reports.append({"source": source, "field": "schema", "status": "unknown",
+                            "reason": f"Missing {model_name}"})
+            continue
+        fields = {}
+        for node in model.body:
+            if not isinstance(node, ast.AnnAssign) or not isinstance(node.target, ast.Name):
+                continue
+            if not isinstance(node.value, ast.Call):
+                continue
+            kwargs = {kw.arg: kw.value for kw in node.value.keywords if kw.arg}
+            fields[node.target.id] = kwargs
+        for field, config_key, limit_key in (
+            ("items", "max_jobs", "max_length"),
+            ("requested_item_limit", "max_jobs", "le"),
+            ("pages", "max_pages", "max_length"),
+        ):
+            limit = fields.get(field, {}).get(limit_key)
+            consumer = limit.value if isinstance(limit, ast.Constant) and isinstance(limit.value, int) else None
+            allowed = producer.get(config_key)
+            if not isinstance(allowed, int) or consumer is None:
+                reports.append({"source": source, "field": field, "status": "unknown",
+                                "reason": "Producer or consumer maximum cannot be statically resolved"})
+            elif allowed > consumer:
+                reports.append({"source": source, "field": field, "status": "incompatible",
+                                "reason": f"Producer allows {allowed}; receiver allows {consumer}"})
+    return reports
 
 
 def main() -> int:
