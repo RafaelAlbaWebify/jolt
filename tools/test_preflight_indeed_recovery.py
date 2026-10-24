@@ -51,3 +51,25 @@ def test_recovery_rejects_unverified_identity(tmp_path: Path):
     archive_with_payload(path, [{**item("job-1"), "identity_verified": False}])
     with pytest.raises(ValueError, match="unverified"):
         inspect_archive(path)
+
+
+def test_reconstructs_real_pydantic_item_list_from_summary(tmp_path: Path):
+    path = tmp_path / "failed-161.zip"
+    items = [item(f"verified-{number}") for number in range(161)]
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("api_result.json", json.dumps({
+            "submitted": False,
+            "stage": "local_validation",
+            "validation_errors": [{"type": "too_long", "loc": ["items"], "input": items}],
+        }))
+        archive.writestr("capture_summary.json", json.dumps({
+            "search_url": "https://es.indeed.com/jobs?q=testing",
+            "max_jobs": 200,
+            "captured_count": 161,
+            "stop_reason": "visible_jobs_exhausted",
+            "pages": [{"page_number": 1}],
+        }))
+    result = inspect_archive(path)
+    assert result["item_count"] == 161
+    assert result["recovered_request"]["items"] == items
+    assert result["recovered_request"]["requested_item_limit"] == 200
