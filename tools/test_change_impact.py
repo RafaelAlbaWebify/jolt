@@ -1,7 +1,7 @@
 """Contract tests for the repository impact analyzer."""
 from pathlib import Path
 
-from tools.change_impact import analyze, python_imports, relative_js_target
+from tools.change_impact import analyze, capture_contract_risks, python_imports, relative_js_target
 
 
 def test_python_reverse_dependency_and_test_selection(tmp_path: Path):
@@ -32,3 +32,37 @@ def test_js_relative_resolution():
 def test_python_imports_do_not_invent_nonexistent_targets():
     known = {"backend/src/jolt/a.py"}
     assert python_imports("backend/src/jolt/a.py", "import jolt.not_present", known) == set()
+
+
+def test_capture_contract_detects_producer_receiver_mismatch(tmp_path: Path):
+    import json
+
+    config = tmp_path / "frontend/src/capture-limits.json"
+    config.parent.mkdir(parents=True)
+    config.write_text(json.dumps({
+        "indeed": {"max_jobs": 200, "max_pages": 20},
+        "linkedin": {"max_jobs": 200, "max_pages": 20},
+    }), encoding="utf-8")
+    schemas = tmp_path / "backend/src/jolt/schemas.py"
+    schemas.parent.mkdir(parents=True)
+    schemas.write_text("""
+class IndeedLiveCaptureRequest:
+    items: list = Field(max_length=200)
+    pages: list = Field(max_length=20)
+    requested_item_limit: int = Field(le=200)
+
+class LinkedInLiveCaptureRequest:
+    items: list = Field(max_length=100)
+    pages: list = Field(max_length=10)
+    requested_item_limit: int = Field(le=100)
+""", encoding="utf-8")
+    risks = capture_contract_risks(tmp_path)
+    assert len(risks) == 3
+    assert {risk["field"] for risk in risks} == {"items", "pages", "requested_item_limit"}
+    assert all(risk["source"] == "linkedin" for risk in risks)
+    assert all(risk["status"] == "incompatible" for risk in risks)
+
+
+def test_capture_contract_reports_missing_configuration_as_unknown(tmp_path: Path):
+    risks = capture_contract_risks(tmp_path)
+    assert risks[0]["status"] == "unknown"
