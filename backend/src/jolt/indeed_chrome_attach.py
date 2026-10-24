@@ -98,6 +98,23 @@ def _page_search_url(search_url: str, page_number: int) -> str:
     return urlunparse(parsed._replace(query=urlencode(pairs, doseq=True)))
 
 
+def _indeed_login_visible(page: Page) -> bool:
+    """Identify the Indeed account interstitial without automating login."""
+    location = urlparse(page.url or "")
+    if (
+        location.hostname
+        and location.hostname.endswith("indeed.com")
+        and location.path.startswith(("/account", "/auth", "/login"))
+    ):
+        return True
+    with contextlib.suppress(playwright_sync_api.Error):
+        title = page.title().casefold()
+        return (
+            "sign in" in title or "iniciar sesión" in title or "iniciar sesion" in title
+        ) and "indeed" in title
+    return False
+
+
 def _wait_for_visible_results(
     page: Page,
     max_jobs: int,
@@ -114,8 +131,9 @@ def _wait_for_visible_results(
             return candidates
 
         warning = _access_warning(page)
-        if warning and not announced_verification:
-            print("Indeed verification is visible. Complete it manually in Chrome.")
+        login_visible = _indeed_login_visible(page)
+        if (warning or login_visible) and not announced_verification:
+            print("Indeed login or verification page detected. Sign in manually if needed.")
             print("JOLT will continue automatically when job results become available.")
             announced_verification = True
 
@@ -149,10 +167,63 @@ def _wait_for_visible_results(
                 encoding="utf-8",
             )
 
+    if _indeed_login_visible(page):
+        raise RuntimeError(
+            "Indeed login page remained visible; results were unavailable. "
+            "Previous pages are preserved in the partial checkpoint ZIP. "
+            "Complete sign-in manually before a new attempt."
+        )
     raise RuntimeError(
         "Indeed did not show job results after the supervised verification window. "
-        "Complete verification manually in the isolated Chrome session and retry."
+        "Previous pages are preserved in the partial checkpoint ZIP."
     )
+
+
+def _save_partial_checkpoint(
+    staging_dir: Path,
+    cards: list[CapturedCard],
+    pages: list[dict[str, object]],
+    *,
+    stop_reason: str,
+) -> None:
+    """Keep recoverable, unsubmitted capture evidence after each completed page.
+
+    Checkpoints are packaged in the output ZIP even if a later page fails.
+    Do not POST these items automatically: operator review is required.
+    """
+    payload = {
+        "contract": "jolt-indeed-partial-checkpoint-v1",
+        "status": "partial_unsubmitted",
+        "stop_reason": stop_reason,
+        "captured_count": len(cards),
+        "verified_count": sum(card.identity_verified for card in cards),
+        "pages": pages,
+        "items": [
+            {
+                "source_job_id": card.source_job_id,
+                "source_url": card.source_url,
+                "title": card.title,
+                "company": card.company,
+                "location": card.location,
+                "description": card.description,
+                "identity_verified": card.identity_verified,
+                "verification_reason": card.verification_reason,
+                "page_number": card.page_number,
+            }
+            for card in cards
+        ],
+    }
+    evidence_dir = staging_dir / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    for card in cards:
+        if card.detail_html and card.identity_verified:
+            (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
+                redact_text(card.detail_html), encoding="utf-8"
+            )
+    checkpoint = staging_dir / "partial_checkpoint.json"
+    temporary = staging_dir / "partial_checkpoint.json.tmp"
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(checkpoint)
 
 
 def _verified_known_job_ids(source_ids: list[str]) -> set[str]:
@@ -466,6 +537,7 @@ def run_capture(
                         )
                     )
 
+                _save_partial_checkpoint(staging_dir, cards, pages, stop_reason="page_completed")
                 print(
                     f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
                 )
@@ -514,6 +586,11 @@ def run_capture(
                     )
 
             api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
+            if api_result.get("capture_run_id") and api_result.get("status") in {
+                "completed",
+                "completed_with_warnings",
+            }:
+                (staging_dir / "partial_checkpoint.json").unlink(missing_ok=True)
             (staging_dir / "api_result.json").write_text(
                 json.dumps(api_result, indent=2, ensure_ascii=True),
                 encoding="utf-8",
@@ -535,6 +612,10 @@ def run_capture(
 
         return package_run(staging_dir, output_zip)
     except Exception as exc:
+        if "cards" in locals() and "pages" in locals():
+            _save_partial_checkpoint(
+                staging_dir, cards, pages, stop_reason="interrupted_before_submission"
+            )
         (staging_dir / "failure.json").write_text(
             json.dumps({"error_type": type(exc).__name__, "error": str(exc)}, indent=2),
             encoding="utf-8",
@@ -558,9 +639,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-pause", action="store_true")
     args = parser.parse_args(argv)
     if args.max_jobs < 1 or args.max_jobs > 200:
-        parser.error("--max-jobs must be between 1 and 100.")
+        parser.error("--max-jobs must be between 1 and 200.")
     if args.max_pages < 1 or args.max_pages > 20:
-        parser.error("--max-pages must be between 1 and 10.")
+        parser.error("--max-pages must be between 1 and 20.")
     return args
 
 
