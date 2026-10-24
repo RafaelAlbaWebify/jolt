@@ -1,9 +1,9 @@
 [CmdletBinding()]
 param(
     [string]$SearchUrl = "https://es.indeed.com/jobs?q=IT+Support",
-    [ValidateRange(1, 100)]
+    [ValidateRange(1, 200)]
     [int]$MaxJobs = 15,
-    [ValidateRange(1, 10)]
+    [ValidateRange(1, 20)]
     [int]$MaxPages = 1,
     [int]$DebugPort = 9222,
     [string]$ApiUrl = "http://127.0.0.1:8000",
