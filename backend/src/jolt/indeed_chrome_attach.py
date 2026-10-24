@@ -107,9 +107,8 @@ def _indeed_login_visible(page: Page) -> bool:
     with contextlib.suppress(playwright_sync_api.Error):
         title = page.title().casefold()
         return (
-            ("sign in" in title or "iniciar sesión" in title or "iniciar sesion" in title)
-            and "indeed" in title
-        )
+            "sign in" in title or "iniciar sesión" in title or "iniciar sesion" in title
+        ) and "indeed" in title
     return False
 
 
@@ -535,9 +534,7 @@ def run_capture(
                         )
                     )
 
-                _save_partial_checkpoint(
-                    staging_dir, cards, pages, stop_reason="page_completed"
-                )
+                _save_partial_checkpoint(staging_dir, cards, pages, stop_reason="page_completed")
                 print(
                     f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
                 )
