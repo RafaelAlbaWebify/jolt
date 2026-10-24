@@ -28,9 +28,27 @@ def inspect_archive(path: Path) -> dict:
         failures = api.get("validation_errors") or []
         inputs = [e.get("input") for e in failures if isinstance(e, dict)]
         payloads = [p for p in inputs if isinstance(p, dict) and isinstance(p.get("items"), list)]
-        if not payloads:
-            raise ValueError("Original complete request payload not found in validation_errors")
-        payload = max(payloads, key=lambda p: len(p["items"]))
+        if payloads:
+            payload = max(payloads, key=lambda p: len(p["items"]))
+        else:
+            lists = [p for p in inputs if isinstance(p, list) and p
+                     and all(isinstance(item, dict) for item in p)]
+            if not lists:
+                raise ValueError("Complete item list not found in validation_errors")
+            summary_names = [name for name in names
+                             if name.endswith("/capture_summary.json") or name == "capture_summary.json"]
+            if len(summary_names) != 1:
+                raise ValueError("Capture summary required to reconstruct original request")
+            summary = json.loads(archive.read(summary_names[0]))
+            payload = {
+                "search_url": summary.get("search_url", ""),
+                "requested_item_limit": summary.get("max_jobs"),
+                "stop_reason": summary.get("stop_reason", ""),
+                "pages": summary.get("pages", []),
+                "items": max(lists, key=len),
+            }
+            if summary.get("captured_count") != len(payload["items"]):
+                raise ValueError("Captured item count disagrees with original summary")
         items = payload["items"]
         ids = [item.get("source_job_id") for item in items]
         if not items or not all(isinstance(i, str) and i.strip() for i in ids):
