@@ -113,6 +113,40 @@ def edges(root: Path, known: set[str]) -> tuple[dict[str, set[str]], list[str]]:
     return graph, warnings
 
 
+
+def boundary_edges(root: Path, known: set[str]) -> dict[str, set[str]]:
+    """Conservative lexical edges for API calls, route ownership and SQL model use."""
+    graph: dict[str, set[str]] = defaultdict(set)
+    content = {}
+    for path in sorted(known):
+        if path.startswith(("backend/src/jolt/", "frontend/src/")):
+            try:
+                content[path] = (root / path).read_text(encoding="utf-8-sig")
+            except (OSError, UnicodeError):
+                continue
+    route_owners: dict[str, set[str]] = defaultdict(set)
+    route_pattern = re.compile(r"""@(?:router|app)\.(?:get|post|put|patch|delete)\(\s*['"](/api/[^'"]+)['"]""")
+    for path, source in content.items():
+        if path.endswith(".py"):
+            for match in route_pattern.finditer(source):
+                route_owners[match.group(1)].add(path)
+    for path, source in content.items():
+        if path.endswith((".ts", ".tsx", ".js", ".jsx")):
+            for route, owners in route_owners.items():
+                if route in source:
+                    graph[path].update(owners)
+    model_path = "backend/src/jolt/database.py"
+    if model_path in content:
+        tree = ast.parse(content[model_path])
+        models = {node.name for node in tree.body if isinstance(node, ast.ClassDef)}
+        for path, source in content.items():
+            if path.endswith(".py") and path != model_path:
+                used = {name for name in models if re.search(r"\b" + re.escape(name) + r"\b", source)}
+                if used and ("jolt.database" in source or "from .database" in source):
+                    graph[path].add(model_path)
+    return graph
+
+
 def git_changes(root: Path, base: str) -> list[str]:
     result = subprocess.run(["git", "-C", str(root), "diff", "--name-only", base, "--"],
                             capture_output=True, text=True, check=True)
@@ -128,6 +162,8 @@ def analyze(root: Path, changed: list[str]) -> dict:
     if not known:
         raise ValueError("empty source inventory")
     graph, warnings = edges(root, known)
+    for caller, targets in boundary_edges(root, known).items():
+        graph[caller].update(targets)
     reverse: dict[str, set[str]] = defaultdict(set)
     for caller, dependencies in graph.items():
         for dependency in dependencies:
