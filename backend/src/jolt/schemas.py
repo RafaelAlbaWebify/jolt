@@ -178,9 +178,9 @@ class IndeedLiveCapturePageRequest(BaseModel):
 
 class IndeedLiveCaptureRequest(BaseModel):
     search_url: str = ""
-    items: list[IndeedLiveCaptureItemRequest] = Field(min_length=1, max_length=100)
-    pages: list[IndeedLiveCapturePageRequest] = Field(default_factory=list, max_length=10)
-    requested_item_limit: int | None = Field(default=None, ge=1, le=100)
+    items: list[IndeedLiveCaptureItemRequest] = Field(min_length=1, max_length=200)
+    pages: list[IndeedLiveCapturePageRequest] = Field(default_factory=list, max_length=20)
+    requested_item_limit: int | None = Field(default=None, ge=1, le=200)
     stop_reason: str = Field(default="", max_length=80)
 
     @model_validator(mode="after")
