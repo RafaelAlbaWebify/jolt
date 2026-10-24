@@ -79,6 +79,7 @@ def test_concurrent_evidence_root_and_readiness_provision_one_default(tmp_path: 
     assert evidence.json()["root_path"] == str((tmp_path / "professional-evidence").resolve())
     assert readiness.json()["ready"] is True
 
+
 @pytest.mark.parametrize("conflict_type", [IntegrityError, OperationalError])
 def test_default_provisioning_waits_until_concurrent_winner_is_visible(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, conflict_type: type[Exception]
