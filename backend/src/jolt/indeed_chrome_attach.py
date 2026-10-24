@@ -217,9 +217,9 @@ def _save_partial_checkpoint(
     evidence_dir.mkdir(parents=True, exist_ok=True)
     for card in cards:
         if card.detail_html and card.identity_verified:
-            (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
-                redact_text(card.detail_html), encoding="utf-8"
-            )
+            evidence_path = evidence_dir / f"job_{card.source_job_id}.redacted.html"
+            if not evidence_path.exists():
+                evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
     checkpoint = staging_dir / "partial_checkpoint.json"
     temporary = staging_dir / "partial_checkpoint.json.tmp"
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
