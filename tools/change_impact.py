@@ -83,7 +83,7 @@ def relative_js_target(path: str, spec: str, known: set[str]) -> str | None:
             parts.append(part)
     base = "/".join(parts)
     for candidate in (base, *(base + ext for ext in (".ts", ".tsx", ".js", ".jsx")),
-                      *(base + "/index" + ext for ext in (".ts", ".tsx", ".js"))):
+                      *(base + "/index" + ext for ext in (".ts", ".tsx", ".js", ".jsx"))):
         if candidate in known:
             return candidate
     return None
