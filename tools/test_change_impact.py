@@ -1,7 +1,7 @@
 """Contract tests for the repository impact analyzer."""
 from pathlib import Path
 
-from tools.change_impact import analyze, capture_contract_risks, python_imports, relative_js_target
+from tools.change_impact import analyze, boundary_edges, capture_contract_risks, python_imports, relative_js_target
 
 
 def test_python_reverse_dependency_and_test_selection(tmp_path: Path):
@@ -66,3 +66,19 @@ class LinkedInLiveCaptureRequest:
 def test_capture_contract_reports_missing_configuration_as_unknown(tmp_path: Path):
     risks = capture_contract_risks(tmp_path)
     assert risks[0]["status"] == "unknown"
+
+
+def test_static_http_route_and_db_model_boundaries(tmp_path: Path):
+    sources = {
+        "backend/src/jolt/main.py": '@app.get("/api/jobs")\ndef jobs(): pass\n',
+        "backend/src/jolt/database.py": 'class Posting: pass\n',
+        "backend/src/jolt/reader.py": 'from jolt.database import Posting\nitems = Posting\n',
+        "frontend/src/App.tsx": 'fetch("/api/jobs")\n',
+    }
+    for relative, value in sources.items():
+        file = tmp_path / relative
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(value, encoding="utf-8")
+    graph = boundary_edges(tmp_path, set(sources))
+    assert "backend/src/jolt/main.py" in graph["frontend/src/App.tsx"]
+    assert "backend/src/jolt/database.py" in graph["backend/src/jolt/reader.py"]
