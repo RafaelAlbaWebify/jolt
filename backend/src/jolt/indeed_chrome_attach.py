@@ -132,26 +132,29 @@ def _wait_for_visible_results(
     login_seen = False
     poll_count = 0
     while elapsed < timeout_ms:
-        candidates = _visible_listing_candidates(page, max_jobs)
         poll_count += 1
-        # Count raw listing markers separately from JOLT candidate validation.
-        # Keep this observational: no change to acceptance criteria.
+        # Probe raw DOM before candidate extraction so extractor latency is not
+        # incorrectly attributed to Indeed rendering. Diagnostics are optional.
         raw_marker_count = 0
-        with contextlib.suppress(playwright_sync_api.Error):
-            raw_marker_count = page.locator("[data-jk]").count()
-        if raw_marker_count and first_dom_seconds is None:
-            first_dom_seconds = round(perf_counter() - started, 3)
+        if readiness_diagnostics is not None:
+            with contextlib.suppress(playwright_sync_api.Error):
+                raw_marker_count = page.locator("[data-jk]").count()
+            if raw_marker_count and first_dom_seconds is None:
+                first_dom_seconds = round(perf_counter() - started, 3)
+        candidates = _visible_listing_candidates(page, max_jobs)
         if candidates:
             if readiness_diagnostics is not None:
-                readiness_diagnostics.update({
-                    "first_dom_listing_seconds": first_dom_seconds,
-                    "first_valid_candidate_seconds": round(perf_counter() - started, 3),
-                    "raw_listing_marker_count": raw_marker_count,
-                    "valid_candidate_count": len(candidates),
-                    "poll_count": poll_count,
-                    "access_warning_seen": access_warning_seen,
-                    "login_seen": login_seen,
-                })
+                readiness_diagnostics.update(
+                    {
+                        "first_dom_listing_seconds": first_dom_seconds,
+                        "first_valid_candidate_seconds": round(perf_counter() - started, 3),
+                        "raw_listing_marker_count": raw_marker_count,
+                        "valid_candidate_count": len(candidates),
+                        "poll_count": poll_count,
+                        "access_warning_seen": access_warning_seen,
+                        "login_seen": login_seen,
+                    }
+                )
             return candidates
 
         warning = _access_warning(page)
