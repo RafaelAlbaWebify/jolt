@@ -204,3 +204,58 @@ def test_verified_known_ids_only_returns_verified_indeed(tmp_path, monkeypatch) 
             "INSERT INTO capture_items VALUES ('other', 'b', 'verified', 'doc');"
         )
     assert _verified_known_job_ids(["known", "unverified", "other"]) == {"known"}
+
+
+def test_readiness_probe_observes_raw_dom_before_candidate_extraction(monkeypatch) -> None:
+    import jolt.indeed_chrome_attach as module
+
+    events: list[str] = []
+
+    class Locator:
+        def count(self) -> int:
+            events.append("dom")
+            return 4
+
+    class Page:
+        def locator(self, selector: str) -> Locator:
+            assert selector == "[data-jk]"
+            return Locator()
+
+    def candidates(page: object, max_jobs: int) -> list[dict[str, str]]:
+        events.append("candidates")
+        assert max_jobs == 15
+        return [{"source_job_id": "known"}]
+
+    monkeypatch.setattr(module, "_visible_listing_candidates", candidates)
+    diagnostics: dict[str, object] = {}
+    actual = module._wait_for_visible_results(
+        Page(),  # type: ignore[arg-type]
+        15,
+        readiness_diagnostics=diagnostics,
+    )
+    assert actual == [{"source_job_id": "known"}]
+    assert events == ["dom", "candidates"]
+    assert diagnostics["first_dom_listing_seconds"] is not None
+    assert diagnostics["first_valid_candidate_seconds"] is not None
+    assert diagnostics["raw_listing_marker_count"] == 4
+    assert diagnostics["valid_candidate_count"] == 1
+    assert diagnostics["poll_count"] == 1
+    assert diagnostics["login_seen"] is False
+    assert diagnostics["access_warning_seen"] is False
+
+
+def test_readiness_probe_does_not_change_candidate_acceptance(monkeypatch) -> None:
+    import jolt.indeed_chrome_attach as module
+
+    class Page:
+        def locator(self, selector: str) -> object:
+            raise AssertionError("DOM probe must be optional")
+
+    monkeypatch.setattr(
+        module,
+        "_visible_listing_candidates",
+        lambda page, max_jobs: [{"source_job_id": "accepted"}],
+    )
+    assert module._wait_for_visible_results(Page(), 15) == [  # type: ignore[arg-type]
+        {"source_job_id": "accepted"}
+    ]
