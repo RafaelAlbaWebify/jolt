@@ -122,16 +122,45 @@ def _wait_for_visible_results(
     timeout_ms: int = 600_000,
     evidence_dir: Path | None = None,
     diagnostic_label: str = "indeed_wait",
+    readiness_diagnostics: dict[str, object] | None = None,
 ) -> list[dict[str, str]]:
     elapsed = 0
     announced_verification = False
+    started = perf_counter()
+    first_dom_seconds: float | None = None
+    access_warning_seen = False
+    login_seen = False
+    poll_count = 0
     while elapsed < timeout_ms:
+        poll_count += 1
+        # Probe raw DOM before candidate extraction so extractor latency is not
+        # incorrectly attributed to Indeed rendering. Diagnostics are optional.
+        raw_marker_count = 0
+        if readiness_diagnostics is not None:
+            with contextlib.suppress(playwright_sync_api.Error):
+                raw_marker_count = page.locator("[data-jk]").count()
+            if raw_marker_count and first_dom_seconds is None:
+                first_dom_seconds = round(perf_counter() - started, 3)
         candidates = _visible_listing_candidates(page, max_jobs)
         if candidates:
+            if readiness_diagnostics is not None:
+                readiness_diagnostics.update(
+                    {
+                        "first_dom_listing_seconds": first_dom_seconds,
+                        "first_valid_candidate_seconds": round(perf_counter() - started, 3),
+                        "raw_listing_marker_count": raw_marker_count,
+                        "valid_candidate_count": len(candidates),
+                        "poll_count": poll_count,
+                        "access_warning_seen": access_warning_seen,
+                        "login_seen": login_seen,
+                    }
+                )
             return candidates
 
         warning = _access_warning(page)
         login_visible = _indeed_login_visible(page)
+        access_warning_seen = access_warning_seen or bool(warning)
+        login_seen = login_seen or login_visible
         if (warning or login_visible) and not announced_verification:
             print("Indeed login or verification page detected. Sign in manually if needed.")
             print("JOLT will continue automatically when job results become available.")
@@ -329,11 +358,13 @@ def run_capture(
                 navigation_seconds = perf_counter() - navigation_started
                 results_wait_started = perf_counter()
 
+                readiness_diagnostics: dict[str, object] = {}
                 candidates = _wait_for_visible_results(
                     page,
                     15,
                     evidence_dir=evidence_dir,
                     diagnostic_label=f"page_{page_number:02d}_wait_timeout",
+                    readiness_diagnostics=readiness_diagnostics,
                 )
                 results_wait_seconds = perf_counter() - results_wait_started
                 visible_ids = [candidate["source_job_id"] for candidate in candidates]
@@ -364,6 +395,7 @@ def run_capture(
                         "page_number": page_number,
                         "navigation_seconds": round(navigation_seconds, 3),
                         "results_wait_seconds": round(results_wait_seconds, 3),
+                        "readiness_diagnostics": readiness_diagnostics,
                         "visible_job_ids": visible_ids,
                         "listing_signals": {
                             job_id: listing_signals.get(job_id, {}) for job_id in visible_ids
@@ -553,6 +585,9 @@ def run_capture(
                 print(
                     f"Page {page_number} timing: navigate={navigation_seconds:.2f}s "
                     f"results_wait={results_wait_seconds:.2f}s "
+                    f"first_dom={readiness_diagnostics.get('first_dom_listing_seconds')}s "
+                    f"valid_candidate={readiness_diagnostics.get('first_valid_candidate_seconds')}s "
+                    f"login_seen={readiness_diagnostics.get('login_seen')} "
                     f"checkpoint={checkpoint_seconds:.2f}s "
                     f"total={page_total_seconds:.2f}s",
                     flush=True,
