@@ -259,3 +259,50 @@ def test_readiness_probe_does_not_change_candidate_acceptance(monkeypatch) -> No
     assert module._wait_for_visible_results(Page(), 15) == [  # type: ignore[arg-type]
         {"source_job_id": "accepted"}
     ]
+
+
+def test_indeed_checkpoint_is_atomic_recoverable_and_skips_existing_html(
+    tmp_path, monkeypatch
+) -> None:
+    import json
+
+    import jolt.indeed_chrome_attach as module
+    from jolt.supervised_capture import CapturedCard
+
+    card = CapturedCard(
+        source_job_id="test-job",
+        source_url="https://es.indeed.com/viewjob?jk=test-job",
+        title="Test title",
+        company="Test company",
+        location="Remote",
+        detail_html="<html>verified evidence</html>",
+        description="Verified detail text",
+        identity_verified=True,
+        verification_reason="verified",
+    )
+    calls: list[str] = []
+    original = module.redact_text
+
+    def redaction_spy(value: str) -> str:
+        calls.append(value)
+        return original(value)
+
+    monkeypatch.setattr(module, "redact_text", redaction_spy)
+    module._save_partial_checkpoint(
+        tmp_path, [card], [{"page_number": 1}], stop_reason="page_completed"
+    )
+    checkpoint = tmp_path / "partial_checkpoint.json"
+    evidence = tmp_path / "evidence" / "job_test-job.redacted.html"
+    first = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert first["items"][0]["description"] == "Verified detail text"
+    assert first["status"] == "partial_unsubmitted"
+    assert evidence.exists()
+    assert len(calls) == 1
+    assert not checkpoint.with_name(checkpoint.name + ".tmp").exists()
+
+    module._save_partial_checkpoint(
+        tmp_path, [card], [{"page_number": 1}], stop_reason="interrupted_before_submission"
+    )
+    second = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert second["stop_reason"] == "interrupted_before_submission"
+    assert len(calls) == 1
