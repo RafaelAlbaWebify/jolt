@@ -288,7 +288,9 @@ def test_indeed_checkpoint_is_atomic_recoverable_and_skips_existing_html(
         return original(value)
 
     monkeypatch.setattr(module, "redact_text", redaction_spy)
-    module._save_partial_checkpoint(tmp_path, [card], [{"page_number": 1}], stop_reason="page_completed")
+    module._save_partial_checkpoint(
+        tmp_path, [card], [{"page_number": 1}], stop_reason="page_completed"
+    )
     checkpoint = tmp_path / "partial_checkpoint.json"
     evidence = tmp_path / "evidence" / "job_test-job.redacted.html"
     first = json.loads(checkpoint.read_text(encoding="utf-8"))
@@ -298,7 +300,9 @@ def test_indeed_checkpoint_is_atomic_recoverable_and_skips_existing_html(
     assert len(calls) == 1
     assert not checkpoint.with_name(checkpoint.name + ".tmp").exists()
 
-    module._save_partial_checkpoint(tmp_path, [card], [{"page_number": 1}], stop_reason="interrupted_before_submission")
+    module._save_partial_checkpoint(
+        tmp_path, [card], [{"page_number": 1}], stop_reason="interrupted_before_submission"
+    )
     second = json.loads(checkpoint.read_text(encoding="utf-8"))
     assert second["stop_reason"] == "interrupted_before_submission"
     assert len(calls) == 1
