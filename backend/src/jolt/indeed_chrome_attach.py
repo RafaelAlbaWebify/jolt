@@ -320,10 +320,14 @@ def run_capture(
                 if len(cards) >= max_jobs:
                     break
 
+                page_started = perf_counter()
+                navigation_started = perf_counter()
                 target_url = _page_search_url(base_search_url, page_number)
                 if page_number > 1:
                     print(f"Opening Indeed results page {page_number}: {target_url}")
                     page = _navigate_search_page(context, page, target_url)
+                navigation_seconds = perf_counter() - navigation_started
+                results_wait_started = perf_counter()
 
                 candidates = _wait_for_visible_results(
                     page,
@@ -331,6 +335,7 @@ def run_capture(
                     evidence_dir=evidence_dir,
                     diagnostic_label=f"page_{page_number:02d}_wait_timeout",
                 )
+                results_wait_seconds = perf_counter() - results_wait_started
                 visible_ids = [candidate["source_job_id"] for candidate in candidates]
                 # Preserve exactly what the page exposes; no claim that
                 # sponsored listings or displayed age are always detectable.
@@ -357,6 +362,8 @@ def run_capture(
                 pages.append(
                     {
                         "page_number": page_number,
+                        "navigation_seconds": round(navigation_seconds, 3),
+                        "results_wait_seconds": round(results_wait_seconds, 3),
                         "visible_job_ids": visible_ids,
                         "listing_signals": {
                             job_id: listing_signals.get(job_id, {}) for job_id in visible_ids
@@ -537,7 +544,19 @@ def run_capture(
                         )
                     )
 
+                checkpoint_started = perf_counter()
                 _save_partial_checkpoint(staging_dir, cards, pages, stop_reason="page_completed")
+                checkpoint_seconds = perf_counter() - checkpoint_started
+                page_total_seconds = perf_counter() - page_started
+                pages[-1]["checkpoint_seconds"] = round(checkpoint_seconds, 3)
+                pages[-1]["page_total_seconds"] = round(page_total_seconds, 3)
+                print(
+                    f"Page {page_number} timing: navigate={navigation_seconds:.2f}s "
+                    f"results_wait={results_wait_seconds:.2f}s "
+                    f"checkpoint={checkpoint_seconds:.2f}s "
+                    f"total={page_total_seconds:.2f}s",
+                    flush=True,
+                )
                 print(
                     f"Progress: page {page_number}/{max_pages} · captured {len(cards)}/{max_jobs}"
                 )
