@@ -251,7 +251,9 @@ def _save_partial_checkpoint(
                 evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
     checkpoint = staging_dir / "partial_checkpoint.json"
     temporary = staging_dir / "partial_checkpoint.json.tmp"
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+    )
     temporary.replace(checkpoint)
 
 
