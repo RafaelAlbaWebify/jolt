@@ -261,8 +261,11 @@ def test_readiness_probe_does_not_change_candidate_acceptance(monkeypatch) -> No
     ]
 
 
-def test_indeed_checkpoint_is_atomic_recoverable_and_skips_existing_html(tmp_path, monkeypatch) -> None:
+def test_indeed_checkpoint_is_atomic_recoverable_and_skips_existing_html(
+    tmp_path, monkeypatch
+) -> None:
     import json
+
     import jolt.indeed_chrome_attach as module
     from jolt.supervised_capture import CapturedCard
 
