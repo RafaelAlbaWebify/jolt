@@ -251,7 +251,7 @@ def _save_partial_checkpoint(
                 evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
     checkpoint = staging_dir / "partial_checkpoint.json"
     temporary = staging_dir / "partial_checkpoint.json.tmp"
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     temporary.replace(checkpoint)
 
 
@@ -632,12 +632,12 @@ def run_capture(
                 encoding="utf-8",
             )
 
+            # Reuse HTML evidence persisted by checkpoints at each page.
             for card in cards:
                 if card.detail_html:
-                    (evidence_dir / f"job_{card.source_job_id}.redacted.html").write_text(
-                        redact_text(card.detail_html),
-                        encoding="utf-8",
-                    )
+                    evidence_path = evidence_dir / f"job_{card.source_job_id}.redacted.html"
+                    if not evidence_path.exists():
+                        evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
 
             api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
             if api_result.get("capture_run_id") and api_result.get("status") in {
