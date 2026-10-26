@@ -3,6 +3,7 @@
 Advisory only: never decides suitability or writes to the database.
 All candidate requirements preserve verbatim source text.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -41,13 +42,15 @@ def _requirement_candidates(text: str) -> list[dict[str, str | bool]]:
             if not (preferred or required) or chunk.casefold() in seen:
                 continue
             seen.add(chunk.casefold())
-            result.append({
-                "requirement": chunk,
-                "source_text": chunk,
-                "classification_candidate": "preferred" if preferred else "required",
-                "candidate_match": "unknown",
-                "verification_required": True,
-            })
+            result.append(
+                {
+                    "requirement": chunk,
+                    "source_text": chunk,
+                    "classification_candidate": "preferred" if preferred else "required",
+                    "candidate_match": "unknown",
+                    "verification_required": True,
+                }
+            )
             if len(result) == 24:
                 return result
     return result
@@ -66,9 +69,7 @@ def build_job_preanalysis(
     geo = getattr(location_evidence, "location_eligibility", "unknown")
     requirements = _requirement_candidates(source_text)
     commercial_evidence = [
-        line.strip()[:340]
-        for line in source_text.splitlines()
-        if _COMMERCIAL.search(line)
+        line.strip()[:340] for line in source_text.splitlines() if _COMMERCIAL.search(line)
     ][:5]
     uncertainties = []
     if not source_text.strip():
