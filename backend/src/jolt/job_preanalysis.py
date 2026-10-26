@@ -10,11 +10,13 @@ import hashlib
 import re
 from typing import Any
 
-VERSION = "1.0"
+VERSION = "1.1"
 _REQUIRED = re.compile(
     r"\b(?:must have|required|requirements?|essential|mandatory|"
     r"you (?:need|must)|requisitos?|imprescindible|obligatorio|"
-    r"se requiere|se exige|necesario|experiencia (?:en|con))\b",
+    r"se requiere|se exige|necesario|experiencia (?:en|con)|"
+    r"proficiency in|knowledge of|familiarity with|proven experience|"
+    r"\d+\+? years? of experience|conocimientos? (?:de|en)|dominio de)\b",
     re.IGNORECASE,
 )
 _PREFERRED = re.compile(
@@ -28,33 +30,78 @@ _COMMERCIAL = re.compile(
     re.IGNORECASE,
 )
 
+_REQUIRED_SECTION = re.compile(
+    r"^(?:requirements?|required qualifications?|minimum qualifications?|"
+    r"your qualifications?|what you (?:bring|need)|about you|who you are|"
+    r"requisitos(?: del puesto)?|perfil(?: requerido| buscado)?|"
+    r"conocimientos requeridos|formación y experiencia)\s*:?$",
+    re.IGNORECASE,
+)
+_PREFERRED_SECTION = re.compile(
+    r"^(?:preferred qualifications?|nice to have|nice.to.haves|"
+    r"desirable skills?|valorable|se valorará|deseable)\s*:?$",
+    re.IGNORECASE,
+)
+_OTHER_SECTION = re.compile(
+    r"^(?:responsibilities|your responsibilities|key responsibilities|"
+    r"what you(?:'ll| will) do|your role|about us|benefits|what we offer|"
+    r"funciones|tareas|responsabilidades|qué harás|qué ofrecemos|"
+    r"beneficios|condiciones|descripción del puesto)\s*:?$",
+    re.IGNORECASE,
+)
+
 
 def _requirement_candidates(text: str) -> list[dict[str, str | bool]]:
+    """Extract source-backed candidate requirements, preserving section context."""
     seen: set[str] = set()
     result: list[dict[str, str | bool]] = []
-    for line in text.splitlines():
-        for chunk in re.split(r"(?<=[.!?;])\s+", line.strip()):
-            chunk = re.sub(r"\s+", " ", chunk).strip(" -•\t")
-            if not chunk or len(chunk) > 340:
+    section: str | None = None
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip(" -•*\t")
+        if not line:
+            continue
+        if _PREFERRED_SECTION.fullmatch(line):
+            section = "preferred"
+            continue
+        if _REQUIRED_SECTION.fullmatch(line):
+            section = "required"
+            continue
+        if _OTHER_SECTION.fullmatch(line):
+            section = None
+            continue
+        if line.endswith(":") and len(line) < 65 and not _REQUIRED.search(line):
+            section = None
+            continue
+        parts = re.split(r"(?<=[.!?;])\s+", line) if len(line) > 340 else [line]
+        for chunk in parts:
+            chunk = chunk.strip()
+            if not 9 <= len(chunk) <= 440:
                 continue
-            preferred = _PREFERRED.search(chunk)
-            required = _REQUIRED.search(chunk)
-            if not (preferred or required) or chunk.casefold() in seen:
+            preferred = bool(_PREFERRED.search(chunk))
+            required = bool(_REQUIRED.search(chunk))
+            if not (preferred or required or section):
                 continue
-            seen.add(chunk.casefold())
+            key = chunk.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            classification = (
+                "preferred"
+                if preferred or (section == "preferred" and not required)
+                else "required"
+            )
             result.append(
                 {
                     "requirement": chunk,
                     "source_text": chunk,
-                    "classification_candidate": "preferred" if preferred else "required",
+                    "classification_candidate": classification,
                     "candidate_match": "unknown",
                     "verification_required": True,
                 }
             )
-            if len(result) == 24:
+            if len(result) >= 36:
                 return result
     return result
-
 
 def build_job_preanalysis(
     *,
