@@ -679,7 +679,16 @@ def run_capture(
                             f"Visited {len(pages)} Indeed result pages.",
                             f"Captured {len(cards)} unique Indeed jobs.",
                             f"Verified {sum(card.identity_verified for card in cards)} detail panels.",
-                            f"API result: {api_result.get('status') or api_result.get('error') or ('persisted' if api_result.get('capture_run_id') else 'not_persisted')}",
+                            "API result: "
+                            + str(
+                                api_result.get("status")
+                                or api_result.get("error")
+                                or (
+                                    "persisted"
+                                    if api_result.get("capture_run_id")
+                                    else "not_persisted"
+                                )
+                            ),
                         ]
                     )
                 ),
