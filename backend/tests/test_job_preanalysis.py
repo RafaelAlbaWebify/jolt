@@ -39,3 +39,28 @@ def test_missing_evidence_is_explicit_and_deterministic():
     assert evidence["requirement_candidates"] == []
     assert len(evidence["uncertainties"]) >= 2
     assert analyze("Required SQL experience.") == analyze("Required SQL experience.")
+
+
+def test_unified_work_package_compaction_preserves_preanalysis():
+    from jolt.unified_ai_work_package import _compact_review_inbox_payload
+
+    original = analyze("Must have SQL experience.")
+    bundle = {
+        "jobs": [{
+            "posting_id": "p-001",
+            "analysis_text": "Must have SQL experience.",
+            "description_clean": "Must have SQL experience.",
+            "source_text_clean": "Must have SQL experience.",
+            "preanalysis": original,
+            "audit": {"source_raw_text": "Must have SQL experience.",
+                      "source_raw_text_sha256": original["input_sha256"]},
+        }]
+    }
+    compacted = _compact_review_inbox_payload(bundle)
+    job = compacted["jobs"][0]
+    assert job["preanalysis"] == original
+    assert job["analysis_text"] == "Must have SQL experience."
+    assert "description_clean" not in job
+    assert "source_text_clean" not in job
+    assert "source_raw_text" not in job["audit"]
+    assert compacted["evidence_compaction"]["current_jobs_omitted"] == 0
