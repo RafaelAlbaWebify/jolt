@@ -257,8 +257,8 @@ def sync(api: API, catalog: dict, originals: dict, *, apply: bool, output: Path)
         for target in catalog[portal]:
             matches = [r for r in rows if r["enabled"] and
                        search_key(row_url(portal, r)) == search_key(target["url"])]
-            if len(matches) != 1:
-                raise RuntimeError(f"Cannot verify active target {target['label']}")
+            if not any(r["label"] == target["label"] for r in matches):
+                raise RuntimeError(f"Cannot verify selected target {target['label']}")
     for portal in ("indeed", "linkedin"):
         desired_keys = {search_key(x["url"]) for x in catalog[portal]}
         rows = api.list(portal)
