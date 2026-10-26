@@ -259,7 +259,6 @@ def sync(api: API, catalog: dict, originals: dict, *, apply: bool, output: Path)
             if not any(r["label"] == target["label"] for r in matches):
                 raise RuntimeError(f"Cannot verify selected target {target['label']}")
     for portal in ("indeed", "linkedin"):
-        desired_keys = {search_key(x["url"]) for x in catalog[portal]}
         rows = api.list(portal)
         # Keep exactly one active representative per semantic search.
         representatives = {}
