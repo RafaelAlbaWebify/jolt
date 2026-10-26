@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterator
 from io import BytesIO
 from typing import Annotated
@@ -146,6 +147,14 @@ from jolt.workflow import (
 )
 
 LOCAL_FRONTEND_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
+# The supervised local launcher selects another port if 5173 is occupied.
+# The value is injected by the launcher (never supplied by remote requests).
+_selected_origin = os.environ.get("JOLT_FRONTEND_ORIGIN", "")
+if (
+    _selected_origin.startswith("http://127.0.0.1:")
+    and _selected_origin not in LOCAL_FRONTEND_ORIGINS
+):
+    LOCAL_FRONTEND_ORIGINS.append(_selected_origin)
 
 
 def create_app(database_url: str | None = None) -> FastAPI:

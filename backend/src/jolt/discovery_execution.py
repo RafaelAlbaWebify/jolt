@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -200,9 +201,10 @@ def run_indeed_saved_search(
     search: DiscoverySavedSearch,
     execution_id: str,
     *,
-    api_url: str = "http://127.0.0.1:8000",
+    api_url: str | None = None,
     phase_callback: Callable[[str, int | None, int | None], None] | None = None,
 ) -> str | None:
+    api_url = api_url or os.environ.get("JOLT_API_BASE_URL", "http://127.0.0.1:8000")
     definition = json.loads(search.definition_json)
     search_url = str(definition.get("search_url", "") or "").strip()
     if not search_url:
