@@ -641,7 +641,27 @@ def run_capture(
                     if not evidence_path.exists():
                         evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
 
-            api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
+            # Empty sets are not accepted by the live capture API (min_items=1).
+            # Preserve evidence and distinguish known-only from extraction gaps.
+            if not cards:
+                visible = {
+                    job_id for page_info in pages
+                    for job_id in page_info.get("visible_job_ids", [])
+                }
+                all_known = bool(visible) and unique_known_ids.issuperset(visible)
+                api_result = {
+                    "submitted": False,
+                    "status": "no_new_jobs" if all_known else "no_captured_jobs",
+                    "reason": (
+                        "all_visible_offers_previously_verified"
+                        if all_known else "no_new_extractable_offers"
+                    ),
+                    "unique_visible_count": len(visible),
+                    "unique_known_count": len(unique_known_ids),
+                    "capture_run_id": None,
+                }
+            else:
+                api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
             if api_result.get("capture_run_id") and api_result.get("status") in {
                 "completed",
                 "completed_with_warnings",
