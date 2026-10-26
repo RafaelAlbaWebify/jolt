@@ -24,6 +24,7 @@ from jolt.hardline_evidence import analyze_location_evidence
 from jolt.job_search_preferences import load_job_search_preferences
 from jolt.language_hardline import analyze_language_evidence
 from jolt.preference_aware_evaluation import sanitize_capture_text
+from jolt.job_preanalysis import build_job_preanalysis
 
 PACK_VERSION = "1.0"
 REVIEW_CONTRACT_VERSION = "1.2"
@@ -261,6 +262,13 @@ def _build_ai_review_payloads(
                     location=location,
                     description=description,
                     source_raw_text=source_raw_text,
+                ),
+                "preanalysis": build_job_preanalysis(
+                    title=title,
+                    description=sanitize_capture_text(evidence_text),
+                    location=location,
+                    location_evidence=location_signals,
+                    language_evidence=language_signals,
                 ),
                 "audit": {
                     "source_raw_text": source_raw_text,
