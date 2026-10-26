@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
+from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
@@ -44,7 +45,6 @@ from jolt.professional_evidence_exchange import (
     build_professional_evidence_exchange,
     import_professional_evidence_exchange,
 )
-from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.review_inbox_exchange import (
     build_current_review_inbox_bundle,
     enrich_review_inbox_document,
