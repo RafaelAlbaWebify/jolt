@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-import tempfile
 
 MODULE = Path(__file__).resolve().parents[2] / "tools" / "sync-definitive-job-searches.py"
 SPEC = importlib.util.spec_from_file_location("search_sync", MODULE)
