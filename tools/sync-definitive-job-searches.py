@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qsl, quote, urlencode, urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 # Language variants are intentionally separate when a trial found distinct roles.
@@ -209,7 +209,6 @@ def backup(base_path: Path, snapshots: dict, catalog: dict):
     (base_path / "desired_urls.json").write_text(
         json.dumps(catalog, ensure_ascii=False, indent=2), encoding="utf-8",
     )
-    csv = ["portal,label,keyword,scope,url"]
     import csv as csv_lib
     import io
     buf = io.StringIO()
