@@ -44,6 +44,7 @@ from jolt.professional_evidence_exchange import (
     build_professional_evidence_exchange,
     import_professional_evidence_exchange,
 )
+from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.review_inbox_exchange import (
     build_current_review_inbox_bundle,
     enrich_review_inbox_document,
@@ -258,10 +259,11 @@ def build_unified_ai_work_package(
         context_version=global_context_version(context),
         global_context=context,
         candidate_evidence=candidate_evidence,
-        review_inbox=(
+        review_inbox=enrich_review_inbox_with_dossiers(
             _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
             if discovery_batch_id
-            else _review_inbox_payload(session)
+            else _review_inbox_payload(session),
+            candidate_evidence,
         ),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
