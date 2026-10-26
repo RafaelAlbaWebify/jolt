@@ -68,3 +68,42 @@ def test_unified_work_package_compaction_preserves_preanalysis():
     assert "source_text_clean" not in job
     assert "source_raw_text" not in job["audit"]
     assert compacted["evidence_compaction"]["current_jobs_omitted"] == 0
+
+
+def test_requirement_sections_and_boundary_do_not_include_duties():
+    evidence = analyze(
+        "Requirements:\n"
+        "SQL and Windows administration\n"
+        "At least 2 years in technical support\n"
+        "Responsibilities:\n"
+        "Manage ticket queue\n"
+        "Benefits:\n"
+        "Flexible holidays"
+    )
+    extracted = [item["source_text"] for item in evidence["requirement_candidates"]]
+    assert "SQL and Windows administration" in extracted
+    assert "At least 2 years in technical support" in extracted
+    assert "Manage ticket queue" not in extracted
+    assert "Flexible holidays" not in extracted
+
+
+def test_spanish_section_and_preferred_section():
+    evidence = analyze(
+        "Requisitos:\n"
+        "Experiencia gestionando incidencias IT\n"
+        "Se valorará:\n"
+        "Conocimiento de Azure\n"
+        "Funciones:\n"
+        "Prestar soporte a usuarios"
+    )
+    extracted = evidence["requirement_candidates"]
+    assert extracted[0]["classification_candidate"] == "required"
+    assert extracted[1]["classification_candidate"] == "preferred"
+    assert all("Prestar soporte" not in item["source_text"] for item in extracted)
+
+
+def test_no_autorejection_on_remote_or_other_language():
+    evidence = analyze("Required German language. Remote within Germany.", "conditional")
+    assert evidence["final_decision"] is None
+    assert evidence["authority"] == "advisory_only"
+    assert evidence["review_required"] is True
