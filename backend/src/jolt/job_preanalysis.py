@@ -103,6 +103,7 @@ def _requirement_candidates(text: str) -> list[dict[str, str | bool]]:
                 return result
     return result
 
+
 def build_job_preanalysis(
     *,
     title: str,
