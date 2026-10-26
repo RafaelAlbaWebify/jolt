@@ -43,14 +43,13 @@ ONSITE = re.compile(
 )
 HYBRID = re.compile(r"\b(?:hybrid|h[ií]brido)\b", re.I)
 EXPLICIT_VIGO = re.compile(r"\b(?:vigo|porriño|mos|redondela|nigr[aá]n|baiona)\b", re.I)
-NONLOCAL = re.compile(
-    r"\b(?:madrid|barcelona|valladolid|valencia|sevilla|bilbao|zaragoza)\b", re.I
-)
+NONLOCAL = re.compile(r"\b(?:madrid|barcelona|valladolid|valencia|sevilla|bilbao|zaragoza)\b", re.I)
 
 
 def _mentioned_skills(text: str) -> list[str]:
     return [
-        skill for skill, patterns in SKILLS.items()
+        skill
+        for skill, patterns in SKILLS.items()
         if any(re.search(pattern, text, re.I) for pattern in patterns)
     ]
 
@@ -69,11 +68,13 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
             continue
         text = str(source.get("visible_text", ""))
         for skill in _mentioned_skills(text):
-            index.setdefault(skill, []).append({
-                "evidence_ref": ref,
-                "source_section": title,
-                "claim_status": "unverified_mention",
-            })
+            index.setdefault(skill, []).append(
+                {
+                    "evidence_ref": ref,
+                    "source_section": title,
+                    "claim_status": "unverified_mention",
+                }
+            )
     return index
 
 
@@ -116,15 +117,15 @@ def enrich_review_inbox_with_dossiers(
             skills = _mentioned_skills(evidence)
             if not skills:
                 continue
-            matched.append({
-                "source_text": evidence,
-                "classification_candidate": item.get("classification_candidate", "unknown"),
-                "skills": skills,
-                "candidate_mentions": {
-                    skill: index.get(skill, [])[:3] for skill in skills
-                },
-                "assessment": "ai_verification_required",
-            })
+            matched.append(
+                {
+                    "source_text": evidence,
+                    "classification_candidate": item.get("classification_candidate", "unknown"),
+                    "skills": skills,
+                    "candidate_mentions": {skill: index.get(skill, [])[:3] for skill in skills},
+                    "assessment": "ai_verification_required",
+                }
+            )
         text = str(job.get("analysis_text", ""))
         conflicts = _work_model_conflicts(text, str(job.get("location", "")))
         missing = len(requirements) == 0
@@ -148,9 +149,7 @@ def enrich_review_inbox_with_dossiers(
         }
     inbox["dossier_metadata"] = {
         "version": DOSSIER_VERSION,
-        "jobs_enriched": sum(
-            isinstance(job, dict) and "evaluation_dossier" in job for job in jobs
-        ),
+        "jobs_enriched": sum(isinstance(job, dict) and "evaluation_dossier" in job for job in jobs),
         "jobs_without_extracted_requirements": unresolved,
         "decision_authority": "external_ai",
     }
