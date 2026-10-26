@@ -1,6 +1,6 @@
+import os
 from collections.abc import Iterator
 from io import BytesIO
-import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
