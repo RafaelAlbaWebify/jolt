@@ -269,6 +269,7 @@ try {
 
     $stage = "starting backend"
     $env:JOLT_FRONTEND_ORIGIN = $FrontendUrl
+    $env:JOLT_API_BASE_URL = $BackendUrl
     Write-Host "Starting JOLT backend..."
     $backendProcess = Start-Process -FilePath $uvCommand `
         -ArgumentList @("run", "uvicorn", "--app-dir", "src", "jolt.main:app", "--host", "127.0.0.1", "--port", [string]$BackendPort) `
