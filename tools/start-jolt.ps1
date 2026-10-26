@@ -46,6 +46,16 @@ $FrontendOutLog = Join-Path $LogRoot "frontend.out.log"
 $FrontendErrLog = Join-Path $LogRoot "frontend.err.log"
 $BackendUrl = "http://127.0.0.1:8000"
 $FrontendUrl = "http://127.0.0.1:5173"
+# Select available ports only after stopping previously owned JOLT processes.
+function Find-FreeJoltPort {
+    param([int]$Preferred, [int]$Max = 8199)
+    for ($port = $Preferred; $port -le $Max; $port++) {
+        $occupied = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+        if ($occupied.Count -eq 0) { return $port }
+    }
+    throw "No free JOLT port found between $Preferred and $Max."
+}
+
 $ExpectedBackendVersion = "0.8.0"
 $RequiredBackendRoutes = @(
     "/api/opportunity-index",
@@ -197,6 +207,12 @@ New-Item -ItemType Directory -Force -Path $RuntimeRoot, $LogRoot, $PreMigrationB
 Remove-Item (Join-Path $LogRoot "*.log") -Force -ErrorAction SilentlyContinue
 
 & (Join-Path $PSScriptRoot "stop-jolt.ps1")
+$BackendPort = Find-FreeJoltPort -Preferred 8000
+$FrontendPort = Find-FreeJoltPort -Preferred 5173 -Max 5399
+$BackendUrl = "http://127.0.0.1:$BackendPort"
+$FrontendUrl = "http://127.0.0.1:$FrontendPort"
+Write-Host "JOLT selected backend $BackendPort and frontend $FrontendPort."
+
 
 $backendProcess = $null
 $frontendProcess = $null
@@ -252,9 +268,10 @@ try {
     }
 
     $stage = "starting backend"
+    $env:JOLT_FRONTEND_ORIGIN = $FrontendUrl
     Write-Host "Starting JOLT backend..."
     $backendProcess = Start-Process -FilePath $uvCommand `
-        -ArgumentList @("run", "uvicorn", "--app-dir", "src", "jolt.main:app", "--host", "127.0.0.1", "--port", "8000") `
+        -ArgumentList @("run", "uvicorn", "--app-dir", "src", "jolt.main:app", "--host", "127.0.0.1", "--port", [string]$BackendPort) `
         -WorkingDirectory $BackendRoot `
         -RedirectStandardOutput $BackendOutLog `
         -RedirectStandardError $BackendErrLog `
@@ -262,9 +279,11 @@ try {
         -WindowStyle Hidden
 
     $stage = "starting frontend"
+    $env:VITE_API_BASE_URL = $BackendUrl
+    $env:JOLT_FRONTEND_ORIGIN = $FrontendUrl
     Write-Host "Starting JOLT frontend..."
     $frontendProcess = Start-Process -FilePath $npmCommand `
-        -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", "5173") `
+        -ArgumentList @("run", "dev", "--", "--host", "127.0.0.1", "--port", [string]$FrontendPort, "--strictPort") `
         -WorkingDirectory $FrontendRoot `
         -RedirectStandardOutput $FrontendOutLog `
         -RedirectStandardError $FrontendErrLog `
