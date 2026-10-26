@@ -641,7 +641,29 @@ def run_capture(
                     if not evidence_path.exists():
                         evidence_path.write_text(redact_text(card.detail_html), encoding="utf-8")
 
-            api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
+            # Empty sets are not accepted by the live capture API (min_items=1).
+            # Preserve evidence and distinguish known-only from extraction gaps.
+            if not cards:
+                visible: set[str] = set()
+                for page_info in pages:
+                    raw_ids = page_info.get("visible_job_ids")
+                    if isinstance(raw_ids, list):
+                        visible.update(job_id for job_id in raw_ids if isinstance(job_id, str))
+                all_known = bool(visible) and unique_known_ids.issuperset(visible)
+                api_result = {
+                    "submitted": False,
+                    "status": "no_new_jobs" if all_known else "no_captured_jobs",
+                    "reason": (
+                        "all_visible_offers_previously_verified"
+                        if all_known
+                        else "no_new_extractable_offers"
+                    ),
+                    "unique_visible_count": len(visible),
+                    "unique_known_count": len(unique_known_ids),
+                    "capture_run_id": None,
+                }
+            else:
+                api_result = submit_capture(api_url, cards, base_search_url, max_jobs, pages)
             if api_result.get("capture_run_id") and api_result.get("status") in {
                 "completed",
                 "completed_with_warnings",
@@ -659,7 +681,16 @@ def run_capture(
                             f"Visited {len(pages)} Indeed result pages.",
                             f"Captured {len(cards)} unique Indeed jobs.",
                             f"Verified {sum(card.identity_verified for card in cards)} detail panels.",
-                            f"API result: {api_result.get('status', api_result.get('error', 'completed'))}",
+                            "API result: "
+                            + str(
+                                api_result.get("status")
+                                or api_result.get("error")
+                                or (
+                                    "persisted"
+                                    if api_result.get("capture_run_id")
+                                    else "not_persisted"
+                                )
+                            ),
                         ]
                     )
                 ),

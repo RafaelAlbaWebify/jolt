@@ -174,11 +174,19 @@ def recover_interrupted_discovery_executions(session: Session) -> int:
     return len(rows)
 
 
-def _capture_run_id(output_zip: Path) -> str:
+def _capture_run_id(output_zip: Path) -> str | None:
     if not output_zip.exists():
         raise RuntimeError("Indeed execution finished without creating its evidence package.")
     with zipfile.ZipFile(output_zip) as archive:
         result = json.loads(archive.read("api_result.json"))
+    # No new capture exists when every visible job has been verified previously.
+    # Never treat validation errors or extraction gaps as known-only success.
+    if (
+        result.get("status") == "no_new_jobs"
+        and result.get("reason") == "all_visible_offers_previously_verified"
+        and result.get("unique_visible_count", 0) > 0
+    ):
+        return None
     capture_run_id = str(result.get("capture_run_id", "") or "")
     if not capture_run_id:
         error = str(result.get("error", "") or result.get("response", "") or "")
@@ -194,7 +202,7 @@ def run_indeed_saved_search(
     *,
     api_url: str = "http://127.0.0.1:8000",
     phase_callback: Callable[[str, int | None, int | None], None] | None = None,
-) -> str:
+) -> str | None:
     definition = json.loads(search.definition_json)
     search_url = str(definition.get("search_url", "") or "").strip()
     if not search_url:
@@ -549,7 +557,7 @@ def execute_discovery_execution(
     session: Session,
     execution_id: str,
     *,
-    runner: Callable[..., str] | None = None,
+    runner: Callable[..., str | None] | None = None,
 ) -> None:
     execution = session.get(DiscoveryExecution, execution_id)
     if execution is None:
