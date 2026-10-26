@@ -85,11 +85,7 @@ def _requirement_candidates(text: str) -> list[dict[str, str | bool]]:
             if key in seen:
                 continue
             seen.add(key)
-            classification = (
-                "preferred"
-                if preferred or section == "preferred"
-                else "required"
-            )
+            classification = "preferred" if preferred or section == "preferred" else "required"
             result.append(
                 {
                     "requirement": chunk,
