@@ -164,14 +164,16 @@ def test_indeed_known_only_evidence_is_completed_without_capture_run(tmp_path: P
     with zipfile.ZipFile(evidence, "w") as archive:
         archive.writestr(
             "api_result.json",
-            json.dumps({
-                "submitted": False,
-                "status": "no_new_jobs",
-                "reason": "all_visible_offers_previously_verified",
-                "unique_visible_count": 8,
-                "unique_known_count": 8,
-                "capture_run_id": None,
-            }),
+            json.dumps(
+                {
+                    "submitted": False,
+                    "status": "no_new_jobs",
+                    "reason": "all_visible_offers_previously_verified",
+                    "unique_visible_count": 8,
+                    "unique_known_count": 8,
+                    "capture_run_id": None,
+                }
+            ),
         )
     assert _capture_run_id(evidence) is None
 
@@ -188,13 +190,15 @@ def test_indeed_other_unpersisted_capture_remains_failure(tmp_path: Path) -> Non
     with zipfile.ZipFile(evidence, "w") as archive:
         archive.writestr(
             "api_result.json",
-            json.dumps({
-                "submitted": False,
-                "status": "no_captured_jobs",
-                "reason": "no_new_extractable_offers",
-                "unique_visible_count": 9,
-                "capture_run_id": None,
-            }),
+            json.dumps(
+                {
+                    "submitted": False,
+                    "status": "no_captured_jobs",
+                    "reason": "no_new_extractable_offers",
+                    "unique_visible_count": 9,
+                    "capture_run_id": None,
+                }
+            ),
         )
     with pytest.raises(RuntimeError, match="did not persist"):
         _capture_run_id(evidence)
