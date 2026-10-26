@@ -1,4 +1,5 @@
 """Regression tests for the safe two-portal search synchronizer."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -15,10 +16,12 @@ def test_catalog_is_unique_and_bilingual():
     catalog = syncmod.desired_catalog()
     assert len(catalog["indeed"]) == 17
     assert len(catalog["linkedin"]) == 20
-    assert any("soporte informático" in x["url"] or "soporte+inform" in x["url"]
-               for x in catalog["indeed"])
-    assert all(len({syncmod.search_key(x["url"]) for x in rows}) == len(rows)
-               for rows in catalog.values())
+    assert any(
+        "soporte informático" in x["url"] or "soporte+inform" in x["url"] for x in catalog["indeed"]
+    )
+    assert all(
+        len({syncmod.search_key(x["url"]) for x in rows}) == len(rows) for rows in catalog.values()
+    )
 
 
 def test_semantic_key_handles_order_and_encoding():
@@ -47,8 +50,12 @@ def test_reuse_existing_equivalent_ids_and_retire_extras():
 
 def test_plan_does_not_mutate_records():
     catalog = syncmod.desired_catalog()
-    old = {"id": "a", "label": "old", "enabled": True,
-           "definition": {"search_url": catalog["indeed"][0]["url"]}}
+    old = {
+        "id": "a",
+        "label": "old",
+        "enabled": True,
+        "definition": {"search_url": catalog["indeed"][0]["url"]},
+    }
     before = repr(old)
     plan = syncmod.plan_portal("indeed", [old], catalog["indeed"])
     assert repr(old) == before
