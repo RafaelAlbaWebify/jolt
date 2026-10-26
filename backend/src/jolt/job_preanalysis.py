@@ -87,7 +87,7 @@ def _requirement_candidates(text: str) -> list[dict[str, str | bool]]:
             seen.add(key)
             classification = (
                 "preferred"
-                if preferred or (section == "preferred" and not required)
+                if preferred or section == "preferred"
                 else "required"
             )
             result.append(
