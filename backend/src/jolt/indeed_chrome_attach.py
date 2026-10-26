@@ -644,17 +644,19 @@ def run_capture(
             # Empty sets are not accepted by the live capture API (min_items=1).
             # Preserve evidence and distinguish known-only from extraction gaps.
             if not cards:
-                visible = {
-                    job_id for page_info in pages
-                    for job_id in page_info.get("visible_job_ids", [])
-                }
+                visible: set[str] = set()
+                for page_info in pages:
+                    raw_ids = page_info.get("visible_job_ids")
+                    if isinstance(raw_ids, list):
+                        visible.update(job_id for job_id in raw_ids if isinstance(job_id, str))
                 all_known = bool(visible) and unique_known_ids.issuperset(visible)
                 api_result = {
                     "submitted": False,
                     "status": "no_new_jobs" if all_known else "no_captured_jobs",
                     "reason": (
                         "all_visible_offers_previously_verified"
-                        if all_known else "no_new_extractable_offers"
+                        if all_known
+                        else "no_new_extractable_offers"
                     ),
                     "unique_visible_count": len(visible),
                     "unique_known_count": len(unique_known_ids),
