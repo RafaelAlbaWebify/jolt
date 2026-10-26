@@ -152,3 +152,73 @@ def test_jobgether_saved_search_uses_existing_execution_lifecycle(tmp_path: Path
             runner=lambda saved_search, execution_id: "jobgether-run",
         )
         assert get_discovery_execution(session, execution.id).capture_run_id == "jobgether-run"
+
+
+def test_indeed_known_only_evidence_is_completed_without_capture_run(tmp_path: Path) -> None:
+    import json
+    import zipfile
+
+    from jolt.discovery_execution import _capture_run_id
+
+    evidence = tmp_path / "indeed_capture.zip"
+    with zipfile.ZipFile(evidence, "w") as archive:
+        archive.writestr(
+            "api_result.json",
+            json.dumps({
+                "submitted": False,
+                "status": "no_new_jobs",
+                "reason": "all_visible_offers_previously_verified",
+                "unique_visible_count": 8,
+                "unique_known_count": 8,
+                "capture_run_id": None,
+            }),
+        )
+    assert _capture_run_id(evidence) is None
+
+
+def test_indeed_other_unpersisted_capture_remains_failure(tmp_path: Path) -> None:
+    import json
+    import zipfile
+
+    import pytest
+
+    from jolt.discovery_execution import _capture_run_id
+
+    evidence = tmp_path / "indeed_capture.zip"
+    with zipfile.ZipFile(evidence, "w") as archive:
+        archive.writestr(
+            "api_result.json",
+            json.dumps({
+                "submitted": False,
+                "status": "no_captured_jobs",
+                "reason": "no_new_extractable_offers",
+                "unique_visible_count": 9,
+                "capture_run_id": None,
+            }),
+        )
+    with pytest.raises(RuntimeError, match="did not persist"):
+        _capture_run_id(evidence)
+
+
+def test_discovery_runner_can_finish_without_new_capture(tmp_path: Path) -> None:
+    with _session(tmp_path) as session:
+        search = create_discovery_search(
+            session,
+            DiscoverySavedSearchRequest(
+                source="indeed",
+                label="Known-only Indeed",
+                definition={
+                    "search_url": "https://es.indeed.com/jobs?q=IT+support&l=Vigo",
+                    "max_pages": 1,
+                },
+                max_jobs=10,
+            ),
+        )
+        execution = create_discovery_execution(
+            session,
+            DiscoveryExecutionCreateRequest(source="indeed", saved_search_id=search.id),
+        )
+        execute_discovery_execution(session, execution.id, runner=lambda _search, _id: None)
+        finished = get_discovery_execution(session, execution.id)
+        assert finished.status == "completed"
+        assert finished.capture_run_id is None
