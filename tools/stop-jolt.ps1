@@ -60,7 +60,7 @@ function Stop-JoltListener {
 
         $commandLine = [string]$processInfo.CommandLine
         $matchesCheckout = $commandLine.IndexOf($RepoRoot, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
-        $matchesService = if ($Port -eq 8000) {
+        $matchesService = if ($commandLine -match "uvicorn|jolt\\.main:app") {
             $commandLine -match 'uvicorn|jolt\.main:app|uv'
         } else {
             $commandLine -match 'vite|npm|node'
@@ -72,11 +72,12 @@ function Stop-JoltListener {
             Write-Host "Stopped stale $DisplayName listener (PID $processId, port $Port)."
         }
         else {
-            throw "Port $Port is occupied by a non-JOLT process (PID $processId). Stop it manually before starting JOLT."
+            Write-Host "Leaving unrelated process PID $processId on port $Port untouched."
         }
     }
 }
 
+$state = $null
 if (Test-Path $StatePath) {
     try {
         $state = Get-Content -Path $StatePath -Raw | ConvertFrom-Json
@@ -88,7 +89,18 @@ if (Test-Path $StatePath) {
     }
 }
 
-Stop-JoltListener -Port 5173 -DisplayName "JOLT frontend"
-Stop-JoltListener -Port 8000 -DisplayName "JOLT backend"
+# Also inspect previously selected dynamic ports. Never stop unrelated owners.
+$ports = @(5173, 8000)
+if ($null -ne $state) {
+    foreach ($urlProperty in @("frontend_url", "backend_url")) {
+        $value = $state.PSObject.Properties[$urlProperty]
+        if ($null -ne $value) {
+            try { $ports += ([uri]$value.Value).Port } catch {}
+        }
+    }
+}
+foreach ($port in ($ports | Sort-Object -Unique)) {
+    Stop-JoltListener -Port $port -DisplayName "JOLT service"
+}
 
 Write-Host "JOLT services are stopped."
