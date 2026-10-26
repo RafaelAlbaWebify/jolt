@@ -46,15 +46,19 @@ def test_unified_work_package_compaction_preserves_preanalysis():
 
     original = analyze("Must have SQL experience.")
     bundle = {
-        "jobs": [{
-            "posting_id": "p-001",
-            "analysis_text": "Must have SQL experience.",
-            "description_clean": "Must have SQL experience.",
-            "source_text_clean": "Must have SQL experience.",
-            "preanalysis": original,
-            "audit": {"source_raw_text": "Must have SQL experience.",
-                      "source_raw_text_sha256": original["input_sha256"]},
-        }]
+        "jobs": [
+            {
+                "posting_id": "p-001",
+                "analysis_text": "Must have SQL experience.",
+                "description_clean": "Must have SQL experience.",
+                "source_text_clean": "Must have SQL experience.",
+                "preanalysis": original,
+                "audit": {
+                    "source_raw_text": "Must have SQL experience.",
+                    "source_raw_text_sha256": original["input_sha256"],
+                },
+            }
+        ]
     }
     compacted = _compact_review_inbox_payload(bundle)
     job = compacted["jobs"][0]
