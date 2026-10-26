@@ -95,7 +95,6 @@ def _mark_remaining_skipped(
 
 
 def schedule_discovery_batch(session: Session, batch_id: str) -> None:
-    api_url = api_url or os.environ.get("JOLT_API_BASE_URL", "http://127.0.0.1:8000")
     batch = session.get(LinkedInDiscoveryBatch, batch_id)
     if batch is None:
         raise JoltNotFoundError("LinkedIn discovery batch was not found.")
@@ -180,6 +179,7 @@ def execute_discovery_batch(
     api_url: str | None = None,
     profile_dir: Path | None = None,
 ) -> None:
+    api_url = api_url or os.environ.get("JOLT_API_BASE_URL", "http://127.0.0.1:8000")
     batch = session.get(LinkedInDiscoveryBatch, batch_id)
     if batch is None:
         raise JoltNotFoundError("LinkedIn discovery batch was not found.")
