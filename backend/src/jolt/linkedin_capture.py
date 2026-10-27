@@ -317,7 +317,7 @@ def _virtualized_detail_context(
 
 
 def _visible_external_apply_url(page: Page) -> str:
-    """Inspect the current job's apply controls; never click or submit."""
+    """Resolve a job's external Apply destination without submitting any application."""
     selectors = (
         "a.jobs-apply-button[href]",
         ".jobs-s-apply a[href]",
@@ -326,16 +326,43 @@ def _visible_external_apply_url(page: Page) -> str:
     )
     for selector in selectors:
         try:
-            links = page.locator(selector)
-            for i in range(min(links.count(), 5)):
-                node = links.nth(i)
+            for node in page.locator(selector).all()[:5]:
                 if not node.is_visible(timeout=500):
                     continue
-                value = (node.get_attribute("href") or "").strip()
-                if value.startswith("https://") and "linkedin.com/" not in value.lower():
-                    return value[:4000]
+                href = (node.get_attribute("href") or "").strip()
+                if href.startswith("https://") and "linkedin.com" not in urlparse(href).netloc.lower():
+                    return href[:4000]
         except Exception:
             continue
+
+    # External Apply may be a JS button opening a separate tab. Only click a
+    # verified external-apply control; never click Easy Apply or fill a form.
+    try:
+        button = page.locator("button.jobs-apply-button").first
+        if not button.is_visible(timeout=500):
+            return ""
+        label = " ".join((
+            button.get_attribute("aria-label") or "",
+            button.inner_text(timeout=500) or "",
+        )).casefold()
+        if ("easy apply" in label or "solicitud sencilla" in label
+                or "solicitud fácil" in label):
+            return ""
+        if not ("apply" in label or "solicitar" in label):
+            return ""
+        with page.expect_popup(timeout=3500) as popup_info:
+            button.click(timeout=1500)
+        popup = popup_info.value
+        try:
+            popup.wait_for_load_state("domcontentloaded", timeout=4000)
+        except TimeoutError:
+            pass
+        target = popup.url
+        popup.close()
+        if target.startswith("https://") and "linkedin.com" not in urlparse(target).netloc.lower():
+            return target[:4000]
+    except Exception:
+        return ""
     return ""
 
 
