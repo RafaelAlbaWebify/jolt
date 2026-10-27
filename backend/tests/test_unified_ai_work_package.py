@@ -35,6 +35,15 @@ def test_unified_package_deduplicates_section_context(tmp_path) -> None:
     assert all(exchange.context == {} for exchange in package.exchanges)
     assert package.review_inbox is None
 
+    protocol = package.instructions["two_message_review"]
+    assert protocol["protocol_version"] == "1.0"
+    assert protocol["invocation"]["message_1"] == "Mensaje 1"
+    assert protocol["invocation"]["message_2"] == "Mensaje 2"
+    assert protocol["invocation"]["resume"] == "Continuar JOLT"
+    assert "source_context_version" in protocol["checkpoint"]["required"]
+    assert "verified_jobs" in protocol["progress_tracking"]["report"]
+    assert "jolt_ai_work_package_update" in protocol["stage_2"]["steps"][4]
+
 
 def test_unified_update_rejects_user_owned_context_patch(tmp_path) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
