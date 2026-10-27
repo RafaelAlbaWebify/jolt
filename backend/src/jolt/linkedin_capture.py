@@ -351,7 +351,10 @@ def _popup_external_apply_url(page: Page, source_url: str) -> str:
         probe = page.context.new_page()
         probe.goto(source_url, wait_until="domcontentloaded", timeout=8_000)
         buttons = probe.locator(
-            "button.jobs-apply-button, button[data-control-name*='jobdetails_topcard_apply']"
+            "a[aria-label*='Apply on company website' i], "
+            "a[href*='/safety/go/'], "
+            "button.jobs-apply-button, "
+            "button[data-control-name*='jobdetails_topcard_apply']"
         )
         for index in range(min(buttons.count(), 3)):
             button = buttons.nth(index)
@@ -371,6 +374,9 @@ def _popup_external_apply_url(page: Page, source_url: str) -> str:
                 with contextlib.suppress(TimeoutError):
                     popup.wait_for_load_state("domcontentloaded", timeout=6_000)
                 destination = popup.url.strip()
+                with contextlib.suppress(TimeoutError):
+                    popup.wait_for_load_state("load", timeout=5_000)
+                    destination = popup.url.strip()
                 popup.close()
                 if destination.startswith("https://"):
                     from urllib.parse import urlsplit
@@ -400,6 +406,8 @@ def _popup_external_apply_url(page: Page, source_url: str) -> str:
 def _observe_easy_apply(page: Page) -> bool | None:
     """Observe the visible job-specific Apply control; never initiate an application."""
     selectors = (
+        "a[aria-label*='Apply on company website' i]",
+        "a[href*='/safety/go/']",
         "button.jobs-apply-button",
         "button[data-control-name*='inapply']",
         "button[aria-label*='Easy Apply' i]",
