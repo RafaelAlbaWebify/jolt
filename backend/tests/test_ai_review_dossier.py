@@ -80,3 +80,29 @@ def test_no_inbox_is_safe_and_no_candidate_evidence_is_not_a_mismatch():
     crosswalk = result["jobs"][0]["evaluation_dossier"]["requirement_skill_crosswalk"]
     assert crosswalk[0]["candidate_mentions"]["sql"] == []
     assert result["metadata"] == "original"
+
+
+def test_evidence_contains_exact_excerpt_not_only_section_ref():
+    inbox = {"jobs": [_job("one", "Support", ["Windows required"])]}
+    result = enrich_review_inbox_with_dossiers(inbox, _ledger())
+    assert result is not None
+    mention = result["jobs"][0]["evaluation_dossier"]["requirement_skill_crosswalk"][0][
+        "candidate_mentions"
+    ]["windows"][0]
+    assert "Windows support" in mention["source_text"]
+    assert mention["claim_status"] == "unverified_mention"
+
+
+def test_windows_forms_does_not_match_windows_support():
+    inbox = {"jobs": [_job("forms", "Windows Forms developer", ["Windows Forms required"])]}
+    result = enrich_review_inbox_with_dossiers(inbox, _ledger())
+    assert result is not None
+    assert result["jobs"][0]["evaluation_dossier"]["requirement_skill_crosswalk"] == []
+
+
+def test_explicit_hybrid_is_not_labelled_remote_onsite_contradiction():
+    inbox = {"jobs": [_job("hybrid", "Hybrid remote and on-site schedule", [])]}
+    result = enrich_review_inbox_with_dossiers(inbox, _ledger())
+    assert result is not None
+    warnings = result["jobs"][0]["evaluation_dossier"]["work_model_warnings"]
+    assert "remote_and_office_presence_language" not in warnings
