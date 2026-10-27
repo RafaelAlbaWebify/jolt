@@ -316,8 +316,6 @@ def _virtualized_detail_context(
     return multipage_capture._detail_description(page)
 
 
-
-
 def _visible_external_apply_url(page: Page) -> str:
     """Inspect the current job's apply controls; never click or submit."""
     selectors = (
@@ -357,11 +355,17 @@ def _observe_easy_apply(page: Page) -> bool | None:
                 button = matches.nth(index)
                 if not button.is_visible(timeout=500):
                     continue
-                label = " ".join((
-                    (button.get_attribute("aria-label") or ""),
-                    (button.inner_text(timeout=500) or ""),
-                )).casefold()
-                if "easy apply" in label or "solicitud sencilla" in label or "solicitud fácil" in label:
+                label = " ".join(
+                    (
+                        (button.get_attribute("aria-label") or ""),
+                        (button.inner_text(timeout=500) or ""),
+                    )
+                ).casefold()
+                if (
+                    "easy apply" in label
+                    or "solicitud sencilla" in label
+                    or "solicitud fácil" in label
+                ):
                     return True
                 if "apply" in label or "solicitar" in label:
                     return False
@@ -698,8 +702,8 @@ def capture_page_cards(
                 card_index=index,
                 promoted=promoted,
                 posted_age_text=posted_age_text,
-                    easy_apply_available=_observe_easy_apply(page) if verified else None,
-                    application_url=_visible_external_apply_url(page) if verified else "",
+                easy_apply_available=_observe_easy_apply(page) if verified else None,
+                application_url=_visible_external_apply_url(page) if verified else "",
             )
         )
     return captured
