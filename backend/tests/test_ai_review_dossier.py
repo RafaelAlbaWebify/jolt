@@ -115,27 +115,27 @@ def test_linkedin_chrome_not_counted_as_certification_or_experience():
                 "title": "Licenses & certifications",
                 "evidence_ref": "certs",
                 "visible_text": (
-                    "Application Support Engineer | M365, Entra ID, Windows\\n"
-                    "Licenses & certifications\\n"
-                    "AWS Cloud Solutions Architect\\n"
-                    "Amazon Web Services (AWS)\\n"
-                    "Issued May 2024\\n"
-                    "Who your viewers also viewed\\n"
-                    "Windows Administrator\\n"
+                    "Application Support Engineer | M365, Entra ID, Windows\n"
+                    "Licenses & certifications\n"
+                    "AWS Cloud Solutions Architect\n"
+                    "Amazon Web Services (AWS)\n"
+                    "Issued May 2024\n"
+                    "Who your viewers also viewed\n"
+                    "Windows Administrator\n"
                 ),
             },
             {
                 "title": "Experience",
                 "evidence_ref": "work",
                 "visible_text": (
-                    "Application Support Engineer | M365, Entra ID, Windows\\n"
-                    "Experience\\n"
-                    "IT Support Engineer\\n"
-                    "Quental · Contract\\n"
-                    "Investigated Windows and DNS incidents\\n"
-                    "Profile language\\n"
-                    "AWS supporter\\n"
-                ).replace("\\\\n", "\\n"),
+                    "Application Support Engineer | M365, Entra ID, Windows\n"
+                    "Experience\n"
+                    "IT Support Engineer\n"
+                    "Quental · Contract\n"
+                    "Investigated Windows and DNS incidents\n"
+                    "Profile language\n"
+                    "AWS supporter\n"
+                ).replace("\\\n", "\n"),
             },
         ]
     }
