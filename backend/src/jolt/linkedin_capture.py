@@ -339,7 +339,6 @@ def _visible_external_apply_url(page: Page) -> str:
     return ""
 
 
-
 def _popup_external_apply_url(page: Page, source_url: str) -> str:
     """Open only the initial external Apply control in an isolated tab.
 
@@ -352,8 +351,7 @@ def _popup_external_apply_url(page: Page, source_url: str) -> str:
         probe = page.context.new_page()
         probe.goto(source_url, wait_until="domcontentloaded", timeout=8_000)
         buttons = probe.locator(
-            "button.jobs-apply-button, "
-            "button[data-control-name*='jobdetails_topcard_apply']"
+            "button.jobs-apply-button, button[data-control-name*='jobdetails_topcard_apply']"
         )
         for index in range(min(buttons.count(), 3)):
             button = buttons.nth(index)
@@ -363,18 +361,15 @@ def _popup_external_apply_url(page: Page, source_url: str) -> str:
                 ((button.get_attribute("aria-label") or ""), (button.inner_text(timeout=500) or ""))
             ).casefold()
             if ("apply" not in label and "solicitar" not in label) or (
-                "easy apply" in label or "solicitud sencilla" in label
-                or "solicitud fácil" in label
+                "easy apply" in label or "solicitud sencilla" in label or "solicitud fácil" in label
             ):
                 continue
             try:
                 with probe.context.expect_page(timeout=3_000) as popup_event:
                     button.click(timeout=3_000)
                 popup = popup_event.value
-                try:
+                with contextlib.suppress(TimeoutError):
                     popup.wait_for_load_state("domcontentloaded", timeout=6_000)
-                except TimeoutError:
-                    pass
                 destination = popup.url.strip()
                 popup.close()
                 if destination.startswith("https://"):
@@ -666,8 +661,14 @@ def capture_page_cards(
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
                     application_url=(
                         _visible_external_apply_url(page)
-                        or (_popup_external_apply_url(page, source_url) if _observe_easy_apply(page) is False else "")
-                    ) if verified else "",
+                        or (
+                            _popup_external_apply_url(page, source_url)
+                            if _observe_easy_apply(page) is False
+                            else ""
+                        )
+                    )
+                    if verified
+                    else "",
                 )
             )
             continue
@@ -738,8 +739,14 @@ def capture_page_cards(
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
                     application_url=(
                         _visible_external_apply_url(page)
-                        or (_popup_external_apply_url(page, source_url) if _observe_easy_apply(page) is False else "")
-                    ) if verified else "",
+                        or (
+                            _popup_external_apply_url(page, source_url)
+                            if _observe_easy_apply(page) is False
+                            else ""
+                        )
+                    )
+                    if verified
+                    else "",
                 )
             )
             continue
@@ -773,9 +780,15 @@ def capture_page_cards(
                 posted_age_text=posted_age_text,
                 easy_apply_available=_observe_easy_apply(page) if verified else None,
                 application_url=(
-                        _visible_external_apply_url(page)
-                        or (_popup_external_apply_url(page, source_url) if _observe_easy_apply(page) is False else "")
-                    ) if verified else "",
+                    _visible_external_apply_url(page)
+                    or (
+                        _popup_external_apply_url(page, source_url)
+                        if _observe_easy_apply(page) is False
+                        else ""
+                    )
+                )
+                if verified
+                else "",
             )
         )
     return captured
