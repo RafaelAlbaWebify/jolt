@@ -7,12 +7,12 @@ def _ledger():
             {
                 "title": "Experience",
                 "evidence_ref": "linkedin_capture:experience",
-                "visible_text": "IT Support Engineer: Windows support and DNS troubleshooting.",
+                "visible_text": "Experience\nIT Support Engineer: Windows support and DNS troubleshooting.",
             },
             {
                 "title": "Licenses & certifications",
                 "evidence_ref": "linkedin_capture:certification",
-                "visible_text": "AWS Cloud Solutions Architect course.",
+                "visible_text": "Licenses & certifications\nAWS Cloud Solutions Architect course.",
             },
         ]
     }
@@ -122,7 +122,7 @@ def test_linkedin_chrome_not_counted_as_certification_or_experience():
                     "Issued May 2024\\n"
                     "Who your viewers also viewed\\n"
                     "Windows Administrator\\n"
-                ).replace("\\\\n", "\\n"),
+                ),
             },
             {
                 "title": "Experience",
@@ -153,10 +153,15 @@ def test_linkedin_chrome_not_counted_as_certification_or_experience():
 
 
 def test_uncertain_unanchored_profile_capture_never_provides_skill_evidence():
-    ledger = {"source_evidence": [
-        {"title": "Experience", "evidence_ref": "broken",
-         "visible_text": "Application Support Engineer | Windows, Azure"}
-    ]}
+    ledger = {
+        "source_evidence": [
+            {
+                "title": "Experience",
+                "evidence_ref": "broken",
+                "visible_text": "Application Support Engineer | Windows, Azure",
+            }
+        ]
+    }
     result = enrich_review_inbox_with_dossiers(
         {"jobs": [_job("one", "Support", ["Windows required"])]}, ledger
     )
