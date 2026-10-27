@@ -361,7 +361,7 @@ def _visible_external_apply_url(page: Page) -> str:
         popup.close()
         if target.startswith("https://") and "linkedin.com" not in urlparse(target).netloc.lower():
             return target[:4000]
-    except (TimeoutError, Exception):
+    except Exception:
         return ""
     return ""
 
