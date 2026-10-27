@@ -11,8 +11,8 @@ from jolt.errors import JoltNotFoundError
 from jolt.official_source_capture import capture_official_candidates
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
-    build_unified_ai_work_package_json,
     build_unified_ai_work_package,
+    build_unified_ai_work_package_json,
     import_unified_ai_update,
 )
 
