@@ -18,15 +18,24 @@ def test_no_claim_of_verification_from_text_only() -> None:
     assert result["easy_apply_text_mention"] is True
     assert result["external_source_status"] == "not_checked"
     assert result["official_source_candidates"] == [
-        {"url": "https://jobs.lever.co/acme/abc", "source": "captured_text",
-         "verification_status": "unverified_candidate"}
+        {
+            "url": "https://jobs.lever.co/acme/abc",
+            "source": "captured_text",
+            "verification_status": "unverified_candidate",
+        }
     ]
 
 
 def test_preflight_keeps_jobs_and_counts_unverified_candidates() -> None:
-    inbox = {"jobs": [{"analysis_text": "https://boards.greenhouse.io/acme/jobs/1",
-                        "source_url": "https://www.linkedin.com/jobs/view/1/"},
-                       {"analysis_text": "No external link", "source_url": ""}]}
+    inbox = {
+        "jobs": [
+            {
+                "analysis_text": "https://boards.greenhouse.io/acme/jobs/1",
+                "source_url": "https://www.linkedin.com/jobs/view/1/",
+            },
+            {"analysis_text": "No external link", "source_url": ""},
+        ]
+    }
     output = attach_preflight(inbox)
     assert output is not None
     assert output["preflight_metadata"]["jobs_processed"] == 2
@@ -35,9 +44,14 @@ def test_preflight_keeps_jobs_and_counts_unverified_candidates() -> None:
 
 
 def test_easy_apply_sort_is_secondary_to_decision() -> None:
-    assert sort_application_priority(0, 20, False, "a") < sort_application_priority(1, 99, True, "b")
-    assert sort_application_priority(0, 20, True, "a") < sort_application_priority(0, 99, False, "b")
+    assert sort_application_priority(0, 20, False, "a") < sort_application_priority(
+        1, 99, True, "b"
+    )
+    assert sort_application_priority(0, 20, True, "a") < sort_application_priority(
+        0, 99, False, "b"
+    )
     assert sort_application_priority(0, 99, None, "a") < sort_application_priority(0, 50, None, "b")
+
 
 def test_index_sort_prioritizes_easy_apply_inside_same_category() -> None:
     from jolt.ai_review_opportunity_index import AIReviewOpportunityIndexItem, _sort_key
@@ -58,6 +72,7 @@ def test_index_sort_prioritizes_easy_apply_inside_same_category() -> None:
     assert _sort_key(entry(True, 50, "pursue")) < _sort_key(entry(None, 99, "pursue"))
     assert _sort_key(entry(False, 99, "pursue")) < _sort_key(entry(True, 50, "conditional"))
 
+
 def test_job_specific_application_control_survives_preflight() -> None:
     job = {
         "source_url": "https://www.linkedin.com/jobs/view/100/",
@@ -76,7 +91,9 @@ def test_job_specific_application_control_survives_preflight() -> None:
 
 def test_discovery_without_configured_api_key_remains_explicit(monkeypatch) -> None:
     from jolt.official_ats_discovery import discover_ats_candidates
+
     monkeypatch.delenv("JOLT_BRAVE_SEARCH_API_KEY", raising=False)
     assert discover_ats_candidates(title="IT Support", company="Acme") == {
-        "status": "provider_not_configured", "candidates": [],
+        "status": "provider_not_configured",
+        "candidates": [],
     }
