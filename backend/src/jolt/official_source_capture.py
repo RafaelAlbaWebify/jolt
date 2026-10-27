@@ -59,11 +59,14 @@ def allowed_source_url(url: str) -> bool:
     try:
         p = urlsplit(url)
         host = (p.hostname or "").lower()
+        port = p.port
+        username = p.username
+        password = p.password
     except ValueError:
         return False
     return bool(
-        p.scheme == "https" and not p.username and not p.password
-        and p.port in (None, 443)
+        p.scheme == "https" and not username and not password
+        and port in (None, 443)
         and host and any(host == site or host.endswith("." + site)
                          for site in _ATS_DOMAINS)
     )
