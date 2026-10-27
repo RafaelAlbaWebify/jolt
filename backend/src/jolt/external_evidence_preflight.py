@@ -49,6 +49,17 @@ def build_job_preflight(job: dict[str, Any]) -> dict[str, Any]:
     # Text may describe a site's general Easy Apply feature, so evidence is advisory only.
     easy_mentioned = bool(_EASY.search(text))
     candidates = _extract_ats_candidates(text, source_url)
+    outbound = str(job.get("outbound_application_url", ""))
+    if outbound.startswith("https://") and any(
+        _host(outbound) == domain or _host(outbound).endswith("." + domain)
+        for domain in _ATS_DOMAINS
+    ):
+        if outbound not in {item["url"] for item in candidates}:
+            candidates.insert(0, {
+                "url": outbound,
+                "source": "captured_apply_control",
+                "verification_status": "unverified_candidate",
+            })
     return {
         "version": "1.0",
         "official_source_candidates": candidates,
@@ -68,7 +79,7 @@ def build_job_preflight(job: dict[str, Any]) -> dict[str, Any]:
             "observed_job_button" if type(job.get("easy_apply_available")) is bool
             else "unverified"
         ),
-        "application_url": source_url,
+        "application_url": outbound or source_url,
         "last_checked_at": job.get("easy_apply_observed_at"),
         "needs_ui_observation": type(job.get("easy_apply_available")) is not bool,
         "reason": "A textual mention is not proof that the job's Easy Apply button is available.",
