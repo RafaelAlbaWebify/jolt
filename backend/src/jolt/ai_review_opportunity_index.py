@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from jolt.application_archival import ARCHIVED_APPLICATION_STATUS
 from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.database import (
     AIReview,
     Application,
@@ -17,9 +18,8 @@ from jolt.database import (
     ReviewDecision,
     SourceDocument,
 )
-from jolt.linkedin_source_urls import absolute_linkedin_url
 from jolt.external_evidence_preflight import sort_application_priority
-from jolt.capture_artifacts import CaptureArtifact
+from jolt.linkedin_source_urls import absolute_linkedin_url
 
 
 class AIReviewOpportunityIndexItem(BaseModel):
@@ -234,7 +234,7 @@ def list_ai_review_opportunity_index(
         except (ValueError, TypeError):
             continue
         observed = observation.get("easy_apply_available")
-        if type(observed) is bool:
+        if type(observed) is bool and capture_item.posting_id is not None:
             method_by_posting[capture_item.posting_id] = (
                 observed, artifact.captured_at.isoformat()
             )
