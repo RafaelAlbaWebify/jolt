@@ -18,6 +18,7 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.linkedin_source_urls import absolute_linkedin_url
+from jolt.external_evidence_preflight import sort_application_priority
 
 
 class AIReviewOpportunityIndexItem(BaseModel):
@@ -32,6 +33,9 @@ class AIReviewOpportunityIndexItem(BaseModel):
 
     decision: str | None = None
     priority_score: int | None = None
+    application_method: str = "unknown"
+    easy_apply_available: bool | None = None
+    easy_apply_evidence: str = "not_observed"
 
     hardline_status: str | None = None
     hardline_reasons: list[str] = Field(default_factory=list)
@@ -163,20 +167,18 @@ def _object_list(value: str) -> list[dict[str, object]]:
 
 def _sort_key(
     item: AIReviewOpportunityIndexItem,
-) -> tuple[int, int, str]:
+) -> tuple[int, int, int, str]:
     effective_decision = (
         item.decision if item.ai_review_status == "reviewed" else "awaiting_ai_review"
     )
 
     score = item.priority_score if item.priority_score is not None else -1
 
-    return (
-        _DECISION_PRIORITY.get(
-            effective_decision or "",
-            3,
-        ),
-        -score,
-        item.title.casefold(),
+    return sort_application_priority(
+        _DECISION_PRIORITY.get(effective_decision or "", 3),
+        score,
+        item.easy_apply_available,
+        item.title,
     )
 
 
