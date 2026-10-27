@@ -17,7 +17,7 @@ _ATS_DOMAINS = (
     "icims.com", "applytojob.com",
 )
 _AGGREGATORS = ("linkedin.com", "indeed.com", "glassdoor.", "jobgether.com")
-_EASY = re.compile(r"(?<![a-z])(?:easy\\s+apply|solicitud\\s+sencilla|solicitud\\s+fácil)(?![a-z])", re.I)
+_EASY = re.compile(r"(?<![a-z])(?:easy\s+apply|solicitud\s+sencilla|solicitud\s+fácil)(?![a-z])", re.I)
 
 
 def _host(url: str) -> str:
@@ -50,16 +50,22 @@ def build_job_preflight(job: dict[str, Any]) -> dict[str, Any]:
     easy_mentioned = bool(_EASY.search(text))
     candidates = _extract_ats_candidates(text, source_url)
     outbound = str(job.get("outbound_application_url", ""))
-    if outbound.startswith("https://") and any(
-        _host(outbound) == domain or _host(outbound).endswith("." + domain)
-        for domain in _ATS_DOMAINS
+    if (
+        outbound.startswith("https://")
+        and any(
+            _host(outbound) == domain or _host(outbound).endswith("." + domain)
+            for domain in _ATS_DOMAINS
+        )
+        and outbound not in {item["url"] for item in candidates}
     ):
-        if outbound not in {item["url"] for item in candidates}:
-            candidates.insert(0, {
+        candidates.insert(
+            0,
+            {
                 "url": outbound,
                 "source": "captured_apply_control",
                 "verification_status": "unverified_candidate",
-            })
+            },
+        )
     return {
         "version": "1.0",
         "official_source_candidates": candidates,
