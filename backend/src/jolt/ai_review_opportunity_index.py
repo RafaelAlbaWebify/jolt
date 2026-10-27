@@ -237,7 +237,8 @@ def list_ai_review_opportunity_index(
         observed = observation.get("easy_apply_available")
         if type(observed) is bool and capture_item.posting_id is not None:
             method_by_posting[capture_item.posting_id] = (
-                observed, artifact.captured_at.isoformat()
+                observed,
+                artifact.captured_at.isoformat(),
             )
 
     capture_statuses = _capture_statuses_by_posting(session)
