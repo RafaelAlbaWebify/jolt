@@ -18,7 +18,7 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.linkedin_source_urls import absolute_linkedin_url
-from jolt.external_evidence_preflight import sort_application_priority
+from jolt.external_evidence_preflight import build_job_preflight, sort_application_priority
 
 
 class AIReviewOpportunityIndexItem(BaseModel):
@@ -245,6 +245,20 @@ def list_ai_review_opportunity_index(
         ):
             continue
 
+        preflight = build_job_preflight({
+            "analysis_text": source_document.raw_text if source_document is not None else "",
+            "source_url": _display_source_url(source_document, posting.canonical_url),
+        })
+        is_linkedin = "linkedin.com" in _display_source_url(
+            source_document, posting.canonical_url
+        ).lower()
+        easy_hint = is_linkedin and preflight["easy_apply_text_mention"]
+        application_fields = {
+            "application_method": "easy_apply_hint" if easy_hint else "unknown",
+            "easy_apply_available": True if easy_hint else None,
+            "easy_apply_evidence": "capture_text_unverified" if easy_hint else "not_observed",
+        }
+
         ai_review = latest_ai_reviews.get(posting.id)
 
         if ai_review is None:
@@ -259,6 +273,7 @@ def list_ai_review_opportunity_index(
                     company=posting.company,
                     location=posting.location,
                     ai_review_status="awaiting_ai_review",
+                    **application_fields,
                 )
             )
             continue
@@ -275,6 +290,7 @@ def list_ai_review_opportunity_index(
                 location=posting.location,
                 ai_review_id=ai_review.id,
                 ai_review_status="reviewed",
+                **application_fields,
                 decision=ai_review.decision,
                 priority_score=ai_review.priority_score,
                 hardline_status=ai_review.hardline_status,
