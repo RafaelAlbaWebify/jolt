@@ -12,13 +12,24 @@ from urllib.parse import urlsplit
 
 _URL = re.compile(r"https?://[^\s<>\"']+", re.I)
 _ATS_DOMAINS = (
-    "greenhouse.io", "lever.co", "ashbyhq.com", "workdayjobs.com",
-    "myworkdayjobs.com", "smartrecruiters.com", "teamtailor.com",
-    "recruitee.com", "personio.com", "bamboohr.com", "jobvite.com",
-    "icims.com", "applytojob.com",
+    "greenhouse.io",
+    "lever.co",
+    "ashbyhq.com",
+    "workdayjobs.com",
+    "myworkdayjobs.com",
+    "smartrecruiters.com",
+    "teamtailor.com",
+    "recruitee.com",
+    "personio.com",
+    "bamboohr.com",
+    "jobvite.com",
+    "icims.com",
+    "applytojob.com",
 )
 _AGGREGATORS = ("linkedin.com", "indeed.com", "glassdoor.", "jobgether.com")
-_EASY = re.compile(r"(?<![a-z])(?:easy\s+apply|solicitud\s+sencilla|solicitud\s+fácil)(?![a-z])", re.I)
+_EASY = re.compile(
+    r"(?<![a-z])(?:easy\s+apply|solicitud\s+sencilla|solicitud\s+fácil)(?![a-z])", re.I
+)
 
 
 def _host(url: str) -> str:
