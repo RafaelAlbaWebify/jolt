@@ -20,6 +20,7 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.errors import JoltNotFoundError
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.hardline_evidence import analyze_location_evidence
 from jolt.job_preanalysis import build_job_preanalysis
 from jolt.job_search_preferences import load_job_search_preferences
@@ -209,6 +210,24 @@ def _build_ai_review_payloads(
     ]
 
     preferences = load_job_search_preferences()
+    observed_method_by_item: dict[str, bool] = {}
+    captured_at_by_item: dict[str, str] = {}
+    for artifact in session.scalars(
+        select(CaptureArtifact).where(
+            CaptureArtifact.capture_item_id.in_([item.id for item in items])
+        )
+    ).all():
+        if artifact.artifact_type != "linkedin_live_item_json":
+            continue
+        try:
+            observation = json.loads(artifact.raw_payload)
+        except (ValueError, TypeError):
+            continue
+        observed = observation.get("easy_apply_available")
+        if type(observed) is bool:
+            observed_method_by_item[artifact.capture_item_id] = observed
+            captured_at_by_item[artifact.capture_item_id] = artifact.captured_at.isoformat()
+
     jobs_payload: list[dict[str, object]] = []
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
@@ -239,6 +258,16 @@ def _build_ai_review_payloads(
                 "posting_id": item.posting_id,
                 "source_job_id": item.source_job_id,
                 "source_url": item.source_url,
+                "application_method": (
+                    "linkedin_easy_apply" if observed_method_by_item.get(item.id) is True
+                    else "external_apply" if observed_method_by_item.get(item.id) is False
+                    else "unknown"
+                ),
+                "easy_apply_available": observed_method_by_item.get(item.id),
+                "easy_apply_observed_at": captured_at_by_item.get(item.id),
+                "easy_apply_evidence": (
+                    "job_specific_button" if item.id in observed_method_by_item else "unverified"
+                ),
                 "canonical_url": posting.canonical_url if posting is not None else "",
                 "title": title,
                 "company": company,
