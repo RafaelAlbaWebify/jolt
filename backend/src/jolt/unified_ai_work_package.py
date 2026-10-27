@@ -12,6 +12,7 @@ from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
 from jolt.ai_review_protocol import build_review_protocol
 from jolt.external_evidence_preflight import attach_preflight
+from jolt.official_source_capture import attach_captured_official_sources
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
@@ -261,12 +262,12 @@ def build_unified_ai_work_package(
         context_version=global_context_version(context),
         global_context=context,
         candidate_evidence=candidate_evidence,
-        review_inbox=attach_preflight(enrich_review_inbox_with_dossiers(
+        review_inbox=attach_captured_official_sources(session, attach_preflight(enrich_review_inbox_with_dossiers(
             _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
             if discovery_batch_id
             else _review_inbox_payload(session),
             candidate_evidence,
-        )),
+        ))),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
             "two_message_review": build_review_protocol(),
