@@ -54,12 +54,8 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
     ) -> dict[str, object]:
         """Operator-initiated, bounded source gathering before Export AI."""
         try:
-            package = build_unified_ai_work_package(
-                session, discovery_batch_id=discovery_batch_id
-            )
-            return capture_official_candidates(
-                session, package.review_inbox, max_jobs=max_jobs
-            )
+            package = build_unified_ai_work_package(session, discovery_batch_id=discovery_batch_id)
+            return capture_official_candidates(session, package.review_inbox, max_jobs=max_jobs)
         except (ValueError, JoltNotFoundError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
