@@ -7,7 +7,6 @@ approved ATS domains are eligible. Requests do not follow redirects.
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 import urllib.error
 import urllib.request
