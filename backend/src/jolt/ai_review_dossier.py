@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-DOSSIER_VERSION = "1.1"
+DOSSIER_VERSION = "1.2"
 
 SKILLS = {
     "sql": (r"\bsql\b",),
@@ -54,8 +54,38 @@ def _mentioned_skills(text: str) -> list[str]:
     ]
 
 
+def _profile_content_lines(text: str, section: str) -> list[str]:
+    """Keep only the actual LinkedIn section body, excluding site chrome."""
+    lines = [line.strip() for line in text.splitlines()]
+    try:
+        start = lines.index(
+            {
+                "experience": "Experience",
+                "skills": "Skills",
+                "licenses & certifications": "Licenses & certifications",
+            }[section]
+        )
+    except ValueError:
+        return []
+    stop_markers = {
+        "Who your viewers also viewed",
+        "People you may know",
+        "Profile language",
+        "About",
+        "Accessibility",
+        "Show all",
+    }
+    body = []
+    for line in lines[start + 1 :]:
+        if line in stop_markers:
+            break
+        if line:
+            body.append(line)
+    return body
+
+
 def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
-    """Cite bounded source lines, not whole-page keyword co-occurrence."""
+    """Index only actual profile sections and cite bounded, precise excerpts."""
     index: dict[str, list[dict[str, str]]] = {}
     for source in ledger.get("source_evidence", []):
         if not isinstance(source, dict):
@@ -66,14 +96,39 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
         ref = source.get("evidence_ref")
         if not isinstance(ref, str) or not ref:
             continue
-        lines = str(source.get("visible_text", "")).splitlines()
-        for line in lines:
-            snippet = line.strip()
-            if not snippet or len(snippet) > 500:
+        lines = _profile_content_lines(str(source.get("visible_text", "")), title)
+        organization = ""
+        credential = ""
+        for position, snippet in enumerate(lines):
+            if (
+                title == "experience"
+                and " · " in snippet
+                and any(
+                    marker in snippet
+                    for marker in (
+                        "Full-time",
+                        "Contract",
+                        "Freelance",
+                        "Self-employed",
+                        "Part-time",
+                    )
+                )
+            ):
+                organization = snippet.split(" · ", 1)[0]
+            if (
+                title == "licenses & certifications"
+                and position + 2 < len(lines)
+                and lines[position + 2].startswith("Issued ")
+            ):
+                credential = snippet
+            if len(snippet) > 500:
                 continue
             for skill in _mentioned_skills(snippet):
                 records = index.setdefault(skill, [])
-                if any(item["source_text"] == snippet for item in records):
+                if any(
+                    item["source_text"] == snippet and item["evidence_ref"] == ref
+                    for item in records
+                ):
                     continue
                 if len(records) >= 5:
                     continue
@@ -82,6 +137,13 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
                         "evidence_ref": ref,
                         "source_section": title,
                         "source_text": snippet[:240],
+                        "source_context": (
+                            organization
+                            if title == "experience"
+                            else credential
+                            if title == "licenses & certifications"
+                            else "LinkedIn skill listing"
+                        ),
                         "claim_status": "unverified_mention",
                     }
                 )

@@ -7,12 +7,12 @@ def _ledger():
             {
                 "title": "Experience",
                 "evidence_ref": "linkedin_capture:experience",
-                "visible_text": "IT Support Engineer: Windows support and DNS troubleshooting.",
+                "visible_text": "Experience\nIT Support Engineer: Windows support and DNS troubleshooting.",
             },
             {
                 "title": "Licenses & certifications",
                 "evidence_ref": "linkedin_capture:certification",
-                "visible_text": "AWS Cloud Solutions Architect course.",
+                "visible_text": "Licenses & certifications\nAWS Cloud Solutions Architect course.",
             },
         ]
     }
@@ -106,3 +106,67 @@ def test_explicit_hybrid_is_not_labelled_remote_onsite_contradiction():
     assert result is not None
     warnings = result["jobs"][0]["evaluation_dossier"]["work_model_warnings"]
     assert "remote_and_office_presence_language" not in warnings
+
+
+def test_linkedin_chrome_not_counted_as_certification_or_experience():
+    ledger = {
+        "source_evidence": [
+            {
+                "title": "Licenses & certifications",
+                "evidence_ref": "certs",
+                "visible_text": (
+                    "Application Support Engineer | M365, Entra ID, Windows\n"
+                    "Licenses & certifications\n"
+                    "AWS Cloud Solutions Architect\n"
+                    "Amazon Web Services (AWS)\n"
+                    "Issued May 2024\n"
+                    "Who your viewers also viewed\n"
+                    "Windows Administrator\n"
+                ),
+            },
+            {
+                "title": "Experience",
+                "evidence_ref": "work",
+                "visible_text": (
+                    "Application Support Engineer | M365, Entra ID, Windows\n"
+                    "Experience\n"
+                    "IT Support Engineer\n"
+                    "Quental · Contract\n"
+                    "Investigated Windows and DNS incidents\n"
+                    "Profile language\n"
+                    "AWS supporter\n"
+                ).replace("\\\n", "\n"),
+            },
+        ]
+    }
+    inbox = {"jobs": [_job("one", "IT support", ["Required AWS, Windows and Entra ID"])]}
+    result = enrich_review_inbox_with_dossiers(inbox, ledger)
+    assert result is not None
+    mentions = result["jobs"][0]["evaluation_dossier"]["requirement_skill_crosswalk"][0][
+        "candidate_mentions"
+    ]
+    assert mentions["entra id"] == []
+    assert mentions["aws"][0]["source_section"] == "licenses & certifications"
+    assert mentions["aws"][0]["source_context"] == "AWS Cloud Solutions Architect"
+    assert mentions["windows"][0]["source_section"] == "experience"
+    assert mentions["windows"][0]["source_context"] == "Quental"
+
+
+def test_uncertain_unanchored_profile_capture_never_provides_skill_evidence():
+    ledger = {
+        "source_evidence": [
+            {
+                "title": "Experience",
+                "evidence_ref": "broken",
+                "visible_text": "Application Support Engineer | Windows, Azure",
+            }
+        ]
+    }
+    result = enrich_review_inbox_with_dossiers(
+        {"jobs": [_job("one", "Support", ["Windows required"])]}, ledger
+    )
+    assert result is not None
+    mentions = result["jobs"][0]["evaluation_dossier"]["requirement_skill_crosswalk"][0][
+        "candidate_mentions"
+    ]
+    assert mentions["windows"] == []
