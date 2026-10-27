@@ -31,8 +31,7 @@ def _posting_text(title: str, company: str, location: str, description: str) -> 
         lines.append(f"Location: {location}")
     if description:
         lines.append(description)
-    return "
-".join(line for line in lines if line).strip()
+    return "\n".join(line for line in lines if line).strip()
 
 
 def _live_item_structure_failures(
