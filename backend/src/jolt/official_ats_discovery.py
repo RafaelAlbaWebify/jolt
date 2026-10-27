@@ -3,6 +3,7 @@
 The provider is used only by an explicit operator-triggered refresh.
 Search results are unverified leads, never proof of role identity or location.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,12 +30,15 @@ def discover_ats_candidates(
     if not 1 <= limit <= 10:
         raise ValueError("limit must be 1..10")
     query = f'"{company[:100]}" "{title[:160]}" jobs apply official ATS'
-    url = "https://api.search.brave.com/res/v1/web/search?" + urllib.parse.urlencode({
-        "q": query,
-        "count": limit,
-    })
+    url = "https://api.search.brave.com/res/v1/web/search?" + urllib.parse.urlencode(
+        {
+            "q": query,
+            "count": limit,
+        }
+    )
     req = urllib.request.Request(
-        url, headers={
+        url,
+        headers={
             "Accept": "application/json",
             "X-Subscription-Token": key,
             "User-Agent": "JOLT-EvidencePreflight/1.0",
@@ -60,9 +64,12 @@ def discover_ats_candidates(
         if target in seen or not allowed_source_url(target):
             continue
         seen.add(target)
-        candidates.append({
-            "url": target, "source": "brave_search_provider",
-            "verification_status": "unverified_candidate",
-            "result_title": str(entry.get("title", ""))[:240],
-        })
+        candidates.append(
+            {
+                "url": target,
+                "source": "brave_search_provider",
+                "verification_status": "unverified_candidate",
+                "result_title": str(entry.get("title", ""))[:240],
+            }
+        )
     return {"status": "searched", "candidates": candidates}
