@@ -19,18 +19,28 @@ def test_ats_url_allowlist_rejects_redirect_targets_and_non_https() -> None:
     assert not allowed_source_url("https://www.linkedin.com/jobs/view/3/")
 
 
-def test_real_capture_is_persisted_but_identity_not_automatically_verified(tmp_path, monkeypatch) -> None:
+def test_real_capture_is_persisted_but_identity_not_automatically_verified(
+    tmp_path, monkeypatch
+) -> None:
     session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
     source = SourceDocument(
-        id="source-1", source_type="linkedin_live",
+        id="source-1",
+        source_type="linkedin_live",
         source_url="https://www.linkedin.com/jobs/view/100/",
-        raw_text="IT Support", content_hash="sha-1", captured_at=datetime.now(UTC),
+        raw_text="IT Support",
+        content_hash="sha-1",
+        captured_at=datetime.now(UTC),
     )
     posting = Posting(
-        id="posting-1", source_document_id=source.id,
-        canonical_url=source.source_url, identity_key="linkedin:100",
-        title="IT Support", company="Acme", location="Vigo",
-        description="IT Support", identity_status="verified",
+        id="posting-1",
+        source_document_id=source.id,
+        canonical_url=source.source_url,
+        identity_key="linkedin:100",
+        title="IT Support",
+        company="Acme",
+        location="Vigo",
+        description="IT Support",
+        identity_status="verified",
         created_at=datetime.now(UTC),
     )
     session.add_all([source, posting])
@@ -39,21 +49,32 @@ def test_real_capture_is_persisted_but_identity_not_automatically_verified(tmp_p
 
     monkeypatch.setattr(capture, "_robots_permits", lambda _url: True)
     monkeypatch.setattr(
-        capture, "_open_limited",
-        lambda _url: (200, b"<html><body><h1>IT Support</h1><p>Vigo</p></body></html>", "text/html"),
+        capture,
+        "_open_limited",
+        lambda _url: (
+            200,
+            b"<html><body><h1>IT Support</h1><p>Vigo</p></body></html>",
+            "text/html",
+        ),
     )
     monkeypatch.setattr(capture.time, "sleep", lambda _seconds: None)
 
-    inbox = {"jobs": [{
-        "posting_id": posting.id,
-        "external_evidence_preflight": {
-            "official_source_candidates": [{
-                "url": "https://jobs.lever.co/example/123",
-                "source": "captured_apply_control",
-                "verification_status": "unverified_candidate",
-            }]
-        },
-    }]}
+    inbox = {
+        "jobs": [
+            {
+                "posting_id": posting.id,
+                "external_evidence_preflight": {
+                    "official_source_candidates": [
+                        {
+                            "url": "https://jobs.lever.co/example/123",
+                            "source": "captured_apply_control",
+                            "verification_status": "unverified_candidate",
+                        }
+                    ]
+                },
+            }
+        ]
+    }
     try:
         result = capture_official_candidates(session, inbox)
         assert result["attempted"] == 1
