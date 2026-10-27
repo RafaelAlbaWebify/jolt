@@ -3,6 +3,7 @@
 This layer collects candidate employer ATS URLs and application-method observations.
 Actual HTTP/browser retrieval is a separate, auditable capture step.
 """
+
 from __future__ import annotations
 
 import re
@@ -38,7 +39,9 @@ def _extract_ats_candidates(text: str, source_url: str) -> list[dict[str, str]]:
         if url in seen or url == source_url:
             continue
         seen.add(url)
-        candidates.append({"url": url, "source": "captured_text", "verification_status": "unverified_candidate"})
+        candidates.append(
+            {"url": url, "source": "captured_text", "verification_status": "unverified_candidate"}
+        )
     return candidates[:8]
 
 
@@ -82,8 +85,7 @@ def build_job_preflight(job: dict[str, Any]) -> dict[str, Any]:
         "easy_apply_available": job.get("easy_apply_available"),
         "easy_apply_text_mention": easy_mentioned,
         "easy_apply_verification_status": (
-            "observed_job_button" if type(job.get("easy_apply_available")) is bool
-            else "unverified"
+            "observed_job_button" if type(job.get("easy_apply_available")) is bool else "unverified"
         ),
         "application_url": outbound or source_url,
         "last_checked_at": job.get("easy_apply_observed_at"),
@@ -115,7 +117,8 @@ def attach_preflight(inbox: dict[str, Any] | None) -> dict[str, Any] | None:
     return inbox
 
 
-def sort_application_priority(decision_rank: int, fit_score: int | None, easy_apply: bool | None,
-                              title: str) -> tuple[int, int, int, str]:
+def sort_application_priority(
+    decision_rank: int, fit_score: int | None, easy_apply: bool | None, title: str
+) -> tuple[int, int, int, str]:
     """Easy Apply leads within a classification; score breaks ties within each method."""
     return decision_rank, 0 if easy_apply is True else 1, -(fit_score or 0), title.casefold()
