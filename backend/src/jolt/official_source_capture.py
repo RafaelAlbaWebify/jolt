@@ -144,6 +144,7 @@ def capture_official_candidates(
     selected: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
     search_count = 0
+    search_enabled = True
     search_statuses: dict[str, int] = {}
     for job in jobs:
         if not isinstance(job, dict) or not isinstance(job.get("posting_id"), str):
@@ -153,7 +154,7 @@ def capture_official_candidates(
         )
         if not isinstance(suggestions, list):
             suggestions = []
-        if not suggestions and search_count < max_jobs:
+        if not suggestions and search_enabled and search_count < max_jobs:
             # Provider discovery is optional, separately rate-bounded and never
             # treated as a verified match to this particular job.
             from jolt.official_ats_discovery import discover_ats_candidates
@@ -163,12 +164,12 @@ def capture_official_candidates(
             )
             status = str(discovery.get("status", "unknown"))
             search_statuses[status] = search_statuses.get(status, 0) + 1
-            if status == "searched":
+            if status == "provider_not_configured":
+                # Continue processing links already present later in the batch.
+                search_enabled = False
+            else:
                 search_count += 1
                 suggestions = discovery.get("candidates", [])
-            elif status == "provider_not_configured":
-                # No point repeating an unavailable provider for 342 jobs.
-                break
         for candidate in suggestions:
             if not isinstance(candidate, dict):
                 continue
