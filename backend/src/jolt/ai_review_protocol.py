@@ -1,4 +1,4 @@
-"""Portable, self-contained two-message review instructions for exported AI packages."""
+"""Portable, self-contained three-message review instructions for exported AI packages."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from typing import Any
 def build_review_protocol() -> dict[str, Any]:
     """Describe review workflow without changing the existing import contract."""
     return {
-        "protocol_version": "1.0",
+        "protocol_version": "1.1",
         "invocation": {
             "message_1": "Mensaje 1",
             "message_2": "Mensaje 2",
+            "message_3": "Mensaje 3",
+            "resume_message_2": "Continuar Mensaje 2",
             "resume": "Continuar JOLT",
             "new_chat": (
                 "The exported jolt_ai_work_package is self-contained. A new chat must "
@@ -36,7 +38,7 @@ def build_review_protocol() -> dict[str, Any]:
             "output": "Review summary and checkpoint; NOT a JOLT-importable final update.",
         },
         "stage_2": {
-            "goal": "Resolve decision-changing uncertainties and produce importable results.",
+            "goal": "Investigate externally only decision-changing uncertainties; do not produce final import.",
             "steps": [
                 "Resume from stage-1 checkpoint; do not silently discard earlier completed work.",
                 "Research official employer ATS/careers sources and verify work-from-Spain "
@@ -46,16 +48,36 @@ def build_review_protocol() -> dict[str, Any]:
                 "Record exact supporting source, accessed date, conclusion and limits for "
                 "every external verification; do not invent citations or claim all jobs "
                 "externally verified when only a subset was checked.",
-                "Use the existing review_inbox.response_template and instructions to "
-                "generate a jolt_ai_work_package_update version 1.0. Preserve identifiers "
-                "and user-owned state. Distinguish advisory priority from import statuses.",
+                "Use employer-source preflight as unverified candidates, never as confirmed "
+                "source checks. Report HTTP and browser observations separately.",
                 "Validate package_id, source_context_version, all review groups, unique "
                 "job identifiers, mandatory schema fields and decision provenance.",
             ],
             "output": (
-                "Import JSON plus review coverage report if complete; otherwise a partial "
-                "checkpoint with remaining queue and accurate status, not a falsely final file."
+                "Research checkpoint with completed-source-check evidence and accurate coverage; "
+                "continue Mensaje 2 if the decision-changing queue remains."
             ),
+        },
+        "stage_3": {
+            "goal": "Reconcile classification and evidence, generate and validate JOLT import.",
+            "steps": [
+                "Check every posting has one evidence-based final recommendation.",
+                "Consult original review_inbox.response_template for accepted enum values.",
+                "Produce jolt_ai_work_package_update 1.0 with unchanged package and context IDs.",
+                "Validate all posting IDs and review groups against original export.",
+                "Report any unverified material restriction without claiming verified eligibility.",
+            ],
+            "output": "Validated import JSON and quality/coverage report.",
+        },
+        "pre_export": {
+            "source_preflight": "JOLT extracts possible ATS links and unverified Easy Apply signals before export.",
+            "status_semantics": "Candidate URLs and text matches do not mean that websites or buttons were verified.",
+            "external_fetch": "Actual remote fetches must record source, timestamp, identity and result; obey access controls.",
+        },
+        "application_ordering": {
+            "policy": "Within each classification Easy Apply first, then fit; deadlines may override.",
+            "do_not_confuse": "Easy Apply affects order, not eligibility or fit classification.",
+            "ui_verification": "Only a direct job-specific UI observation can confirm Easy Apply.",
         },
         "decision_policy": {
             "apply": "Eligible or plausibly eligible; reasonable role fit; no evidenced blocker.",
