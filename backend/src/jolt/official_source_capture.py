@@ -45,8 +45,7 @@ class _HTMLText(HTMLParser):
         if tag in {"script", "style", "noscript"}:
             self.hidden += 1
         elif tag in {"p", "li", "h1", "h2", "h3", "div", "br"}:
-            self.parts.append("
-")
+            self.parts.append("\n")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"}:
