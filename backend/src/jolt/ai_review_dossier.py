@@ -59,8 +59,11 @@ def _profile_content_lines(text: str, section: str) -> list[str]:
     lines = [line.strip() for line in text.splitlines()]
     try:
         start = lines.index(
-            {"experience": "Experience", "skills": "Skills",
-             "licenses & certifications": "Licenses & certifications"}[section]
+            {
+                "experience": "Experience",
+                "skills": "Skills",
+                "licenses & certifications": "Licenses & certifications",
+            }[section]
         )
     except ValueError:
         return []
@@ -97,13 +100,27 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
         organization = ""
         credential = ""
         for position, snippet in enumerate(lines):
-            if title == "experience" and " · " in snippet and any(
-                marker in snippet for marker in ("Full-time", "Contract", "Freelance", "Self-employed", "Part-time")
+            if (
+                title == "experience"
+                and " · " in snippet
+                and any(
+                    marker in snippet
+                    for marker in (
+                        "Full-time",
+                        "Contract",
+                        "Freelance",
+                        "Self-employed",
+                        "Part-time",
+                    )
+                )
             ):
                 organization = snippet.split(" · ", 1)[0]
-            if title == "licenses & certifications" and position + 2 < len(lines):
-                if lines[position + 2].startswith("Issued "):
-                    credential = snippet
+            if (
+                title == "licenses & certifications"
+                and position + 2 < len(lines)
+                and lines[position + 2].startswith("Issued ")
+            ):
+                credential = snippet
             if len(snippet) > 500:
                 continue
             for skill in _mentioned_skills(snippet):
@@ -121,14 +138,17 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
                         "source_section": title,
                         "source_text": snippet[:240],
                         "source_context": (
-                            organization if title == "experience"
-                            else credential if title == "licenses & certifications"
+                            organization
+                            if title == "experience"
+                            else credential
+                            if title == "licenses & certifications"
                             else "LinkedIn skill listing"
                         ),
                         "claim_status": "unverified_mention",
                     }
                 )
     return index
+
 
 def _work_model_conflicts(text: str, location: str) -> list[str]:
     """Indicate contradictions, not employment eligibility decisions."""
