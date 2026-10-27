@@ -4,6 +4,7 @@ Network requests are never performed implicitly during AI export.
 Only links already discovered in captured vacancy text and belonging to
 approved ATS domains are eligible. Requests do not follow redirects.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -66,17 +67,17 @@ def allowed_source_url(url: str) -> bool:
     except ValueError:
         return False
     return bool(
-        p.scheme == "https" and not username and not password
+        p.scheme == "https"
+        and not username
+        and not password
         and port in (None, 443)
-        and host and any(host == site or host.endswith("." + site)
-                         for site in _ATS_DOMAINS)
+        and host
+        and any(host == site or host.endswith("." + site) for site in _ATS_DOMAINS)
     )
 
 
 def _open_limited(url: str, *, timeout: float = 8) -> tuple[int, bytes, str]:
-    opener = urllib.request.build_opener(
-        _NoRedirect, urllib.request.ProxyHandler({})
-    )
+    opener = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
     request = urllib.request.Request(
         url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,text/plain"}
     )
@@ -103,9 +104,7 @@ def _robots_permits(url: str) -> bool:
 
 
 def _open_robots(url: str) -> tuple[int, bytes, str]:
-    opener = urllib.request.build_opener(
-        _NoRedirect, urllib.request.ProxyHandler({})
-    )
+    opener = urllib.request.build_opener(_NoRedirect, urllib.request.ProxyHandler({}))
     with opener.open(
         urllib.request.Request(url, headers={"User-Agent": USER_AGENT}),
         timeout=6,
@@ -139,7 +138,10 @@ def _existing_source(session: Session, posting_id: str, url: str):
 
 
 def capture_official_candidates(
-    session: Session, inbox: dict[str, Any] | None, *, max_jobs: int = 10,
+    session: Session,
+    inbox: dict[str, Any] | None,
+    *,
+    max_jobs: int = 10,
 ) -> dict[str, Any]:
     """Fetch at most max_jobs public ATS candidate pages; preserve evidence in DB."""
     if not 1 <= max_jobs <= MAX_ITEMS_PER_REQUEST:
@@ -162,6 +164,7 @@ def capture_official_candidates(
             # Provider discovery is optional, separately rate-bounded and never
             # treated as a verified match to this particular job.
             from jolt.official_ats_discovery import discover_ats_candidates
+
             discovery = discover_ats_candidates(
                 title=str(job.get("title", "")),
                 company=str(job.get("company", "")),
@@ -192,12 +195,17 @@ def capture_official_candidates(
         link = _existing_source(session, posting_id, url)
         if link is not None and link.source_document_id:
             doc = session.get(SourceDocument, link.source_document_id)
-            if doc is not None and doc.captured_at.replace(tzinfo=UTC) >= datetime.now(UTC) - CACHE_TTL:
+            if (
+                doc is not None
+                and doc.captured_at.replace(tzinfo=UTC) >= datetime.now(UTC) - CACHE_TTL
+            ):
                 cached += 1
                 continue
         attempted += 1
         if not _robots_permits(url):
-            results.append({"posting_id": posting_id, "url": url, "status": "robots_unavailable_or_disallowed"})
+            results.append(
+                {"posting_id": posting_id, "url": url, "status": "robots_unavailable_or_disallowed"}
+            )
             continue
         try:
             status, data, content_type = _open_limited(url)
@@ -207,35 +215,57 @@ def capture_official_candidates(
                 continue
             now = utc_now()
             doc = SourceDocument(
-                id=str(uuid4()), source_type="official_ats_preflight",
-                source_url=url, raw_text=body,
-                content_hash=hashlib.sha256(data).hexdigest(), captured_at=now,
+                id=str(uuid4()),
+                source_type="official_ats_preflight",
+                source_url=url,
+                raw_text=body,
+                content_hash=hashlib.sha256(data).hexdigest(),
+                captured_at=now,
             )
             session.add(doc)
             session.flush()
             if link is None:
                 link = PostingSourceIdentity(
-                    id=str(uuid4()), posting_id=posting_id,
-                    portal="official_ats_preflight", source_job_id=_link_id(posting_id, url),
-                    source_url=url, first_seen_at=now, last_seen_at=now,
+                    id=str(uuid4()),
+                    posting_id=posting_id,
+                    portal="official_ats_preflight",
+                    source_job_id=_link_id(posting_id, url),
+                    source_url=url,
+                    first_seen_at=now,
+                    last_seen_at=now,
                     source_document_id=doc.id,
                 )
                 session.add(link)
             else:
                 link.source_document_id = doc.id
                 link.last_seen_at = now
-            results.append({"posting_id": posting_id, "url": url,
-                            "status": "captured_identity_unverified", "http_status": str(status)})
+            results.append(
+                {
+                    "posting_id": posting_id,
+                    "url": url,
+                    "status": "captured_identity_unverified",
+                    "http_status": str(status),
+                }
+            )
         except (OSError, ValueError, urllib.error.HTTPError) as exc:
-            results.append({"posting_id": posting_id, "url": url, "status": "fetch_failed",
-                            "detail": type(exc).__name__})
+            results.append(
+                {
+                    "posting_id": posting_id,
+                    "url": url,
+                    "status": "fetch_failed",
+                    "detail": type(exc).__name__,
+                }
+            )
         # Local execution must not hammer an ATS. Bounded to <=10 per request.
         time.sleep(0.5)
     session.commit()
     return {
-        "candidate_links": len(selected), "attempted": attempted,
-        "cached_fresh": cached, "remaining_or_skipped": max(0, len(selected) - attempted - cached),
-        "provider_searches": search_count, "provider_statuses": search_statuses,
+        "candidate_links": len(selected),
+        "attempted": attempted,
+        "cached_fresh": cached,
+        "remaining_or_skipped": max(0, len(selected) - attempted - cached),
+        "provider_searches": search_count,
+        "provider_statuses": search_statuses,
         "results": results,
     }
 
@@ -262,22 +292,25 @@ def attach_captured_official_sources(
         doc = session.get(SourceDocument, link.source_document_id)
         if doc is None:
             continue
-        by_posting.setdefault(link.posting_id, []).append({
-            "source_url": doc.source_url,
-            "captured_at": doc.captured_at.isoformat(),
-            "content_hash": doc.content_hash,
-            "captured_text_excerpt": doc.raw_text[:12_000],
-            "capture_status": "captured_identity_unverified",
-            "source_type": doc.source_type,
-            "authority": "candidate_official_ats_not_verified_job_identity",
-        })
+        by_posting.setdefault(link.posting_id, []).append(
+            {
+                "source_url": doc.source_url,
+                "captured_at": doc.captured_at.isoformat(),
+                "content_hash": doc.content_hash,
+                "captured_text_excerpt": doc.raw_text[:12_000],
+                "capture_status": "captured_identity_unverified",
+                "source_type": doc.source_type,
+                "authority": "candidate_official_ats_not_verified_job_identity",
+            }
+        )
     for job in jobs:
         if isinstance(job, dict):
-            job.setdefault("external_evidence_preflight", {})[
-                "captured_official_sources"
-            ] = by_posting.get(str(job.get("posting_id", "")), [])[:5]
-    inbox.setdefault("preflight_metadata", {})[
-        "jobs_with_captured_official_sources"
-    ] = sum(bool(job.get("external_evidence_preflight", {}).get(
-        "captured_official_sources")) for job in jobs if isinstance(job, dict))
+            job.setdefault("external_evidence_preflight", {})["captured_official_sources"] = (
+                by_posting.get(str(job.get("posting_id", "")), [])[:5]
+            )
+    inbox.setdefault("preflight_metadata", {})["jobs_with_captured_official_sources"] = sum(
+        bool(job.get("external_evidence_preflight", {}).get("captured_official_sources"))
+        for job in jobs
+        if isinstance(job, dict)
+    )
     return inbox
