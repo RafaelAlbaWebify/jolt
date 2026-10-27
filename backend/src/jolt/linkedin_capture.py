@@ -317,6 +317,30 @@ def _virtualized_detail_context(
 
 
 
+
+def _visible_external_apply_url(page: Page) -> str:
+    """Inspect the current job's apply controls; never click or submit."""
+    selectors = (
+        "a.jobs-apply-button[href]",
+        ".jobs-s-apply a[href]",
+        ".jobs-apply-button--top-card a[href]",
+        "a[data-control-name*='jobdetails_topcard_apply'][href]",
+    )
+    for selector in selectors:
+        try:
+            links = page.locator(selector)
+            for i in range(min(links.count(), 5)):
+                node = links.nth(i)
+                if not node.is_visible(timeout=500):
+                    continue
+                value = (node.get_attribute("href") or "").strip()
+                if value.startswith("https://") and "linkedin.com/" not in value.lower():
+                    return value[:4000]
+        except Exception:
+            continue
+    return ""
+
+
 def _observe_easy_apply(page: Page) -> bool | None:
     """Observe the visible job-specific Apply control; never initiate an application."""
     selectors = (
@@ -573,6 +597,7 @@ def capture_page_cards(
                     promoted=promoted,
                     posted_age_text=posted_age_text,
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
+                    application_url=_visible_external_apply_url(page) if verified else "",
                 )
             )
             continue
@@ -641,6 +666,7 @@ def capture_page_cards(
                     promoted=promoted,
                     posted_age_text=posted_age_text,
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
+                    application_url=_visible_external_apply_url(page) if verified else "",
                 )
             )
             continue
@@ -673,6 +699,7 @@ def capture_page_cards(
                 promoted=promoted,
                 posted_age_text=posted_age_text,
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
+                    application_url=_visible_external_apply_url(page) if verified else "",
             )
         )
     return captured
@@ -794,6 +821,7 @@ def build_submit_payload(
                 "identity_verified": card.identity_verified,
                 "verification_reason": card.verification_reason,
                 "easy_apply_available": card.easy_apply_available,
+                "application_url": card.application_url,
             }
             for card in cards
         ],
