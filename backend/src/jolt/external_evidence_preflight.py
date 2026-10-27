@@ -25,6 +25,7 @@ _ATS_DOMAINS = (
     "jobvite.com",
     "icims.com",
     "applytojob.com",
+    "careers.dxc.com",
 )
 _AGGREGATORS = ("linkedin.com", "indeed.com", "glassdoor.", "jobgether.com")
 _EASY = re.compile(

@@ -97,3 +97,16 @@ def test_discovery_without_configured_api_key_remains_explicit(monkeypatch) -> N
         "status": "provider_not_configured",
         "candidates": [],
     }
+
+
+def test_corporate_dxc_apply_url_is_candidate_not_verified() -> None:
+    job = {
+        "source_url": "https://www.linkedin.com/jobs/view/4478107931/",
+        "outbound_application_url": "https://careers.dxc.com/job/24002544/sap-abap-any-city-es/",
+        "easy_apply_available": False,
+        "analysis_text": "SAP ABAP role",
+    }
+    evidence = build_job_preflight(job)
+    assert evidence["official_source_candidates"][0]["url"] == job["outbound_application_url"]
+    assert evidence["official_source_candidates"][0]["source"] == "captured_apply_control"
+    assert evidence["external_source_status"] == "not_checked"
