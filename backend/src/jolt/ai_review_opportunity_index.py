@@ -18,7 +18,8 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.linkedin_source_urls import absolute_linkedin_url
-from jolt.external_evidence_preflight import build_job_preflight, sort_application_priority
+from jolt.external_evidence_preflight import sort_application_priority
+from jolt.capture_artifacts import CaptureArtifact
 
 
 class AIReviewOpportunityIndexItem(BaseModel):
@@ -213,6 +214,31 @@ def list_ai_review_opportunity_index(
         for application in session.scalars(select(Application)).all()
     }
 
+    # The captured UI observation, not text in a vacancy, determines Easy Apply.
+    capture_items = {
+        item.id: item for item in session.scalars(select(CaptureItem)).all()
+        if item.posting_id is not None
+    }
+    method_by_posting: dict[str, tuple[bool, str]] = {}
+    artifacts = session.scalars(
+        select(CaptureArtifact).order_by(CaptureArtifact.captured_at.desc())
+    ).all()
+    for artifact in artifacts:
+        capture_item = capture_items.get(artifact.capture_item_id)
+        if capture_item is None or capture_item.posting_id in method_by_posting:
+            continue
+        if artifact.artifact_type != "linkedin_live_item_json":
+            continue
+        try:
+            observation = json.loads(artifact.raw_payload)
+        except (ValueError, TypeError):
+            continue
+        observed = observation.get("easy_apply_available")
+        if type(observed) is bool:
+            method_by_posting[capture_item.posting_id] = (
+                observed, artifact.captured_at.isoformat()
+            )
+
     capture_statuses = _capture_statuses_by_posting(session)
 
     results: list[AIReviewOpportunityIndexItem] = []
@@ -245,18 +271,17 @@ def list_ai_review_opportunity_index(
         ):
             continue
 
-        preflight = build_job_preflight({
-            "analysis_text": source_document.raw_text if source_document is not None else "",
-            "source_url": _display_source_url(source_document, posting.canonical_url),
-        })
-        is_linkedin = "linkedin.com" in _display_source_url(
-            source_document, posting.canonical_url
-        ).lower()
-        easy_hint = is_linkedin and preflight["easy_apply_text_mention"]
+        observed_method = method_by_posting.get(posting.id)
         application_fields = {
-            "application_method": "easy_apply_hint" if easy_hint else "unknown",
-            "easy_apply_available": True if easy_hint else None,
-            "easy_apply_evidence": "capture_text_unverified" if easy_hint else "not_observed",
+            "application_method": (
+                "linkedin_easy_apply" if observed_method and observed_method[0]
+                else "external_apply" if observed_method else "unknown"
+            ),
+            "easy_apply_available": observed_method[0] if observed_method else None,
+            "easy_apply_evidence": (
+                "linked_in_job_button_observed_at:" + observed_method[1]
+                if observed_method else "not_observed"
+            ),
         }
 
         ai_review = latest_ai_reviews.get(posting.id)
