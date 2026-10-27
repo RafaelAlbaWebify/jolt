@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
+from jolt.ai_review_protocol import build_review_protocol
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
@@ -267,6 +268,7 @@ def build_unified_ai_work_package(
         ),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
+            "two_message_review": build_review_protocol(),
             "workflow": (
                 "Analyze this one file and return one jolt_ai_work_package_update JSON file. "
                 "When review_inbox contains a discovery_batch_id, review only that frozen batch "
