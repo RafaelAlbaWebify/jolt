@@ -143,12 +143,33 @@ def capture_official_candidates(
     jobs = inbox.get("jobs", []) if isinstance(inbox, dict) else []
     selected: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
+    search_count = 0
+    search_statuses: dict[str, int] = {}
     for job in jobs:
         if not isinstance(job, dict) or not isinstance(job.get("posting_id"), str):
             continue
-        for candidate in job.get("external_evidence_preflight", {}).get(
+        suggestions = job.get("external_evidence_preflight", {}).get(
             "official_source_candidates", []
-        ):
+        )
+        if not isinstance(suggestions, list):
+            suggestions = []
+        if not suggestions and search_count < max_jobs:
+            # Provider discovery is optional, separately rate-bounded and never
+            # treated as a verified match to this particular job.
+            from jolt.official_ats_discovery import discover_ats_candidates
+            discovery = discover_ats_candidates(
+                title=str(job.get("title", "")),
+                company=str(job.get("company", "")),
+            )
+            status = str(discovery.get("status", "unknown"))
+            search_statuses[status] = search_statuses.get(status, 0) + 1
+            if status == "searched":
+                search_count += 1
+                suggestions = discovery.get("candidates", [])
+            elif status == "provider_not_configured":
+                # No point repeating an unavailable provider for 342 jobs.
+                break
+        for candidate in suggestions:
             if not isinstance(candidate, dict):
                 continue
             url = str(candidate.get("url", ""))
@@ -209,6 +230,7 @@ def capture_official_candidates(
     return {
         "candidate_links": len(selected), "attempted": attempted,
         "cached_fresh": cached, "remaining_or_skipped": max(0, len(selected) - attempted - cached),
+        "provider_searches": search_count, "provider_statuses": search_statuses,
         "results": results,
     }
 
