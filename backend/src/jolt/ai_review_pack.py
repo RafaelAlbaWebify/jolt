@@ -236,13 +236,13 @@ def _build_ai_review_payloads(
     # Only use them when the original observation has no application URL.
     backfill_application_by_item: dict[str, str] = {}
     try:
-        table_exists = session.execute(text(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='jolt_apply_backfill'"
-        )).first()
+        table_exists = session.execute(
+            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='jolt_apply_backfill'")
+        ).first()
         if table_exists:
-            for row in session.execute(text(
-                "SELECT capture_item_id, destination FROM jolt_apply_backfill"
-            )):
+            for row in session.execute(
+                text("SELECT capture_item_id, destination FROM jolt_apply_backfill")
+            ):
                 if isinstance(row.destination, str) and row.destination.startswith("https://"):
                     backfill_application_by_item[row.capture_item_id] = row.destination
     except Exception:
@@ -287,7 +287,10 @@ def _build_ai_review_payloads(
                     else "unknown"
                 ),
                 "easy_apply_available": observed_method_by_item.get(item.id),
-                "outbound_application_url": (outbound_application_by_item.get(item.id, "") or backfill_application_by_item.get(item.id, "")),
+                "outbound_application_url": (
+                    outbound_application_by_item.get(item.id, "")
+                    or backfill_application_by_item.get(item.id, "")
+                ),
                 "easy_apply_observed_at": captured_at_by_item.get(item.id),
                 "easy_apply_evidence": (
                     "job_specific_button" if item.id in observed_method_by_item else "unverified"
