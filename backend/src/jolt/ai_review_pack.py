@@ -263,8 +263,10 @@ def _build_ai_review_payloads(
                 "source_job_id": item.source_job_id,
                 "source_url": item.source_url,
                 "application_method": (
-                    "linkedin_easy_apply" if observed_method_by_item.get(item.id) is True
-                    else "external_apply" if observed_method_by_item.get(item.id) is False
+                    "linkedin_easy_apply"
+                    if observed_method_by_item.get(item.id) is True
+                    else "external_apply"
+                    if observed_method_by_item.get(item.id) is False
                     else "unknown"
                 ),
                 "easy_apply_available": observed_method_by_item.get(item.id),
