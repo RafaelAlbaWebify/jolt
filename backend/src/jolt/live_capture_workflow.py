@@ -31,7 +31,8 @@ def _posting_text(title: str, company: str, location: str, description: str) -> 
         lines.append(f"Location: {location}")
     if description:
         lines.append(description)
-    return "\n".join(line for line in lines if line).strip()
+    return "
+".join(line for line in lines if line).strip()
 
 
 def _live_item_structure_failures(
@@ -195,7 +196,12 @@ def run_linkedin_live_capture(
                 capture_item_id=item.id,
                 artifact_type="linkedin_live_item_json",
                 content_type="application/json",
-                raw_payload=json.dumps(evidence.model_dump(mode="json"), sort_keys=True),
+                raw_payload=json.dumps(
+                    {k: v for k, v in evidence.model_dump(mode="json").items()
+                     if not (k == "easy_apply_available" and v is None)
+                     and not (k == "application_url" and v == "")},
+                    sort_keys=True,
+                ),
             )
             if verified and evidence.source_url:
                 record_portal_observation(
