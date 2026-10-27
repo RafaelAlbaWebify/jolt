@@ -316,6 +316,36 @@ def _virtualized_detail_context(
     return multipage_capture._detail_description(page)
 
 
+
+def _observe_easy_apply(page: Page) -> bool | None:
+    """Observe the visible job-specific Apply control; never initiate an application."""
+    selectors = (
+        "button.jobs-apply-button",
+        "button[data-control-name*='inapply']",
+        "button[aria-label*='Easy Apply' i]",
+        "button[aria-label*='Solicitud sencilla' i]",
+    )
+    for selector in selectors:
+        try:
+            matches = page.locator(selector)
+            count = min(matches.count(), 5)
+            for index in range(count):
+                button = matches.nth(index)
+                if not button.is_visible(timeout=500):
+                    continue
+                label = " ".join((
+                    (button.get_attribute("aria-label") or ""),
+                    (button.inner_text(timeout=500) or ""),
+                )).casefold()
+                if "easy apply" in label or "solicitud sencilla" in label or "solicitud fácil" in label:
+                    return True
+                if "apply" in label or "solicitar" in label:
+                    return False
+        except Exception:
+            continue
+    return None
+
+
 def _virtualized_description(page: Page) -> str:
     about_containers = page.locator('[id^="JobDetails_AboutTheJob_"]')
 
@@ -542,6 +572,7 @@ def capture_page_cards(
                     card_index=index,
                     promoted=promoted,
                     posted_age_text=posted_age_text,
+                    easy_apply_available=_observe_easy_apply(page) if verified else None,
                 )
             )
             continue
@@ -609,6 +640,7 @@ def capture_page_cards(
                     card_index=index,
                     promoted=promoted,
                     posted_age_text=posted_age_text,
+                    easy_apply_available=_observe_easy_apply(page) if verified else None,
                 )
             )
             continue
@@ -640,6 +672,7 @@ def capture_page_cards(
                 card_index=index,
                 promoted=promoted,
                 posted_age_text=posted_age_text,
+                    easy_apply_available=_observe_easy_apply(page) if verified else None,
             )
         )
     return captured
@@ -760,6 +793,7 @@ def build_submit_payload(
                 "description": card.description,
                 "identity_verified": card.identity_verified,
                 "verification_reason": card.verification_reason,
+                "easy_apply_available": card.easy_apply_available,
             }
             for card in cards
         ],
