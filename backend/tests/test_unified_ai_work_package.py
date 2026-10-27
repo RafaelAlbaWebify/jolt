@@ -35,7 +35,7 @@ def test_unified_package_deduplicates_section_context(tmp_path) -> None:
     assert all(exchange.context == {} for exchange in package.exchanges)
     assert package.review_inbox is None
 
-    protocol = package.instructions["two_message_review"]
+    protocol = package.instructions["three_message_review"]
     assert protocol["protocol_version"] == "1.1"
     assert protocol["invocation"]["message_1"] == "Mensaje 1"
     assert protocol["invocation"]["message_2"] == "Mensaje 2"
