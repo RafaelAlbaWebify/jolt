@@ -270,11 +270,13 @@ def build_unified_ai_work_package(
         ))),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
-            "two_message_review": build_review_protocol(),
+            "three_message_review": build_review_protocol(),
             "workflow": (
-                "Analyze this one file and return one jolt_ai_work_package_update JSON file. "
-                "When review_inbox contains a discovery_batch_id, review only that frozen batch "
-                "while using the supplied exchanges to refresh stale aggregate intelligence."
+                "Use instructions.three_message_review as the controlling three-stage process. "
+                "Mensaje 1: analyze all jobs and checkpoint. Mensaje 2: investigate external "
+                "decision-changing questions and checkpoint. Mensaje 3: validate and generate "
+                "one jolt_ai_work_package_update JSON file. Never claim incomplete research complete. "
+                "For discovery_batch_id review only that frozen batch."
             ),
             "reasoning_authority": (
                 "ChatGPT performs semantic reasoning; JOLT provides evidence, deterministic facts, "
@@ -299,8 +301,9 @@ def build_unified_ai_work_package(
                 "JOLT rejects stale updates if its context changed after export."
             ),
             "review_inbox": (
-                "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
-                "the payload described by review_inbox.response_template exactly inside review_inbox. "
+                "If review_inbox is present, use its hardline Stage 1 and fit rules for the "
+                "assessment, but do not return an importable payload until Mensaje 3. "
+                "At Mensaje 3, use review_inbox.response_template exactly inside review_inbox. "
                 "For a discovery batch, every job in the frozen batch review set is present and no other "
                 "pending Review Inbox jobs are required. Use jobs[].analysis_text as the authoritative "
                 "captured LinkedIn vacancy body, but do not treat LinkedIn as the final authority for "
