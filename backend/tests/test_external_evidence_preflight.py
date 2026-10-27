@@ -97,3 +97,16 @@ def test_discovery_without_configured_api_key_remains_explicit(monkeypatch) -> N
         "status": "provider_not_configured",
         "candidates": [],
     }
+
+def test_dxc_corporate_apply_url_is_candidate() -> None:
+    from jolt.official_source_capture import allowed_source_url
+
+    url = "https://careers.dxc.com/job/24002544/sap-abap-any-city-es/?source=Linkedin"
+    preflight = build_job_preflight({
+        "source_url": "https://www.linkedin.com/jobs/view/4478107931/",
+        "outbound_application_url": url,
+        "analysis_text": "SAP ABAP, remote Spain",
+    })
+    assert preflight["official_source_candidates"][0]["url"] == url
+    assert preflight["official_source_candidates"][0]["source"] == "captured_apply_control"
+    assert allowed_source_url(url)
