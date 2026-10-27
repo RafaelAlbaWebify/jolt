@@ -78,6 +78,7 @@ class LinkedInLiveCaptureItemRequest(BaseModel):
     identity_verified: bool
     verification_reason: str = ""
     easy_apply_available: bool | None = None
+    application_url: str = ""
 
     @field_validator("source_job_id")
     @classmethod
