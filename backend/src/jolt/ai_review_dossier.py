@@ -87,6 +87,7 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
                 )
     return index
 
+
 def _work_model_conflicts(text: str, location: str) -> list[str]:
     """Indicate contradictions, not employment eligibility decisions."""
     signals = []
