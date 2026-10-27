@@ -38,3 +38,22 @@ def test_easy_apply_sort_is_secondary_to_decision() -> None:
     assert sort_application_priority(0, 20, False, "a") < sort_application_priority(1, 99, True, "b")
     assert sort_application_priority(0, 20, True, "a") < sort_application_priority(0, 99, False, "b")
     assert sort_application_priority(0, 99, None, "a") < sort_application_priority(0, 50, None, "b")
+
+def test_index_sort_prioritizes_easy_apply_inside_same_category() -> None:
+    from jolt.ai_review_opportunity_index import AIReviewOpportunityIndexItem, _sort_key
+
+    def entry(method: bool | None, score: int, decision: str) -> AIReviewOpportunityIndexItem:
+        return AIReviewOpportunityIndexItem(
+            posting_id=f"posting-{method}-{score}-{decision}",
+            source_url="https://www.linkedin.com/jobs/view/100/",
+            title="IT Support",
+            company="Acme",
+            location="Vigo",
+            ai_review_status="reviewed",
+            decision=decision,
+            priority_score=score,
+            easy_apply_available=method,
+        )
+
+    assert _sort_key(entry(True, 50, "pursue")) < _sort_key(entry(None, 99, "pursue"))
+    assert _sort_key(entry(False, 99, "pursue")) < _sort_key(entry(True, 50, "conditional"))
