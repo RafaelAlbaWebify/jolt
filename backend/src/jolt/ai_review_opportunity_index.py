@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from jolt.application_archival import ARCHIVED_APPLICATION_STATUS
 from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.database import (
     AIReview,
     Application,
@@ -17,6 +18,7 @@ from jolt.database import (
     ReviewDecision,
     SourceDocument,
 )
+from jolt.external_evidence_preflight import sort_application_priority
 from jolt.linkedin_source_urls import absolute_linkedin_url
 
 
@@ -32,6 +34,9 @@ class AIReviewOpportunityIndexItem(BaseModel):
 
     decision: str | None = None
     priority_score: int | None = None
+    application_method: str = "unknown"
+    easy_apply_available: bool | None = None
+    easy_apply_evidence: str = "not_observed"
 
     hardline_status: str | None = None
     hardline_reasons: list[str] = Field(default_factory=list)
@@ -163,20 +168,18 @@ def _object_list(value: str) -> list[dict[str, object]]:
 
 def _sort_key(
     item: AIReviewOpportunityIndexItem,
-) -> tuple[int, int, str]:
+) -> tuple[int, int, int, str]:
     effective_decision = (
         item.decision if item.ai_review_status == "reviewed" else "awaiting_ai_review"
     )
 
     score = item.priority_score if item.priority_score is not None else -1
 
-    return (
-        _DECISION_PRIORITY.get(
-            effective_decision or "",
-            3,
-        ),
-        -score,
-        item.title.casefold(),
+    return sort_application_priority(
+        _DECISION_PRIORITY.get(effective_decision or "", 3),
+        score,
+        item.easy_apply_available,
+        item.title,
     )
 
 
@@ -211,6 +214,33 @@ def list_ai_review_opportunity_index(
         for application in session.scalars(select(Application)).all()
     }
 
+    # The captured UI observation, not text in a vacancy, determines Easy Apply.
+    capture_items = {
+        item.id: item
+        for item in session.scalars(select(CaptureItem)).all()
+        if item.posting_id is not None
+    }
+    method_by_posting: dict[str, tuple[bool, str]] = {}
+    artifacts = session.scalars(
+        select(CaptureArtifact).order_by(CaptureArtifact.captured_at.desc())
+    ).all()
+    for artifact in artifacts:
+        capture_item = capture_items.get(artifact.capture_item_id)
+        if capture_item is None or capture_item.posting_id in method_by_posting:
+            continue
+        if artifact.artifact_type != "linkedin_live_item_json":
+            continue
+        try:
+            observation = json.loads(artifact.raw_payload)
+        except (ValueError, TypeError):
+            continue
+        observed = observation.get("easy_apply_available")
+        if type(observed) is bool and capture_item.posting_id is not None:
+            method_by_posting[capture_item.posting_id] = (
+                observed,
+                artifact.captured_at.isoformat(),
+            )
+
     capture_statuses = _capture_statuses_by_posting(session)
 
     results: list[AIReviewOpportunityIndexItem] = []
@@ -243,6 +273,23 @@ def list_ai_review_opportunity_index(
         ):
             continue
 
+        observed_method = method_by_posting.get(posting.id)
+        application_fields = {
+            "application_method": (
+                "linkedin_easy_apply"
+                if observed_method and observed_method[0]
+                else "external_apply"
+                if observed_method
+                else "unknown"
+            ),
+            "easy_apply_available": observed_method[0] if observed_method else None,
+            "easy_apply_evidence": (
+                "linked_in_job_button_observed_at:" + observed_method[1]
+                if observed_method
+                else "not_observed"
+            ),
+        }
+
         ai_review = latest_ai_reviews.get(posting.id)
 
         if ai_review is None:
@@ -257,6 +304,7 @@ def list_ai_review_opportunity_index(
                     company=posting.company,
                     location=posting.location,
                     ai_review_status="awaiting_ai_review",
+                    **application_fields,
                 )
             )
             continue
@@ -273,6 +321,7 @@ def list_ai_review_opportunity_index(
                 location=posting.location,
                 ai_review_id=ai_review.id,
                 ai_review_status="reviewed",
+                **application_fields,
                 decision=ai_review.decision,
                 priority_score=ai_review.priority_score,
                 hardline_status=ai_review.hardline_status,

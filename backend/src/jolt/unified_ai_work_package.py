@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
+from jolt.ai_review_protocol import build_review_protocol
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
@@ -21,6 +22,7 @@ from jolt.candidate_evidence import (
 )
 from jolt.data_quality_exchange import build_data_quality_exchange, import_data_quality_exchange
 from jolt.errors import JoltNotFoundError
+from jolt.external_evidence_preflight import attach_preflight
 from jolt.global_context import (
     GlobalAIContextOverlay,
     build_global_context_snapshot,
@@ -41,6 +43,7 @@ from jolt.market_intelligence_exchange import (
     build_market_intelligence_exchange,
     import_market_intelligence_exchange,
 )
+from jolt.official_source_capture import attach_captured_official_sources
 from jolt.professional_evidence_exchange import (
     build_professional_evidence_exchange,
     import_professional_evidence_exchange,
@@ -259,18 +262,26 @@ def build_unified_ai_work_package(
         context_version=global_context_version(context),
         global_context=context,
         candidate_evidence=candidate_evidence,
-        review_inbox=enrich_review_inbox_with_dossiers(
-            _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
-            if discovery_batch_id
-            else _review_inbox_payload(session),
-            candidate_evidence,
+        review_inbox=attach_captured_official_sources(
+            session,
+            attach_preflight(
+                enrich_review_inbox_with_dossiers(
+                    _review_inbox_payload(session, discovery_batch_id=discovery_batch_id)
+                    if discovery_batch_id
+                    else _review_inbox_payload(session),
+                    candidate_evidence,
+                )
+            ),
         ),
         exchanges=[_compact_exchange_for_unified(exchange) for exchange in exchanges],
         instructions={
+            "three_message_review": build_review_protocol(),
             "workflow": (
-                "Analyze this one file and return one jolt_ai_work_package_update JSON file. "
-                "When review_inbox contains a discovery_batch_id, review only that frozen batch "
-                "while using the supplied exchanges to refresh stale aggregate intelligence."
+                "Use instructions.three_message_review as the controlling three-stage process. "
+                "Mensaje 1: analyze all jobs and checkpoint. Mensaje 2: investigate external "
+                "decision-changing questions and checkpoint. Mensaje 3: validate and generate "
+                "one jolt_ai_work_package_update JSON file. Never claim incomplete research complete. "
+                "For discovery_batch_id review only that frozen batch."
             ),
             "reasoning_authority": (
                 "ChatGPT performs semantic reasoning; JOLT provides evidence, deterministic facts, "
@@ -295,8 +306,9 @@ def build_unified_ai_work_package(
                 "JOLT rejects stale updates if its context changed after export."
             ),
             "review_inbox": (
-                "If review_inbox is present, execute its hardline Stage 1 before Stage 2 fit and return "
-                "the payload described by review_inbox.response_template exactly inside review_inbox. "
+                "If review_inbox is present, use its hardline Stage 1 and fit rules for the "
+                "assessment, but do not return an importable payload until Mensaje 3. "
+                "At Mensaje 3, use review_inbox.response_template exactly inside review_inbox. "
                 "For a discovery batch, every job in the frozen batch review set is present and no other "
                 "pending Review Inbox jobs are required. Use jobs[].analysis_text as the authoritative "
                 "captured LinkedIn vacancy body, but do not treat LinkedIn as the final authority for "

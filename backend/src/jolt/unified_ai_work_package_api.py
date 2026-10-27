@@ -8,8 +8,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
+from jolt.official_source_capture import capture_official_candidates
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
+    build_unified_ai_work_package,
     build_unified_ai_work_package_json,
     import_unified_ai_update,
 )
@@ -43,6 +45,19 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
             media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
+
+    @router.post("/api/ai-work-package/official-evidence/refresh")
+    def refresh_official_evidence(
+        discovery_batch_id: str | None = None,
+        max_jobs: int = 10,
+        session: Session = session_dependency,
+    ) -> dict[str, object]:
+        """Operator-initiated, bounded source gathering before Export AI."""
+        try:
+            package = build_unified_ai_work_package(session, discovery_batch_id=discovery_batch_id)
+            return capture_official_candidates(session, package.review_inbox, max_jobs=max_jobs)
+        except (ValueError, JoltNotFoundError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @router.post("/api/ai-work-package/import")
     def import_ai_work_package(
