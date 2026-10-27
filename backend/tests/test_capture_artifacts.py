@@ -42,7 +42,9 @@ def test_live_capture_preserves_raw_artifact_and_hash(tmp_path) -> None:
         assert artifact.artifact_type == "linkedin_live_item_json"
         assert artifact.content_type == "application/json"
 
-        expected_payload = json.dumps(evidence.model_dump(mode="json", exclude_unset=True), sort_keys=True)
+        expected_payload = json.dumps(
+            evidence.model_dump(mode="json", exclude_unset=True), sort_keys=True
+        )
         expected_hash = hashlib.sha256(expected_payload.encode("utf-8")).hexdigest()
         assert artifact.raw_payload == expected_payload
         assert artifact.content_hash == expected_hash
