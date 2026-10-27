@@ -11,8 +11,6 @@ from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
 from jolt.ai_review_protocol import build_review_protocol
-from jolt.external_evidence_preflight import attach_preflight
-from jolt.official_source_capture import attach_captured_official_sources
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
     import_application_outcomes_exchange,
@@ -24,6 +22,7 @@ from jolt.candidate_evidence import (
 )
 from jolt.data_quality_exchange import build_data_quality_exchange, import_data_quality_exchange
 from jolt.errors import JoltNotFoundError
+from jolt.external_evidence_preflight import attach_preflight
 from jolt.global_context import (
     GlobalAIContextOverlay,
     build_global_context_snapshot,
@@ -44,6 +43,7 @@ from jolt.market_intelligence_exchange import (
     build_market_intelligence_exchange,
     import_market_intelligence_exchange,
 )
+from jolt.official_source_capture import attach_captured_official_sources
 from jolt.professional_evidence_exchange import (
     build_professional_evidence_exchange,
     import_professional_evidence_exchange,
