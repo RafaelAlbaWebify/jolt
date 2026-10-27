@@ -66,6 +66,7 @@ class CapturedCard:
     promoted: bool = False
     posted_age_text: str = ""
     easy_apply_available: bool | None = None
+    application_url: str = ""
 
 
 _LISTING_AGE_PATTERN = re.compile(
