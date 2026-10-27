@@ -44,7 +44,8 @@ class _HTMLText(HTMLParser):
         if tag in {"script", "style", "noscript"}:
             self.hidden += 1
         elif tag in {"p", "li", "h1", "h2", "h3", "div", "br"}:
-            self.parts.append("\n")
+            self.parts.append("
+")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"}:
@@ -247,6 +248,8 @@ def attach_captured_official_sources(
         return None
     jobs = inbox.get("jobs", [])
     if not isinstance(jobs, list):
+        return inbox
+    if not hasattr(session, "scalars"):
         return inbox
     by_posting: dict[str, list[dict[str, Any]]] = {}
     for link in session.scalars(
