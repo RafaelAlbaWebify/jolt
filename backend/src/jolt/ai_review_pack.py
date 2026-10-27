@@ -9,6 +9,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.database import (
     AIReview,
     Application,
@@ -20,7 +21,6 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.errors import JoltNotFoundError
-from jolt.capture_artifacts import CaptureArtifact
 from jolt.hardline_evidence import analyze_location_evidence
 from jolt.job_preanalysis import build_job_preanalysis
 from jolt.job_search_preferences import load_job_search_preferences
