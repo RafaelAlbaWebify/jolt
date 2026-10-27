@@ -211,6 +211,7 @@ def _build_ai_review_payloads(
 
     preferences = load_job_search_preferences()
     observed_method_by_item: dict[str, bool] = {}
+    outbound_application_by_item: dict[str, str] = {}
     captured_at_by_item: dict[str, str] = {}
     for artifact in session.scalars(
         select(CaptureArtifact).where(
@@ -223,6 +224,9 @@ def _build_ai_review_payloads(
             observation = json.loads(artifact.raw_payload)
         except (ValueError, TypeError):
             continue
+        outbound = observation.get("application_url")
+        if isinstance(outbound, str) and outbound.startswith("https://"):
+            outbound_application_by_item[artifact.capture_item_id] = outbound
         observed = observation.get("easy_apply_available")
         if type(observed) is bool:
             observed_method_by_item[artifact.capture_item_id] = observed
@@ -264,6 +268,7 @@ def _build_ai_review_payloads(
                     else "unknown"
                 ),
                 "easy_apply_available": observed_method_by_item.get(item.id),
+                "outbound_application_url": outbound_application_by_item.get(item.id, ""),
                 "easy_apply_observed_at": captured_at_by_item.get(item.id),
                 "easy_apply_evidence": (
                     "job_specific_button" if item.id in observed_method_by_item else "unverified"
