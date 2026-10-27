@@ -9,13 +9,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-DOSSIER_VERSION = "1.0"
+DOSSIER_VERSION = "1.1"
 
 SKILLS = {
     "sql": (r"\bsql\b",),
     "python": (r"\bpython\b",),
     "powershell": (r"\bpowershell\b",),
-    "windows": (r"\bwindows\b",),
+    "windows": (r"\bwindows\b(?!\s+forms\b)",),
     "microsoft 365": (r"\b(?:microsoft 365|m365|office 365)\b",),
     "active directory": (r"\b(?:active directory|active directory domain services|ad ds)\b",),
     "entra id": (r"\b(?:entra id|azure ad)\b",),
@@ -55,7 +55,7 @@ def _mentioned_skills(text: str) -> list[str]:
 
 
 def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
-    """Index explicit LinkedIn sections, preserving claim provenance."""
+    """Cite bounded source lines, not whole-page keyword co-occurrence."""
     index: dict[str, list[dict[str, str]]] = {}
     for source in ledger.get("source_evidence", []):
         if not isinstance(source, dict):
@@ -66,22 +66,31 @@ def _candidate_indexes(ledger: dict[str, Any]) -> dict[str, list[dict[str, str]]
         ref = source.get("evidence_ref")
         if not isinstance(ref, str) or not ref:
             continue
-        text = str(source.get("visible_text", ""))
-        for skill in _mentioned_skills(text):
-            index.setdefault(skill, []).append(
-                {
-                    "evidence_ref": ref,
-                    "source_section": title,
-                    "claim_status": "unverified_mention",
-                }
-            )
+        lines = str(source.get("visible_text", "")).splitlines()
+        for line in lines:
+            snippet = line.strip()
+            if not snippet or len(snippet) > 500:
+                continue
+            for skill in _mentioned_skills(snippet):
+                records = index.setdefault(skill, [])
+                if any(item["source_text"] == snippet for item in records):
+                    continue
+                if len(records) >= 5:
+                    continue
+                records.append(
+                    {
+                        "evidence_ref": ref,
+                        "source_section": title,
+                        "source_text": snippet[:240],
+                        "claim_status": "unverified_mention",
+                    }
+                )
     return index
-
 
 def _work_model_conflicts(text: str, location: str) -> list[str]:
     """Indicate contradictions, not employment eligibility decisions."""
     signals = []
-    if REMOTE.search(text) and (ONSITE.search(text) or HYBRID.search(text)):
+    if REMOTE.search(text) and ONSITE.search(text) and not HYBRID.search(text):
         signals.append("remote_and_office_presence_language")
     if REMOTE.search(text) and NONLOCAL.search(text) and not EXPLICIT_VIGO.search(text):
         signals.append("remote_territory_or_nonlocal_location_requires_verification")
@@ -124,6 +133,7 @@ def enrich_review_inbox_with_dossiers(
                     "skills": skills,
                     "candidate_mentions": {skill: index.get(skill, [])[:3] for skill in skills},
                     "assessment": "ai_verification_required",
+                    "evidence_type": "source_excerpt_not_professional_validation",
                 }
             )
         text = str(job.get("analysis_text", ""))
