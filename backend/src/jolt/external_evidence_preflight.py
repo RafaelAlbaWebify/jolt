@@ -61,13 +61,16 @@ def build_job_preflight(job: dict[str, Any]) -> dict[str, Any]:
             "record_source_url_timestamp_hash_and_result": True,
             "prefer_employer_controlled_sources": True,
         },
-        "application_method": "unknown",
-        "easy_apply_available": None,
+        "application_method": str(job.get("application_method") or "unknown"),
+        "easy_apply_available": job.get("easy_apply_available"),
         "easy_apply_text_mention": easy_mentioned,
-        "easy_apply_verification_status": "unverified",
+        "easy_apply_verification_status": (
+            "observed_job_button" if type(job.get("easy_apply_available")) is bool
+            else "unverified"
+        ),
         "application_url": source_url,
-        "last_checked_at": None,
-        "needs_ui_observation": True,
+        "last_checked_at": job.get("easy_apply_observed_at"),
+        "needs_ui_observation": type(job.get("easy_apply_available")) is not bool,
         "reason": "A textual mention is not proof that the job's Easy Apply button is available.",
     }
 
