@@ -57,3 +57,26 @@ def test_index_sort_prioritizes_easy_apply_inside_same_category() -> None:
 
     assert _sort_key(entry(True, 50, "pursue")) < _sort_key(entry(None, 99, "pursue"))
     assert _sort_key(entry(False, 99, "pursue")) < _sort_key(entry(True, 50, "conditional"))
+
+def test_job_specific_application_control_survives_preflight() -> None:
+    job = {
+        "source_url": "https://www.linkedin.com/jobs/view/100/",
+        "outbound_application_url": "https://jobs.lever.co/acme/abc",
+        "application_method": "external_apply",
+        "easy_apply_available": False,
+        "easy_apply_observed_at": "2026-10-27T12:00:00+00:00",
+        "analysis_text": "IT Support, Vigo",
+    }
+    evidence = build_job_preflight(job)
+    assert evidence["official_source_candidates"][0]["source"] == "captured_apply_control"
+    assert evidence["easy_apply_available"] is False
+    assert evidence["needs_ui_observation"] is False
+    assert evidence["application_url"] == job["outbound_application_url"]
+
+
+def test_discovery_without_configured_api_key_remains_explicit(monkeypatch) -> None:
+    from jolt.official_ats_discovery import discover_ats_candidates
+    monkeypatch.delenv("JOLT_BRAVE_SEARCH_API_KEY", raising=False)
+    assert discover_ats_candidates(title="IT Support", company="Acme") == {
+        "status": "provider_not_configured", "candidates": [],
+    }
