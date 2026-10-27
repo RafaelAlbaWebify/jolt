@@ -216,7 +216,8 @@ def list_ai_review_opportunity_index(
 
     # The captured UI observation, not text in a vacancy, determines Easy Apply.
     capture_items = {
-        item.id: item for item in session.scalars(select(CaptureItem)).all()
+        item.id: item
+        for item in session.scalars(select(CaptureItem)).all()
         if item.posting_id is not None
     }
     method_by_posting: dict[str, tuple[bool, str]] = {}
@@ -274,13 +275,17 @@ def list_ai_review_opportunity_index(
         observed_method = method_by_posting.get(posting.id)
         application_fields = {
             "application_method": (
-                "linkedin_easy_apply" if observed_method and observed_method[0]
-                else "external_apply" if observed_method else "unknown"
+                "linkedin_easy_apply"
+                if observed_method and observed_method[0]
+                else "external_apply"
+                if observed_method
+                else "unknown"
             ),
             "easy_apply_available": observed_method[0] if observed_method else None,
             "easy_apply_evidence": (
                 "linked_in_job_button_observed_at:" + observed_method[1]
-                if observed_method else "not_observed"
+                if observed_method
+                else "not_observed"
             ),
         }
 
