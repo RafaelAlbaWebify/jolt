@@ -196,9 +196,12 @@ def run_linkedin_live_capture(
                 artifact_type="linkedin_live_item_json",
                 content_type="application/json",
                 raw_payload=json.dumps(
-                    {k: v for k, v in evidence.model_dump(mode="json").items()
-                     if not (k == "easy_apply_available" and v is None)
-                     and not (k == "application_url" and v == "")},
+                    {
+                        k: v
+                        for k, v in evidence.model_dump(mode="json").items()
+                        if not (k == "easy_apply_available" and v is None)
+                        and not (k == "application_url" and v == "")
+                    },
                     sort_keys=True,
                 ),
             )
