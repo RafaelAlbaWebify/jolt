@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 import unicodedata
 from dataclasses import asdict, dataclass
 from typing import Literal
@@ -498,11 +499,16 @@ def _minimum_level(segment: str, position: int) -> str:
     return matches[0][2]
 
 
+@lru_cache(maxsize=512)
+def _alias_pattern(alias: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<!\\w){re.escape(alias)}(?!\\w)", re.I)
+
+
 def _language_mentions(segment: str) -> list[tuple[str, int, int]]:
     mentions: list[tuple[str, int, int]] = []
     for language, aliases in _LANGUAGE_ALIASES.items():
         for alias in aliases:
-            pattern = re.compile(rf"(?<!\w){re.escape(alias)}(?!\w)", re.I)
+            pattern = _alias_pattern(alias)
             for match in pattern.finditer(segment):
                 mentions.append((language, match.start(), match.end()))
     mentions.sort(key=lambda item: item[1])
