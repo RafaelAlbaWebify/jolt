@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from jolt.capture_artifacts import CaptureArtifact
@@ -232,6 +232,23 @@ def _build_ai_review_payloads(
             observed_method_by_item[artifact.capture_item_id] = observed
             captured_at_by_item[artifact.capture_item_id] = artifact.captured_at.isoformat()
 
+    # Optional retroactive Apply URLs are kept separately from immutable source artifacts.
+    # Only use them when the original observation has no application URL.
+    backfill_application_by_item: dict[str, str] = {}
+    try:
+        table_exists = session.execute(
+            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='jolt_apply_backfill'")
+        ).first()
+        if table_exists:
+            for row in session.execute(
+                text("SELECT capture_item_id, destination FROM jolt_apply_backfill")
+            ):
+                if isinstance(row.destination, str) and row.destination.startswith("https://"):
+                    backfill_application_by_item[row.capture_item_id] = row.destination
+    except Exception:
+        # Existing databases and non-SQLite test fixtures remain unaffected.
+        backfill_application_by_item = {}
+
     jobs_payload: list[dict[str, object]] = []
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
@@ -270,7 +287,10 @@ def _build_ai_review_payloads(
                     else "unknown"
                 ),
                 "easy_apply_available": observed_method_by_item.get(item.id),
-                "outbound_application_url": outbound_application_by_item.get(item.id, ""),
+                "outbound_application_url": (
+                    outbound_application_by_item.get(item.id, "")
+                    or backfill_application_by_item.get(item.id, "")
+                ),
                 "easy_apply_observed_at": captured_at_by_item.get(item.id),
                 "easy_apply_evidence": (
                     "job_specific_button" if item.id in observed_method_by_item else "unverified"
