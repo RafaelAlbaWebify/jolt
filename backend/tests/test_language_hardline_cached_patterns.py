@@ -13,4 +13,4 @@ def test_cached_language_patterns_preserve_mention_order() -> None:
     first = _language_mentions(text)
     second = _language_mentions(text)
     assert first == second
-    assert any(item[0] == "english" for item in first)
+    assert any(item[0] == "English" for item in first)
