@@ -8,7 +8,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import sqlite3
 import subprocess
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -39,6 +41,51 @@ def _git_revision(root: Path) -> str | None:
     return sha if len(sha) == 40 and all(c in "0123456789abcdef" for c in sha) else None
 
 
+def _processing_snapshot(database: Path) -> dict[str, object]:
+    """Count module evidence without claiming AI completion from Market extraction."""
+    started = time.perf_counter()
+    with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+        conn.execute("PRAGMA query_only = ON")
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        required = {"capture_items", "market_intelligence_observations", "ai_reviews"}
+        if not required.issubset(tables):
+            return {
+                "state": "unknown",
+                "reason": "Required tables not present in this schema",
+                "seconds": round(time.perf_counter() - started, 4),
+            }
+        verified = {
+            (str(run), str(job))
+            for run, job in conn.execute(
+                "SELECT capture_run_id, source_job_id FROM capture_items "
+                "WHERE detail_status = 'verified' AND posting_id IS NOT NULL "
+                "AND source_document_id IS NOT NULL"
+            )
+        }
+        market = {
+            (str(run), str(job))
+            for run, job in conn.execute(
+                "SELECT source_capture_run_id, source_job_id "
+                "FROM market_intelligence_observations"
+            )
+        }
+        reviewed = int(conn.execute("SELECT COUNT(*) FROM ai_reviews").fetchone()[0])
+    return {
+        "state": "partial_evidence_inventory",
+        "market_verified_identities": len(verified),
+        "market_observation_identities": len(market),
+        "market_missing_identities": len(verified - market),
+        "market_unexpected_identities": len(market - verified),
+        "ai_review_records": reviewed,
+        "review_coverage": "unknown: reviews may reference repeated captures and versions",
+        "other_modules": "unknown: do not interpret market integration as processing completion",
+        "seconds": round(time.perf_counter() - started, 4),
+    }
+
+
 def build_report(database: Path, project_root: Path) -> dict[str, object]:
     baseline = _baseline_module().collect(database)
     return {
@@ -50,6 +97,7 @@ def build_report(database: Path, project_root: Path) -> dict[str, object]:
         "runtime_api_verified": False,
         "browser_verified": False,
         "database": baseline,
+        "processing": _processing_snapshot(database),
         "limitations": [
             "No backend API or frontend checks have been executed",
             "No capture text, application contents, identities or logs are included",
