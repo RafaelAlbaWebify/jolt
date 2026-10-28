@@ -127,8 +127,7 @@ _TRACE_PATTERN = re.compile(
     r"market_build_pre_aggregation_seconds|unified_exchange_section)"
     r"=([a-z_]+|[0-9]+(?:\.[0-9]+)?)"
 )
-_TRACE_NUMBERS = re.compile(r"\b(?:seconds|pending|groups|input_count|canonical_count|bytes)"
-                            r"=([0-9]+(?:\.[0-9]+)?)")
+_TRACE_NUMBERS = re.compile(\n    r"\b(?:seconds|pending|groups|input_count|canonical_count|bytes)"\n    r"=([0-9]+(?:\.[0-9]+)?)"\n)
 
 
 def _performance_trace(root: Path) -> dict[str, object]:
