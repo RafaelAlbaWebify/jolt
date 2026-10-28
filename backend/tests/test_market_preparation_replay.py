@@ -35,9 +35,7 @@ def test_unkeyed_legacy_market_imports_still_append(tmp_path, monkeypatch) -> No
     assert market.list_market_preparation_imports().import_count == 2
 
 
-def test_market_atomic_replace_failure_preserves_previous_file(
-    tmp_path, monkeypatch
-) -> None:
+def test_market_atomic_replace_failure_preserves_previous_file(tmp_path, monkeypatch) -> None:
     path = tmp_path / "market_preparation_imports.json"
     monkeypatch.setattr(market, "_data_path", lambda: path)
     market.import_market_preparation(
