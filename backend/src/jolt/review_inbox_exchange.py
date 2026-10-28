@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from jolt.ai_review_opportunity_index import list_ai_review_opportunity_index
@@ -173,22 +173,37 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
     groups: dict[str, set[str]] = defaultdict(set)
     unresolved: list[str] = []
 
-    for posting_id in sorted(pending_posting_ids):
-        match = session.execute(
-            select(CaptureItem, CaptureRun)
-            .join(CaptureRun, CaptureRun.id == CaptureItem.capture_run_id)
-            .where(CaptureItem.posting_id == posting_id)
-            .where(CaptureItem.detail_status == "verified")
-            .where(CaptureRun.status != ARCHIVED_CAPTURE_STATUS)
-            .where(CaptureRun.status != "running")
-            .order_by(CaptureRun.started_at.desc(), CaptureItem.id.desc())
-            .limit(1)
-        ).first()
-        if match is None:
-            unresolved.append(posting_id)
-            continue
-        item, run = match
-        groups[run.id].add(posting_id)
+    # Choose exactly the same newest verified, active capture as the former
+    # per-posting SELECT, but in one set-based query. Keep ID as tie-breaker.
+    ranked = (
+        select(
+            CaptureItem.id.label("item_id"),
+            CaptureItem.posting_id.label("posting_id"),
+            func.row_number()
+            .over(
+                partition_by=CaptureItem.posting_id,
+                order_by=(CaptureRun.started_at.desc(), CaptureItem.id.desc()),
+            )
+            .label("rank"),
+        )
+        .join(CaptureRun, CaptureRun.id == CaptureItem.capture_run_id)
+        .where(CaptureItem.posting_id.in_(pending_posting_ids))
+        .where(CaptureItem.detail_status == "verified")
+        .where(CaptureRun.status != ARCHIVED_CAPTURE_STATUS)
+        .where(CaptureRun.status != "running")
+        .subquery()
+    )
+    matches = session.execute(
+        select(ranked.c.posting_id, CaptureRun.id)
+        .join(CaptureItem, CaptureItem.id == ranked.c.item_id)
+        .join(CaptureRun, CaptureRun.id == CaptureItem.capture_run_id)
+        .where(ranked.c.rank == 1)
+    ).all()
+    resolved = set()
+    for posting_id, capture_run_id in matches:
+        resolved.add(posting_id)
+        groups[capture_run_id].add(posting_id)
+    unresolved = sorted(pending_posting_ids - resolved)
 
     if unresolved:
         raise ValueError(
