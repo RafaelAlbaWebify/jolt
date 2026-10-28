@@ -770,7 +770,7 @@ export function App({
                   className="primary-link"
                   href={`${API_BASE}/api/ai-work-package/export`}
                   download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export only the latest capture jobs that still need AI review, plus current intelligence context."
+                  title="Export all currently pending Review Inbox jobs across eligible captures, together with other AI intelligence sections. This is a unified export."
                 >
                   Export AI review ({awaitingAIReviewCount})
                 </a>
