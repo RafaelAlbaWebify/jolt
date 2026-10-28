@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
-from jolt.ai_review_import import AIReviewImportRequest, import_ai_review
+from jolt.ai_review_import import (
+    AIReviewImportRequest,
+    _validate_capture_membership,
+    import_ai_review,
+)
 from jolt.ai_review_protocol import build_review_protocol
 from jolt.application_outcomes_exchange import (
     build_application_outcomes_exchange,
@@ -436,6 +440,23 @@ def import_unified_ai_update(
 
     if update.review_inbox is not None:
         if isinstance(update.review_inbox, AIReviewBundleImportRequest):
+            # Preflight every capture before the first per-capture importer can commit.
+            # This avoids partially applying a bundle when a later capture is invalid.
+            seen_postings: set[str] = set()
+            seen_captures: set[str] = set()
+            for request in update.review_inbox.reviews:
+                if request.capture_run_id in seen_captures:
+                    raise ValueError(
+                        f"Duplicate capture_run_id in unified AI bundle: {request.capture_run_id}"
+                    )
+                seen_captures.add(request.capture_run_id)
+                _validate_capture_membership(session, request)
+                for job in request.jobs:
+                    if job.posting_id in seen_postings:
+                        raise ValueError(
+                            f"Duplicate posting_id across unified AI bundle: {job.posting_id}"
+                        )
+                    seen_postings.add(job.posting_id)
             group_results = [
                 import_ai_review(session, request) for request in update.review_inbox.reviews
             ]
