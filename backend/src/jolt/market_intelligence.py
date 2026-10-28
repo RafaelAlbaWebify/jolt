@@ -920,7 +920,7 @@ def build_market_intelligence(
         timeframe_records,
         timeframe_evaluations,
     )
-    _PERF_LOG.info(
+    _PERF_LOG.warning(
         "market_dedup_seconds=%.3f input_count=%d canonical_count=%d",
         time.perf_counter() - dedup_start,
         len(timeframe_records),
