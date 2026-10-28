@@ -98,9 +98,7 @@ def test_market_discrepancy_report_classifies_causes_without_identifiers(tmp_pat
     spec.loader.exec_module(module)
     database = tmp_path / "coverage.db"
     with sqlite3.connect(database) as connection:
-        connection.execute(
-            "CREATE TABLE capture_runs (id TEXT, source TEXT, status TEXT)"
-        )
+        connection.execute("CREATE TABLE capture_runs (id TEXT, source TEXT, status TEXT)")
         connection.execute(
             "CREATE TABLE capture_items (id TEXT, capture_run_id TEXT, source_job_id TEXT, "
             "detail_status TEXT, posting_id TEXT, source_document_id TEXT)"
@@ -109,7 +107,9 @@ def test_market_discrepancy_report_classifies_causes_without_identifiers(tmp_pat
             "CREATE TABLE market_intelligence_observations "
             "(id TEXT, source_capture_run_id TEXT, source_job_id TEXT)"
         )
-        connection.execute("INSERT INTO capture_runs VALUES ('run-private', 'linkedin', 'completed')")
+        connection.execute(
+            "INSERT INTO capture_runs VALUES ('run-private', 'linkedin', 'completed')"
+        )
         connection.executemany(
             "INSERT INTO capture_items VALUES (?, 'run-private', ?, ?, ?, ?)",
             [
@@ -129,8 +129,7 @@ def test_market_discrepancy_report_classifies_causes_without_identifiers(tmp_pat
     report = module._market_discrepancy_causes(database)
     assert sum(row["count"] for row in report["missing_by_source_and_run_status"]) == 1
     reasons = {
-        row["reason"]: row["count"]
-        for row in report["unexpected_by_reason_source_and_run_status"]
+        row["reason"]: row["count"] for row in report["unexpected_by_reason_source_and_run_status"]
     }
     assert reasons == {
         "missing_posting_link": 1,
