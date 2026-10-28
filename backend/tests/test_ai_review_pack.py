@@ -5,7 +5,11 @@ from datetime import UTC, datetime
 from io import BytesIO
 from zipfile import ZipFile
 
-from jolt.ai_review_pack import _build_ai_review_payloads, build_ai_review_json, build_ai_review_pack
+from jolt.ai_review_pack import (
+    _build_ai_review_payloads,
+    build_ai_review_json,
+    build_ai_review_pack,
+)
 from jolt.database import (
     CaptureItem,
     CapturePage,
@@ -232,6 +236,7 @@ def test_ai_review_export_template_has_work_demand_fields(tmp_path) -> None:
         assert template["commercial_pressure_evidence"] == []
     finally:
         session.close()
+
 
 def test_backfilled_apply_url_is_labeled_without_rewriting_source_artifact(tmp_path) -> None:
     from sqlalchemy import text
