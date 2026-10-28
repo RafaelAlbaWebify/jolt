@@ -39,9 +39,9 @@ def _local_url(url: str) -> str:
     return url.rstrip("/")
 
 
-def _request(url: str) -> dict[str, object]:
+def _request(url: str, *, accept: str = "application/json") -> dict[str, object]:
     started = time.perf_counter()
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    request = urllib.request.Request(url, headers={"Accept": accept})
     try:
         with urllib.request.urlopen(request, timeout=35) as response:
             data = response.read(MAX_READ + 1)
@@ -189,7 +189,7 @@ def run(root: Path, output: Path, samples: int) -> dict[str, object]:
             "warmup_ok": bool(readings[0]["ok"]),
             "error_types": [item.get("error_type") for item in timed if not item["ok"]],
         }
-    frontend_http = _request(frontend + "/")
+    frontend_http = _request(frontend + "/", accept="text/html")
     browser = _browser(frontend + "/") if frontend_http["ok"] else {"state": "failed"}
     report = {
         "contract": "jolt_runtime_acceptance",
