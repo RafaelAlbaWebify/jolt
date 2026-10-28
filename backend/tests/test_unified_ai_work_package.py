@@ -143,3 +143,56 @@ def test_unified_bundle_prevalidates_all_groups_before_first_import(tmp_path, mo
         assert imported == []
     finally:
         session.close()
+
+
+def test_unified_bundle_rolls_back_first_group_when_second_write_fails(
+    tmp_path, monkeypatch
+) -> None:
+    from sqlalchemy import text
+
+    import jolt.unified_ai_work_package as unified
+    from jolt.ai_review_import import AIReviewImportRequest
+    from jolt.unified_ai_work_package import AIReviewBundleImportRequest
+
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
+    session.execute(text("CREATE TABLE import_probe (capture_id TEXT NOT NULL)"))
+    session.commit()
+    package = build_unified_ai_work_package(session)
+    requests = [
+        AIReviewImportRequest(
+            contract_type="jolt_ai_review",
+            contract_version="1.0",
+            capture_run_id=capture_id,
+            review_source="chatgpt_source_first",
+            review_version="v1",
+            reviewed_at=datetime.now(UTC),
+            jobs=[],
+        )
+        for capture_id in ("capture-one", "capture-two")
+    ]
+    monkeypatch.setattr(unified, "_validate_capture_membership", lambda *_args: None)
+
+    def importing(group_session, request, *, commit=True):
+        assert commit is False
+        if request.capture_run_id == "capture-two":
+            raise RuntimeError("simulated second-write failure")
+        group_session.execute(
+            text("INSERT INTO import_probe(capture_id) VALUES (:capture_id)"),
+            {"capture_id": request.capture_run_id},
+        )
+        return None
+
+    monkeypatch.setattr(unified, "import_ai_review", importing)
+    update = UnifiedAIUpdate(
+        package_id=package.package_id,
+        source_context_version=package.context_version,
+        reviewed_at=datetime.now(UTC),
+        review_version="v1",
+        review_inbox=AIReviewBundleImportRequest(reviews=requests),
+    )
+    try:
+        with pytest.raises(RuntimeError, match="simulated second-write failure"):
+            import_unified_ai_update(session, update)
+        assert session.scalar(text("SELECT COUNT(*) FROM import_probe")) == 0
+    finally:
+        session.close()

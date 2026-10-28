@@ -487,6 +487,8 @@ def _requirement_json(items: list[MandatoryRequirementResult]) -> str:
 def import_ai_review(
     session: Session,
     request: AIReviewImportRequest,
+    *,
+    commit: bool = True,
 ) -> AIReviewImportResponse:
     """Persist external AI analysis without altering human/application state."""
 
@@ -608,7 +610,10 @@ def import_ai_review(
             setattr(review, field_name, value)
         updated_count += 1
 
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
 
     return AIReviewImportResponse(
         capture_run_id=request.capture_run_id,

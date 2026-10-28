@@ -457,9 +457,15 @@ def import_unified_ai_update(
                             f"Duplicate posting_id across unified AI bundle: {job.posting_id}"
                         )
                     seen_postings.add(job.posting_id)
-            group_results = [
-                import_ai_review(session, request) for request in update.review_inbox.reviews
-            ]
+            try:
+                group_results = [
+                    import_ai_review(session, request, commit=False)
+                    for request in update.review_inbox.reviews
+                ]
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
             section_results["review_inbox"] = {
                 "capture_run_count": len(group_results),
                 "received_count": sum(result.received_count for result in group_results),
