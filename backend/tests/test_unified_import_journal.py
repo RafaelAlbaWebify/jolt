@@ -50,3 +50,25 @@ def test_journal_write_interruption_preserves_previous_checkpoint(
         journal.checkpoint(update.package_id, "stage", "applied")
     assert (tmp_path / "journal.json").read_bytes() == before
     assert not (tmp_path / "journal.json.tmp").exists()
+
+
+def test_reconciliation_queue_is_read_only_and_marks_unfinished_imports(
+    tmp_path, monkeypatch
+) -> None:
+    path = tmp_path / "journal.json"
+    monkeypatch.setattr(journal, "_journal_path", lambda: path)
+    first = ExampleUpdate(package_id="interrupted", payload="A")
+    second = ExampleUpdate(package_id="finished", payload="B")
+    journal.begin(first, first.package_id)
+    journal.checkpoint(first.package_id, "market_insights", "applying")
+    journal.begin(second, second.package_id)
+    journal.checkpoint(second.package_id, "complete", "completed")
+    before = path.read_bytes()
+    report = journal.reconciliation_report()
+    assert report["journal_entries"] == 2
+    assert report["completed"] == 1
+    assert report["requires_reconciliation"] == 1
+    assert report["pending"][0]["package_id"] == "interrupted"
+    assert report["pending"][0]["last_step"] == "market_insights"
+    assert report["automatic_replay_safe"] is False
+    assert path.read_bytes() == before
