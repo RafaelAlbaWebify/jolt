@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
 from jolt.market_intelligence import (
-    _DurableMarketPosting,
     _deduplicate_market_postings,
+    _DurableMarketPosting,
 )
 
 
