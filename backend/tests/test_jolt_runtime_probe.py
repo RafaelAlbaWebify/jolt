@@ -94,3 +94,20 @@ def test_performance_log_summary_exports_only_approved_stages(tmp_path: Path) ->
     }
     assert "topsecret" not in str(report)
     assert "example.com" not in str(report)
+
+
+def test_frontend_http_error_preserves_status_without_response_body(monkeypatch) -> None:
+    import urllib.error
+
+    probe = _probe()
+
+    def fail_request(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://127.0.0.1:5173/", 404, "private reason", {}, None
+        )
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", fail_request)
+    result = probe._request("http://127.0.0.1:5173/")
+    assert result["status"] == 404
+    assert result["error_type"] == "HTTPError"
+    assert "private reason" not in str(result)
