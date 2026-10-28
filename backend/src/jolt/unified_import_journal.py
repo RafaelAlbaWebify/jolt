@@ -82,3 +82,35 @@ def inspect(package_id: str) -> dict[str, Any] | None:
     with _LOCK:
         item = _read().get(package_id)
         return dict(item) if item is not None else None
+
+
+def reconciliation_report() -> dict[str, Any]:
+    """Read-only summary; never guess which sidecar writes committed.
+
+    This lists states that require manual store-by-store reconciliation before
+    attempting another import. It never exposes payloads or performs mutations.
+    """
+    with _LOCK:
+        entries = _read()
+    pending = []
+    complete = 0
+    for package_id, entry in sorted(entries.items()):
+        if entry.get("state") == "completed":
+            complete += 1
+            continue
+        pending.append(
+            {
+                "package_id": package_id,
+                "state": entry.get("state", "unknown"),
+                "last_step": entry.get("last_step"),
+                "updated_at": entry.get("updated_at"),
+                "action": "inspect_sqlite_and_sidecars_before_manual_reconciliation",
+            }
+        )
+    return {
+        "journal_entries": len(entries),
+        "completed": complete,
+        "requires_reconciliation": len(pending),
+        "pending": pending,
+        "automatic_replay_safe": False,
+    }
