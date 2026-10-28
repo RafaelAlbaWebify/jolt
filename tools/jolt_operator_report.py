@@ -86,6 +86,33 @@ def _processing_snapshot(database: Path) -> dict[str, object]:
     }
 
 
+def _journal_summary(project_root: Path) -> dict[str, object]:
+    """Summarize interrupted imports without exporting package IDs or payloads."""
+    path = project_root / "backend" / "data" / "unified_import_journal.json"
+    if not path.exists():
+        return {"state": "absent", "completed": 0, "requires_reconciliation": 0}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid journal shape")
+        entries = list(payload.values())
+        if not all(isinstance(entry, dict) for entry in entries):
+            raise ValueError("Invalid journal entry")
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {"state": "unreadable", "requires_reconciliation": "unknown"}
+    completed = sum(entry.get("state") == "completed" for entry in entries)
+    return {
+        "state": "readable",
+        "completed": completed,
+        "requires_reconciliation": len(entries) - completed,
+        "incomplete_last_steps": sorted({
+            str(entry.get("last_step") or "not_started")
+            for entry in entries
+            if entry.get("state") != "completed"
+        }),
+    }
+
+
 def build_report(database: Path, project_root: Path) -> dict[str, object]:
     baseline = _baseline_module().collect(database)
     return {
@@ -98,6 +125,7 @@ def build_report(database: Path, project_root: Path) -> dict[str, object]:
         "browser_verified": False,
         "database": baseline,
         "processing": _processing_snapshot(database),
+        "import_recovery": _journal_summary(project_root),
         "limitations": [
             "No backend API or frontend checks have been executed",
             "No capture text, application contents, identities or logs are included",
