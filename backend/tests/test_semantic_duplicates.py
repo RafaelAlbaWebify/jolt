@@ -172,3 +172,47 @@ def test_best_actionable_member_becomes_canonical() -> None:
     assert len(groups) == 1
     assert groups[0][0].posting_id == "actionable"
     assert groups[0][1].posting_id == "blocked"
+
+
+def test_distinct_titles_never_enter_semantic_comparison(monkeypatch) -> None:
+    import jolt.semantic_duplicates as duplicate_module
+
+    original = duplicate_module.are_semantic_duplicates
+    checked_titles = []
+
+    def recording_match(first, second, *, descriptions):
+        checked_titles.append((first.title, second.title))
+        return original(first, second, descriptions=descriptions)
+
+    monkeypatch.setattr(duplicate_module, "are_semantic_duplicates", recording_match)
+    candidates = [
+        Candidate(posting_id=str(index), company="Example", title=f"Unique role {index}")
+        for index in range(1200)
+    ]
+    groups = group_semantic_duplicates(candidates, descriptions={})
+    assert len(groups) == len(candidates)
+    assert checked_titles == []
+
+
+def test_title_index_keeps_existing_group_order_and_canonical_priority() -> None:
+    candidates = [
+        Candidate(posting_id="alpha-1", company="Org", title="Support Engineer"),
+        Candidate(posting_id="beta", company="Org", title="System Admin"),
+        Candidate(
+            posting_id="alpha-2",
+            company="Org",
+            title="SUPPORT engineer",
+            recommendation="pursue",
+            ranking_score=95,
+        ),
+    ]
+    descriptions = {
+        "alpha-1": "Support Azure cloud users and Microsoft 365 incidents",
+        "alpha-2": "Support Azure cloud users and Microsoft 365 incidents",
+        "beta": "Maintain local Windows servers",
+    }
+    groups = group_semantic_duplicates(candidates, descriptions=descriptions)
+    assert [[member.posting_id for member in group] for group in groups] == [
+        ["alpha-2", "alpha-1"],
+        ["beta"],
+    ]
