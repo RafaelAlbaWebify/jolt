@@ -139,3 +139,28 @@ def test_market_discrepancy_report_classifies_causes_without_identifiers(tmp_pat
     assert report["read_only"] is True
     assert "job-pending" not in str(report)
     assert "run-private" not in str(report)
+
+
+def test_recovery_sidecars_report_is_read_only_and_redacted(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[2] / "tools" / "jolt_operator_report.py"
+    spec = importlib.util.spec_from_file_location("jolt_operator_report", source)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    data = tmp_path / "backend" / "data"
+    data.mkdir(parents=True)
+    secret = '{"secret-package-id": {"state": "applying"}}'
+    journal = data / "unified_import_journal.json"
+    journal.write_text(secret, encoding="utf-8")
+    corrupted = data / "ai_exchange_feedback.json"
+    corrupted.write_text("{invalid-json", encoding="utf-8")
+    before = (journal.read_bytes(), corrupted.read_bytes())
+    report = module._recovery_sidecars(tmp_path)
+    sidecars = report["sidecars"]
+    assert sidecars["unified_import_journal.json"]["state"] == "readable"
+    assert sidecars["ai_exchange_feedback.json"]["state"] == "unreadable"
+    assert sidecars["market_preparation_imports.json"]["state"] == "absent"
+    assert report["automatic_restore_permitted"] is False
+    assert report["cross_store_atomicity_verified"] is False
+    assert "secret-package-id" not in str(report)
+    assert (journal.read_bytes(), corrupted.read_bytes()) == before
