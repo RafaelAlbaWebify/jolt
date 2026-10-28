@@ -61,6 +61,14 @@ def _request(url: str) -> dict[str, object]:
         }
 
 
+def _safe_metrics(measurement: dict[str, object]) -> dict[str, object]:
+    """Explicit allowlist: never serialize unexpected response fields."""
+    allowed = {
+        "ok", "status", "milliseconds", "bytes_read", "truncated", "error_type"
+    }
+    return {key: value for key, value in measurement.items() if key in allowed}
+
+
 def _browser(frontend: str) -> dict[str, object]:
     try:
         from playwright.sync_api import sync_playwright
@@ -138,9 +146,9 @@ def run(root: Path, output: Path, samples: int) -> dict[str, object]:
         "generated_at": datetime.now(UTC).isoformat(),
         "checkout_sha": _revision(root),
         "sample_count": samples,
-        "backend_health": health,
-        "backend_identity": identity,
-        "frontend_http": frontend_http,
+        "backend_health": _safe_metrics(health),
+        "backend_identity": _safe_metrics(identity),
+        "frontend_http": _safe_metrics(frontend_http),
         "api_benchmarks": routes,
         "browser": browser,
         "limitations": [
