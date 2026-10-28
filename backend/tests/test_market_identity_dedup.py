@@ -6,7 +6,7 @@ from jolt.market_intelligence import (
 )
 
 
-def _posting(identifier: str, url: str, title: str = "IT Support Engineer") -> _DurableMarketPosting:
+def _posting(\n    identifier: str, url: str, title: str = "IT Support Engineer"\n) -> _DurableMarketPosting:
     return _DurableMarketPosting(
         id=identifier,
         title=title,
