@@ -1,5 +1,37 @@
 # JOLT — Operating Context
 
+## EXECUTION METHOD V2 — EFFECTIVE 2026-10-28 (SUPERSEDES MICRO-PR WORKFLOW)
+
+**Decision:** Stop using one PR/chat exchange per trivial code fix. Deliver **complete, demonstrable capabilities** with a frozen scope and grouped tests. This execution method overrides earlier micro-milestone recommendations in this file, while retaining all non-destructive data and release safeguards.
+
+### Fixed definition of done — Delivery A
+
+A closes when the following are **actually proven**, not just coded:
+1. **Safe imports:** a disposable-test failure/replay matrix verifies same-payload replay, conflicting replay, failure before writes, during SQLite writes, during JSON sidecar writes, and recovery/reconciliation. Record what cannot be atomically committed across stores. Existing human decisions/applications unchanged.
+2. **Processing coverage:** report per-module evidence applicability, pending/processed/error/not-applicable and provenance/version where available; missing signals must be labelled unknown, NOT inferred as completed. Reuse the existing AI status and Market observation models; add schema only when necessary and justified.
+3. **One operator diagnostic:** produce a redacted single-command ZIP including DB integrity, storage, software revision, relevant processing/health counters and timing, with clear distinctions between offline checks and live/browser validation.
+4. **Measured acceptance:** reproducible before/after fixture benchmark and, once at the end, one Windows operator run on a safe read-only diagnostic. Confirm CI on exact PR head, migration/restore safeguards when relevant, and update scorecard with links to real evidence.
+
+### Batching policy
+
+- **One execution branch/PR for the remaining coherent A capability** rather than one PR per file or one per minor test. If risk requires separation, justify the dependency in the PR description; do not open a chain of tiny documentation PRs.
+- Before editing: inventory current main, pending PRs, code contracts, data/transaction boundaries and tests. Freeze files, interfaces, acceptance tests and known limitations in `docs/modernization/DELIVERY_A_ACCEPTANCE.md`. A previous merged capability must not be reimplemented.
+- Implement multiple tightly related code + regression + documentation changes on that branch. Use tests and CI before asking the operator to do anything; repair formatter/lint/type failures on branch without extra chat turns.
+- **No idle waiting on GitHub** when independent work is possible. CI and review proceed while non-conflicting tasks are developed. Do not merge an unverified head or overwrite another active branch.
+- **Chat reporting:** one compact consolidated completion report per meaningful capability. Interrupt only for a real blocker, security approval or final operator acceptance. Avoid repeated status-only replies or speculative percentages.
+- **No task creep:** classify new findings as release blocker, important follow-up, or backlog. Only blocker fixes expand the current A branch. Capture B/C/UI changes separately in backlog; do not postpone A for cosmetic or low-risk improvements.
+- **Auditability:** cite PR number, commit, checks and fixture/Windows evidence; distinguish source review, CI, and real deployment. Never invent timings or claim full end-to-end safety because one narrow test passes.
+- **Merge:** safe ordinary PR may merge after all required exact-head CI gates pass and checks align with acceptance. Protected data changes or live destructive work still require operator approval.
+
+### Release plan after A
+
+**B: Independent analysis workflow.** Task-scoped exports/imports with backwards-compatible unified mode, module-specific contracts, resumable checkpoints and completeness accounting. Ship as a cohesive workflow, not separate tooltip/API PRs.
+
+**C: UI and operations.** Browser-tested state refresh, cleanup of duplicate mounts, retention policy/dry-run, measured performance and full operational release gate.
+
+**Current factual position (2026-10-28):** PRs #667–#675 were reported integrated and validated in GitHub checks; #676 operator diagnostic is open with CI not yet confirmed at the moment this decision was recorded. Existing improvements are partial; do not call A complete or infer Windows operability.
+
+
 ## ACTIVE MODERNIZATION PROGRAM — 2026-10-28 (A → B → C)
 
 **Scope and precedence:** This is the active cross-module reliability/efficiency program, not a replacement for the controlled portal/candidacy roadmap or protected data rules above. Preserve historical handovers as dated evidence, not current runtime truth. Prioritize any real candidate applications already approved by the operator; do not block them for speculative refactoring.
