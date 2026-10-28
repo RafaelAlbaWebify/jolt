@@ -21,6 +21,7 @@ from jolt.database import (
 )
 from jolt.global_context import load_global_ai_context
 from jolt.market_intelligence_view import build_market_intelligence_view
+from jolt.professional_intelligence_records import ProfessionalCaptureArtifact
 
 AISectionState = Literal["no_evidence", "not_analyzed", "stale", "current"]
 AIOverallState = Literal["no_evidence", "update_available", "current"]
@@ -93,6 +94,10 @@ def _latest_search_evidence_at(session: Session) -> datetime | None:
 
 def _latest_linkedin_evidence_at(session: Session) -> datetime | None:
     return _as_utc(session.scalar(select(func.max(LinkedInPresenceCapture.captured_at))))
+
+
+def _latest_professional_evidence_at(session: Session) -> datetime | None:
+    return _as_utc(session.scalar(select(func.max(ProfessionalCaptureArtifact.created_at))))
 
 
 def _latest_posting_evidence_at(session: Session) -> datetime | None:
@@ -174,6 +179,7 @@ def build_ai_status(session: Session) -> AIStatusResponse:
     latest_application_at = _latest_application_evidence_at(session)
     latest_search_at = _latest_search_evidence_at(session)
     latest_posting_at = _latest_posting_evidence_at(session)
+    latest_professional_at = _latest_professional_evidence_at(session)
 
     market_view = build_market_intelligence_view(session)
     market_has_evidence = (
@@ -235,7 +241,7 @@ def build_ai_status(session: Session) -> AIStatusResponse:
             current_reason="Skills-gap analysis covers the latest captured evidence.",
         ),
         "professional_evidence": _feedback_status(
-            evidence_at=latest_linkedin_at,
+            evidence_at=latest_professional_at,
             feedback=_latest_feedback("professional_evidence"),
             no_evidence_reason="No professional-profile evidence is available yet.",
             not_analyzed_reason="Professional evidence exists but has not been analyzed.",
