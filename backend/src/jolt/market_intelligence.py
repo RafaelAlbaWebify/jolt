@@ -606,8 +606,17 @@ def _filter_by_timeframe(
 def _effective_evaluations(
     session: Session, postings: list[Posting]
 ) -> tuple[dict[str, Evaluation], dict[str, object]]:
-    evaluations = list(
-        session.scalars(select(Evaluation).order_by(Evaluation.created_at.desc())).all()
+    manual_ids = {posting.id for posting in postings}
+    evaluations = (
+        list(
+            session.scalars(
+                select(Evaluation)
+                .where(Evaluation.posting_id.in_(manual_ids))
+                .order_by(Evaluation.created_at.desc())
+            ).all()
+        )
+        if manual_ids
+        else []
     )
     latest: dict[str, Evaluation] = {}
     current: dict[str, Evaluation] = {}
