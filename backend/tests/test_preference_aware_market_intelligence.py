@@ -103,7 +103,7 @@ def test_required_language_uses_current_saved_language_preferences(monkeypatch) 
     assert not any("required language" in reason for reason in reasons)
 
 
-def test_market_groups_semantic_duplicate_postings(tmp_path: Path) -> None:
+def test_market_preserves_distinct_vacancies_with_similar_descriptions(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
     first = client.post(
@@ -141,28 +141,19 @@ def test_market_groups_semantic_duplicate_postings(tmp_path: Path) -> None:
 
     payload = client.get("/api/market-intelligence?timeframe=all&source_scope=manual_intake").json()
 
-    assert payload["total_unique_roles"] == 1
-    assert payload["target_role_count"] == 1
+    assert payload["total_unique_roles"] == 2
+    assert payload["target_role_count"] == 2
     assert payload["evaluation_coverage"]["source_posting_count"] == 2
-    assert payload["evaluation_coverage"]["canonical_role_count"] == 1
-    assert payload["evaluation_coverage"]["duplicate_member_count"] == 1
+    assert payload["evaluation_coverage"]["canonical_role_count"] == 2
+    assert payload["evaluation_coverage"]["duplicate_member_count"] == 0
 
     provenance = payload["evidence_provenance"]
     assert provenance["source_posting_count"] == 2
-    assert provenance["canonical_role_count"] == 1
-    assert provenance["duplicate_member_count"] == 1
+    assert provenance["canonical_role_count"] == 2
+    assert provenance["duplicate_member_count"] == 0
     assert provenance["oldest_evidence_at"] is not None
     assert provenance["newest_evidence_at"] is not None
     assert provenance["oldest_evidence_at"] <= provenance["newest_evidence_at"]
 
-    assert len(payload["duplicate_groups"]) == 1
-    group = payload["duplicate_groups"][0]
+    assert payload["duplicate_groups"] == []
 
-    assert len(group["member_posting_ids"]) == 2
-    assert len(group["duplicate_posting_ids"]) == 1
-    assert group["canonical_posting_id"] in group["member_posting_ids"]
-
-    assert set(group["member_posting_ids"]) == {
-        first.json()["posting_id"],
-        second.json()["posting_id"],
-    }
