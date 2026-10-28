@@ -22,9 +22,7 @@ def test_ai_status_is_backend_derived_on_empty_database(tmp_path: Path) -> None:
     assert payload["sections"]["data_quality"]["operator_relevant"] is False
 
 
-def test_professional_evidence_freshness_does_not_depend_on_linkedin_capture(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_professional_evidence_freshness_does_not_depend_on_linkedin_capture(tmp_path: Path) -> None:
     from datetime import UTC, datetime
     from unittest.mock import patch
 
