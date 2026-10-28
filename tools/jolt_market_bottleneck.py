@@ -17,7 +17,6 @@ PHASES = (
     "_effective_evaluations",
     "_filter_by_timeframe",
     "_deduplicate_market_postings",
-    "group_semantic_duplicates",
     "_scope_data",
     "_learning_refresh_status",
 )
@@ -40,7 +39,9 @@ def _worker(database: Path) -> None:
         print(json.dumps(payload, separators=(",", ":")), flush=True)
 
     for name in PHASES:
-        original = getattr(market, name)
+        original = getattr(market, name, None)
+        if original is None:
+            continue
 
         def instrument(func, stage):
             @wraps(func)
@@ -84,8 +85,10 @@ def _decode_lines(stdout: str | bytes | None) -> list[dict[str, object]]:
 def run(database: Path, output: Path, timeout: int) -> dict[str, object]:
     command = [sys.executable, str(Path(__file__).resolve()), "--worker", "--db", str(database)]
     started = time.perf_counter()
+    worker_exit_code: int | None = None
     try:
         process = subprocess.run(command, capture_output=True, timeout=timeout, check=False)
+        worker_exit_code = process.returncode
         events = _decode_lines(process.stdout)
         state = "passed" if process.returncode == 0 and any(
             e.get("stage") == "build_market_intelligence" and e.get("event") == "finish"
@@ -105,6 +108,7 @@ def run(database: Path, output: Path, timeout: int) -> dict[str, object]:
         "contract": "jolt_market_phase_profile",
         "generated_at": datetime.now(UTC).isoformat(),
         "state": state,
+        "worker_exit_code": worker_exit_code,
         "elapsed_seconds": round(time.perf_counter() - started, 3),
         "timeout_seconds": timeout,
         "database_bytes": database.stat().st_size,
