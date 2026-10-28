@@ -75,9 +75,9 @@ def test_performance_log_summary_exports_only_approved_stages(tmp_path: Path) ->
     logs.mkdir(parents=True)
     (logs / "backend.err.log").write_text(
         "WARNING:jolt.performance:review_export_total_seconds=103.418 bytes=163986 "
-        "secret_job_url=https://example.com/private\\n"
+        "secret_job_url=https://example.com/private\n"
         "WARNING:jolt.performance:unified_exchange_section=market_insights seconds=40.125 "
-        "private_description=topsecret\\n",
+        "private_description=topsecret\n",
         encoding="utf-8",
     )
     report = probe._performance_trace(tmp_path)
