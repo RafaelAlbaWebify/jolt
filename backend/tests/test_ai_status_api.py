@@ -20,3 +20,22 @@ def test_ai_status_is_backend_derived_on_empty_database(tmp_path: Path) -> None:
     assert payload["sections"]["linkedin_profile"]["state"] == "no_evidence"
     assert payload["sections"]["search_strategy"]["state"] == "no_evidence"
     assert payload["sections"]["data_quality"]["operator_relevant"] is False
+
+
+def test_professional_evidence_freshness_does_not_depend_on_linkedin_capture(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from datetime import UTC, datetime
+    from unittest.mock import patch
+
+    from jolt.ai_status import build_ai_status
+    from jolt.database import create_session_factory
+
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'separate.db').as_posix()}")()
+    try:
+        with patch("jolt.ai_status._latest_linkedin_evidence_at", return_value=datetime.now(UTC)):
+            result = build_ai_status(session)
+        assert result.sections["linkedin_profile"].state == "not_analyzed"
+        assert result.sections["professional_evidence"].state == "no_evidence"
+    finally:
+        session.close()
