@@ -102,9 +102,7 @@ def test_frontend_http_error_preserves_status_without_response_body(monkeypatch)
     probe = _probe()
 
     def fail_request(*args, **kwargs):
-        raise urllib.error.HTTPError(
-            "http://127.0.0.1:5173/", 404, "private reason", {}, None
-        )
+        raise urllib.error.HTTPError("http://127.0.0.1:5173/", 404, "private reason", {}, None)
 
     monkeypatch.setattr(probe.urllib.request, "urlopen", fail_request)
     result = probe._request("http://127.0.0.1:5173/")
