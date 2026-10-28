@@ -7,6 +7,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from jolt import unified_import_journal
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
 from jolt.ai_review_dossier import enrich_review_inbox_with_dossiers
 from jolt.ai_review_import import (
@@ -60,7 +61,6 @@ from jolt.search_preference_exchange import (
     build_search_preference_exchange,
     import_search_preference_exchange,
 )
-from jolt import unified_import_journal
 from jolt.skills_preparation_exchange import (
     build_skills_preparation_exchange,
     import_skills_preparation_exchange,
