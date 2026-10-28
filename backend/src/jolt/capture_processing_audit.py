@@ -41,10 +41,16 @@ def audit_market_capture_coverage(session: Session) -> list[CaptureCoverage]:
             )
         ).all()
     )
+    expected_by_run: dict[str, set[str]] = {run_id: set() for run_id in runs}
+    observed_by_run: dict[str, set[str]] = {run_id: set() for run_id in runs}
+    for capture_id, job_id in expected_pairs:
+        expected_by_run.setdefault(capture_id, set()).add(job_id)
+    for capture_id, job_id in observed_pairs:
+        observed_by_run.setdefault(capture_id, set()).add(job_id)
     results: list[CaptureCoverage] = []
     for run_id in runs:
-        expected = {job_id for capture_id, job_id in expected_pairs if capture_id == run_id}
-        observed = {job_id for capture_id, job_id in observed_pairs if capture_id == run_id}
+        expected = expected_by_run[run_id]
+        observed = observed_by_run[run_id]
         missing = expected - observed
         unexpected = observed - expected
         results.append(
