@@ -88,3 +88,55 @@ def test_operator_report_redacts_import_journal_identifiers(tmp_path: Path) -> N
     assert summary["incomplete_last_steps"] == ["market_insights"]
     assert "private-package-id" not in str(summary)
     assert "secret-digest" not in str(summary)
+
+
+def test_market_discrepancy_report_classifies_causes_without_identifiers(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[2] / "tools" / "jolt_operator_report.py"
+    spec = importlib.util.spec_from_file_location("jolt_operator_report", source)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    database = tmp_path / "coverage.db"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "CREATE TABLE capture_runs (id TEXT, source TEXT, status TEXT)"
+        )
+        connection.execute(
+            "CREATE TABLE capture_items (id TEXT, capture_run_id TEXT, source_job_id TEXT, "
+            "detail_status TEXT, posting_id TEXT, source_document_id TEXT)"
+        )
+        connection.execute(
+            "CREATE TABLE market_intelligence_observations "
+            "(id TEXT, source_capture_run_id TEXT, source_job_id TEXT)"
+        )
+        connection.execute("INSERT INTO capture_runs VALUES ('run-private', 'linkedin', 'completed')")
+        connection.executemany(
+            "INSERT INTO capture_items VALUES (?, 'run-private', ?, ?, ?, ?)",
+            [
+                ("item-1", "job-pending", "verified", "post", "source"),
+                ("item-2", "job-incomplete", "verified", None, "source"),
+                ("item-3", "job-not-verified", "failed", "post", "source"),
+            ],
+        )
+        connection.executemany(
+            "INSERT INTO market_intelligence_observations VALUES (?, 'run-private', ?)",
+            [
+                ("observation-1", "job-incomplete"),
+                ("observation-2", "job-not-verified"),
+                ("observation-3", "job-no-capture"),
+            ],
+        )
+    report = module._market_discrepancy_causes(database)
+    assert sum(row["count"] for row in report["missing_by_source_and_run_status"]) == 1
+    reasons = {
+        row["reason"]: row["count"]
+        for row in report["unexpected_by_reason_source_and_run_status"]
+    }
+    assert reasons == {
+        "missing_posting_link": 1,
+        "not_verified": 1,
+        "no_capture_item": 1,
+    }
+    assert report["read_only"] is True
+    assert "job-pending" not in str(report)
+    assert "run-private" not in str(report)
