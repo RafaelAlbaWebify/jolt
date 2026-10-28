@@ -53,6 +53,13 @@ def _request(url: str) -> dict[str, object]:
                 "bytes_read": min(len(data), MAX_READ),
                 "truncated": too_large,
             }
+    except urllib.error.HTTPError as exc:
+        return {
+            "ok": False,
+            "status": exc.code,
+            "error_type": "HTTPError",
+            "milliseconds": round((time.perf_counter() - started) * 1000, 2),
+        }
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         return {
             "ok": False,
