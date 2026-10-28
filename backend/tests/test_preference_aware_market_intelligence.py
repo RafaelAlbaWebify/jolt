@@ -156,4 +156,3 @@ def test_market_preserves_distinct_vacancies_with_similar_descriptions(tmp_path:
     assert provenance["oldest_evidence_at"] <= provenance["newest_evidence_at"]
 
     assert payload["duplicate_groups"] == []
-
