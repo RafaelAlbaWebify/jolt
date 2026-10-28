@@ -190,3 +190,90 @@ def test_current_review_inbox_bundle_preserves_multiple_capture_runs(tmp_path) -
     }
     assert len(payload["review_groups"]) == 2
     assert len(payload["response_template"]["reviews"]) == 2
+
+
+def test_current_bundle_uses_one_ranked_provenance_lookup(tmp_path, monkeypatch) -> None:
+    from sqlalchemy import event
+
+    import jolt.review_inbox_exchange as exchange
+
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'ranked.db').as_posix()}")()
+    now = datetime.now(UTC)
+    source = SourceDocument(
+        id="ranked-source",
+        source_type="linkedin",
+        source_url="https://www.linkedin.com/jobs/view/901/",
+        raw_text="Support Engineer\\nExample\\nRemote Spain\\nWindows support",
+        content_hash="f" * 64,
+        captured_at=now,
+    )
+    posting = Posting(
+        id="ranked-posting",
+        source_document_id=source.id,
+        canonical_url=source.source_url,
+        identity_key="linkedin:901",
+        title="Support Engineer",
+        company="Example",
+        location="Spain Remote",
+        description=source.raw_text,
+        identity_status="verified",
+        created_at=now,
+    )
+    session.add(source)
+    session.flush()
+    session.add(posting)
+    session.flush()
+    runs = []
+    for index in (1, 2):
+        run = CaptureRun(
+            id=f"ranked-run-{index}",
+            source="linkedin",
+            mode="supervised_live",
+            status="completed",
+            search_url="https://www.linkedin.com/jobs/search/",
+            warnings_json="[]",
+            requested_item_limit=1,
+            observed_item_count=1,
+            stop_reason="requested_limit_reached",
+            started_at=now,
+            completed_at=now,
+        )
+        session.add(run)
+        session.flush()
+        session.add(
+            CaptureItem(
+                id=f"ranked-item-{index}",
+                capture_run_id=run.id,
+                source_job_id="901",
+                source_url=source.source_url,
+                title=posting.title,
+                company=posting.company,
+                location=posting.location,
+                detail_status="verified",
+                verification_reasons_json="[]",
+                source_document_id=source.id,
+                posting_id=posting.id,
+            )
+        )
+        runs.append(run)
+    session.commit()
+    monkeypatch.setattr(
+        exchange,
+        "list_ai_review_opportunity_index",
+        lambda _session: [type("Pending", (), {"posting_id": posting.id, "ai_review_status": "awaiting_ai_review"})()],
+    )
+    statements = []
+
+    def record(_connection, _cursor, statement, _parameters, _context, _executemany):
+        if "row_number()" in statement.lower():
+            statements.append(statement)
+
+    event.listen(session.bind, "before_cursor_execute", record)
+    try:
+        payload = exchange.build_current_review_inbox_bundle(session)
+    finally:
+        event.remove(session.bind, "before_cursor_execute", record)
+        session.close()
+    assert len(statements) == 1
+    assert payload["counts"]["capture_items"] == 1
+    assert payload["review_groups"][0]["capture_run_id"] == "ranked-run-2"
