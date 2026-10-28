@@ -74,6 +74,20 @@ def save_ai_exchange_feedback(output: AIExchangeOutput) -> AIExchangeFeedbackRec
     )
     with _WRITE_LOCK:
         index = _read_index()
+        for previous in index.records:
+            if previous.section != record.section or previous.exchange_id != record.exchange_id:
+                continue
+            if (
+                previous.review_version != record.review_version
+                or previous.reviewed_at != record.reviewed_at
+                or previous.feedback != record.feedback
+                or previous.summary != record.summary
+            ):
+                raise ValueError(
+                    "Conflicting AI feedback replay for section/exchange_id: "
+                    f"{record.section}/{record.exchange_id}"
+                )
+            return previous
         records = [*index.records, record][-_MAX_RECORDS:]
         _write_index(
             AIExchangeFeedbackIndex(
