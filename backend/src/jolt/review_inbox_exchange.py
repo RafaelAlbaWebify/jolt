@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from collections import defaultdict
 
 from sqlalchemy import func, select
@@ -11,6 +13,8 @@ from jolt.ai_review_pack import build_ai_review_document, build_ai_review_json
 from jolt.capture_archival import ARCHIVED_CAPTURE_STATUS
 from jolt.database import CaptureItem, CaptureRun
 from jolt.global_context import build_global_context_snapshot, global_context_version
+
+_PERF_LOG = logging.getLogger("jolt.performance")
 
 
 def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, object]:
@@ -162,11 +166,13 @@ def build_review_inbox_exchange_json(session: Session) -> bytes:
 def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
     """Export every currently pending Review Inbox posting across active capture runs."""
 
+    started = time.perf_counter()
     pending_posting_ids = {
         item.posting_id
         for item in list_ai_review_opportunity_index(session)
         if item.ai_review_status == "awaiting_ai_review"
     }
+    _PERF_LOG.warning("review_index_seconds=%.3f pending=%d", time.perf_counter() - started, len(pending_posting_ids))
     if not pending_posting_ids:
         raise ValueError("No pending Review Inbox jobs exist to export for AI review.")
 
@@ -210,6 +216,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
             "Pending Review Inbox jobs lack reviewable capture provenance: " + ", ".join(unresolved)
         )
 
+    _PERF_LOG.warning("review_provenance_seconds=%.3f groups=%d", time.perf_counter() - started, len(groups))
     review_groups = [
         build_ai_review_document(
             session,
@@ -218,6 +225,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         )
         for capture_run_id, posting_ids in sorted(groups.items())
     ]
+    _PERF_LOG.warning("review_payload_build_seconds=%.3f groups=%d", time.perf_counter() - started, len(review_groups))
     jobs: list[dict[str, object]] = []
     verified_items = 0
     for group in review_groups:
