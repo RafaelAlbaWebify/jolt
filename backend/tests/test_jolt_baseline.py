@@ -22,6 +22,13 @@ def test_read_only_baseline_records_counts_without_mutating_database(tmp_path: P
     assert report["read_only"] is True
     assert "do-not-export" not in str(report)
     assert report["database_filename"] == "sample.db"
+    assert report["sqlite_page_size_bytes"] > 0
+    assert report["sqlite_page_count"] > 0
+    assert report["sqlite_free_page_count"] >= 0
+    assert report["sqlite_estimated_free_bytes"] == (
+        report["sqlite_free_page_count"] * report["sqlite_page_size_bytes"]
+    )
+    assert report["sqlite_index_count"] >= 0
 
 
 def test_read_only_baseline_does_not_create_missing_database(tmp_path: Path) -> None:
