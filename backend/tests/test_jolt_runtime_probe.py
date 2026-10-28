@@ -67,3 +67,30 @@ def test_runtime_probe_redacts_responses_and_writes_one_zip(tmp_path: Path, monk
     assert "private-response-not-exported" not in payload
     assert state.is_file()
     assert all(url.startswith("http://127.0.0.1:") for url in calls)
+
+
+def test_performance_log_summary_exports_only_approved_stages(tmp_path: Path) -> None:
+    probe = _probe()
+    logs = tmp_path / ".jolt" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "backend.err.log").write_text(
+        "WARNING:jolt.performance:review_export_total_seconds=103.418 bytes=163986 "
+        "secret_job_url=https://example.com/private\\n"
+        "WARNING:jolt.performance:unified_exchange_section=market_insights seconds=40.125 "
+        "private_description=topsecret\\n",
+        encoding="utf-8",
+    )
+    report = probe._performance_trace(tmp_path)
+    assert report["state"] == "available"
+    assert len(report["entries"]) == 2
+    assert report["entries"][0] == {
+        "stage": "review_export_total_seconds",
+        "seconds": 103.418,
+    }
+    assert report["entries"][1] == {
+        "stage": "unified_exchange_section",
+        "section": "market_insights",
+        "seconds": 40.125,
+    }
+    assert "topsecret" not in str(report)
+    assert "example.com" not in str(report)
