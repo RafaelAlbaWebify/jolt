@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from functools import lru_cache
 import unicodedata
+from functools import lru_cache
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -501,7 +501,7 @@ def _minimum_level(segment: str, position: int) -> str:
 
 @lru_cache(maxsize=512)
 def _alias_pattern(alias: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<!\\w){re.escape(alias)}(?!\\w)", re.I)
+    return re.compile(rf"(?<!\w){re.escape(alias)}(?!\w)", re.I)
 
 
 def _language_mentions(segment: str) -> list[tuple[str, int, int]]:
