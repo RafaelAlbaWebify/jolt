@@ -24,6 +24,7 @@ class MarketPreparationAction(BaseModel):
 
 class MarketPreparationImportRequest(BaseModel):
     source: str = "chatgpt_market_package"
+    idempotency_key: str = Field(default="", max_length=160)
     summary: str = ""
     market_recommendations: list[MarketPreparationAction] = Field(default_factory=list)
     preparation_plan: list[MarketPreparationAction] = Field(default_factory=list)
@@ -35,6 +36,7 @@ class MarketPreparationImportRequest(BaseModel):
 
 class MarketPreparationImportRecord(BaseModel):
     id: str
+    idempotency_key: str = ""
     source: str
     summary: str
     imported_at: str
@@ -118,6 +120,7 @@ def import_market_preparation(
     actions = _actions_from_request(request)
     record = MarketPreparationImportRecord(
         id=str(uuid.uuid4()),
+        idempotency_key=request.idempotency_key,
         source=request.source,
         summary=request.summary,
         imported_at=datetime.now(UTC).isoformat(),
@@ -130,6 +133,24 @@ def import_market_preparation(
         records = [
             MarketPreparationImportRecord.model_validate(item) for item in payload["imports"]
         ]
+        if request.idempotency_key:
+            for previous in records:
+                if previous.idempotency_key != request.idempotency_key:
+                    continue
+                if (
+                    previous.source != request.source
+                    or previous.summary != request.summary
+                    or previous.actions != actions
+                    or previous.raw_payload != request.raw_payload
+                ):
+                    raise ValueError(
+                        "Conflicting market preparation replay for idempotency_key: "
+                        f"{request.idempotency_key}"
+                    )
+                return MarketPreparationImportResponse(
+                    imported_count=previous.action_count,
+                    latest_import=previous,
+                )
         records.append(record)
         _write_records(
             records,
