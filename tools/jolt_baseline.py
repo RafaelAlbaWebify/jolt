@@ -24,6 +24,12 @@ def collect(db_path: Path) -> dict[str, object]:
     try:
         connection.execute("PRAGMA query_only = ON")
         integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+        page_size = int(connection.execute("PRAGMA page_size").fetchone()[0])
+        page_count = int(connection.execute("PRAGMA page_count").fetchone()[0])
+        free_pages = int(connection.execute("PRAGMA freelist_count").fetchone()[0])
+        index_count = int(
+            connection.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='index'").fetchone()[0]
+        )
         tables = [
             row[0]
             for row in connection.execute(
@@ -52,6 +58,11 @@ def collect(db_path: Path) -> dict[str, object]:
         "database_filename": db_path.name,
         "database_bytes": db_path.stat().st_size,
         "database_integrity": integrity,
+        "sqlite_page_size_bytes": page_size,
+        "sqlite_page_count": page_count,
+        "sqlite_free_page_count": free_pages,
+        "sqlite_estimated_free_bytes": free_pages * page_size,
+        "sqlite_index_count": index_count,
         "schema_revisions": revision,
         "table_counts": counts,
         "table_count": len(tables),
