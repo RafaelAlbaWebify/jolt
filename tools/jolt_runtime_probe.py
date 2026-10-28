@@ -128,7 +128,7 @@ _TRACE_PATTERN = re.compile(
     r"=([a-z_]+|[0-9]+(?:\.[0-9]+)?)"
 )
 _TRACE_NUMBERS = re.compile(
-    r"\b(?:seconds|pending|groups|input_count|canonical_count|bytes )"
+    r"\b(?:seconds|pending|groups|input_count|canonical_count|bytes)"
     r"=([0-9]+(?:\.[0-9]+)?)"
 )
 
