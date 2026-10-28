@@ -101,9 +101,7 @@ def test_unified_update_requires_section_context_patch_at_top_level(tmp_path) ->
         session.close()
 
 
-def test_unified_bundle_prevalidates_all_groups_before_first_import(
-    tmp_path, monkeypatch
-) -> None:
+def test_unified_bundle_prevalidates_all_groups_before_first_import(tmp_path, monkeypatch) -> None:
     import jolt.unified_ai_work_package as unified
     from jolt.ai_review_import import AIReviewImportRequest
     from jolt.unified_ai_work_package import AIReviewBundleImportRequest
