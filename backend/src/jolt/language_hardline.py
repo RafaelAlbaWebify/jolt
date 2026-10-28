@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from functools import lru_cache
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from typing import Literal
 
 from jolt.job_search_preferences import JobSearchPreferences
