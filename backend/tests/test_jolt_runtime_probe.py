@@ -26,17 +26,17 @@ def test_local_url_rejects_non_loopback_and_credentials() -> None:
         probe._local_url("http://user:secret@localhost:8000")
 
 
-def test_runtime_probe_redacts_responses_and_writes_one_zip(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_runtime_probe_redacts_responses_and_writes_one_zip(tmp_path: Path, monkeypatch) -> None:
     probe = _probe()
     state = tmp_path / ".jolt" / "services.json"
     state.parent.mkdir()
     state.write_text(
-        json.dumps({
-            "backend_url": "http://127.0.0.1:8000",
-            "frontend_url": "http://127.0.0.1:5173",
-        }),
+        json.dumps(
+            {
+                "backend_url": "http://127.0.0.1:8000",
+                "frontend_url": "http://127.0.0.1:5173",
+            }
+        ),
         encoding="utf-8",
     )
     calls = []
@@ -44,13 +44,17 @@ def test_runtime_probe_redacts_responses_and_writes_one_zip(
     def request(url):
         calls.append(url)
         return {
-            "ok": True, "status": 200, "milliseconds": 20.0,
-            "bytes_read": 16, "secret": "private-response-not-exported",
+            "ok": True,
+            "status": 200,
+            "milliseconds": 20.0,
+            "bytes_read": 16,
+            "secret": "private-response-not-exported",
         }
 
     monkeypatch.setattr(probe, "_request", request)
     monkeypatch.setattr(
-        probe, "_browser",
+        probe,
+        "_browser",
         lambda url: {"state": "passed", "scope": "frontend_initial_navigation_only"},
     )
     output = tmp_path / "acceptance.zip"
