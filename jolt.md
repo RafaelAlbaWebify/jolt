@@ -1,5 +1,37 @@
 # JOLT — Operating Context
 
+## ACTIVE MODERNIZATION PROGRAM — 2026-10-28 (A → B → C)
+
+**Scope and precedence:** This is the active cross-module reliability/efficiency program, not a replacement for the controlled portal/candidacy roadmap or protected data rules above. Preserve historical handovers as dated evidence, not current runtime truth. Prioritize any real candidate applications already approved by the operator; do not block them for speculative refactoring.
+
+**Goal:** JOLT must capture once, account for every retained evidence item, serve each module independently, provide compact task-scoped exports to ChatGPT, safely import feedback, and retain only data that is safe to compact or remove. Reduce operator turns by batching related code, tests, docs and CI into one coherent PR per milestone where risk permits.
+
+### Deliveries and non-negotiable acceptance
+
+| Delivery | Scope | Acceptance gate | State |
+|---|---|---|---|
+| A — Baseline, integrity, processing inventory | Read-only diagnostics; storage/table/capture inventory; baseline sizes/durations; trace SQLite and JSON persistence, replay/failure behavior; processing-ledger design; remove confirmed N+1 query with parity tests | Repeatable baseline and provenance; zero mutation of live DB; real fail/replay tests using disposable fixtures; measured query counts before/after; ledger accounts for applicable/pending/processed/failed/not-applicable (if implemented) | IN PROGRESS — baseline first |
+| B — Independent workflows | Task-scoped Review / Market / Skills / Profile / Applications / Quality exchanges; self-contained three-stage review protocol/checkpoints, exact coverage and schema validation, safe import; preserve existing unified mode | Review package excludes unrelated exchanges; separate Market package and view refresh; 100% IDs accounted for; stale/replay guarded; tests prove isolation and import readback | NOT STARTED |
+| C — UI, lifecycle, release certification | Six principal views audit, stale-state fixes, redundant UI removal, retention dry-run, safe compaction, performance and operational diagnostics | E2E routes and UI with real state where feasible; no deletion of unprocessed/sole decision evidence; restore rehearsal; measurable before/after; operator Windows acceptance where required | NOT STARTED |
+
+**Implementation sequence and minimal-chat policy:**
+1. For A, collect read-only system facts first. Make no destructive migration, cleanup, reset, live browser modification, or unsolicited application. Confirm existing schema and source of truth before adding a processing ledger; do not confuse market observation ingestion with semantic analysis.
+2. Build fail/replay and protected-state regression tests against isolated SQLite/temp JSON paths; make imports preflight-validatable and idempotent. Current unified importer can commit SQLite per review and write JSON stores independently: do not claim atomicity until failure-injection tests prove safe behavior.
+3. Optimize observed query bottlenecks only after correctness parity (notably Review Inbox latest verified capture selection per posting); report SQL/query counts and timings for frozen fixture.
+4. In B separate **exports by task** while retaining backward-compatible unified export. Include source package ID, immutable identifiers/hashes, contract version, user-owned preferences, relevant candidate evidence, and matching review instructions. The stages Mensaje 1/2/3 are logical; allow resumable batches when corpus exceeds safe context. Do not export unrelated market/skills/application corpora merely to review jobs.
+5. Processing ledger must distinguish module applicability from completion; use source ID + content hash + processor version and event/outcome. Retention MUST be dry-run-first, protect unprocessed inputs and references needed for human decisions/applications; configurable windows only after audit and operator sign-off on live destructive actions.
+6. In C verify all six views and any shared UI, cross-view refresh, endpoint errors, accessibility, stale data, and expensive mounts. Capture actual browser/backend evidence; CI green is not live acceptance.
+7. Each delivery: inspect -> implement cohesive branch -> targeted tests + static checks -> PR exact-head CI -> merge if green/safe -> ONE combined optional local Windows read-only acceptance script/report, if necessary. Provide consolidated result rather than asking for per-file console commands.
+
+**Metrics/targets, NOT established achievements:** current AI export ~11.2 MB for 347 Review Inbox jobs (2026-10-28 upload; re-measure on fresh data); target Review-only ~2.5–4 MB **if zero review evidence loss**; current selected-capture loop can issue up to one query per pending posting; target one batched selection; 100% applicable records ledger-accounted; 0 duplicate review imports; 0 protected-state loss; no increase in required operator actions. Collect before/after wall time, query count, CPU/memory where available, bytes by section, data-retention candidates, import failure/retry evidence. No unmeasured speedup claims.
+
+**Confirmed audit signals to address:** unified builder eagerly invokes seven exchange builders; Market Insights frontend and Review Inbox both link to unified export/import; Market Insights has its own view and provenance observations; SQLite and JSON feedback/context/preparation stores are separate transaction domains; Workbench keeps hidden views mounted and duplicates DataTools placements; current Review Inbox selection loops per posting. All are source-level findings, not proved user-facing failures or timed benchmarks.
+
+**Operator report contract:** single redacted JSON artifact containing checkout/runtime SHA, schema version, database integrity, table/row/size overview, processing coverage by module when available, per-step timings, error evidence, and safe cleanup candidates. No secrets, browser profiles or raw vacancy descriptions in a diagnostics-only export. Never report live baseline from fixture or repository code.
+
+**Progress accounting:** Mark A/B/C complete only after their entire acceptance gate passes; record partial capabilities as delivered without inflating percentage. Update this section with verified commit, PR, CI and operator evidence. Next step: merge read-only baseline tool after CI, then implement integrity tests/ledger design within A.
+
+
 ## SOURCE AUDIT REGISTER — 2026-10-17
 - Durable component-by-component static audit: `docs/audits/component-register.md`; reviewed components, precise source findings, live-vs-static limitations and planned batches in `docs/audits/batches/`.
 - Baseline `main` 27ecd6944c9cf2216cbaa6bf8884dd126c7d9f29: **232 of 300 non-test register entries (77.33%; source-depth verification pending); 244 of 333 total register entries (73.27%) source-audited**, not 100% JOLT operability. Do not count partial reads/tests as reviewed. Reconcile inventory/denominator as modules change.
