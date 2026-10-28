@@ -232,3 +232,68 @@ def test_ai_review_export_template_has_work_demand_fields(tmp_path) -> None:
         assert template["commercial_pressure_evidence"] == []
     finally:
         session.close()
+
+def test_backfilled_apply_url_is_labeled_without_rewriting_source_artifact(tmp_path) -> None:
+    from sqlalchemy import text
+
+    session, capture, _posting, _raw_text = _seed_ai_review_capture(tmp_path)
+    try:
+        session.execute(
+            text(
+                "CREATE TABLE jolt_apply_backfill "
+                "(capture_item_id TEXT PRIMARY KEY, destination TEXT NOT NULL)"
+            )
+        )
+        destination = "https://careers.example.com/jobs/123"
+        session.execute(
+            text(
+                "INSERT INTO jolt_apply_backfill (capture_item_id, destination) "
+                "VALUES (:item_id, :destination)"
+            ),
+            {"item_id": "item-ai-1", "destination": destination},
+        )
+        session.commit()
+        payload = build_ai_review_json(session, capture_run_id=capture.id)
+        job = payload["jobs"][0]
+        assert job["outbound_application_url"] == destination
+        assert job["application_method"] == "external_apply_backfilled"
+        assert job["easy_apply_available"] is None
+        assert job["easy_apply_evidence"] == "unverified"
+    finally:
+        session.close()
+
+
+def test_original_easy_apply_observation_precedes_supplemental_url(tmp_path) -> None:
+    from sqlalchemy import text
+
+    from jolt.capture_artifacts import stage_capture_artifact
+
+    session, capture, _posting, _raw_text = _seed_ai_review_capture(tmp_path)
+    try:
+        stage_capture_artifact(
+            session,
+            capture_item_id="item-ai-1",
+            artifact_type="linkedin_live_item_json",
+            content_type="application/json",
+            raw_payload=json.dumps({"easy_apply_available": True}),
+        )
+        session.execute(
+            text(
+                "CREATE TABLE jolt_apply_backfill "
+                "(capture_item_id TEXT PRIMARY KEY, destination TEXT NOT NULL)"
+            )
+        )
+        session.execute(
+            text(
+                "INSERT INTO jolt_apply_backfill (capture_item_id, destination) "
+                "VALUES (:item_id, :destination)"
+            ),
+            {"item_id": "item-ai-1", "destination": "https://careers.example.com/jobs/123"},
+        )
+        session.commit()
+        payload = build_ai_review_json(session, capture_run_id=capture.id)
+        job = payload["jobs"][0]
+        assert job["application_method"] == "linkedin_easy_apply"
+        assert job["easy_apply_available"] is True
+    finally:
+        session.close()
