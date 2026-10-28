@@ -21,7 +21,7 @@ def test_read_only_baseline_records_counts_without_mutating_database(tmp_path: P
     assert report["table_counts"] == {"sample": 1}
     assert report["read_only"] is True
     assert "do-not-export" not in str(report)
-    assert "sample.db" == report["database_filename"]
+    assert report["database_filename"] == "sample.db"
 
 
 def test_read_only_baseline_does_not_create_missing_database(tmp_path: Path) -> None:
