@@ -59,3 +59,32 @@ def test_processing_snapshot_labels_missing_modules_as_unknown(tmp_path: Path) -
     assert coverage["market_missing_identities"] == 1
     assert coverage["review_coverage"].startswith("unknown:")
     assert coverage["other_modules"].startswith("unknown:")
+
+
+def test_operator_report_redacts_import_journal_identifiers(tmp_path: Path) -> None:
+    source = Path(__file__).resolve().parents[2] / "tools" / "jolt_operator_report.py"
+    spec = importlib.util.spec_from_file_location("jolt_operator_report", source)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    journal = tmp_path / "backend" / "data" / "unified_import_journal.json"
+    journal.parent.mkdir(parents=True)
+    journal.write_text(
+        json.dumps(
+            {
+                "private-package-id": {
+                    "state": "applying",
+                    "last_step": "market_insights",
+                    "digest": "secret-digest",
+                },
+                "another-package-id": {"state": "completed", "last_step": "complete"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    summary = module._journal_summary(tmp_path)
+    assert summary["requires_reconciliation"] == 1
+    assert summary["completed"] == 1
+    assert summary["incomplete_last_steps"] == ["market_insights"]
+    assert "private-package-id" not in str(summary)
+    assert "secret-digest" not in str(summary)
