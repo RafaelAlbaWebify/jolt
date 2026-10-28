@@ -99,3 +99,49 @@ def test_unified_update_requires_section_context_patch_at_top_level(tmp_path) ->
             import_unified_ai_update(session, update)
     finally:
         session.close()
+
+
+def test_unified_bundle_prevalidates_all_groups_before_first_import(
+    tmp_path, monkeypatch
+) -> None:
+    import jolt.unified_ai_work_package as unified
+    from jolt.ai_review_import import AIReviewImportRequest
+    from jolt.unified_ai_work_package import AIReviewBundleImportRequest
+
+    session = create_session_factory(f"sqlite:///{(tmp_path / 'jolt.db').as_posix()}")()
+    package = build_unified_ai_work_package(session)
+    requests = [
+        AIReviewImportRequest(
+            contract_type="jolt_ai_review",
+            contract_version="1.0",
+            capture_run_id=capture_id,
+            review_source="chatgpt_source_first",
+            review_version="v1",
+            reviewed_at=datetime.now(UTC),
+            jobs=[],
+        )
+        for capture_id in ("capture-valid", "capture-invalid")
+    ]
+    imported = []
+
+    def preflight(_session, request):
+        if request.capture_run_id == "capture-invalid":
+            raise ValueError("Invalid second group")
+
+    monkeypatch.setattr(unified, "_validate_capture_membership", preflight)
+    monkeypatch.setattr(
+        unified, "import_ai_review", lambda _session, request: imported.append(request)
+    )
+    update = UnifiedAIUpdate(
+        package_id=package.package_id,
+        source_context_version=package.context_version,
+        reviewed_at=datetime.now(UTC),
+        review_version="v1",
+        review_inbox=AIReviewBundleImportRequest(reviews=requests),
+    )
+    try:
+        with pytest.raises(ValueError, match="Invalid second group"):
+            import_unified_ai_update(session, update)
+        assert imported == []
+    finally:
+        session.close()
