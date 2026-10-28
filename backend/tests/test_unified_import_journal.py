@@ -25,15 +25,11 @@ def test_interrupted_multistore_import_blocks_unsafe_replay(tmp_path, monkeypatc
     with pytest.raises(ValueError, match="reconcile"):
         journal.begin(original, original.package_id)
     with pytest.raises(ValueError, match="Conflicting unified import replay"):
-        journal.begin(
-            ExampleUpdate(package_id="package-1", payload="changed"), "package-1"
-        )
+        journal.begin(ExampleUpdate(package_id="package-1", payload="changed"), "package-1")
     assert (tmp_path / "journal.json").read_bytes() == before
 
 
-def test_journal_write_interruption_preserves_previous_checkpoint(
-    tmp_path, monkeypatch
-) -> None:
+def test_journal_write_interruption_preserves_previous_checkpoint(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(journal, "_journal_path", lambda: tmp_path / "journal.json")
     update = ExampleUpdate(package_id="package-2", payload="stable")
     journal.begin(update, update.package_id)
