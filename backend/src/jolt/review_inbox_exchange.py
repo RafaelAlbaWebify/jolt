@@ -153,14 +153,29 @@ def enrich_review_inbox_document(document: dict[str, object]) -> dict[str, objec
 def build_review_inbox_exchange_json(session: Session) -> bytes:
     """Enrich the proven AI review batch with JOLT's durable reasoning context."""
 
+    started = time.perf_counter()
     document = json.loads(build_ai_review_json(session))
+    _PERF_LOG.warning(
+        "review_export_ai_payload_seconds=%.3f",
+        time.perf_counter() - started,
+    )
     enriched = enrich_review_inbox_document(document)
-    return json.dumps(
+    _PERF_LOG.warning(
+        "review_export_context_seconds=%.3f",
+        time.perf_counter() - started,
+    )
+    result = json.dumps(
         enriched,
         indent=2,
         ensure_ascii=False,
         sort_keys=True,
     ).encode("utf-8")
+    _PERF_LOG.warning(
+        "review_export_total_seconds=%.3f bytes=%d",
+        time.perf_counter() - started,
+        len(result),
+    )
+    return result
 
 
 def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
