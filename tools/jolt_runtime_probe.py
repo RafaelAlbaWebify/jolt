@@ -123,7 +123,7 @@ _TRACE_PATTERN = re.compile(
     r"(review_data_load_seconds|review_job_transform_seconds|"
     r"review_index_seconds|review_provenance_seconds|review_payload_build_seconds|"
     r"review_export_ai_payload_seconds|review_export_context_seconds|"
-    r"review_export_total_seconds|market_dedup_seconds|"
+    r"review_export_total_seconds|market_dedup_seconds|market_total_seconds|"
     r"market_build_pre_aggregation_seconds|unified_exchange_section)"
     r"=([a-z_]+|[0-9]+(?:\.[0-9]+)?)"
 )
