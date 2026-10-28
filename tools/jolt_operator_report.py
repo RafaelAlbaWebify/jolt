@@ -86,6 +86,85 @@ def _processing_snapshot(database: Path) -> dict[str, object]:
     }
 
 
+def _market_discrepancy_causes(database: Path) -> dict[str, object]:
+    """Classify unmatched market identities without revealing vacancy identifiers."""
+    started = time.perf_counter()
+    with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+        conn.execute("PRAGMA query_only = ON")
+        missing_rows = conn.execute(
+            """
+            SELECT c.detail_status, r.source, r.status, COUNT(*)
+            FROM (
+                SELECT DISTINCT capture_run_id, source_job_id, detail_status
+                FROM capture_items
+                WHERE detail_status = 'verified'
+                  AND posting_id IS NOT NULL
+                  AND source_document_id IS NOT NULL
+            ) AS c
+            LEFT JOIN market_intelligence_observations AS o
+              ON o.source_capture_run_id = c.capture_run_id
+             AND o.source_job_id = c.source_job_id
+            LEFT JOIN capture_runs AS r ON r.id = c.capture_run_id
+            WHERE o.id IS NULL
+            GROUP BY c.detail_status, r.source, r.status
+            """
+        ).fetchall()
+        unexpected_rows = conn.execute(
+            """
+            SELECT
+                CASE
+                  WHEN c.id IS NULL THEN 'no_capture_item'
+                  WHEN c.detail_status != 'verified' THEN 'not_verified'
+                  WHEN c.posting_id IS NULL THEN 'missing_posting_link'
+                  WHEN c.source_document_id IS NULL THEN 'missing_document_link'
+                  ELSE 'other'
+                END AS cause,
+                r.source,
+                r.status,
+                COUNT(*)
+            FROM market_intelligence_observations AS o
+            LEFT JOIN capture_items AS c
+              ON c.id = (
+                SELECT ci.id FROM capture_items AS ci
+                WHERE ci.capture_run_id = o.source_capture_run_id
+                  AND ci.source_job_id = o.source_job_id
+                ORDER BY (ci.detail_status = 'verified'
+                          AND ci.posting_id IS NOT NULL
+                          AND ci.source_document_id IS NOT NULL) DESC,
+                         ci.id DESC
+                LIMIT 1
+              )
+            LEFT JOIN capture_runs AS r ON r.id = o.source_capture_run_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM capture_items AS verified
+                WHERE verified.capture_run_id = o.source_capture_run_id
+                  AND verified.source_job_id = o.source_job_id
+                  AND verified.detail_status = 'verified'
+                  AND verified.posting_id IS NOT NULL
+                  AND verified.source_document_id IS NOT NULL
+            )
+            GROUP BY cause, r.source, r.status
+            """
+        ).fetchall()
+    return {
+        "missing_by_source_and_run_status": [
+            {"source": source or "unknown", "run_status": status or "unknown", "count": count}
+            for _detail, source, status, count in missing_rows
+        ],
+        "unexpected_by_reason_source_and_run_status": [
+            {
+                "reason": reason,
+                "source": source or "unknown",
+                "run_status": status or "unknown",
+                "count": count,
+            }
+            for reason, source, status, count in unexpected_rows
+        ],
+        "seconds": round(time.perf_counter() - started, 4),
+        "read_only": True,
+    }
+
+
 def _journal_summary(project_root: Path) -> dict[str, object]:
     """Summarize interrupted imports without exporting package IDs or payloads."""
     path = project_root / "backend" / "data" / "unified_import_journal.json"
@@ -125,6 +204,7 @@ def build_report(database: Path, project_root: Path) -> dict[str, object]:
         "browser_verified": False,
         "database": baseline,
         "processing": _processing_snapshot(database),
+        "market_discrepancy_causes": _market_discrepancy_causes(database),
         "import_recovery": _journal_summary(project_root),
         "limitations": [
             "No backend API or frontend checks have been executed",
