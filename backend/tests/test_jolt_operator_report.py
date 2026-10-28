@@ -52,9 +52,7 @@ def test_processing_snapshot_labels_missing_modules_as_unknown(tmp_path: Path) -
             "INSERT INTO capture_items VALUES (?, ?, 'verified', 'posting', 'source')",
             [("run-1", "job-1"), ("run-1", "job-2")],
         )
-        connection.execute(
-            "INSERT INTO market_intelligence_observations VALUES ('run-1', 'job-1')"
-        )
+        connection.execute("INSERT INTO market_intelligence_observations VALUES ('run-1', 'job-1')")
     coverage = module._processing_snapshot(database)
     assert coverage["market_verified_identities"] == 2
     assert coverage["market_observation_identities"] == 1
