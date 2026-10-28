@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 import subprocess
 import time
@@ -53,6 +54,13 @@ def _request(url: str) -> dict[str, object]:
                 "bytes_read": min(len(data), MAX_READ),
                 "truncated": too_large,
             }
+    except urllib.error.HTTPError as exc:
+        return {
+            "ok": False,
+            "status": exc.code,
+            "error_type": "HTTPError",
+            "milliseconds": round((time.perf_counter() - started) * 1000, 2),
+        }
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         return {
             "ok": False,
@@ -111,6 +119,49 @@ def _revision(root: Path) -> str | None:
         return None
 
 
+_TRACE_PATTERN = re.compile(
+    r"(review_data_load_seconds|review_job_transform_seconds|"
+    r"review_index_seconds|review_provenance_seconds|review_payload_build_seconds|"
+    r"review_export_ai_payload_seconds|review_export_context_seconds|"
+    r"review_export_total_seconds|market_dedup_seconds|market_total_seconds|"
+    r"market_build_pre_aggregation_seconds|unified_exchange_section)"
+    r"=([a-z_]+|[0-9]+(?:\.[0-9]+)?)"
+)
+_TRACE_NUMBERS = re.compile(
+    r"\b(?:seconds|pending|groups|input_count|canonical_count|bytes)"
+    r"=([0-9]+(?:\.[0-9]+)?)"
+)
+
+
+def _performance_trace(root: Path) -> dict[str, object]:
+    """Extract only numeric performance counters from local JOLT backend logs."""
+    log_dir = root / ".jolt" / "logs"
+    matches: list[dict[str, object]] = []
+    for filename in ("backend.err.log", "backend.out.log"):
+        path = log_dir / filename
+        if not path.is_file():
+            continue
+        # Tail only: bounded memory, no raw log lines are exported.
+        with path.open("rb") as stream:
+            stream.seek(0, 2)
+            stream.seek(max(0, stream.tell() - 1024 * 1024))
+            chunk = stream.read().decode("utf-8", errors="replace")
+        for line in chunk.splitlines():
+            found = _TRACE_PATTERN.search(line)
+            if found is None:
+                continue
+            entry: dict[str, object] = {"stage": found.group(1)}
+            if found.group(1) == "unified_exchange_section":
+                entry["section"] = found.group(2)
+            else:
+                entry["seconds"] = float(found.group(2))
+            values = _TRACE_NUMBERS.findall(line)
+            if values and "seconds" not in entry:
+                entry["seconds"] = float(values[0])
+            matches.append(entry)
+    return {"state": "available" if matches else "no_stage_traces", "entries": matches[-80:]}
+
+
 def run(root: Path, output: Path, samples: int) -> dict[str, object]:
     state_path = root / ".jolt" / "services.json"
     if not state_path.is_file():
@@ -151,6 +202,7 @@ def run(root: Path, output: Path, samples: int) -> dict[str, object]:
         "frontend_http": _safe_metrics(frontend_http),
         "api_benchmarks": routes,
         "browser": browser,
+        "performance_stages": _performance_trace(root),
         "limitations": [
             "Only GET requests were sent; no mutation or live capture was requested",
             "Initial page navigation does not prove all interactive workflows",

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
@@ -252,15 +254,24 @@ def build_unified_ai_work_package(
 ) -> UnifiedAIWorkPackage:
     context = build_global_context_snapshot()
     candidate_evidence = build_candidate_evidence_ledger(session)
-    exchanges = [
-        build_market_intelligence_exchange(session),
-        build_application_outcomes_exchange(session),
-        build_linkedin_profile_exchange(session),
-        build_skills_preparation_exchange(session),
-        build_professional_evidence_exchange(session),
-        build_search_preference_exchange(session),
-        build_data_quality_exchange(session),
-    ]
+    # Keep source order stable, but record which section accounts for slow exports.
+    exchanges = []
+    for section, builder in (
+        ("market_insights", build_market_intelligence_exchange),
+        ("applications", build_application_outcomes_exchange),
+        ("linkedin_profile", build_linkedin_profile_exchange),
+        ("skills_gaps", build_skills_preparation_exchange),
+        ("professional_evidence", build_professional_evidence_exchange),
+        ("search_preferences", build_search_preference_exchange),
+        ("data_quality", build_data_quality_exchange),
+    ):
+        section_started = time.perf_counter()
+        exchanges.append(builder(session))
+        logging.getLogger("jolt.performance").warning(
+            "unified_exchange_section=%s seconds=%.3f",
+            section,
+            time.perf_counter() - section_started,
+        )
     return UnifiedAIWorkPackage(
         package_id=str(uuid4()),
         generated_at=datetime.now(UTC),

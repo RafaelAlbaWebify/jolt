@@ -174,12 +174,17 @@ def group_semantic_duplicates[CandidateT: DuplicateCandidate](
     descriptions: dict[str, str],
 ) -> list[list[CandidateT]]:
     groups: list[list[CandidateT]] = []
+    # Duplicate matching requires identical normalized titles. Index groups by
+    # title so unrelated vacancies never enter expensive description comparisons.
+    by_title: dict[str, list[list[CandidateT]]] = {}
 
     for candidate in candidates:
+        title_key = normalize_duplicate_text(candidate.title)
+        eligible_groups = by_title.setdefault(title_key, [])
         matching_group = next(
             (
                 group
-                for group in groups
+                for group in eligible_groups
                 if any(
                     are_semantic_duplicates(
                         member,
@@ -193,7 +198,9 @@ def group_semantic_duplicates[CandidateT: DuplicateCandidate](
         )
 
         if matching_group is None:
-            groups.append([candidate])
+            matching_group = [candidate]
+            eligible_groups.append(matching_group)
+            groups.append(matching_group)
         else:
             matching_group.append(candidate)
 

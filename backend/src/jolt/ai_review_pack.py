@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
+import time
 from datetime import datetime
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -29,6 +31,7 @@ from jolt.preference_aware_evaluation import sanitize_capture_text
 
 PACK_VERSION = "1.0"
 REVIEW_CONTRACT_VERSION = "1.2"
+_PERF_LOG = logging.getLogger("jolt.performance")
 
 
 def _json_bytes(value: object) -> bytes:
@@ -103,6 +106,7 @@ def _build_ai_review_payloads(
     capture_run_id: str | None = None,
     posting_ids: set[str] | None = None,
 ) -> dict[str, object]:
+    started = time.perf_counter()
     generated_at = datetime.now().astimezone().isoformat()
     capture = _capture_for_export(session, capture_run_id)
 
@@ -249,6 +253,12 @@ def _build_ai_review_payloads(
         # Existing databases and non-SQLite test fixtures remain unaffected.
         backfill_application_by_item = {}
 
+    _PERF_LOG.warning(
+        "review_data_load_seconds=%.3f items=%d",
+        time.perf_counter() - started,
+        len(items),
+    )
+    job_build_started = time.perf_counter()
     jobs_payload: list[dict[str, object]] = []
     for item in items:
         posting = posting_by_id.get(item.posting_id) if item.posting_id is not None else None
@@ -263,12 +273,13 @@ def _build_ai_review_payloads(
         description = posting.description if posting is not None else ""
         source_raw_text = source.raw_text if source is not None else ""
         evidence_text = source_raw_text or description
+        cleaned_evidence = sanitize_capture_text(evidence_text)
         location_signals = analyze_location_evidence(
             location=location,
             source_text=evidence_text,
         )
         language_signals = analyze_language_evidence(
-            source_text=sanitize_capture_text(evidence_text),
+            source_text=cleaned_evidence,
             preferences=preferences,
         )
 
@@ -326,7 +337,7 @@ def _build_ai_review_payloads(
                 ),
                 "preanalysis": build_job_preanalysis(
                     title=title,
-                    description=sanitize_capture_text(evidence_text),
+                    description=cleaned_evidence,
                     location=location,
                     location_evidence=location_signals,
                     language_evidence=language_signals,
@@ -340,6 +351,11 @@ def _build_ai_review_payloads(
             }
         )
 
+    _PERF_LOG.warning(
+        "review_job_transform_seconds=%.3f jobs=%d",
+        time.perf_counter() - job_build_started,
+        len(jobs_payload),
+    )
     response_template = {
         "contract_type": "jolt_ai_review",
         "contract_version": REVIEW_CONTRACT_VERSION,
