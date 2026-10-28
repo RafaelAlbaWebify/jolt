@@ -990,7 +990,7 @@ def build_market_intelligence(
         "market_build_pre_aggregation_seconds=%.3f",
         time.perf_counter() - perf_start,
     )
-    return {
+    result = {
         "filters": {
             "timeframe": timeframe,
             "source_scope": source_scope,
@@ -1027,3 +1027,9 @@ def build_market_intelligence(
             "superseded raw capture data is purged."
         ),
     }
+    _PERF_LOG.warning(
+        "market_total_seconds=%.3f canonical_count=%d",
+        time.perf_counter() - perf_start,
+        len(postings),
+    )
+    return result
