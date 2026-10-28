@@ -207,6 +207,37 @@ def _journal_summary(project_root: Path) -> dict[str, object]:
     }
 
 
+def _recovery_sidecars(project_root: Path) -> dict[str, object]:
+    """Report recoverability signals without loading or exposing personal content."""
+    names = (
+        "unified_import_journal.json",
+        "ai_exchange_feedback.json",
+        "market_preparation_imports.json",
+    )
+    data_dir = project_root / "backend" / "data"
+    evidence: dict[str, object] = {}
+    for name in names:
+        path = data_dir / name
+        if not path.exists():
+            evidence[name] = {"state": "absent"}
+            continue
+        try:
+            with path.open("r", encoding="utf-8") as stream:
+                parsed = json.load(stream)
+            evidence[name] = {
+                "state": "readable" if isinstance(parsed, (dict, list)) else "unexpected_shape",
+                "bytes": path.stat().st_size,
+            }
+        except (OSError, ValueError, UnicodeError):
+            evidence[name] = {"state": "unreadable"}
+    return {
+        "sidecars": evidence,
+        "reconciliation_policy": "fail_closed_manual_review",
+        "automatic_restore_permitted": False,
+        "cross_store_atomicity_verified": False,
+    }
+
+
 def build_report(database: Path, project_root: Path) -> dict[str, object]:
     baseline = _baseline_module().collect(database)
     return {
@@ -221,6 +252,7 @@ def build_report(database: Path, project_root: Path) -> dict[str, object]:
         "processing": _processing_snapshot(database),
         "market_discrepancy_causes": _market_discrepancy_causes(database),
         "import_recovery": _journal_summary(project_root),
+        "recovery_sidecars": _recovery_sidecars(project_root),
         "limitations": [
             "No backend API or frontend checks have been executed",
             "No capture text, application contents, identities or logs are included",
