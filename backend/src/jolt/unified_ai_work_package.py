@@ -60,6 +60,7 @@ from jolt.search_preference_exchange import (
     build_search_preference_exchange,
     import_search_preference_exchange,
 )
+from jolt import unified_import_journal
 from jolt.skills_preparation_exchange import (
     build_skills_preparation_exchange,
     import_skills_preparation_exchange,
@@ -434,11 +435,19 @@ def import_unified_ai_update(
     if candidate_summary is not None:
         validate_candidate_evidence_refs(session, candidate_summary)
 
+    # Multi-store updates are guarded by a durable journal; failed replays require
+    # reconciliation rather than blindly repeating non-transactional sidecar writes.
+    journal_enabled = bool(update.exchanges) and bool(update.review_inbox or update.context_patch)
+    if journal_enabled:
+        unified_import_journal.begin(update, update.package_id)
+
     section_results: dict[str, Any] = {}
     imported_sections: list[str] = []
     review_inbox_imported = False
 
     if update.review_inbox is not None:
+        if journal_enabled:
+            unified_import_journal.checkpoint(update.package_id, "review_inbox", "applying")
         if isinstance(update.review_inbox, AIReviewBundleImportRequest):
             # Preflight every capture before the first per-capture importer can commit.
             # This avoids partially applying a bundle when a later capture is invalid.
@@ -483,17 +492,27 @@ def import_unified_ai_update(
             review_result = import_ai_review(session, update.review_inbox)
             section_results["review_inbox"] = review_result.model_dump(mode="json")
         review_inbox_imported = True
+        if journal_enabled:
+            unified_import_journal.checkpoint(update.package_id, "review_inbox", "applied")
 
     for output in update.exchanges:
         section = output.scope.section
+        if journal_enabled:
+            unified_import_journal.checkpoint(update.package_id, section, "applying")
         result = _dispatch_section(session, output)
         if hasattr(result, "model_dump"):
             section_results[section] = result.model_dump(mode="json")
         else:
             section_results[section] = result
         imported_sections.append(section)
+        if journal_enabled:
+            unified_import_journal.checkpoint(update.package_id, section, "applied")
 
+    if journal_enabled:
+        unified_import_journal.checkpoint(update.package_id, "context", "applying")
     context = _apply_unified_context_patch(update)
+    if journal_enabled:
+        unified_import_journal.checkpoint(update.package_id, "complete", "completed")
     return UnifiedAIImportResponse(
         package_id=update.package_id,
         imported_sections=imported_sections,
