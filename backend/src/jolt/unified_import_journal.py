@@ -3,6 +3,7 @@
 The journal detects interrupted writes. It deliberately does not claim atomicity
 between SQLite and JSON sidecars, and blocks unsafe automatic replay.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -54,7 +55,9 @@ def begin(update: BaseModel, package_id: str) -> None:
         previous = items.get(package_id)
         if previous is not None:
             if previous["digest"] != digest:
-                raise ValueError("Conflicting unified import replay: package ID has different content")
+                raise ValueError(
+                    "Conflicting unified import replay: package ID has different content"
+                )
             raise ValueError(
                 "Unified import previously attempted; inspect journal and reconcile "
                 "before replaying (cross-store automatic recovery is not certified)"
