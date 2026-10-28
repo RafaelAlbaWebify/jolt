@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import statistics
 import subprocess
 import time
@@ -22,7 +21,7 @@ API_ROUTES = {
     "health": "/api/health",
     "opportunities": "/api/opportunity-index",
     "market_insights": "/api/market-intelligence",
-    "review_inbox": "/api/review-inbox/export",
+    "review_inbox": "/api/exports/review-inbox-ai-exchange",
     "ai_export": "/api/ai-work-package/export",
 }
 MAX_READ = 40 * 1024 * 1024
