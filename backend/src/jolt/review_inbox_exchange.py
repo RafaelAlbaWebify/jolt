@@ -172,7 +172,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         for item in list_ai_review_opportunity_index(session)
         if item.ai_review_status == "awaiting_ai_review"
     }
-    _PERF_LOG.warning("review_index_seconds=%.3f pending=%d", time.perf_counter() - started, len(pending_posting_ids))
+    _PERF_LOG.warning(\n        "review_index_seconds=%.3f pending=%d",\n        time.perf_counter() - started,\n        len(pending_posting_ids),\n    )\n    stage_start = time.perf_counter()
     if not pending_posting_ids:
         raise ValueError("No pending Review Inbox jobs exist to export for AI review.")
 
@@ -216,7 +216,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
             "Pending Review Inbox jobs lack reviewable capture provenance: " + ", ".join(unresolved)
         )
 
-    _PERF_LOG.warning("review_provenance_seconds=%.3f groups=%d", time.perf_counter() - started, len(groups))
+    _PERF_LOG.warning(\n        "review_provenance_seconds=%.3f groups=%d",\n        time.perf_counter() - stage_start,\n        len(groups),\n    )\n    stage_start = time.perf_counter()
     review_groups = [
         build_ai_review_document(
             session,
@@ -225,7 +225,7 @@ def build_current_review_inbox_bundle(session: Session) -> dict[str, object]:
         )
         for capture_run_id, posting_ids in sorted(groups.items())
     ]
-    _PERF_LOG.warning("review_payload_build_seconds=%.3f groups=%d", time.perf_counter() - started, len(review_groups))
+    _PERF_LOG.warning(\n        "review_payload_build_seconds=%.3f groups=%d",\n        time.perf_counter() - stage_start,\n        len(review_groups),\n    )
     jobs: list[dict[str, object]] = []
     verified_items = 0
     for group in review_groups:
