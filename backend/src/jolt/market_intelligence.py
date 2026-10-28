@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -18,6 +20,8 @@ from jolt.database import (
 )
 from jolt.semantic_duplicates import group_semantic_duplicates
 from jolt.strategy_runtime import ENGINE_VERSION
+
+_PERF_LOG = logging.getLogger("jolt.performance")
 
 _REQUIRED_SKILL_MARKERS = (
     "requirements:",
@@ -870,6 +874,7 @@ def build_market_intelligence(
     timeframe: str = "all",
     source_scope: str = "all",
 ) -> dict[str, object]:
+    perf_start = time.perf_counter()
     captured_postings, captured_evaluations = _durable_capture_market_records(session)
 
     manual_postings = _manual_market_postings(session)
@@ -910,9 +915,16 @@ def build_market_intelligence(
         if posting_id in timeframe_ids
     }
 
+    dedup_start = time.perf_counter()
     postings, duplicate_groups = _deduplicate_market_postings(
         timeframe_records,
         timeframe_evaluations,
+    )
+    _PERF_LOG.info(
+        "market_dedup_seconds=%.3f input_count=%d canonical_count=%d",
+        time.perf_counter() - dedup_start,
+        len(timeframe_records),
+        len(postings),
     )
     canonical_ids = {posting.id for posting in postings}
     evaluations = {
@@ -965,6 +977,10 @@ def build_market_intelligence(
             outside_postings.append(posting)
             outside_titles[posting.title] += 1
 
+    _PERF_LOG.info(
+        "market_build_pre_aggregation_seconds=%.3f",
+        time.perf_counter() - perf_start,
+    )
     return {
         "filters": {
             "timeframe": timeframe,
