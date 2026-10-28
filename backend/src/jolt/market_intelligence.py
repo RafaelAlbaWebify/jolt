@@ -18,7 +18,8 @@ from jolt.database import (
     Posting,
     SourceDocument,
 )
-from jolt.semantic_duplicates import group_semantic_duplicates
+from jolt.semantic_duplicates import canonical_sort_key
+from jolt.url_identity import canonicalize_source_url
 from jolt.strategy_runtime import ENGINE_VERSION
 
 _PERF_LOG = logging.getLogger("jolt.performance")
@@ -216,6 +217,8 @@ class _DurableMarketPosting:
     location: str
     description: str
     created_at: datetime
+    identity_key: str = ""
+    canonical_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -659,7 +662,6 @@ def _deduplicate_market_postings(
     evaluations: dict[str, MarketEvaluation],
 ) -> tuple[list[MarketPosting], list[dict[str, object]]]:
     posting_by_id = {posting.id: posting for posting in postings}
-    descriptions = {posting.id: posting.description or "" for posting in postings}
 
     candidates: list[_MarketDuplicateCandidate] = []
     for posting in postings:
@@ -677,10 +679,26 @@ def _deduplicate_market_postings(
             )
         )
 
-    groups = group_semantic_duplicates(
-        candidates,
-        descriptions=descriptions,
-    )
+    # Identity-first aggregation: same persisted identity or canonical URL.
+    # Descriptive similarity must never merge distinct requisitions.
+    groups: list[list[_MarketDuplicateCandidate]] = []
+    by_identity: dict[str, list[_MarketDuplicateCandidate]] = {}
+    for posting, candidate in zip(postings, candidates, strict=True):
+        identity = getattr(posting, "identity_key", "") or ""
+        url = canonicalize_source_url(getattr(posting, "canonical_url", "") or "")
+        # Prefer canonical URL when present: it bridges capture and manual intake.
+        # Do not use opaque observation IDs as vacancy identities.
+        key = f"url:{url}" if url else f"identity:{identity}" if identity else ""
+        if key and key in by_identity:
+            by_identity[key].append(candidate)
+        else:
+            group = [candidate]
+            groups.append(group)
+            if key:
+                by_identity[key] = group
+
+    for group in groups:
+        group.sort(key=canonical_sort_key)
 
     canonical_postings: list[MarketPosting] = []
     duplicate_groups: list[dict[str, object]] = []
@@ -861,6 +879,8 @@ def _durable_capture_market_records(
             location=observation.location,
             description=observation.description,
             created_at=observation.captured_at,
+            identity_key=observation.posting_identity_key,
+            canonical_url=observation.source_url,
         )
         postings.append(posting)
 
