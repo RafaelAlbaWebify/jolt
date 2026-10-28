@@ -284,6 +284,11 @@ def _build_ai_review_payloads(
                     if observed_method_by_item.get(item.id) is True
                     else "external_apply"
                     if observed_method_by_item.get(item.id) is False
+                    else "external_apply_backfilled"
+                    if (
+                        item.id in backfill_application_by_item
+                        and not outbound_application_by_item.get(item.id)
+                    )
                     else "unknown"
                 ),
                 "easy_apply_available": observed_method_by_item.get(item.id),
