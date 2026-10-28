@@ -260,7 +260,13 @@ def test_current_bundle_uses_one_ranked_provenance_lookup(tmp_path, monkeypatch)
     monkeypatch.setattr(
         exchange,
         "list_ai_review_opportunity_index",
-        lambda _session: [type("Pending", (), {"posting_id": posting.id, "ai_review_status": "awaiting_ai_review"})()],
+        lambda _session: [
+            type(
+                "Pending",
+                (),
+                {"posting_id": posting.id, "ai_review_status": "awaiting_ai_review"},
+            )()
+        ],
     )
     statements = []
 
