@@ -19,8 +19,8 @@ from jolt.database import (
     SourceDocument,
 )
 from jolt.semantic_duplicates import canonical_sort_key
-from jolt.url_identity import canonicalize_source_url
 from jolt.strategy_runtime import ENGINE_VERSION
+from jolt.url_identity import canonicalize_source_url
 
 _PERF_LOG = logging.getLogger("jolt.performance")
 
