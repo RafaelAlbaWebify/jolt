@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from zipfile import ZipFile
 
-from jolt.ai_review_pack import build_ai_review_json, build_ai_review_pack
+from jolt.ai_review_pack import _build_ai_review_payloads, build_ai_review_json, build_ai_review_pack
 from jolt.database import (
     CaptureItem,
     CapturePage,
@@ -253,7 +253,7 @@ def test_backfilled_apply_url_is_labeled_without_rewriting_source_artifact(tmp_p
             {"item_id": "item-ai-1", "destination": destination},
         )
         session.commit()
-        payload = build_ai_review_json(session, capture_run_id=capture.id)
+        payload = _build_ai_review_payloads(session, capture_run_id=capture.id)
         job = payload["jobs"][0]
         assert job["outbound_application_url"] == destination
         assert job["application_method"] == "external_apply_backfilled"
@@ -291,7 +291,7 @@ def test_original_easy_apply_observation_precedes_supplemental_url(tmp_path) -> 
             {"item_id": "item-ai-1", "destination": "https://careers.example.com/jobs/123"},
         )
         session.commit()
-        payload = build_ai_review_json(session, capture_run_id=capture.id)
+        payload = _build_ai_review_payloads(session, capture_run_id=capture.id)
         job = payload["jobs"][0]
         assert job["application_method"] == "linkedin_easy_apply"
         assert job["easy_apply_available"] is True
