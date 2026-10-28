@@ -91,6 +91,21 @@ def _market_discrepancy_causes(database: Path) -> dict[str, object]:
     started = time.perf_counter()
     with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
         conn.execute("PRAGMA query_only = ON")
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        if not {
+            "capture_runs", "capture_items", "market_intelligence_observations"
+        }.issubset(tables):
+            return {
+                "state": "unknown",
+                "reason": "Required capture/market tables not present in this schema",
+                "missing_by_source_and_run_status": [],
+                "unexpected_by_reason_source_and_run_status": [],
+                "seconds": round(time.perf_counter() - started, 4),
+                "read_only": True,
+            }
         missing_rows = conn.execute(
             """
             SELECT c.detail_status, r.source, r.status, COUNT(*)
