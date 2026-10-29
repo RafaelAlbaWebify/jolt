@@ -78,13 +78,12 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
     @router.post("/api/ai-work-package/official-evidence/refresh")
     def refresh_official_evidence(
         discovery_batch_id: str | None = None,
-        max_jobs: int = 10,
         session: Session = session_dependency,
     ) -> dict[str, object]:
         """Operator-initiated, bounded source gathering before Export AI."""
         try:
             package = build_unified_ai_work_package(session, discovery_batch_id=discovery_batch_id)
-            return capture_official_candidates(session, package.review_inbox, max_jobs=max_jobs)
+            return capture_official_candidates(session, package.review_inbox)
         except (ValueError, JoltNotFoundError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 

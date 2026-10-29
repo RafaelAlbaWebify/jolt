@@ -154,7 +154,7 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
     setEnrichNotice("");
     try {
       const response = await fetch(
-        `${apiBase}/api/ai-work-package/official-evidence/refresh?max_jobs=10`,
+        `${apiBase}/api/ai-work-package/official-evidence/refresh`,
         { method: "POST" },
       );
       if (!response.ok) {
@@ -170,9 +170,11 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
       };
       const captured = result.results.filter((item) =>
         item.status === "captured_identity_unverified").length;
+      const failedOrBlocked = result.results.length - captured;
       setEnrichNotice(
-        `Official source preflight: ${captured} page(s) captured; ${result.attempted} attempted; ${result.cached_fresh} fresh cached. ` +
-        `Candidate links remaining/skipped: ${result.remaining_or_skipped}. ` +
+        `Official source preflight: ${captured} page(s) captured; ${result.attempted} attempted; ` +
+        `${result.cached_fresh} fresh cached; ${failedOrBlocked} failed or blocked. ` +
+        `${result.remaining_or_skipped} candidate link(s) not attempted. ` +
         "Captured ATS text still requires offer-identity and eligibility review.",
       );
     } catch (caught) {
@@ -208,7 +210,7 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
               disabled={enriching || importing}
               onClick={() => { void enrichOfficialEvidence(); }}
             >
-              {enriching ? "Collecting ATS evidence…" : "Enrich official sources (10)"}
+              {enriching ? "Capturing candidate ATS pages…" : "Capture all candidate ATS pages"}
             </button>
             <label className="secondary">
               Import reviewed update
