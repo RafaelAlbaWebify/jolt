@@ -159,6 +159,8 @@ def test_ai_review_index_ignores_python_classifier_scores(
             )
         )
 
+        session.flush()
+
         application_url_payload = json.dumps(
             {
                 "easy_apply_available": False,
