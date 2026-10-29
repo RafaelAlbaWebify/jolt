@@ -19,7 +19,7 @@
 
 ### Still outstanding — do not claim full workflow separation
 
-- **Market Insights strategic export is NOT independent yet:** its Download intelligence package link still targets `/api/ai-work-package/export`, which builds the heavy unified package.
+- **Market Insights strategic export:** a compact independent export is implemented on this candidate branch; acceptance remains pending CI/merge and real payload-size measurements. The legacy unified export remains for compatibility.
 - **Market Insights strategic import is NOT independent yet:** it still uses `/api/ai-work-package/import`; `/api/ai-market/export` and `/api/ai-market/import` are legacy deprecated endpoints, not the new target flow.
 - Strategic panels such as market conclusions, skill gaps, profile actions and recommendations still require ChatGPT-generated feedback. Do not imply those panels are automatically populated by the local metrics endpoint.
 - New UI metrics and earlier market view provenance use different source/aggregation concepts: clearly distinguish canonical unique roles, raw observations and evaluated observations. Avoid misleading claims of 1:1 equivalence.
