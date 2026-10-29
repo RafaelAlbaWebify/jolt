@@ -357,6 +357,35 @@ def build_unified_ai_work_package(
     )
 
 
+def build_review_only_work_package_json(session: Session) -> bytes:
+    """Only the Review Inbox workload, with the existing unified import contract."""
+    context = build_global_context_snapshot()
+    candidate_evidence = build_candidate_evidence_ledger(session)
+    review = attach_captured_official_sources(
+        session,
+        attach_preflight(
+            enrich_review_inbox_with_dossiers(
+                _review_inbox_payload(session),
+                candidate_evidence,
+            )
+        ),
+    )
+    package = UnifiedAIWorkPackage(
+        package_id=str(uuid4()),
+        generated_at=datetime.now(UTC),
+        context_version=global_context_version(context),
+        global_context=context,
+        candidate_evidence=candidate_evidence,
+        review_inbox=review,
+        exchanges=[],
+        instructions={
+            "workflow": "Review Inbox classification only. Return a jolt_ai_work_package_update with review_inbox and no unrelated exchanges.",
+            "three_message_review": build_review_protocol(),
+        },
+    )
+    return package.model_dump_json(indent=2).encode("utf-8")
+
+
 def build_unified_ai_work_package_json(
     session: Session,
     *,

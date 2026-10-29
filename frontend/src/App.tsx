@@ -768,9 +768,9 @@ export function App({
               <>
                 <a
                   className="primary-link"
-                  href={`${API_BASE}/api/ai-work-package/export`}
-                  download="JOLT_AI_WORK_PACKAGE.json"
-                  title="Export all currently pending Review Inbox jobs across eligible captures, together with other AI intelligence sections. This is a unified export."
+                  href={`${API_BASE}/api/ai-work-package/review-export`}
+                  download="JOLT_REVIEW_ONLY.json"
+                  title="Export pending Review Inbox jobs for classification without unrelated intelligence sections."
                 >
                   Export AI review ({awaitingAIReviewCount})
                 </a>
