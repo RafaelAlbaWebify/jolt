@@ -12,6 +12,7 @@ from jolt.official_source_capture import capture_official_candidates
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
     build_unified_ai_work_package,
+    build_review_only_work_package_json,
     build_unified_ai_work_package_json,
     import_unified_ai_update,
 )
@@ -44,6 +45,23 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
             BytesIO(content),
             media_type="application/json",
             headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    @router.get("/api/ai-work-package/review-export")
+    def export_review_only(
+        session: Session = session_dependency,
+    ) -> StreamingResponse:
+        """Review-only package with the existing unified import contract."""
+        try:
+            content = build_review_only_work_package_json(session)
+        except (ValueError, JoltNotFoundError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": "attachment; filename=JOLT_REVIEW_ONLY.json"
+            },
         )
 
     @router.post("/api/ai-work-package/official-evidence/refresh")
