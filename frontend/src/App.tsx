@@ -348,6 +348,22 @@ export function App({
   const [error, setError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
   const [capturingOfficialSources, setCapturingOfficialSources] = useState(false);
+  const [officialSourceReport, setOfficialSourceReport] = useState<{
+    candidate_links: number;
+    attempted: number;
+    cached_fresh: number;
+    remaining_or_skipped: number;
+    provider_searches?: number;
+    provider_statuses?: Record<string, number>;
+    results: Array<{
+      posting_id?: string;
+      url?: string;
+      status: string;
+      detail?: string;
+      http_status?: string;
+      captured_at?: string;
+    }>;
+  } | null>(null);
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const aiReviewImportRef = useRef<HTMLInputElement | null>(null);
@@ -703,6 +719,7 @@ export function App({
     setCapturingOfficialSources(true);
     setError("");
     setWorkflowNotice("");
+    setOfficialSourceReport(null);
     try {
       const response = await fetch(
         `${API_BASE}/api/ai-work-package/official-evidence/refresh`,
@@ -711,17 +728,14 @@ export function App({
       if (!response.ok) {
         throw await errorFromResponse(response, "Official source enrichment failed.");
       }
-      const result = (await response.json()) as {
-        candidate_links: number;
-        attempted: number;
-        cached_fresh: number;
-        remaining_or_skipped: number;
-        results: Array<{ status: string }>;
-      };
+      const result = (await response.json()) as NonNullable<typeof officialSourceReport>;
       const captured = result.results.filter(
         (item) => item.status === "captured_identity_unverified",
       ).length;
-      const failedOrBlocked = result.results.length - captured;
+      const failedOrBlocked = result.results.filter(
+        (item) => item.status !== "captured_identity_unverified" && item.status !== "cached_fresh",
+      ).length;
+      setOfficialSourceReport(result);
       setWorkflowNotice(
         `Official sources: ${captured} page(s) captured; ${result.attempted} attempted; ` +
         `${result.cached_fresh} fresh cached; ${failedOrBlocked} failed or blocked; ` +
@@ -780,6 +794,53 @@ export function App({
         <p className="application-move-notice" role="status">
           {workflowNotice}
         </p>
+      )}
+      {officialSourceReport && (
+        <section className="panel" aria-labelledby="official-source-report-heading">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Capture diagnostics</p>
+              <h2 id="official-source-report-heading">Official source results</h2>
+              <p>
+                {officialSourceReport.candidate_links} candidate link(s):{" "}
+                {officialSourceReport.attempted} attempted, {officialSourceReport.cached_fresh} served from
+                fresh cache, and {officialSourceReport.remaining_or_skipped} not attempted.
+              </p>
+              <p>
+                Provider searches: {officialSourceReport.provider_searches ?? 0}.{" "}
+                {Object.entries(officialSourceReport.provider_statuses ?? {}).length
+                  ? Object.entries(officialSourceReport.provider_statuses ?? {})
+                      .map(([status, count]) => `${status}: ${count}`)
+                      .join(" · ")
+                  : "No provider search status was returned."}
+              </p>
+            </div>
+          </div>
+          {officialSourceReport.results.length > 0 ? (
+            <details open>
+              <summary>Show per-link outcomes ({officialSourceReport.results.length})</summary>
+              <ol>
+                {officialSourceReport.results.map((item, index) => (
+                  <li key={`${item.posting_id ?? "unknown"}-${item.url ?? "no-url"}-${index}`}>
+                    <strong>{item.status.replaceAll("_", " ")}</strong>
+                    {item.posting_id && <>{" · "}Posting {item.posting_id}</>}
+                    {item.http_status && <> · HTTP {item.http_status}</>}
+                    {item.detail && <> · {item.detail}</>}
+                    {item.captured_at && <> · Cached at {new Date(item.captured_at).toLocaleString()}</>}
+                    {item.url && (
+                      <>
+                        <br />
+                        <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          ) : (
+            <p>No individual link outcomes were returned.</p>
+          )}
+        </section>
       )}
       {intake && (
         <section className="panel result">
