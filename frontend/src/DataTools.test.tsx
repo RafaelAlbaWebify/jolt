@@ -134,7 +134,7 @@ describe("DataTools", () => {
   });
 
 
-  it("lets the operator collect bounded official ATS evidence before exporting", async () => {
+  it("lets the operator capture all discovered ATS pages before exporting", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       new Response(JSON.stringify({
         candidate_links: 5, attempted: 3, cached_fresh: 2,
@@ -144,10 +144,10 @@ describe("DataTools", () => {
     );
     render(<DataTools apiBase="http://127.0.0.1:8000" advancedOnly />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Enrich official sources (10)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Capture all candidate ATS pages" }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "http://127.0.0.1:8000/api/ai-work-package/official-evidence/refresh?max_jobs=10",
+        "http://127.0.0.1:8000/api/ai-work-package/official-evidence/refresh",
         expect.objectContaining({ method: "POST" }),
       ),
     );
