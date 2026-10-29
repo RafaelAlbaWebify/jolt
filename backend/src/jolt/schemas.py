@@ -153,6 +153,7 @@ class IndeedLiveCaptureItemRequest(BaseModel):
     description: str = ""
     identity_verified: bool
     verification_reason: str = ""
+    application_url: str = ""
 
     @field_validator("source_job_id")
     @classmethod
