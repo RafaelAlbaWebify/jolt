@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from jolt.ai_exchange_contract import AIExchangeInput, AIExchangeOutput
+from jolt.market_intelligence import build_market_intelligence
 from jolt.market_intelligence_exchange import (
     MarketIntelligenceExchangeImportResponse,
     build_market_intelligence_exchange,
@@ -25,6 +26,19 @@ def build_market_intelligence_exchange_router(get_session: SessionProvider) -> A
         session: Session = session_dependency,
     ) -> MarketIntelligenceView:
         return build_market_intelligence_view(session)
+
+    @router.get("/automatic")
+    def automatic_market_indicators(
+        session: Session = session_dependency,
+        timeframe: str = "all",
+        source_scope: str = "all",
+    ) -> dict[str, object]:
+        """Calculate local market indicators without any ChatGPT import."""
+        if timeframe not in {"all", "last_7_days", "last_30_days"}:
+            raise HTTPException(status_code=422, detail="Invalid market timeframe")
+        if source_scope not in {"all", "capture_batches", "manual_intake"}:
+            raise HTTPException(status_code=422, detail="Invalid market source scope")
+        return build_market_intelligence(session, timeframe=timeframe, source_scope=source_scope)
 
     @router.get("/export", response_model=AIExchangeInput, deprecated=True)
     def export_market_intelligence(
