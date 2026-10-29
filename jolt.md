@@ -1,5 +1,11 @@
 # JOLT — Operating Context
 
+## CURRENT FOLLOW-UP — MARKET INSIGHTS UI (2026-10-29)
+
+- User confirmed [PR #695](https://github.com/RafaelAlbaWebify/jolt/pull/695) is green and merged. The compact market package was exported at 93,959 bytes and imported successfully in the desktop JOLT session.
+- Screenshot acceptance then exposed desktop clipping and raw rendering of imported metadata. [PR #696](https://github.com/RafaelAlbaWebify/jolt/pull/696) addresses page scrolling, notice placement, curated market conclusions, readable skill signals, expandable recommendations, metric layout, and separate strategy/evidence dates.
+- PR #696 is source-reviewed but has not yet received browser acceptance; verify by restarting the local app after merge. No tests or browser checks were run during this UI repair.
+
 ## CURRENT HANDOVER — 2026-10-29: REVIEW INBOX / MARKET INSIGHTS
 
 **Verified GitHub status:** PR #691, #692 and #693 are merged. All eight workflows on the final #693 head (`ac1a8a21`) succeeded. These are GitHub CI results, **not** proof of deployment or real Windows/browser acceptance. The older statements below saying Delivery B was `NOT STARTED` or both screens necessarily export the same unified package are superseded by this handover.
