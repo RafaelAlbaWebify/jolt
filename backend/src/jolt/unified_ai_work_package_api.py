@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
 from jolt.official_source_capture import capture_official_candidates
+from jolt.market_strategy_package import build_market_strategy_package_json
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
     build_review_only_work_package_json,
@@ -60,6 +61,18 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
             BytesIO(content),
             media_type="application/json",
             headers={"Content-Disposition": "attachment; filename=JOLT_REVIEW_ONLY.json"},
+        )
+
+    @router.get("/api/ai-work-package/market-export")
+    def export_market_strategy(
+        session: Session = session_dependency,
+    ) -> StreamingResponse:
+        """Strategic market aggregates only; Review Inbox remains separate."""
+        content = build_market_strategy_package_json(session)
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=JOLT_MARKET_STRATEGY.json"},
         )
 
     @router.post("/api/ai-work-package/official-evidence/refresh")
