@@ -1,5 +1,31 @@
 # JOLT — Operating Context
 
+## CURRENT HANDOVER — 2026-10-29: REVIEW INBOX / MARKET INSIGHTS
+
+**Verified GitHub status:** PR #691, #692 and #693 are merged. All eight workflows on the final #693 head (`ac1a8a21`) succeeded. These are GitHub CI results, **not** proof of deployment or real Windows/browser acceptance. The older statements below saying Delivery B was `NOT STARTED` or both screens necessarily export the same unified package are superseded by this handover.
+
+### Shipped capability
+
+- **#691 — Review Inbox classification-only export:** `GET /api/ai-work-package/review-export` produces `JOLT_REVIEW_ONLY.json`. Its builder omits the seven unrelated intelligence exchanges. The Review Inbox button now uses this route. The result retains the `jolt_ai_work_package` envelope; the existing `POST /api/ai-work-package/import` handles reviewed `jolt_ai_work_package_update` responses. Legacy unified export remains available for compatibility.
+- **#692 — Local market statistics:** `GET /api/ai-market/automatic` calculates market indicators from persisted evidence using the optimized market-intelligence builder. It is read-only, independent of AI feedback/import, and supports validated timeframe/source-scope filters. The existing `/api/market-intelligence` endpoint remains available.
+- **#693 — Automatic Market Insights UI:** `frontend/src/MarketIntelligence.tsx` fetches `/api/ai-market/automatic` when active and on refresh, alongside strategy and application data. The page displays unique roles, target roles, evaluation coverage and commonly mentioned skills. Automatic indicators are distinct from stored ChatGPT strategic conclusions. Failed automatic fetches display a nonfatal message rather than silently inventing data.
+
+### Still outstanding — do not claim full workflow separation
+
+- **Market Insights strategic export is NOT independent yet:** its Download intelligence package link still targets `/api/ai-work-package/export`, which builds the heavy unified package.
+- **Market Insights strategic import is NOT independent yet:** it still uses `/api/ai-work-package/import`; `/api/ai-market/export` and `/api/ai-market/import` are legacy deprecated endpoints, not the new target flow.
+- Strategic panels such as market conclusions, skill gaps, profile actions and recommendations still require ChatGPT-generated feedback. Do not imply those panels are automatically populated by the local metrics endpoint.
+- New UI metrics and earlier market view provenance use different source/aggregation concepts: clearly distinguish canonical unique roles, raw observations and evaluated observations. Avoid misleading claims of 1:1 equivalence.
+- Operator Windows acceptance of the new UI and live timings is still pending. Do not infer success from CI alone.
+
+### Next cohesive delivery
+
+Build a **small, task-specific strategic Market Insights exchange** from retained market data and imported Review Inbox classifications, without re-exporting full Review Inbox bodies or duplicating classifications. Define a bounded/canonical sample and evidence references, version/freshness handling, complete import validation and non-destructive context/feedback writes. Update Market Insights buttons to the new strategic contract, add payload-size and no-duplicate-work regression tests, test existing unified import compatibility, and run formatter, typecheck, frontend tests/build, targeted backend tests and browser acceptance **before opening a PR**. Group related changes; do not repeat #693's serial one-assertion CI fixes.
+
+**Relevant evidence:** https://github.com/RafaelAlbaWebify/jolt/pull/691 · https://github.com/RafaelAlbaWebify/jolt/pull/692 · https://github.com/RafaelAlbaWebify/jolt/pull/693
+
+---
+
 ## EXECUTION METHOD V2 — EFFECTIVE 2026-10-28 (SUPERSEDES MICRO-PR WORKFLOW)
 
 **Decision:** Stop using one PR/chat exchange per trivial code fix. Deliver **complete, demonstrable capabilities** with a frozen scope and grouped tests. This execution method overrides earlier micro-milestone recommendations in this file, while retaining all non-destructive data and release safeguards.
@@ -43,7 +69,7 @@ A closes when the following are **actually proven**, not just coded:
 | Delivery | Scope | Acceptance gate | State |
 |---|---|---|---|
 | A — Baseline, integrity, processing inventory | Read-only diagnostics; storage/table/capture inventory; baseline sizes/durations; trace SQLite and JSON persistence, replay/failure behavior; processing-ledger design; remove confirmed N+1 query with parity tests | Repeatable baseline and provenance; zero mutation of live DB; real fail/replay tests using disposable fixtures; measured query counts before/after; ledger accounts for applicable/pending/processed/failed/not-applicable (if implemented) | IN PROGRESS — baseline first |
-| B — Independent workflows | Task-scoped Review / Market / Skills / Profile / Applications / Quality exchanges; self-contained three-stage review protocol/checkpoints, exact coverage and schema validation, safe import; preserve existing unified mode | Review package excludes unrelated exchanges; separate Market package and view refresh; 100% IDs accounted for; stale/replay guarded; tests prove isolation and import readback | NOT STARTED |
+| B — Independent workflows | Task-scoped Review / Market / Skills / Profile / Applications / Quality exchanges; self-contained three-stage review protocol/checkpoints, exact coverage and schema validation, safe import; preserve existing unified mode | Review package excludes unrelated exchanges; separate Market package and view refresh; 100% IDs accounted for; stale/replay guarded; tests prove isolation and import readback | IN PROGRESS — Review-only export and automatic Market view merged (#691–#693); strategic Market exchange and full acceptance pending |
 | C — UI, lifecycle, release certification | Six principal views audit, stale-state fixes, redundant UI removal, retention dry-run, safe compaction, performance and operational diagnostics | E2E routes and UI with real state where feasible; no deletion of unprocessed/sole decision evidence; restore rehearsal; measurable before/after; operator Windows acceptance where required | NOT STARTED |
 
 **Implementation sequence and minimal-chat policy:**
