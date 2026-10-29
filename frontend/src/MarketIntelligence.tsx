@@ -307,7 +307,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       </section>
 
       {error && <p className="error" role="alert">{error}</p>}
-      {importNotice && <p role="status">{importNotice}</p>
+      {importNotice && <p role="status">{importNotice}</p>}
       {automaticError && <p role="status">{automaticError}</p>}
 
       {!data ? (
