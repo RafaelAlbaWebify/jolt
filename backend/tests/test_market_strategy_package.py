@@ -1,4 +1,7 @@
 import json
+from typing import cast
+
+from sqlalchemy.orm import Session
 
 from jolt.market_strategy_package import build_market_strategy_package_json
 from jolt.unified_ai_work_package import UnifiedAIWorkPackage
@@ -29,7 +32,7 @@ def test_market_export_is_compact_and_review_free(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(market_package, "build_market_intelligence", local_aggregates)
-    encoded = build_market_strategy_package_json(None)
+    encoded = build_market_strategy_package_json(cast(Session, None))
     decoded = json.loads(encoded)
     assert "SHOULD_NOT_EXPORT" not in encoded.decode()
     package = UnifiedAIWorkPackage.model_validate(decoded)
