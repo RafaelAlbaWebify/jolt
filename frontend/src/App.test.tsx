@@ -201,7 +201,7 @@ describe("App AI review workflow", () => {
     const exportLink = screen.getByRole("link", { name: "Export AI review (1)" });
     expect(exportLink).toHaveAttribute(
       "href",
-      "http://127.0.0.1:8000/api/ai-work-package/export",
+      "http://127.0.0.1:8000/api/ai-work-package/review-export",
     );
     expect(exportLink).toHaveAttribute("download", "JOLT_AI_WORK_PACKAGE.json");
   });
