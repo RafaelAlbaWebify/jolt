@@ -195,6 +195,14 @@ def capture_official_candidates(
                 and doc.captured_at.replace(tzinfo=UTC) >= datetime.now(UTC) - CACHE_TTL
             ):
                 cached += 1
+                results.append(
+                    {
+                        "posting_id": posting_id,
+                        "url": url,
+                        "status": "cached_fresh",
+                        "captured_at": doc.captured_at.isoformat(),
+                    }
+                )
                 continue
         attempted += 1
         if not _robots_permits(url):
@@ -243,12 +251,18 @@ def capture_official_candidates(
                 }
             )
         except (OSError, ValueError, urllib.error.HTTPError) as exc:
+            if isinstance(exc, urllib.error.HTTPError):
+                detail = f"HTTP {exc.code} {exc.reason}"
+            elif isinstance(exc, ValueError):
+                detail = str(exc)
+            else:
+                detail = type(exc).__name__
             results.append(
                 {
                     "posting_id": posting_id,
                     "url": url,
                     "status": "fetch_failed",
-                    "detail": type(exc).__name__,
+                    "detail": detail[:240],
                 }
             )
         # Keep a short pause between requests to avoid hammering an ATS.
