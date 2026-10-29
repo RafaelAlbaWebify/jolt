@@ -143,8 +143,8 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence apiBase="http://api" active />);
 
     expect(await screen.findByText("ChatGPT strategic analysis needs an update")).toBeInTheDocument();
-    const download = screen.getByRole("link", { name: "Download intelligence package" });
-    expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/export");
+    const download = screen.getByRole("link", { name: "Download strategic market package" });
+    expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/market-export");
   });
 
   it("imports the reviewed unified update from Market Insights", async () => {
