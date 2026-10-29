@@ -353,11 +353,11 @@ export function App({
     attempted: number;
     cached_fresh: number;
     remaining_or_skipped: number;
-    provider_searches: number;
-    provider_statuses: Record<string, number>;
+    provider_searches?: number;
+    provider_statuses?: Record<string, number>;
     results: Array<{
-      posting_id: string;
-      url: string;
+      posting_id?: string;
+      url?: string;
       status: string;
       detail?: string;
       http_status?: string;
@@ -807,9 +807,9 @@ export function App({
                 fresh cache, and {officialSourceReport.remaining_or_skipped} not attempted.
               </p>
               <p>
-                Provider searches: {officialSourceReport.provider_searches}.{" "}
-                {Object.entries(officialSourceReport.provider_statuses).length
-                  ? Object.entries(officialSourceReport.provider_statuses)
+                Provider searches: {officialSourceReport.provider_searches ?? 0}.{" "}
+                {Object.entries(officialSourceReport.provider_statuses ?? {}).length
+                  ? Object.entries(officialSourceReport.provider_statuses ?? {})
                       .map(([status, count]) => `${status}: ${count}`)
                       .join(" · ")
                   : "No provider search status was returned."}
@@ -821,14 +821,18 @@ export function App({
               <summary>Show per-link outcomes ({officialSourceReport.results.length})</summary>
               <ol>
                 {officialSourceReport.results.map((item, index) => (
-                  <li key={`${item.posting_id}-${item.url}-${index}`}>
+                  <li key={`${item.posting_id ?? "unknown"}-${item.url ?? "no-url"}-${index}`}>
                     <strong>{item.status.replaceAll("_", " ")}</strong>
-                    {" · "}Posting {item.posting_id}
+                    {item.posting_id && <>{" · "}Posting {item.posting_id}</>}
                     {item.http_status && <> · HTTP {item.http_status}</>}
                     {item.detail && <> · {item.detail}</>}
                     {item.captured_at && <> · Cached at {new Date(item.captured_at).toLocaleString()}</>}
-                    <br />
-                    <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+                    {item.url && (
+                      <>
+                        <br />
+                        <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+                      </>
+                    )}
                   </li>
                 ))}
               </ol>
