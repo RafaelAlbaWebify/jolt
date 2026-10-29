@@ -347,6 +347,7 @@ export function App({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [workflowNotice, setWorkflowNotice] = useState("");
+  const [capturingOfficialSources, setCapturingOfficialSources] = useState(false);
   const inspectorCloseRef = useRef<HTMLButtonElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
   const aiReviewImportRef = useRef<HTMLInputElement | null>(null);
@@ -698,6 +699,42 @@ export function App({
     }
   }
 
+  async function enrichOfficialSources() {
+    setCapturingOfficialSources(true);
+    setError("");
+    setWorkflowNotice("");
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/ai-work-package/official-evidence/refresh`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        throw await errorFromResponse(response, "Official source enrichment failed.");
+      }
+      const result = (await response.json()) as {
+        candidate_links: number;
+        attempted: number;
+        cached_fresh: number;
+        remaining_or_skipped: number;
+        results: Array<{ status: string }>;
+      };
+      const captured = result.results.filter(
+        (item) => item.status === "captured_identity_unverified",
+      ).length;
+      const failedOrBlocked = result.results.length - captured;
+      setWorkflowNotice(
+        `Official sources: ${captured} page(s) captured; ${result.attempted} attempted; ` +
+        `${result.cached_fresh} fresh cached; ${failedOrBlocked} failed or blocked; ` +
+        `${result.remaining_or_skipped} candidate link(s) not attempted. ` +
+        "Captured ATS text still requires offer-identity and eligibility review.",
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Official source enrichment failed.");
+    } finally {
+      setCapturingOfficialSources(false);
+    }
+  }
+
   const manualIntakeForm = (
     <section className="panel manual-intake-panel" aria-labelledby="manual-intake-heading">
       <div className="section-heading">
@@ -797,6 +834,14 @@ export function App({
             )}
             <button type="button" onClick={() => setShowManualIntake(true)} disabled={busy}>
               Add job manually
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={busy || capturingOfficialSources}
+              onClick={() => void enrichOfficialSources()}
+            >
+              {capturingOfficialSources ? "Enriching official sources…" : "Enrich official sources"}
             </button>
             <button type="button" className="secondary" disabled={refreshing} onClick={() => void refreshOpportunities()}>
               {refreshing ? "Refreshing…" : "Refresh list"}

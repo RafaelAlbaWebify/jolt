@@ -84,8 +84,6 @@ type Props = {
 export function DataTools({ apiBase, active = true, onImported, advancedOnly = false }: Props) {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichNotice, setEnrichNotice] = useState("");
   const [importNotice, setImportNotice] = useState("");
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
 
@@ -148,40 +146,6 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
     }
   }
 
-  async function enrichOfficialEvidence() {
-    setEnriching(true);
-    setError("");
-    setEnrichNotice("");
-    try {
-      const response = await fetch(
-        `${apiBase}/api/ai-work-package/official-evidence/refresh?max_jobs=10`,
-        { method: "POST" },
-      );
-      if (!response.ok) {
-        const problem = await response.json().catch(() => null);
-        throw new Error(formatImportProblem(problem));
-      }
-      const result = await response.json() as {
-        candidate_links: number;
-        attempted: number;
-        cached_fresh: number;
-        remaining_or_skipped: number;
-        results: Array<{ status: string }>;
-      };
-      const captured = result.results.filter((item) =>
-        item.status === "captured_identity_unverified").length;
-      setEnrichNotice(
-        `Official source preflight: ${captured} page(s) captured; ${result.attempted} attempted; ${result.cached_fresh} fresh cached. ` +
-        `Candidate links remaining/skipped: ${result.remaining_or_skipped}. ` +
-        "Captured ATS text still requires offer-identity and eligibility review.",
-      );
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Official source preflight failed.");
-    } finally {
-      setEnriching(false);
-    }
-  }
-
   if (advancedOnly) {
     return (
       <div className="settings-advanced-tools">
@@ -202,14 +166,6 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
             >
               Export strategy package
             </a>
-            <button
-              type="button"
-              className="secondary"
-              disabled={enriching || importing}
-              onClick={() => { void enrichOfficialEvidence(); }}
-            >
-              {enriching ? "Collecting ATS evidence…" : "Enrich official sources (10)"}
-            </button>
             <label className="secondary">
               Import reviewed update
               <input
@@ -226,7 +182,6 @@ export function DataTools({ apiBase, active = true, onImported, advancedOnly = f
             </label>
           </div>
           <p>{importing ? "Importing strategy update…" : "JOLT validates the returned file before applying the reviewed update."}</p>
-          {enrichNotice && <p role="status">{enrichNotice}</p>}
 
           <details className="settings-legacy-tools">
             <summary>Legacy compatibility exports</summary>

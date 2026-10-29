@@ -26,7 +26,7 @@ from jolt.external_evidence_preflight import _ATS_DOMAINS
 
 USER_AGENT = "JOLT-EvidencePreflight/1.0"
 MAX_BYTES = 350_000
-MAX_ITEMS_PER_REQUEST = 10
+MAX_DISCOVERY_SEARCHES_PER_REQUEST = 10
 CACHE_TTL = timedelta(days=7)
 
 
@@ -139,12 +139,8 @@ def _existing_source(session: Session, posting_id: str, url: str):
 def capture_official_candidates(
     session: Session,
     inbox: dict[str, Any] | None,
-    *,
-    max_jobs: int = 10,
 ) -> dict[str, Any]:
-    """Fetch at most max_jobs public ATS candidate pages; preserve evidence in DB."""
-    if not 1 <= max_jobs <= MAX_ITEMS_PER_REQUEST:
-        raise ValueError(f"max_jobs must be 1..{MAX_ITEMS_PER_REQUEST}")
+    """Fetch every eligible public ATS candidate page; preserve evidence in DB."""
     jobs = inbox.get("jobs", []) if isinstance(inbox, dict) else []
     selected: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
@@ -159,7 +155,7 @@ def capture_official_candidates(
         )
         if not isinstance(suggestions, list):
             suggestions = []
-        if not suggestions and search_enabled and search_count < max_jobs:
+        if not suggestions and search_enabled and search_count < MAX_DISCOVERY_SEARCHES_PER_REQUEST:
             # Provider discovery is optional, separately rate-bounded and never
             # treated as a verified match to this particular job.
             from jolt.official_ats_discovery import discover_ats_candidates
@@ -188,9 +184,9 @@ def capture_official_candidates(
     attempted = 0
     cached = 0
     results: list[dict[str, str]] = []
+    # Discovery-provider searches remain capped above; capture every ATS URL
+    # already discovered in the inbox during this operator-triggered run.
     for posting_id, url in selected:
-        if attempted >= max_jobs:
-            break
         link = _existing_source(session, posting_id, url)
         if link is not None and link.source_document_id:
             doc = session.get(SourceDocument, link.source_document_id)
@@ -255,7 +251,7 @@ def capture_official_candidates(
                     "detail": type(exc).__name__,
                 }
             )
-        # Local execution must not hammer an ATS. Bounded to <=10 per request.
+        # Keep a short pause between requests to avoid hammering an ATS.
         time.sleep(0.5)
     session.commit()
     return {

@@ -206,6 +206,56 @@ describe("App AI review workflow", () => {
     expect(exportLink).toHaveAttribute("download", "JOLT_REVIEW_ONLY.json");
   });
 
+  it("enriches official sources from the Review Inbox toolbar", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/ai-review/opportunity-index")) {
+        return jsonResponse([reviewedOpportunity, awaitingOpportunity]);
+      }
+      if (
+        url.endsWith("/api/ai-work-package/official-evidence/refresh") &&
+        init?.method === "POST"
+      ) {
+        return jsonResponse({
+          candidate_links: 2,
+          attempted: 2,
+          cached_fresh: 0,
+          remaining_or_skipped: 0,
+          results: [
+            { status: "captured_identity_unverified" },
+            { status: "fetch_failed" },
+          ],
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    render(<App />);
+    await screen.findByText("Cloud Operations Analyst");
+
+    const toolbar = screen.getByRole("button", { name: "Import AI review result" })
+      .closest(".professional-source-editor-actions");
+    expect(toolbar).not.toBeNull();
+    const buttonLabels = Array.from((toolbar as HTMLElement).querySelectorAll("button"))
+      .map((button) => button.textContent?.trim());
+    expect(buttonLabels).toEqual([
+      "Import AI review result",
+      "Add job manually",
+      "Enrich official sources",
+      "Refresh list",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Enrich official sources" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:8000/api/ai-work-package/official-evidence/refresh",
+        { method: "POST" },
+      ),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("1 page(s) captured");
+    expect(screen.getByRole("status")).toHaveTextContent("1 failed or blocked");
+  });
+
   it("imports a reviewed AI work package from Review Inbox", async () => {
     let index: Array<typeof reviewedOpportunity | typeof awaitingOpportunity> = [
       awaitingOpportunity,

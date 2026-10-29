@@ -134,26 +134,9 @@ describe("DataTools", () => {
   });
 
 
-  it("lets the operator collect bounded official ATS evidence before exporting", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
-      new Response(JSON.stringify({
-        candidate_links: 5, attempted: 3, cached_fresh: 2,
-        remaining_or_skipped: 0,
-        results: [{ status: "captured_identity_unverified" }],
-      }), { status: 200 }),
-    );
+  it("keeps official source capture in Review Inbox instead of Advanced Settings", () => {
     render(<DataTools apiBase="http://127.0.0.1:8000" advancedOnly />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Enrich official sources (10)" }));
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        "http://127.0.0.1:8000/api/ai-work-package/official-evidence/refresh?max_jobs=10",
-        expect.objectContaining({ method: "POST" }),
-      ),
-    );
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "1 page(s) captured",
-    );
+    expect(screen.queryByRole("button", { name: /official sources/i })).not.toBeInTheDocument();
   });
 
   it("renders FastAPI validation details instead of object placeholders", async () => {

@@ -12,6 +12,7 @@ const sources = [
   { source: "linkedin", label: "LinkedIn", transport: "browser", saved_search_backend: "legacy_linkedin", execution_available: true },
   { source: "indeed", label: "Indeed", transport: "browser", saved_search_backend: "discovery", execution_available: true },
   { source: "jobgether", label: "Jobgether", transport: "api", saved_search_backend: "discovery", execution_available: false },
+  { source: "infojobs", label: "InfoJobs", transport: "browser", saved_search_backend: "discovery", execution_available: false },
 ];
 
 const searches = [
@@ -39,6 +40,18 @@ const searches = [
     updated_at: "2026-10-05T00:00:00Z",
     execution_available: true,
   },
+  {
+    id: "in-2",
+    source: "indeed",
+    label: "IT Helpdesk - Spain",
+    definition: { search_url: "https://es.indeed.com/jobs?q=it+helpdesk" },
+    notes: "",
+    enabled: true,
+    max_jobs: 50,
+    created_at: "2026-10-05T00:00:00Z",
+    updated_at: "2026-10-05T00:00:00Z",
+    execution_available: true,
+  },
 ];
 
 it("shows portal-specific searches and lets the user build an execution order", async () => {
@@ -57,23 +70,21 @@ it("shows portal-specific searches and lets the user build an execution order", 
 
   expect(await screen.findByText("IT Operations Engineer - EU Remote")).toBeInTheDocument();
   expect(screen.getByText("Application Support - Spain")).toBeInTheDocument();
-  expect(screen.getByText("3 sources registered")).toBeInTheDocument();
+  expect(screen.getByText("2 active portals")).toBeInTheDocument();
 
-  fireEvent.click(screen.getByLabelText("Select LinkedIn · IT Operations Engineer - EU Remote"));
-  fireEvent.click(screen.getByLabelText("Select Indeed · Application Support - Spain"));
+  fireEvent.change(screen.getByLabelText("Portal"), { target: { value: "indeed" } });
+  fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
+  fireEvent.change(screen.getByLabelText("Portal"), { target: { value: "linkedin" } });
+  fireEvent.click(screen.getByRole("button", { name: "Select visible" }));
 
-  const preview = screen.getByText("Execution order (2)").parentElement;
+  const preview = screen.getByText("Execution order (3)").parentElement;
   expect(preview).not.toBeNull();
   const items = within(preview as HTMLElement).getAllByRole("listitem");
-  expect(items[0]).toHaveTextContent("LinkedIn · IT Operations Engineer - EU Remote");
-  expect(items[1]).toHaveTextContent("Indeed · Application Support - Spain");
+  expect(items[0]).toHaveTextContent("Indeed · Application Support - Spain");
+  expect(items[1]).toHaveTextContent("Indeed · IT Helpdesk - Spain");
+  expect(items[2]).toHaveTextContent("LinkedIn · IT Operations Engineer - EU Remote");
 
-  fireEvent.click(screen.getByLabelText("Move Application Support - Spain up"));
-  const reordered = within(preview as HTMLElement).getAllByRole("listitem");
-  expect(reordered[0]).toHaveTextContent("Indeed · Application Support - Spain");
-  expect(reordered[1]).toHaveTextContent("LinkedIn · IT Operations Engineer - EU Remote");
-
-  expect(screen.getByRole("button", { name: "Run discovery (2)" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Run discovery (3)" })).toBeEnabled();
 });
 
 it("filters saved searches by portal", async () => {
@@ -283,8 +294,7 @@ it("shows the live Indeed phase while a capture is running", async () => {
 });
 
 
-it("runs a saved InfoJobs search from the unified queue", async () => {
-  const calls: string[] = [];
+it("hides retired portals and their searches without deleting stored data", async () => {
   const infojobs = {
     id: "ij-1",
     source: "infojobs",
@@ -297,113 +307,30 @@ it("runs a saved InfoJobs search from the unified queue", async () => {
     updated_at: "2026-10-17T00:00:00Z",
     execution_available: true,
   };
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-    const url = String(input);
-    if (url.endsWith("/api/discovery-sources")) {
-      return new Response(JSON.stringify([
-        ...sources,
-        { source: "infojobs", label: "InfoJobs", transport: "browser", saved_search_backend: "discovery", execution_available: true },
-      ]), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-searches")) {
-      return new Response(JSON.stringify([infojobs]), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
-      const payload = JSON.parse(String(init.body));
-      expect(payload).toEqual({ source: "infojobs", saved_search_id: "ij-1" });
-      calls.push("infojobs:create");
-      return new Response(JSON.stringify({ id: "ij-exec", status: "queued" }), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-executions/ij-exec")) {
-      calls.push("infojobs:complete");
-      return new Response(JSON.stringify({ id: "ij-exec", status: "completed", error: "", capture_run_id: "ij-capture" }), { status: 200 });
-    }
-    throw new Error(`Unexpected request: ${url}`);
-  });
-
-  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
-  await screen.findByText("InfoJobs IT Support");
-  fireEvent.click(screen.getByLabelText("Select InfoJobs · InfoJobs IT Support"));
-  fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
-  expect(await screen.findByText("Discovery completed in the requested order: 1 search.")).toBeInTheDocument();
-  expect(calls).toEqual(["infojobs:create", "infojobs:complete"]);
-});
-
-
-it("runs a saved Jobgether search from the unified queue", async () => {
   const jobgether = {
+    ...infojobs,
     id: "jg-1",
     source: "jobgether",
     label: "Jobgether remote support",
     definition: { search_url: "https://jobgether.com/talent/matches", max_pages: 1 },
-    notes: "",
-    enabled: true,
-    max_jobs: 5,
-    created_at: "2026-10-17T00:00:00Z",
-    updated_at: "2026-10-17T00:00:00Z",
-    execution_available: true,
   };
-  const requests: string[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.endsWith("/api/discovery-sources")) {
-      return new Response(JSON.stringify([
-        ...sources,
-        { source: "jobgether", label: "Jobgether", transport: "browser", saved_search_backend: "discovery", execution_available: true },
-      ]), { status: 200 });
+      return new Response(JSON.stringify(sources), { status: 200 });
     }
     if (url.endsWith("/api/discovery-searches")) {
-      return new Response(JSON.stringify([jobgether]), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-executions") && init?.method === "POST") {
-      const payload = JSON.parse(String(init.body));
-      expect(payload).toEqual({ source: "jobgether", saved_search_id: "jg-1" });
-      requests.push("jobgether:create");
-      return new Response(JSON.stringify({ id: "jg-exec", status: "queued" }), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-executions/jg-exec")) {
-      requests.push("jobgether:complete");
-      return new Response(JSON.stringify({ id: "jg-exec", status: "completed", error: "", capture_run_id: "jg-run" }), { status: 200 });
+      return new Response(JSON.stringify([...searches, infojobs, jobgether]), { status: 200 });
     }
     throw new Error(`Unexpected request: ${url}`);
   });
+
   render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
-  await screen.findByText("Jobgether remote support");
-  fireEvent.click(screen.getByLabelText("Select Jobgether · Jobgether remote support"));
-  fireEvent.click(screen.getByRole("button", { name: "Run discovery (1)" }));
-  expect(await screen.findByText("Discovery completed in the requested order: 1 search.")).toBeInTheDocument();
-  expect(requests).toEqual(["jobgether:create", "jobgether:complete"]);
+  await screen.findByText("Application Support - Spain");
+
+  expect(screen.queryByText("InfoJobs IT Support")).not.toBeInTheDocument();
+  expect(screen.queryByText("Jobgether remote support")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /InfoJobs starter search/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Jobgether starter search/i })).not.toBeInTheDocument();
+  expect(screen.getByText("2 active portals")).toBeInTheDocument();
 });
-
-
-it("creates preconfigured InfoJobs and Jobgether searches without typing portal URLs", async () => {
-  const created: Array<{ source: string; definition: { search_url: string } }> = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-    const url = String(input);
-    if (url.endsWith("/api/discovery-sources")) {
-      return new Response(JSON.stringify([
-        ...sources,
-        { source: "infojobs", label: "InfoJobs", transport: "browser", saved_search_backend: "discovery", execution_available: true },
-        { source: "jobgether", label: "Jobgether", transport: "browser", saved_search_backend: "discovery", execution_available: true },
-      ]), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-searches") && init?.method === "POST") {
-      const body = JSON.parse(String(init.body));
-      created.push(body);
-      return new Response(JSON.stringify({ ...body, id: body.source, execution_available: true }), { status: 200 });
-    }
-    if (url.endsWith("/api/discovery-searches")) {
-      return new Response(JSON.stringify([]), { status: 200 });
-    }
-    throw new Error(`Unexpected request: ${url}`);
-  });
-  render(<DiscoverySearchQueue apiBase="http://127.0.0.1:8000" active />);
-  fireEvent.click(await screen.findByRole("button", { name: "Add InfoJobs starter search" }));
-  await waitFor(() => expect(created).toHaveLength(1));
-  fireEvent.click(screen.getByRole("button", { name: "Add Jobgether starter search" }));
-  await waitFor(() => expect(created).toHaveLength(2));
-  expect(created[0].definition.search_url).toBe("https://www.infojobs.net/ofertas-trabajo/soporte-informatico");
-  expect(created[1].definition.search_url).toBe("https://jobgether.com/talent/matches");
-  expect(created.every((item) => item.definition.search_url.startsWith("https://"))).toBe(true);
-});
-
