@@ -94,32 +94,66 @@ function primitive(value: unknown): string {
   return "";
 }
 
-function collectNarrativeSignals(source: unknown, limit: number, result: string[] = []): string[] {
-  if (result.length >= limit || source == null) return result;
-
-  if (typeof source === "string") {
-    const text = source.trim();
+function marketNarrativeSignals(summary: Record<string, unknown>): string[] {
+  const result: string[] = [];
+  const add = (value: unknown) => {
+    const text = primitive(value).trim();
     if (text && !result.includes(text)) result.push(text);
-    return result;
-  }
-
-  if (Array.isArray(source)) {
-    for (const item of source) {
-      collectNarrativeSignals(item, limit, result);
-      if (result.length >= limit) break;
+  };
+  add(summary.executive_summary);
+  const explicitSignals =
+    summary.high_confidence_conclusions ??
+    summary.high_confidence_signals ??
+    summary.market_signals ??
+    summary.signals;
+  if (Array.isArray(explicitSignals)) {
+    for (const signal of explicitSignals) {
+      if (typeof signal === "string") add(signal);
+      else if (signal && typeof signal === "object") {
+        const item = signal as Record<string, unknown>;
+        add(item.conclusion ?? item.signal ?? item.summary ?? item.title ?? item.description);
+      }
+      if (result.length >= 3) break;
     }
-    return result;
   }
+  add(summary.interpretation);
+  return result.slice(0, 3);
+}
 
-  if (typeof source === "object") {
-    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
-      if (isTechnicalKey(key) || /^(analyzed_at|reviewed_at|generated_at|as_of)$/i.test(key)) continue;
-      collectNarrativeSignals(value, limit, result);
-      if (result.length >= limit) break;
-    }
+function strategyValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      if (typeof item === "string" || typeof item === "number") return String(item);
+      if (!item || typeof item !== "object") return "";
+      const row = item as Record<string, unknown>;
+      const skill = primitive(row.skill ?? row.label ?? row.title ?? row.name);
+      if (!skill) return "";
+      const details = [
+        row.capability_state ? `capability: ${primitive(row.capability_state)}` : "",
+        row.demand != null ? `demand: ${primitive(row.demand)} roles` : "",
+        (row.required_mentions ?? row.required_count) != null
+          ? `required: ${primitive(row.required_mentions ?? row.required_count)}`
+          : "",
+        (row.preferred_mentions ?? row.preferred_count) != null
+          ? `preferred: ${primitive(row.preferred_mentions ?? row.preferred_count)}`
+          : "",
+        (row.jolt_gap_signal ?? row.gap_count) != null
+          ? `gap signal: ${primitive(row.jolt_gap_signal ?? row.gap_count)}`
+          : "",
+        row.count != null ? `count: ${primitive(row.count)}` : "",
+      ].filter(Boolean);
+      return details.length ? `${skill} — ${details.join("; ")}` : skill;
+    }).filter(Boolean).join("\n");
   }
-
-  return result;
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !isTechnicalKey(key) && !["evidence_refs", "source_context_version"].includes(key))
+      .map(([key, item]) => {
+        const text = primitive(item);
+        return text ? `${readable(key)}: ${text}` : "";
+      }).filter(Boolean).join("\n");
+  }
+  return primitive(value);
 }
 
 function numericDecisionCount(data: Record<string, unknown>, key: string): number | null {
@@ -145,20 +179,17 @@ function formatDate(value: string | null) {
 }
 
 function StrategyRows({ data, empty }: { data: Record<string, unknown>; empty: string }) {
+  const hiddenFields = new Set(["status", "evidence_refs", "source_context_version", "updated_at", "generated_at"]);
   const entries = Object.entries(data)
-    .filter(([key]) => !isTechnicalKey(key))
-    .slice(0, 6);
+    .filter(([key]) => !isTechnicalKey(key) && !hiddenFields.has(key))
+    .slice(0, 8);
 
   if (entries.length === 0) return <p>{empty}</p>;
 
   return (
     <div className="market-pro-strategy-list">
       {entries.map(([key, value]) => {
-        const text = Array.isArray(value)
-          ? value.map(primitive).filter(Boolean).join(" · ")
-          : typeof value === "object" && value !== null
-            ? collectNarrativeSignals(value, 3).join(" · ")
-            : primitive(value);
+        const text = strategyValue(value);
         return (
           <div key={key}>
             <span>{readable(key)}</span>
@@ -270,7 +301,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
   }, [applications, data]);
 
   const marketSignals = useMemo(
-    () => data ? collectNarrativeSignals(data.market_summary, 3) : [],
+    () => data ? marketNarrativeSignals(data.market_summary) : [],
     [data],
   );
 
@@ -283,11 +314,18 @@ export function MarketIntelligence({ apiBase, active }: Props) {
       }));
     }
 
+    const firstText = (source: Record<string, unknown>, keys: string[]) => {
+      for (const key of keys) {
+        const text = primitive(source[key]).trim();
+        if (text) return text;
+      }
+      return "";
+    };
     return [
-      ...collectNarrativeSignals(data.application_strategy, 1),
-      ...collectNarrativeSignals(data.capture_strategy, 1),
-      ...collectNarrativeSignals(data.profile_strategy, 1),
-    ].slice(0, 3).map((text) => ({ title: text, detail: "" }));
+      firstText(data.application_strategy, ["next_step", "priority", "recommendation"]),
+      firstText(data.capture_strategy, ["next_experiment", "rule", "recommendation"]),
+      firstText(data.profile_strategy, ["recommendation", "positioning"]),
+    ].filter(Boolean).slice(0, 3).map((text) => ({ title: text, detail: "" }));
   }, [data]);
 
   return (
@@ -297,20 +335,27 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           <p className="eyebrow">Market feedback</p>
           <h2 id="market-insights-heading">Market Insights</h2>
           <p>What is working in your job search — and what to change next.</p>
+          {error && <p className="market-pro-notice market-pro-notice-error" role="alert">{error}</p>}
+          {importNotice && (
+            <div className="market-pro-notice market-pro-notice-success" role="status">
+              <span>{importNotice}</span>
+              <button type="button" className="market-pro-notice-dismiss" onClick={() => setImportNotice("")}>
+                Dismiss
+              </button>
+            </div>
+          )}
+          {automaticError && <p className="market-pro-notice" role="status">{automaticError}</p>}
         </div>
         <div className="market-pro-header-actions">
           <button type="button" className="secondary" disabled={loading} onClick={() => void load()}>
             {loading ? "Refreshing…" : "Refresh view"}
           </button>
-          <span>Last updated: {formatDate(data?.freshness.ai_updated_at ?? null)}</span>
+          <span>Strategy updated: {formatDate(data?.freshness.ai_updated_at ?? null)}</span>
+          <span>Latest evidence: {formatDate(data?.evidence_provenance.newest_evidence_at ?? null)}</span>
         </div>
       </section>
 
-      {error && <p className="error" role="alert">{error}</p>}
-      {importNotice && <p role="status">{importNotice}</p>}
-      {automaticError && <p role="status">{automaticError}</p>}
-
-      {!data ? (
+remove flow notices      {!data ? (
         <section className="panel">
           <p role="status">{loading ? "Loading market insights…" : "No market insights loaded."}</p>
         </section>
@@ -378,18 +423,27 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               {automatic ? (
                 <>
                   <p>Calculated from saved JOLT evidence. No ChatGPT import required.</p>
-                  <dl>
+                  <dl className="market-pro-indicator-grid">
                     <div><dt>Unique roles</dt><dd>{automatic.total_unique_roles.toLocaleString()}</dd></div>
                     <div><dt>Target roles</dt><dd>{automatic.target_role_count.toLocaleString()}</dd></div>
                     <div><dt>Evaluated observations</dt><dd>{automatic.evaluation_coverage.evaluated_count.toLocaleString()}</dd></div>
                     <div><dt>Pending evaluation</dt><dd>{automatic.evaluation_coverage.missing_count.toLocaleString()}</dd></div>
                   </dl>
                   <h4>Most mentioned skills</h4>
-                  <ul>
-                    {automatic.all.top_skills.slice(0, 8).map((skill) => (
-                      <li key={skill.label}>{skill.label}: {skill.count.toLocaleString()} roles</li>
-                    ))}
-                  </ul>
+                  <ol className="market-pro-skill-list">
+                    {automatic.all.top_skills.slice(0, 6).map((skill) => {
+                      const maximum = Math.max(1, ...automatic.all.top_skills.map((item) => item.count));
+                      const width = Math.round((skill.count / maximum) * 100);
+                      return (
+                        <li key={skill.label}>
+                          <div><span>{skill.label}</span><strong>{skill.count.toLocaleString()} roles</strong></div>
+                          <span className="market-pro-skill-track" aria-hidden="true">
+                            <span style={{ width: `${width}%` }} />
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
                 </>
               ) : <p>{loading ? "Calculating local market indicators…" : "Automatic indicators are unavailable."}</p>}
             </article>
@@ -406,7 +460,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                     <div key={signal}>
                       <span className="market-pro-signal-number">{index + 1}</span>
                       <strong>{signal}</strong>
-                      <small>Market signal</small>
+                      <small>Aggregate evidence</small>
                     </div>
                   ))}
                 </div>
@@ -422,7 +476,18 @@ export function MarketIntelligence({ apiBase, active }: Props) {
                   {nextActions.map((action, index) => (
                     <div key={`${action.title}-${index}`}>
                       <span>{index + 1}</span>
-                      <div><strong>{action.title}</strong>{action.detail && <small>{action.detail}</small>}</div>
+                      <div>
+                        <strong>{action.title}</strong>
+                        {action.detail && (
+                          <>
+                            <small className="market-pro-action-preview">{action.detail}</small>
+                            <details className="market-pro-action-details">
+                              <summary>Read full recommendation</summary>
+                              <p>{action.detail}</p>
+                            </details>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -510,7 +575,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               <article className="market-pro-detail-card market-pro-evidence-wide">
                 <header><span>▤</span><h3>Evidence & provenance</h3></header>
                 <div className="market-pro-evidence-strip">
-                  <div><strong>{data.evidence_provenance.observation_count.toLocaleString()}</strong><span>observations</span></div>
+                  <div><strong>{data.evidence_provenance.observation_count.toLocaleString()}</strong><span>captured observations</span></div>
                   <div><strong>{data.evidence_provenance.canonical_role_count.toLocaleString()}</strong><span>unique roles</span></div>
                   <div><strong>{data.evidence_provenance.capture_run_count.toLocaleString()}</strong><span>search runs</span></div>
                   <div><strong>{formatDate(data.evidence_provenance.oldest_evidence_at)}</strong><span>oldest evidence</span></div>

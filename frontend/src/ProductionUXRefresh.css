@@ -3114,3 +3114,232 @@ body {
     display: none;
   }
 }
+
+
+/* Market Insights: scrollable page layout, robust to dynamic notices and content. */
+.workspace-view-market {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.market-pro {
+  height: auto;
+  min-height: 100%;
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: start;
+  overflow: visible;
+}
+
+.market-pro-detail {
+  min-height: auto;
+  overflow: visible;
+}
+
+.market-pro-detail-grid {
+  height: auto;
+  min-height: auto;
+  align-items: stretch;
+}
+
+.market-pro-detail-card {
+  min-height: auto;
+  overflow: visible;
+}
+
+.market-pro-header > div:first-child {
+  min-width: 0;
+}
+
+.market-pro-header-actions span {
+  white-space: nowrap;
+}
+
+.market-pro-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0 !important;
+  color: #536178;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.market-pro-notice-success {
+  color: #167044;
+}
+
+.market-pro-notice-error {
+  color: #b42318;
+}
+
+.market-pro-notice-dismiss {
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid #b8c8eb;
+  border-radius: 7px;
+  background: #fff;
+  color: #315bd6;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.market-pro-indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 0 12px;
+}
+
+.market-pro-indicator-grid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e6eaf1;
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+
+.market-pro-indicator-grid dt {
+  color: #8791a3;
+  font-size: 0.62rem;
+}
+
+.market-pro-indicator-grid dd {
+  margin: 0;
+  color: #253047;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.market-pro-skill-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin: 0;
+  padding: 0 12px 12px;
+  list-style: none;
+}
+
+.market-pro-skill-list li {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.market-pro-skill-list li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #455268;
+  font-size: 0.7rem;
+}
+
+.market-pro-skill-list strong {
+  color: #667085;
+  white-space: nowrap;
+}
+
+.market-pro-skill-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f7;
+}
+
+.market-pro-skill-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #315bd6;
+}
+
+.market-pro-signal-list > div {
+  align-items: start;
+}
+
+.market-pro-signal-list strong,
+.market-pro-action-list strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.market-pro-signal-list small {
+  grid-column: 2 / -1;
+  justify-self: start;
+}
+
+.market-pro-action-list small.market-pro-action-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.market-pro-action-details {
+  margin-top: 5px;
+  color: #536178;
+  font-size: 0.68rem;
+}
+
+.market-pro-action-details summary {
+  width: fit-content;
+  color: #315bd6;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.market-pro-action-details p {
+  margin: 6px 0 0;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.market-pro-strategy-list strong {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.market-pro-tabs {
+  align-items: center;
+}
+
+.market-pro-tabs button:focus-visible,
+.market-pro-action-details summary:focus-visible,
+.market-pro-notice-dismiss:focus-visible {
+  outline: 3px solid rgba(49, 91, 214, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .market-pro-indicator-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .market-pro-header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 620px) {
+  .market-pro-skill-list {
+    grid-template-columns: 1fr;
+  }
+
+  .market-pro-header-actions {
+    justify-items: start;
+  }
+
+  .market-pro-indicator-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
