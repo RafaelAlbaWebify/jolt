@@ -57,6 +57,9 @@ function mockApi(market: unknown = DATA, applications = APPLICATIONS) {
     if (url.includes("/api/ai-market/view")) {
       return new Response(JSON.stringify(market), { status: 200 });
     }
+    if (url.includes("/api/ai-market/automatic")) {
+      return new Response(JSON.stringify({ total_unique_roles: 90, target_role_count: 65, evaluation_coverage: { evaluated_count: 80, missing_count: 10 }, all: { top_skills: [{ label: "SQL", count: 42 }], role_families: [] } }), { status: 200 });
+    }
     if (url.includes("/api/application-index")) {
       return new Response(JSON.stringify(applications), { status: 200 });
     }
@@ -139,7 +142,7 @@ describe("MarketIntelligence", () => {
     mockApi(stale);
     render(<MarketIntelligence apiBase="http://api" active />);
 
-    expect(await screen.findByText("Market analysis needs an update")).toBeInTheDocument();
+    expect(await screen.findByText("ChatGPT strategic analysis needs an update")).toBeInTheDocument();
     const download = screen.getByRole("link", { name: "Download intelligence package" });
     expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/export");
   });
