@@ -109,7 +109,7 @@ describe("MarketIntelligence", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Evidence" }));
     expect(screen.getByText("Evidence & provenance")).toBeInTheDocument();
-    expect(screen.getByText("90")).toBeInTheDocument();
+    expect(within(screen.getByText("Search evidence").closest("article")!).getByText("90")).toBeInTheDocument();
   });
 
   it("loads authoritative market intelligence plus the read-only application index", async () => {
