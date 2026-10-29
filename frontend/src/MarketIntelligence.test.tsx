@@ -57,6 +57,9 @@ function mockApi(market: unknown = DATA, applications = APPLICATIONS) {
     if (url.includes("/api/ai-market/view")) {
       return new Response(JSON.stringify(market), { status: 200 });
     }
+    if (url.includes("/api/ai-market/automatic")) {
+      return new Response(JSON.stringify({ total_unique_roles: 90, target_role_count: 65, evaluation_coverage: { evaluated_count: 80, missing_count: 10 }, all: { top_skills: [{ label: "SQL", count: 42 }], role_families: [] } }), { status: 200 });
+    }
     if (url.includes("/api/application-index")) {
       return new Response(JSON.stringify(applications), { status: 200 });
     }
@@ -106,7 +109,7 @@ describe("MarketIntelligence", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Evidence" }));
     expect(screen.getByText("Evidence & provenance")).toBeInTheDocument();
-    expect(screen.getByText("90")).toBeInTheDocument();
+    expect(within(screen.getByText("Evidence & provenance").closest("article")!).getByText("90")).toBeInTheDocument();
   });
 
   it("loads authoritative market intelligence plus the read-only application index", async () => {
@@ -139,7 +142,7 @@ describe("MarketIntelligence", () => {
     mockApi(stale);
     render(<MarketIntelligence apiBase="http://api" active />);
 
-    expect(await screen.findByText("Market analysis needs an update")).toBeInTheDocument();
+    expect(await screen.findByText("ChatGPT strategic analysis needs an update")).toBeInTheDocument();
     const download = screen.getByRole("link", { name: "Download intelligence package" });
     expect(download).toHaveAttribute("href", "http://api/api/ai-work-package/export");
   });
@@ -174,7 +177,7 @@ describe("MarketIntelligence", () => {
     });
 
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByText("Market analysis needs an update");
+    await screen.findByText("ChatGPT strategic analysis needs an update");
 
     const input = screen.getByLabelText("Import reviewed intelligence update");
     const file = new File(
@@ -195,13 +198,13 @@ describe("MarketIntelligence", () => {
     ).toBeInTheDocument();
   });
 
-  it("refreshes both persisted views without recomputing local intelligence", async () => {
+  it("refreshes strategic, application, and automatic market views", async () => {
     const fetchMock = mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
     await screen.findByRole("heading", { name: "Market Insights" });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh view" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   });
 
   it("falls back safely when decision counts or application metrics are unavailable", async () => {

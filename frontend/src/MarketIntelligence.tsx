@@ -41,6 +41,13 @@ type MarketData = {
   recommendations: FeedbackItem[];
 };
 
+type AutomaticMarket = {
+  total_unique_roles: number;
+  target_role_count: number;
+  evaluation_coverage: { evaluated_count: number; missing_count: number };
+  all: { top_skills: Array<{ label: string; count: number }>; role_families: Array<{ label: string; count: number }> };
+};
+
 type ApplicationIndexItem = {
   application_id?: string | null;
   application_status?: string | null;
@@ -166,6 +173,8 @@ function StrategyRows({ data, empty }: { data: Record<string, unknown>; empty: s
 export function MarketIntelligence({ apiBase, active }: Props) {
   const [data, setData] = useState<MarketData | null>(null);
   const [applications, setApplications] = useState<ApplicationIndexItem[]>([]);
+  const [automatic, setAutomatic] = useState<AutomaticMarket | null>(null);
+  const [automaticError, setAutomaticError] = useState("");
   const [activeTab, setActiveTab] = useState<MarketTab>("skills");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -178,12 +187,20 @@ export function MarketIntelligence({ apiBase, active }: Props) {
     setLoading(true);
     setError("");
     try {
-      const [marketResponse, applicationResponse] = await Promise.all([
+      const [marketResponse, applicationResponse, automaticResponse] = await Promise.all([
         fetch(`${apiBase}/api/ai-market/view`, { signal }),
         fetch(`${apiBase}/api/application-index`, { signal }),
+        fetch(`${apiBase}/api/ai-market/automatic`, { signal }),
       ]);
       if (!marketResponse.ok) throw new Error("Unable to load market intelligence.");
       setData(await marketResponse.json() as MarketData);
+      if (automaticResponse.ok) {
+        setAutomatic(await automaticResponse.json() as AutomaticMarket);
+        setAutomaticError("");
+      } else {
+        setAutomatic(null);
+        setAutomaticError("Automatic indicators are temporarily unavailable.");
+      }
       if (applicationResponse.ok) {
         setApplications(await applicationResponse.json() as ApplicationIndexItem[]);
       } else {
@@ -291,6 +308,7 @@ export function MarketIntelligence({ apiBase, active }: Props) {
 
       {error && <p className="error" role="alert">{error}</p>}
       {importNotice && <p role="status">{importNotice}</p>}
+      {automaticError && <p role="status">{automaticError}</p>}
 
       {!data ? (
         <section className="panel">
@@ -320,8 +338,8 @@ export function MarketIntelligence({ apiBase, active }: Props) {
           {data.freshness.needs_analysis && (
             <section className="market-pro-update" role="status">
               <div>
-                <strong>Market analysis needs an update</strong>
-                <span>New job evidence is available. Export the current intelligence package, review it with ChatGPT, then import the returned update.</span>
+                <strong>ChatGPT strategic analysis needs an update</strong>
+                <span>Automatic indicators remain available. Strategic recommendations require a separate ChatGPT review.</span>
               </div>
               <div className="button-row">
                 <a
@@ -353,6 +371,29 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               </div>
             </section>
           )}
+
+          <section className="market-pro-detail" aria-label="Automatic market indicators">
+            <article className="market-pro-detail-card">
+              <header><span>▤</span><h3>Automatic market indicators</h3></header>
+              {automatic ? (
+                <>
+                  <p>Calculated from saved JOLT evidence. No ChatGPT import required.</p>
+                  <dl>
+                    <div><dt>Unique roles</dt><dd>{automatic.total_unique_roles.toLocaleString()}</dd></div>
+                    <div><dt>Target roles</dt><dd>{automatic.target_role_count.toLocaleString()}</dd></div>
+                    <div><dt>Evaluated observations</dt><dd>{automatic.evaluation_coverage.evaluated_count.toLocaleString()}</dd></div>
+                    <div><dt>Pending evaluation</dt><dd>{automatic.evaluation_coverage.missing_count.toLocaleString()}</dd></div>
+                  </dl>
+                  <h4>Most mentioned skills</h4>
+                  <ul>
+                    {automatic.all.top_skills.slice(0, 8).map((skill) => (
+                      <li key={skill.label}>{skill.label}: {skill.count.toLocaleString()} roles</li>
+                    ))}
+                  </ul>
+                </>
+              ) : <p>{loading ? "Calculating local market indicators…" : "Automatic indicators are unavailable."}</p>}
+            </article>
+          </section>
 
           <section className="market-pro-main-grid">
             <article className="market-pro-panel market-pro-signals">
