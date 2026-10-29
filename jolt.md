@@ -10,6 +10,13 @@
 - **#692 — Local market statistics:** `GET /api/ai-market/automatic` calculates market indicators from persisted evidence using the optimized market-intelligence builder. It is read-only, independent of AI feedback/import, and supports validated timeframe/source-scope filters. The existing `/api/market-intelligence` endpoint remains available.
 - **#693 — Automatic Market Insights UI:** `frontend/src/MarketIntelligence.tsx` fetches `/api/ai-market/automatic` when active and on refresh, alongside strategy and application data. The page displays unique roles, target roles, evaluation coverage and commonly mentioned skills. Automatic indicators are distinct from stored ChatGPT strategic conclusions. Failed automatic fetches display a nonfatal message rather than silently inventing data.
 
+### Delivery B extension — compact strategic market export (candidate branch, not yet accepted)
+
+- Dedicated `GET /api/ai-work-package/market-export` produces `JOLT_MARKET_STRATEGY.json` using persisted, identity-deduplicated local market aggregates. It does **not** include Review Inbox jobs, vacancy bodies, per-job candidate decisions or the seven unrelated exchanges.
+- The output retains the `jolt_ai_work_package` 1.0 envelope with one `market_insights` exchange, so current `POST /api/ai-work-package/import` remains the import path. This does not claim independent market **import** yet.
+- Market Insights download link targets the compact route. Its strategic recommendations are still ChatGPT-generated, not automatic.
+- Evidence is aggregate, not individual vacancy provenance; do not invent individual source references. Validate exact-head CI, measured payload size and real Windows round-trip before marking accepted. Preserve legacy unified export for compatibility.
+
 ### Still outstanding — do not claim full workflow separation
 
 - **Market Insights strategic export is NOT independent yet:** its Download intelligence package link still targets `/api/ai-work-package/export`, which builds the heavy unified package.
