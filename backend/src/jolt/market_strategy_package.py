@@ -1,7 +1,9 @@
 """Compact strategic Market Insights package; no Review Inbox classifications."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -31,7 +33,8 @@ def build_market_strategy_package_json(session: Session) -> bytes:
     )
     scoped = {}
     for name in ("target", "all"):
-        group = aggregates[name]
+        raw_group = aggregates[name]
+        group: dict[str, Any] = raw_group if isinstance(raw_group, dict) else {}
         scoped[name] = {key: group[key] for key in summary_keys if key in group}
     exchange = AIExchangeInput(
         generated_at=datetime.now(UTC),
