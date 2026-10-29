@@ -8,8 +8,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from jolt.errors import JoltNotFoundError
-from jolt.official_source_capture import capture_official_candidates
 from jolt.market_strategy_package import build_market_strategy_package_json
+from jolt.official_source_capture import capture_official_candidates
 from jolt.unified_ai_work_package import (
     UnifiedAIUpdate,
     build_review_only_work_package_json,
