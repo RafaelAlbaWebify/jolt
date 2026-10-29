@@ -79,6 +79,8 @@ def descriptions_are_materially_similar(first: str, second: str) -> bool:
 
     if not first_normalized or not second_normalized:
         return False
+    if first_normalized == second_normalized:
+        return True
 
     first_tokens = _description_tokens(first)
     second_tokens = _description_tokens(second)
@@ -107,6 +109,8 @@ def descriptions_are_nearly_identical(first: str, second: str) -> bool:
 
     if not first_normalized or not second_normalized:
         return False
+    if first_normalized == second_normalized:
+        return True
 
     first_tokens = _description_tokens(first)
     second_tokens = _description_tokens(second)

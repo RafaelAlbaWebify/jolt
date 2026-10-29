@@ -216,3 +216,15 @@ def test_title_index_keeps_existing_group_order_and_canonical_priority() -> None
         ["alpha-2", "alpha-1"],
         ["beta"],
     ]
+
+
+def test_identical_long_descriptions_skip_sequence_matcher(monkeypatch) -> None:
+    def fail_matcher(*args, **kwargs):
+        raise AssertionError("Identical descriptions must not enter SequenceMatcher")
+
+    monkeypatch.setattr("jolt.semantic_duplicates.SequenceMatcher", fail_matcher)
+    description = ("Maintain Windows endpoints, Azure identity and ticketing. " * 200)
+    assert descriptions_are_materially_similar(description, description)
+    from jolt.semantic_duplicates import descriptions_are_nearly_identical
+
+    assert descriptions_are_nearly_identical(description, description)
