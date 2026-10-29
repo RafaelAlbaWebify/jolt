@@ -38,9 +38,7 @@ def build_market_intelligence_exchange_router(get_session: SessionProvider) -> A
             raise HTTPException(status_code=422, detail="Invalid market timeframe")
         if source_scope not in {"all", "capture_batches", "manual_intake"}:
             raise HTTPException(status_code=422, detail="Invalid market source scope")
-        return build_market_intelligence(
-            session, timeframe=timeframe, source_scope=source_scope
-        )
+        return build_market_intelligence(session, timeframe=timeframe, source_scope=source_scope)
 
     @router.get("/export", response_model=AIExchangeInput, deprecated=True)
     def export_market_intelligence(
