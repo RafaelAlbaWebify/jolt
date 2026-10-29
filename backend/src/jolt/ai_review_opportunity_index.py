@@ -70,6 +70,7 @@ class AIReviewOpportunityIndexItem(BaseModel):
 _CAPTURE_SOURCE_TYPES = {
     "linkedin_fixture",
     "linkedin_live",
+    "indeed_live",
 }
 
 
@@ -229,7 +230,10 @@ def list_ai_review_opportunity_index(
         capture_item = capture_items.get(artifact.capture_item_id)
         if capture_item is None or capture_item.posting_id in method_by_posting:
             continue
-        if artifact.artifact_type != "linkedin_live_item_json":
+        if artifact.artifact_type not in {
+            "linkedin_live_item_json",
+            "indeed_live_item_json",
+        }:
             continue
         try:
             observation = json.loads(artifact.raw_payload)
