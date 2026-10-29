@@ -796,9 +796,7 @@ def run_capture(
                             description,
                             verified,
                             reason,
-                            application_url=(
-                                _visible_external_apply_url(page) if verified else ""
-                            ),
+                            application_url=(_visible_external_apply_url(page) if verified else ""),
                             result_position=position,
                             page_number=1,
                             card_index=position - 1,
