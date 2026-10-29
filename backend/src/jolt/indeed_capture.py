@@ -280,6 +280,30 @@ def _first_text(page: Page, selectors: tuple[str, ...]) -> str:
     return ""
 
 
+def _visible_external_apply_url(page: Page) -> str:
+    """Read a visible Indeed apply link without clicking or submitting it."""
+    selectors = (
+        "#applyButtonLinkContainer a[href]",
+        "a[data-testid='indeedApplyButton'][href]",
+        "a.indeedApplyButton[href]",
+    )
+    for selector in selectors:
+        try:
+            links = page.locator(selector)
+            for index in range(min(links.count(), 5)):
+                node = links.nth(index)
+                if not node.is_visible(timeout=300):
+                    continue
+                href = (node.get_attribute("href") or "").strip()
+                url = urljoin(page.url, href)
+                parsed = urlparse(url)
+                if parsed.scheme == "https" and parsed.hostname and "indeed." not in parsed.hostname:
+                    return url[:4000]
+        except Exception:
+            continue
+    return ""
+
+
 def _panel_container(page: Page, expected_title: str):
     # Keep all candidate inspection inside one browser-side evaluation.
     # Repeated Playwright inner_text() calls on nested ancestors previously
@@ -612,6 +636,7 @@ def build_submit_payload(
                 "description": card.description,
                 "identity_verified": card.identity_verified,
                 "verification_reason": card.verification_reason,
+                "application_url": card.application_url,
             }
             for card in cards
         ],
@@ -767,6 +792,9 @@ def run_capture(
                             description,
                             verified,
                             reason,
+                            application_url=(
+                                _visible_external_apply_url(page) if verified else ""
+                            ),
                             result_position=position,
                             page_number=1,
                             card_index=position - 1,
