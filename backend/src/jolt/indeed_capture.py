@@ -297,7 +297,11 @@ def _visible_external_apply_url(page: Page) -> str:
                 href = (node.get_attribute("href") or "").strip()
                 url = urljoin(page.url, href)
                 parsed = urlparse(url)
-                if parsed.scheme == "https" and parsed.hostname and "indeed." not in parsed.hostname:
+                if (
+                    parsed.scheme == "https"
+                    and parsed.hostname
+                    and "indeed." not in parsed.hostname
+                ):
                     return url[:4000]
         except Exception:
             continue
