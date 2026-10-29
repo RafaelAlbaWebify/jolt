@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from jolt.ai_review_opportunity_index import (
     list_ai_review_opportunity_index,
 )
+from jolt.capture_artifacts import CaptureArtifact
 from jolt.database import (
     AIReview,
     CaptureItem,
@@ -158,6 +159,26 @@ def test_ai_review_index_ignores_python_classifier_scores(
             )
         )
 
+        session.flush()
+
+        application_url_payload = json.dumps(
+            {
+                "easy_apply_available": False,
+                "application_url": "https://jobs.lever.co/example/a",
+            }
+        )
+        session.add(
+            CaptureArtifact(
+                id="artifact-ai-index-a",
+                capture_item_id="item-ai-index-a",
+                artifact_type="linkedin_live_item_json",
+                content_type="application/json",
+                raw_payload=application_url_payload,
+                content_hash="e" * 64,
+                captured_at=now,
+            )
+        )
+
         session.add(
             AIReview(
                 id="ai-review-index-a",
@@ -199,6 +220,7 @@ def test_ai_review_index_ignores_python_classifier_scores(
         assert first.ai_review_status == "reviewed"
         assert first.decision == "strong_pursue"
         assert first.priority_score == 95
+        assert first.outbound_application_url == "https://jobs.lever.co/example/a"
 
         serialized = first.model_dump()
 

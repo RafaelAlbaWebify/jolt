@@ -37,6 +37,7 @@ class AIReviewOpportunityIndexItem(BaseModel):
     application_method: str = "unknown"
     easy_apply_available: bool | None = None
     easy_apply_evidence: str = "not_observed"
+    outbound_application_url: str = ""
 
     hardline_status: str | None = None
     hardline_reasons: list[str] = Field(default_factory=list)
@@ -69,6 +70,7 @@ class AIReviewOpportunityIndexItem(BaseModel):
 _CAPTURE_SOURCE_TYPES = {
     "linkedin_fixture",
     "linkedin_live",
+    "indeed_live",
 }
 
 
@@ -220,7 +222,7 @@ def list_ai_review_opportunity_index(
         for item in session.scalars(select(CaptureItem)).all()
         if item.posting_id is not None
     }
-    method_by_posting: dict[str, tuple[bool, str]] = {}
+    method_by_posting: dict[str, tuple[bool | None, str, str]] = {}
     artifacts = session.scalars(
         select(CaptureArtifact).order_by(CaptureArtifact.captured_at.desc())
     ).all()
@@ -228,17 +230,22 @@ def list_ai_review_opportunity_index(
         capture_item = capture_items.get(artifact.capture_item_id)
         if capture_item is None or capture_item.posting_id in method_by_posting:
             continue
-        if artifact.artifact_type != "linkedin_live_item_json":
+        if artifact.artifact_type not in {
+            "linkedin_live_item_json",
+            "indeed_live_item_json",
+        }:
             continue
         try:
             observation = json.loads(artifact.raw_payload)
         except (ValueError, TypeError):
             continue
         observed = observation.get("easy_apply_available")
-        if type(observed) is bool and capture_item.posting_id is not None:
+        outbound_url = str(observation.get("application_url") or "").strip()
+        if (type(observed) is bool or outbound_url) and capture_item.posting_id is not None:
             method_by_posting[capture_item.posting_id] = (
-                observed,
+                observed if type(observed) is bool else None,
                 artifact.captured_at.isoformat(),
+                outbound_url,
             )
 
     capture_statuses = _capture_statuses_by_posting(session)
@@ -285,9 +292,10 @@ def list_ai_review_opportunity_index(
             "easy_apply_available": observed_method[0] if observed_method else None,
             "easy_apply_evidence": (
                 "linked_in_job_button_observed_at:" + observed_method[1]
-                if observed_method
+                if observed_method and observed_method[0] is not None
                 else "not_observed"
             ),
+            "outbound_application_url": observed_method[2] if observed_method else "",
         }
 
         ai_review = latest_ai_reviews.get(posting.id)
