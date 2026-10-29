@@ -344,10 +344,10 @@ export function MarketIntelligence({ apiBase, active }: Props) {
               <div className="button-row">
                 <a
                   className="secondary"
-                  href={`${apiBase}/api/ai-work-package/export`}
-                  download="JOLT_AI_WORK_PACKAGE.json"
+                  href={`${apiBase}/api/ai-work-package/market-export`}
+                  download="JOLT_MARKET_STRATEGY.json"
                 >
-                  Download intelligence package
+                  Download strategic market package
                 </a>
                 <input
                   ref={importRef}
