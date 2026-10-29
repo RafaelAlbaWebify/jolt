@@ -378,7 +378,10 @@ def build_review_only_work_package_json(session: Session) -> bytes:
         candidate_evidence=candidate_evidence,
         review_inbox=review,
         exchanges=[],
-        instructions={"workflow": "Review Inbox classification only. Return a jolt_ai_work_package_update with review_inbox and no unrelated exchanges.", "three_message_review": build_review_protocol()},
+        instructions={
+            "workflow": "Review Inbox classification only. Return a jolt_ai_work_package_update with review_inbox and no unrelated exchanges.",
+            "three_message_review": build_review_protocol(),
+        },
     )
     return package.model_dump_json(indent=2).encode("utf-8")
 
