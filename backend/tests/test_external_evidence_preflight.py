@@ -110,3 +110,21 @@ def test_corporate_dxc_apply_url_is_candidate_not_verified() -> None:
     assert evidence["official_source_candidates"][0]["url"] == job["outbound_application_url"]
     assert evidence["official_source_candidates"][0]["source"] == "captured_apply_control"
     assert evidence["external_source_status"] == "not_checked"
+
+
+def test_preflight_uses_observed_outbound_application_url() -> None:
+    result = build_job_preflight(
+        {
+            "source_url": "https://www.linkedin.com/jobs/view/123/",
+            "analysis_text": "Job description without an ATS link.",
+            "outbound_application_url": "https://jobs.lever.co/acme/123",
+        }
+    )
+
+    assert result["official_source_candidates"] == [
+        {
+            "url": "https://jobs.lever.co/acme/123",
+            "source": "captured_apply_control",
+            "verification_status": "unverified_candidate",
+        }
+    ]
