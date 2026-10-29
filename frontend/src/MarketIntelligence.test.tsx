@@ -177,7 +177,7 @@ describe("MarketIntelligence", () => {
     });
 
     render(<MarketIntelligence apiBase="http://api" active />);
-    await screen.findByText("Market analysis needs an update");
+    await screen.findByText("ChatGPT strategic analysis needs an update");
 
     const input = screen.getByLabelText("Import reviewed intelligence update");
     const file = new File(
@@ -198,13 +198,13 @@ describe("MarketIntelligence", () => {
     ).toBeInTheDocument();
   });
 
-  it("refreshes both persisted views without recomputing local intelligence", async () => {
+  it("refreshes strategic, application, and automatic market views", async () => {
     const fetchMock = mockApi();
     render(<MarketIntelligence apiBase="http://api" active />);
     await screen.findByRole("heading", { name: "Market Insights" });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh view" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
   });
 
   it("falls back safely when decision counts or application metrics are unavailable", async () => {
