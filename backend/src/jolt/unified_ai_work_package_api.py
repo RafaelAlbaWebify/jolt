@@ -16,6 +16,7 @@ from jolt.unified_ai_work_package import (
     build_unified_ai_work_package,
     build_unified_ai_work_package_json,
     import_unified_ai_update,
+    preflight_unified_ai_update,
 )
 
 SessionProvider = Callable[[], Iterator[Session]]
@@ -86,6 +87,16 @@ def build_unified_ai_work_package_router(get_session: SessionProvider) -> APIRou
             return capture_official_candidates(session, package.review_inbox)
         except (ValueError, JoltNotFoundError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @router.post("/api/ai-work-package/preflight")
+    def preflight_ai_work_package(
+        payload: UnifiedAIUpdate,
+        session: Session = session_dependency,
+    ) -> dict[str, object]:
+        try:
+            return preflight_unified_ai_update(session, payload)
+        except (ValueError, KeyError, JoltNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/api/ai-work-package/import")
     def import_ai_work_package(
