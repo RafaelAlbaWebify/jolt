@@ -1,5 +1,14 @@
 # JOLT — Operating Context
 
+## CURRENT HANDOVER — 2026-10-30: REVIEW-INBOX AI IMPORT FAILURE
+
+- The attached `JOLT_REVIEW_ONLY` export contains 300 postings and declares `classification_authority: external_ai`. All 300 `preanalysis.final_decision` values are null and `review_required` is true. This export is an AI handoff, not JOLT's final native classifier output; use persisted native evaluator records for the classifier audit.
+- The first `JOLT_IMPORT_AI_REVIEW_20261030.json` import failed and rendered a wall of `[object Object]`. Source review confirmed the unified importer requires root `reviewed_at` and `review_version`; the file omitted both. It also supplied 1,186 strings under `mandatory_requirements`, while review contract 1.2 requires structured objects there.
+- Additional contract conflicts required corrections beyond adding missing fields: 47 `REJECT` and 3 `MANUAL_REVIEW` records carried Stage-2 fit scores; all 24 pursue decisions had clearance marked unknown; 10 pursue decisions had a LinkedIn Remote model without official confirmation of work from Spain. The corrected copy preserves all 300 IDs, converts the 10 unresolved remote cases to conditional, removes scores blocked by Stage-1 precedence, and marks clearance clear only where the complete posting contains no clearance requirement.
+- Corrected decision totals: 271 reject, 14 pursue, 15 conditional. These are ChatGPT review outcomes, not JOLT-native classifications. The corrected file passed a source-derived structural/gate preflight; it has not been imported or validated against the live database/context.
+- The screenshot's error display is a separate UI defect: `frontend/src/App.tsx:errorFromResponse` treats FastAPI `detail` as a string, so a structured error array becomes `[object Object]`. No frontend fix is included in this documentation update.
+- Next: import only the corrected copy after checking the package context is still current; keep the native-classifier audit separate until JOLT evaluator outputs are available. Any later import error should display individual paths/messages and must not be hidden by retrying.
+
 ## CURRENT FOLLOW-UP — MARKET INSIGHTS UI (2026-10-29)
 
 - User confirmed [PR #695](https://github.com/RafaelAlbaWebify/jolt/pull/695) is green and merged. The compact market package was exported at 93,959 bytes and imported successfully in the desktop JOLT session.

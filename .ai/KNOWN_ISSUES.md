@@ -151,3 +151,11 @@ Do not delete unresolved issues merely because they are old. Mark resolved with 
 
 ## KI-019 — OPEN 2026-10-13 — InfoJobs official developer API unavailable for live validation
 - Existing KI-015 still applies to the official API because developer credentials were not provided. Its earlier statement that *all* InfoJobs access was blocked is superseded: visible public browser results were observed; these are separate access modes.
+
+## KI-020 — OPEN 2026-10-30 — Review import payload mismatch and unreadable validation errors
+- Module: Unified AI Work Package / Review Inbox UI.
+- Evidence: user import screenshot shows the error banner printing repeated `[object Object]`. The generated 300-job update omitted required root `reviewed_at` and `review_version` fields and put 1,186 strings in `mandatory_requirements`, which contract 1.2 types as structured requirement objects. Source-level validation also identified fit scores on 47 REJECT and 3 MANUAL_REVIEW results, unknown clearance on all 24 pursue results, and 10 LinkedIn Remote pursue results lacking official work-from-Spain verification.
+- Failure rendering: `frontend/src/App.tsx:errorFromResponse` assumes FastAPI `detail` is a string. FastAPI/Pydantic validation can return an array of error objects; coercing it to error text produces `[object Object]` entries and hides paths/messages.
+- Import safety: request-model validation occurs before the route calls the importer, so this malformed request should fail before database writes. The import was not retried; live database state was not inspected or changed.
+- Corrected review copy: 300 IDs retained; 10 unresolved LinkedIn Remote positives changed to conditional to respect the current contract. Totals are 271 reject / 14 pursue / 15 conditional. Source-derived preflight passed; live import/readback remains unverified.
+- Next action: implement structured error rendering and add a regression for Pydantic error arrays; before any later import, confirm the source context version is current and inspect returned import counts.
