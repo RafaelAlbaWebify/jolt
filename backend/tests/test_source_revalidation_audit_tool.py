@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 import os
 import sqlite3
 import subprocess
@@ -96,7 +97,7 @@ def _seed_database(path: Path) -> None:
                 "eligible",
                 "eligible",
                 88,
-                "2026-09-30T12:00:00+00:00",
+                datetime.now(timezone.utc).isoformat(),
                 0,
                 "unknown",
                 "unknown",
