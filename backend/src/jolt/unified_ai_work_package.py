@@ -38,8 +38,8 @@ from jolt.global_context import (
     save_global_ai_context,
 )
 from jolt.linkedin_batch_review import (
-    _validate_batch_membership,
     BatchAIReviewImportRequest,
+    _validate_batch_membership,
     build_batch_ai_review_document,
     import_batch_ai_review,
 )
@@ -491,9 +491,7 @@ def preflight_unified_ai_update(
 
     if validation_errors:
         details = "\n".join(f"- {error}" for error in validation_errors)
-        raise ValueError(
-            f"AI review preflight found {len(validation_errors)} issue(s):\n{details}"
-        )
+        raise ValueError(f"AI review preflight found {len(validation_errors)} issue(s):\n{details}")
 
     return {
         "valid": True,
