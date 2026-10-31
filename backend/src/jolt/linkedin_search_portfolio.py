@@ -4,8 +4,6 @@ from datetime import datetime
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from jolt.errors import JoltNotFoundError
-from jolt.linkedin_source_urls import normalize_linkedin_search_url
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +14,8 @@ from jolt.database import (
     LinkedInSavedSearch,
     utc_now,
 )
+from jolt.errors import JoltNotFoundError
+from jolt.linkedin_source_urls import normalize_linkedin_search_url
 
 
 class SavedLinkedInSearchRequest(BaseModel):

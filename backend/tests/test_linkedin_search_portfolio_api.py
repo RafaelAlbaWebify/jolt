@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from jolt.main import create_app
 from sqlalchemy import create_engine, text
+
+from jolt.main import create_app
 
 
 def _client(tmp_path: Path) -> TestClient:
