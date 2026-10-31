@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 import os
 import sqlite3
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -97,7 +97,7 @@ def _seed_database(path: Path) -> None:
                 "eligible",
                 "eligible",
                 88,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 0,
                 "unknown",
                 "unknown",
