@@ -21,6 +21,7 @@ def upgrade() -> None:
     with op.batch_alter_table(
         TABLE,
         naming_convention={"fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s"},
+        reflect_kwargs={"resolve_fks": False},
     ) as batch:
         batch.drop_constraint(CONSTRAINT, type_="foreignkey")
 
