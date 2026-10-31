@@ -6,7 +6,9 @@ import importlib.util
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-MODULE = Path(__file__).resolve().parents[2] / "tools" / "sync-definitive-job-searches.py"
+MODULE = (
+    Path(__file__).resolve().parents[2] / "tools" / "sync-definitive-job-searches.py"
+)
 SPEC = importlib.util.spec_from_file_location("search_sync", MODULE)
 assert SPEC and SPEC.loader
 syncmod = importlib.util.module_from_spec(SPEC)
@@ -18,7 +20,8 @@ def test_catalog_has_twelve_distinct_searches_per_portal():
     assert len(catalog["indeed"]) == 12
     assert len(catalog["linkedin"]) == 12
     assert all(
-        len({syncmod.search_key(x["url"]) for x in rows}) == len(rows) for rows in catalog.values()
+        len({syncmod.search_key(x["url"]) for x in rows}) == len(rows)
+        for rows in catalog.values()
     )
 
 
@@ -55,9 +58,16 @@ def test_indeed_remote_scopes_use_their_market_sites():
     assert parse_qs(local.query)["radius"] == ["30"]
 
     remote_rows = [row for row in rows if row["scope"] != "LOCAL"]
-    assert all(parse_qs(urlsplit(row["url"]).query)["l"] == ["Remote"] for row in remote_rows)
+    assert all(
+        parse_qs(urlsplit(row["url"]).query)["l"] == ["Remote"] for row in remote_rows
+    )
     hosts = {urlsplit(row["url"]).hostname for row in remote_rows}
-    assert {"es.indeed.com", "uk.indeed.com", "ie.indeed.com", "www.indeed.com"} <= hosts
+    assert {
+        "es.indeed.com",
+        "uk.indeed.com",
+        "ie.indeed.com",
+        "www.indeed.com",
+    } <= hosts
 
 
 def test_saved_searches_use_the_certified_capture_depth():
@@ -83,8 +93,18 @@ def test_reuse_existing_equivalent_ids_and_retire_extras():
     pieces = url.split("?")
     ordered = "?".join([pieces[0], "&".join(reversed(pieces[1].split("&")))])
     old = [
-        {"id": "history-1", "label": "Historic", "search_url": ordered, "enabled": False},
-        {"id": "extra-2", "label": "Old experiment", "search_url": url, "enabled": False},
+        {
+            "id": "history-1",
+            "label": "Historic",
+            "search_url": ordered,
+            "enabled": False,
+        },
+        {
+            "id": "extra-2",
+            "label": "Old experiment",
+            "search_url": url,
+            "enabled": False,
+        },
     ]
     plan = syncmod.plan_portal("linkedin", old, syncmod.desired_catalog()["linkedin"])
     reuse = [x for x in plan if x[0] == "reuse"]
@@ -116,4 +136,3 @@ def test_backup_preserves_both_portals(tmp_path):
     assert (tmp_path / "backup" / "indeed_before.json").is_file()
     assert (tmp_path / "backup" / "linkedin_before.json").is_file()
     assert (tmp_path / "backup" / "definitive_urls.csv").is_file()
-
