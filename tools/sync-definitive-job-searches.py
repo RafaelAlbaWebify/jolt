@@ -1,7 +1,7 @@
 """Safely reconcile Indeed/LinkedIn saved search portfolios via their JOLT APIs.
 
 Read-only by default. --apply backs up both portal catalogs first, then reconciles.
-Historical LinkedIn searches are disabled rather than deleted.
+Obsolete saved searches are deleted; captured jobs and historical snapshots are preserved.
 """
 
 from __future__ import annotations
@@ -383,21 +383,9 @@ def sync(api: API, catalog: dict, originals: dict, *, apply: bool, output: Path)
         for old in rows:
             if old["id"] in representatives:
                 continue
-            if portal == "indeed":
-                api.request(f"/api/discovery-searches/{old['id']}/delete", post=True)
-                print(f"  indeed deleted: {old['label']}")
-            else:
-                if old["enabled"]:
-                    body = {
-                        "label": old["label"],
-                        "search_url": old["search_url"],
-                        "notes": old.get("notes", ""),
-                        "enabled": False,
-                        "max_jobs": old["max_jobs"],
-                        "max_pages": old["max_pages"],
-                    }
-                    api.request(f"/api/linkedin-searches/{old['id']}", body, post=True)
-                    print(f"  linkedin retired: {old['label']}")
+            endpoint = "discovery-searches" if portal == "indeed" else "linkedin-searches"
+            api.request(f"/api/{endpoint}/{old['id']}/delete", post=True)
+            print(f"  {portal} deleted: {old['label']}")
     final = {p: api.list(p) for p in ("indeed", "linkedin")}
     for portal, expected in (("indeed", 12), ("linkedin", 12)):
         active = [x for x in final[portal] if x["enabled"]]
@@ -407,14 +395,15 @@ def sync(api: API, catalog: dict, originals: dict, *, apply: bool, output: Path)
             raise RuntimeError(
                 f"FINAL VERIFICATION FAILED: {portal}: {len(active)} active"
             )
-    if len(final["indeed"]) != 12:
-        raise RuntimeError("Indeed still contains obsolete saved searches")
+    for portal in ("indeed", "linkedin"):
+        if len(final[portal]) != 12:
+            raise RuntimeError(f"{portal} still contains obsolete saved searches")
     (output / "final_result.json").write_text(
         json.dumps(final, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print("PASS: 12 Indeed + 12 LinkedIn enabled; obsolete Indeed searches removed.")
-    print("Historical LinkedIn entries are retained disabled.")
+    print("PASS: exactly 12 Indeed + 12 LinkedIn saved searches; obsolete queries deleted.")
+    print("Captured jobs and discovery history snapshots are preserved.")
 
 
 def main():
@@ -438,3 +427,4 @@ if __name__ == "__main__":
     except (RuntimeError, ValueError, OSError) as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         sys.exit(1)
+
