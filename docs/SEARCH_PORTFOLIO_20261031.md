@@ -35,10 +35,11 @@ Indeed queries use the market-specific site and the portal's Remote location fil
 
 ## Applying the portfolio
 
-The saved searches are persisted in JOLT's local database, so restarting the application alone does not replace them. After merging, restart JOLT and run this from the repository root while its local API is available:
+The saved searches are persisted in JOLT's local database, so restarting the application alone does not replace them. After merging and updating your local clone, restart JOLT to apply the database migration. Run this from any directory while its local API is available (the command uses the default Windows clone location):
 
 ```powershell
-python .\tools\sync-definitive-job-searches.py --apply
+python "$env:USERPROFILE\Documents\GitHub\jolt\tools\sync-definitive-job-searches.py" --apply
 ```
 
-The script first backs up both current catalogs. It deletes superseded Indeed searches and disables superseded LinkedIn searches to preserve their history. Without `--apply`, it only prints the plan.
+The script first backs up both current catalogs. It deletes superseded saved searches from both portals, including previously disabled entries. LinkedIn discovery snapshots retain their original query ID, label, URL, and capture results after saved configuration is deleted. Deletion is blocked while a query belongs to queued, scheduled, or running discovery. Without `--apply`, it only prints the plan.
+

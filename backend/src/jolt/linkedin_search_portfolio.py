@@ -191,14 +191,21 @@ def delete_saved_linkedin_search(session: Session, saved_search_id: str) -> None
     search = session.get(LinkedInSavedSearch, saved_search_id)
     if search is None:
         raise JoltNotFoundError("Saved LinkedIn search was not found.")
-    historical_reference = session.scalar(
+    active_reference = session.scalar(
         select(LinkedInDiscoveryBatchSearch.id)
-        .where(LinkedInDiscoveryBatchSearch.saved_search_id == saved_search_id)
+        .join(
+            LinkedInDiscoveryBatch,
+            LinkedInDiscoveryBatch.id == LinkedInDiscoveryBatchSearch.batch_id,
+        )
+        .where(
+            LinkedInDiscoveryBatchSearch.saved_search_id == saved_search_id,
+            LinkedInDiscoveryBatch.status.in_(("queued", "scheduled", "running")),
+        )
         .limit(1)
     )
-    if historical_reference is not None:
+    if active_reference is not None:
         raise ValueError(
-            "Saved search is referenced by discovery history; disable it instead of deleting it."
+            "Saved search is referenced by active discovery; finish or cancel the batch before deleting it."
         )
     session.delete(search)
     session.commit()

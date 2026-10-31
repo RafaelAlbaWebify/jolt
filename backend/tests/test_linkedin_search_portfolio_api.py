@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
 
 from jolt.main import create_app
 
@@ -148,7 +149,7 @@ def test_discovery_batch_overrides_capture_limits_without_mutating_saved_search(
     assert saved["max_pages"] == 10
 
 
-def test_discovery_history_blocks_delete_but_allows_disable(tmp_path: Path) -> None:
+def test_active_discovery_blocks_delete_but_allows_disable(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
     created = client.post("/api/linkedin-searches", json=_search_payload()).json()
@@ -160,7 +161,7 @@ def test_discovery_history_blocks_delete_but_allows_disable(tmp_path: Path) -> N
 
     deleted = client.post(f"/api/linkedin-searches/{created['id']}/delete")
     assert deleted.status_code == 409
-    assert "discovery history" in deleted.json()["detail"]
+    assert "active discovery" in deleted.json()["detail"]
 
     disabled_payload = _search_payload()
     disabled_payload["enabled"] = False
@@ -340,3 +341,29 @@ def test_search_performance_endpoint_returns_saved_searches_before_first_run(
             "accepted_offer_count": 0,
         }
     ]
+
+
+def test_completed_history_survives_saved_search_deletion(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    saved = client.post("/api/linkedin-searches", json=_search_payload()).json()
+    batch = client.post(
+        "/api/linkedin-discovery-batches", json={"saved_search_ids": [saved["id"]]}
+    ).json()
+    engine = create_engine(f"sqlite:///{(tmp_path / 'portfolio.db').as_posix()}")
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE linkedin_discovery_batches SET status = 'completed' WHERE id = :id"),
+            {"id": batch["id"]},
+        )
+    engine.dispose()
+
+    deleted = client.post(f"/api/linkedin-searches/{saved['id']}/delete")
+    assert deleted.status_code == 200, deleted.text
+    assert client.get("/api/linkedin-searches").json() == []
+    history = client.get(f"/api/linkedin-discovery-batches/{batch['id']}")
+    assert history.status_code == 200, history.text
+    snapshot = history.json()["searches"][0]
+    assert snapshot["saved_search_id"] == saved["id"]
+    assert snapshot["label"] == saved["label"]
+    assert snapshot["search_url"] == saved["search_url"]
+    assert snapshot["max_jobs"] == saved["max_jobs"]
