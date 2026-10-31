@@ -1,5 +1,7 @@
 # Indeed search portfolio — 2026-10-25
 
+> **Superseded:** the current two-portal portfolio is documented in [SEARCH_PORTFOLIO_20261031.md](SEARCH_PORTFOLIO_20261031.md). Use `tools/sync-definitive-job-searches.py` to reconcile saved searches. The historical pilot notes below are retained as evidence, not as the current queue.
+
 Purpose: maximize distinct realistically obtainable offers; no applications or user data changes.
 
 ## Grounding
@@ -38,3 +40,4 @@ Purpose: maximize distinct realistically obtainable offers; no applications or u
 - Use one bilingual broad discovery lane so that adjacent occupations not represented here remain discoverable.
 - Do not auto-save, auto-apply or change production searches without user-approved `-Apply`.
 - LinkedIn is a separate second phase; retain same scoring, never reuse Indeed URL syntax.
+
