@@ -6,9 +6,7 @@ import importlib.util
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-MODULE = (
-    Path(__file__).resolve().parents[2] / "tools" / "sync-definitive-job-searches.py"
-)
+MODULE = Path(__file__).resolve().parents[2] / "tools" / "sync-definitive-job-searches.py"
 SPEC = importlib.util.spec_from_file_location("search_sync", MODULE)
 assert SPEC and SPEC.loader
 syncmod = importlib.util.module_from_spec(SPEC)
@@ -20,8 +18,7 @@ def test_catalog_has_twelve_distinct_searches_per_portal():
     assert len(catalog["indeed"]) == 12
     assert len(catalog["linkedin"]) == 12
     assert all(
-        len({syncmod.search_key(x["url"]) for x in rows}) == len(rows)
-        for rows in catalog.values()
+        len({syncmod.search_key(x["url"]) for x in rows}) == len(rows) for rows in catalog.values()
     )
 
 
@@ -58,9 +55,7 @@ def test_indeed_remote_scopes_use_their_market_sites():
     assert parse_qs(local.query)["radius"] == ["30"]
 
     remote_rows = [row for row in rows if row["scope"] != "LOCAL"]
-    assert all(
-        parse_qs(urlsplit(row["url"]).query)["l"] == ["Remote"] for row in remote_rows
-    )
+    assert all(parse_qs(urlsplit(row["url"]).query)["l"] == ["Remote"] for row in remote_rows)
     hosts = {urlsplit(row["url"]).hostname for row in remote_rows}
     assert {
         "es.indeed.com",
