@@ -239,8 +239,9 @@ class LinkedInDiscoveryBatchSearch(Base):
         nullable=False,
         index=True,
     )
+    # Historical provenance ID: snapshots outlive the saved search configuration.
     saved_search_id: Mapped[str] = mapped_column(
-        ForeignKey("linkedin_saved_searches.id"),
+        String(36),
         nullable=False,
         index=True,
     )

@@ -131,3 +131,47 @@ def test_backup_preserves_both_portals(tmp_path):
     assert (tmp_path / "backup" / "indeed_before.json").is_file()
     assert (tmp_path / "backup" / "linkedin_before.json").is_file()
     assert (tmp_path / "backup" / "definitive_urls.csv").is_file()
+
+
+def test_apply_removes_disabled_obsolete_searches_and_is_idempotent(tmp_path):
+    catalog = syncmod.desired_catalog()
+
+    class FakeAPI:
+        def __init__(self):
+            self.rows = {
+                portal: [
+                    {"id": f"{portal}-{index}", **syncmod.payload_for(portal, target)}
+                    for index, target in enumerate(targets)
+                ]
+                for portal, targets in catalog.items()
+            }
+            for portal in self.rows:
+                old = dict(self.rows[portal][0])
+                old.update(id=f"{portal}-obsolete", label="Old disabled query", enabled=False)
+                self.rows[portal].append(old)
+            self.deleted = []
+
+        def list(self, portal):
+            return list(self.rows[portal])
+
+        def request(self, path, data=None, post=False):
+            if path == "/api/health":
+                return {"status": "ok"}
+            if path in {"/api/discovery-executions", "/api/linkedin-discovery-batches"}:
+                return []
+            portal = "indeed" if "/discovery-searches/" in path else "linkedin"
+            record_id = path.split("/")[3]
+            if path.endswith("/delete"):
+                self.rows[portal] = [r for r in self.rows[portal] if r["id"] != record_id]
+                self.deleted.append(record_id)
+            else:
+                for row in self.rows[portal]:
+                    if row["id"] == record_id:
+                        row.update(data)
+
+    api = FakeAPI()
+    for attempt in range(2):
+        original = {p: api.list(p) for p in catalog}
+        syncmod.sync(api, catalog, original, apply=True, output=tmp_path / str(attempt))
+        assert all(len(api.list(p)) == 12 for p in catalog)
+    assert api.deleted == ["indeed-obsolete", "linkedin-obsolete"]
