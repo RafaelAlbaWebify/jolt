@@ -5,6 +5,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -96,7 +97,7 @@ def _seed_database(path: Path) -> None:
                 "eligible",
                 "eligible",
                 88,
-                "2026-09-30T12:00:00+00:00",
+                datetime.now(UTC).isoformat(),
                 0,
                 "unknown",
                 "unknown",

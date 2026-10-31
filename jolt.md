@@ -1,5 +1,15 @@
 # JOLT — Operating Context
 
+## CURRENT HANDOVER — 2026-10-30: REVIEW-INBOX AI IMPORT RECOVERY
+
+- The attached `JOLT_REVIEW_ONLY` export contains 300 postings and declares `classification_authority: external_ai`. All 300 `preanalysis.final_decision` values are null and `review_required` is true. This export is an AI handoff, not JOLT's final native classifier output; use persisted native evaluator records for the classifier audit.
+- The first `JOLT_IMPORT_AI_REVIEW_20261030.json` import failed and rendered a wall of `[object Object]`. Source review confirmed the unified importer requires root `reviewed_at` and `review_version`; the file omitted both. It also supplied 1,186 strings under `mandatory_requirements`, while review contract 1.2 requires structured objects there.
+- Additional contract conflicts required corrections beyond adding missing fields: 47 `REJECT` and 3 `MANUAL_REVIEW` records carried Stage-2 fit scores; all 24 pursue decisions had clearance marked unknown; 10 pursue decisions had a LinkedIn Remote model without official confirmation of work from Spain. The corrected copy preserves all 300 IDs, converts the 10 unresolved remote cases to conditional, removes scores blocked by Stage-1 precedence, and marks clearance clear only where the complete posting contains no clearance requirement.
+- Corrected decision totals: 271 reject, 14 pursue, 15 conditional. These are ChatGPT review outcomes, not JOLT-native classifications. The initial corrected file passed only a source-derived structural/gate preflight; it later needed two additional deterministic language-gate corrections before JOLT accepted it.
+- A follow-up import screenshot confirms the corrected 300-job package was accepted: 300 jobs show AI reviewed, with 14 good matches, 15 checks, and 271 not-a-match outcomes. This confirms that one live import succeeded; it does not certify every review label.
+- The import gate rejected two additional records because JOLT's deterministic language analyzer requires `hardline_status=MANUAL_REVIEW`, `language_status=conditional`, and no Stage-2 fit score whenever it reports ambiguous language evidence. Full-text inspection showed French/German on the IBM FileNet posting are in a Nice-to-Have section; Support Lead was independently rejected for specialist-experience fit. The corrected package was aligned to both source gates and then imported successfully.
+- The code follow-up on this branch recognizes hyphenated “Nice-to-Have Skills” headings, adds read-only `POST /api/ai-work-package/preflight` before review imports, aggregates capture-level failures, and renders FastAPI validation arrays as readable path/message text. This branch has not yet passed CI or been merged.
+
 ## CURRENT FOLLOW-UP — MARKET INSIGHTS UI (2026-10-29)
 
 - User confirmed [PR #695](https://github.com/RafaelAlbaWebify/jolt/pull/695) is green and merged. The compact market package was exported at 93,959 bytes and imported successfully in the desktop JOLT session.

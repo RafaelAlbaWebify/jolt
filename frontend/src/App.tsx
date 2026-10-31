@@ -213,9 +213,47 @@ function reviewNotice(decision: ReviewChoice, title: string) {
   return `${name} review updated.`;
 }
 
+function formatErrorDetail(detail: unknown): string | null {
+  if (typeof detail === "string") return detail.trim() || null;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return null;
+
+        const entry = item as Record<string, unknown>;
+        const message =
+          typeof entry.msg === "string"
+            ? entry.msg
+            : typeof entry.message === "string"
+              ? entry.message
+              : "";
+        const location = Array.isArray(entry.loc)
+          ? entry.loc.map(String).join(".")
+          : "";
+
+        if (message && location) return `${location}: ${message}`;
+        if (message) return message;
+        return JSON.stringify(entry);
+      })
+      .filter((message): message is string => Boolean(message));
+    return messages.length ? messages.join("; ") : null;
+  }
+
+  if (detail && typeof detail === "object") {
+    const entry = detail as Record<string, unknown>;
+    if (typeof entry.msg === "string") return entry.msg;
+    if (typeof entry.message === "string") return entry.message;
+    return JSON.stringify(entry);
+  }
+
+  return null;
+}
+
 async function errorFromResponse(response: Response, fallback: string) {
-  const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-  return new Error(payload?.detail || fallback);
+  const payload = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+  return new Error(formatErrorDetail(payload?.detail) || fallback);
 }
 
 function SourceDescription({ postingId }: { postingId: string }) {
@@ -577,6 +615,30 @@ export function App({
         payload = JSON.parse(text);
       } catch {
         throw new Error("The selected file is not valid JSON.");
+      }
+
+      const hasReviewInbox =
+        payload !== null &&
+        typeof payload === "object" &&
+        "review_inbox" in payload &&
+        (payload as { review_inbox?: unknown }).review_inbox != null;
+
+      if (hasReviewInbox) {
+        const preflightResponse = await fetch(
+          `${API_BASE}/api/ai-work-package/preflight`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!preflightResponse.ok) {
+          throw await errorFromResponse(
+            preflightResponse,
+            "The AI review package failed pre-import validation.",
+          );
+        }
       }
 
       const response = await fetch(`${API_BASE}/api/ai-work-package/import`, {

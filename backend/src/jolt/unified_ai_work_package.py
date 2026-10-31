@@ -39,6 +39,7 @@ from jolt.global_context import (
 )
 from jolt.linkedin_batch_review import (
     BatchAIReviewImportRequest,
+    _validate_batch_membership,
     build_batch_ai_review_document,
     import_batch_ai_review,
 )
@@ -432,6 +433,74 @@ def _validate_unified_update(update: UnifiedAIUpdate) -> None:
                 f"Section output {section} must leave context_patch empty; use top-level context_patch"
             )
         seen.add(section)
+
+
+def preflight_unified_ai_update(
+    session: Session,
+    update: UnifiedAIUpdate,
+) -> dict[str, object]:
+    """Validate Review Inbox membership and deterministic gates without persisting data."""
+
+    _validate_unified_update(update)
+    review_inbox = update.review_inbox
+    if review_inbox is None:
+        raise ValueError("AI review preflight requires a review_inbox section.")
+
+    candidate_summary = update.context_patch.get("candidate_evidence_summary")
+    if candidate_summary is not None:
+        validate_candidate_evidence_refs(session, candidate_summary)
+
+    capture_run_count = 0
+    received_count = 0
+    validation_errors: list[str] = []
+    if isinstance(review_inbox, AIReviewBundleImportRequest):
+        seen_postings: set[str] = set()
+        seen_captures: set[str] = set()
+        for request in review_inbox.reviews:
+            if request.capture_run_id in seen_captures:
+                validation_errors.append(
+                    f"Duplicate capture_run_id in unified AI bundle: {request.capture_run_id}"
+                )
+            seen_captures.add(request.capture_run_id)
+            try:
+                _validate_capture_membership(session, request)
+            except (ValueError, JoltNotFoundError) as exc:
+                validation_errors.append(f"Capture {request.capture_run_id}: {exc}")
+            for job in request.jobs:
+                if job.posting_id in seen_postings:
+                    validation_errors.append(
+                        f"Duplicate posting_id across unified AI bundle: {job.posting_id}"
+                    )
+                seen_postings.add(job.posting_id)
+            received_count += len(request.jobs)
+        capture_run_count = len(seen_captures)
+    elif isinstance(review_inbox, BatchAIReviewImportRequest):
+        try:
+            _validate_batch_membership(session, review_inbox)
+        except (ValueError, JoltNotFoundError) as exc:
+            validation_errors.append(str(exc))
+        received_count = len(review_inbox.jobs)
+        capture_run_count = 1
+    else:
+        try:
+            _validate_capture_membership(session, review_inbox)
+        except (ValueError, JoltNotFoundError) as exc:
+            validation_errors.append(f"Capture {review_inbox.capture_run_id}: {exc}")
+        received_count = len(review_inbox.jobs)
+        capture_run_count = 1
+
+    if validation_errors:
+        details = "\n".join(f"- {error}" for error in validation_errors)
+        raise ValueError(f"AI review preflight found {len(validation_errors)} issue(s):\n{details}")
+
+    return {
+        "valid": True,
+        "read_only": True,
+        "scope": "review_inbox",
+        "capture_run_count": capture_run_count,
+        "received_count": received_count,
+        "other_sections_present": bool(update.exchanges or update.context_patch),
+    }
 
 
 def _apply_unified_context_patch(update: UnifiedAIUpdate) -> GlobalAIContextOverlay:

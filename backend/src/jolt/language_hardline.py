@@ -387,11 +387,12 @@ def _distance(position: int, marker: tuple[int, int]) -> int:
 
 
 _PREFERRED_SECTION_PATTERN = re.compile(
-    r"\b(?:preferred|desirable|nice\s+to\s+have)\s+(?:qualifications?|skills?|requirements?)\s*:",
+    r"\b(?:preferred|desirable|nice[\s-]+to[\s-]+have)\s+"
+    r"(?:qualifications?|skills?|requirements?)(?:\s*:\s*|$)",
     re.I,
 )
 _REQUIRED_SECTION_PATTERN = re.compile(
-    r"\b(?:required|mandatory|minimum)\s+(?:qualifications?|skills?|requirements?)\s*:",
+    r"\b(?:required|mandatory|minimum)\s+(?:qualifications?|skills?|requirements?)(?:\s*:\s*|$)",
     re.I,
 )
 
