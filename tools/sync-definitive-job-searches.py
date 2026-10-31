@@ -14,48 +14,38 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
-# Language variants are intentionally separate when a trial found distinct roles.
-# tuple: family, name, keyword, scope (L: Vigo/Pontevedra; R: Spain).
+# tuple: family, name, keyword, scope.
+# Indeed scopes: LOCAL, SPAIN_REMOTE, UK_REMOTE, IE_REMOTE, GLOBAL_REMOTE.
 INDEED = [
-    ("IT", "Application Support", 'title:"Application Support"', "R"),
-    ("IT", "Technical Support Engineer", "Technical Support Engineer", "R"),
-    ("IT", "IT Operations Analyst", "IT Operations Analyst", "R"),
-    ("IT", "MES Support", "MES Support", "R"),
-    ("IT", "IT Specialist", "IT Specialist", "L"),
-    ("IT", "Service Desk", "Service Desk", "L"),
-    ("IT", "IT Support", "IT Support", "L"),
-    ("IT", "Manufacturing IT", "Manufacturing IT", "L"),
-    ("IT", "Soporte informático", "soporte informático", "L"),
-    ("Transferable", "Data Entry", "data entry", "R"),
-    ("Transferable", "Customer Service", "customer service", "R"),
-    ("Transferable", "Auxiliar administrativo", "auxiliar administrativo", "L"),
-    ("Transferable", "Back Office", "back office", "L"),
-    ("Transferable", "Atención al cliente", "atención al cliente", "L"),
-    ("Transferable", "Teleoperador", "teleoperador", "L"),
-    ("Transferable", "Administrativo logística", "administrativo logística", "L"),
-    ("Transferable", "Recepcionista", "recepcionista", "L"),
+    ("IT", "Local IT Support", "IT Support", "LOCAL"),
+    ("Bridge", "Local Administrative Assistant", "auxiliar administrativo", "LOCAL"),
+    ("IT", "Spain Remote Technical Support", "Technical Support Engineer", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote Application Support", "Application Support", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote Microsoft 365 and Intune", "Microsoft 365 Intune support", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote IT Operations", "IT Operations Analyst", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote MES and ERP Support", "MES ERP Support", "SPAIN_REMOTE"),
+    ("IT", "UK Remote Technical Support", "Technical Support Engineer", "UK_REMOTE"),
+    ("IT", "UK Remote Application Support", "Application Support", "UK_REMOTE"),
+    ("IT", "Ireland Remote Technical Support", "Technical Support Engineer", "IE_REMOTE"),
+    ("IT", "Indeed.com Remote Technical Support", "Technical Support Engineer", "GLOBAL_REMOTE"),
+    ("IT", "Indeed.com Remote Application Support", "Application Support Engineer", "GLOBAL_REMOTE"),
 ]
+
+# LinkedIn scopes are explicit in every saved label and URL. The eligibility
+# review still decides whether a remote role permits work from Spain.
 LINKEDIN = [
-    ("IT", "Application Support ES", "soporte de aplicaciones", "R"),
-    ("IT", "Application Support EN", "application support", "R"),
-    ("IT", "Technical Support EN", "technical support engineer", "R"),
-    ("IT", "IT Operations EN", "IT operations", "R"),
-    ("IT", "Microsoft 365 EN", "Microsoft 365 support", "R"),
-    ("IT", "SaaS Support EN", "SaaS support", "R"),
-    ("IT", "Soporte informático ES", "soporte informático", "L"),
-    ("IT", "IT Support EN", "IT support", "L"),
-    ("IT", "Técnico informático ES", "técnico informático", "L"),
-    ("IT", "Informática industrial ES", "informática industrial", "L"),
-    ("Transferable", "Administración ES", "auxiliar administrativo", "L"),
-    ("Transferable", "Administration EN", "administrative assistant", "L"),
-    ("Transferable", "Back Office EN", "back office", "L"),
-    ("Transferable", "Recepción ES", "recepcionista", "L"),
-    ("Transferable", "Atención al cliente ES", "atención al cliente", "L"),
-    ("Transferable", "Customer Support EN", "customer support", "L"),
-    ("Transferable", "Teleoperador ES", "teleoperador", "L"),
-    ("Transferable", "Logística ES", "administrativo logística", "L"),
-    ("Transferable", "Logistics EN", "logistics coordinator", "L"),
-    ("Transferable", "Customer Support Remote EN", "customer support", "R"),
+    ("IT", "Pontevedra Local IT Support", "IT support", "LOCAL"),
+    ("Bridge", "Pontevedra Local Administration", "auxiliar administrativo", "LOCAL"),
+    ("IT", "Spain Remote IT Support", "IT support", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote Application Support", "application support", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote Microsoft 365 and Intune", "Microsoft 365 support", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote IT Operations", "IT operations", "SPAIN_REMOTE"),
+    ("IT", "Spain Remote MES and ERP Support", "MES ERP support", "SPAIN_REMOTE"),
+    ("IT", "Europe Remote Technical Support", "Technical Support Engineer EMEA", "EU_REMOTE"),
+    ("IT", "Europe Remote Application Support", "Application Support Engineer EMEA", "EU_REMOTE"),
+    ("IT", "Europe Remote Microsoft Platform Support", "Microsoft 365 Intune support EMEA", "EU_REMOTE"),
+    ("IT", "UK Remote Technical Support", "Technical Support Engineer", "UK_REMOTE"),
+    ("IT", "Worldwide Remote Application Support", "Application Support Engineer", "WORLD_REMOTE"),
 ]
 
 
@@ -65,7 +55,12 @@ def search_key(url: str) -> tuple[str, tuple[tuple[str, str], ...]]:
     if not parsed.hostname or not parsed.path.startswith("/jobs/search"):
         if not parsed.hostname or not parsed.path.startswith("/jobs"):
             raise ValueError(f"Unexpected search URL: {url}")
-    portal = "linkedin" if parsed.hostname.endswith("linkedin.com") else "indeed"
+    if parsed.hostname.endswith("linkedin.com"):
+        portal = "linkedin"
+    else:
+        # Indeed country domains are distinct search markets, even when their
+        # query and location parameters are otherwise identical.
+        portal = f"indeed:{parsed.hostname}"
     transient = {"currentjobid", "trackingid", "refid", "origin", "refresh", "start"}
     parts = tuple(sorted(
         (key.casefold(), value)
@@ -78,21 +73,40 @@ def search_key(url: str) -> tuple[str, tuple[tuple[str, str], ...]]:
 def desired_catalog() -> dict[str, list[dict]]:
     result = {"indeed": [], "linkedin": []}
     for family, name, keyword, scope in INDEED:
-        location = "Vigo, Pontevedra" if scope == "L" else "España"
-        params = [("q", keyword), ("l", location)]
-        if scope == "L":
+        hosts = {
+            "LOCAL": "https://es.indeed.com",
+            "SPAIN_REMOTE": "https://es.indeed.com",
+            "UK_REMOTE": "https://uk.indeed.com",
+            "IE_REMOTE": "https://ie.indeed.com",
+            "GLOBAL_REMOTE": "https://www.indeed.com",
+        }
+        location = {
+            "LOCAL": "Vigo, Pontevedra",
+            "SPAIN_REMOTE": "Remote",
+            "UK_REMOTE": "Remote",
+            "IE_REMOTE": "Remote",
+            "GLOBAL_REMOTE": "Remote",
+        }[scope]
+        params = [("q", keyword), ("l", location), ("fromage", "30")]
+        if scope == "LOCAL":
             params.append(("radius", "30"))
         params.append(("sort", "date"))
-        url = "https://es.indeed.com/jobs?" + urlencode(params)
+        url = hosts[scope] + "/jobs?" + urlencode(params)
         result["indeed"].append({
             "label": f"Indeed | {family} | {name}", "url": url,
             "scope": scope, "keyword": keyword,
         })
     for family, name, keyword, scope in LINKEDIN:
-        geo = "90009802" if scope == "L" else "105646813"
+        geo = {
+            "LOCAL": "90009802",
+            "SPAIN_REMOTE": "105646813",
+            "EU_REMOTE": "91000000",
+            "UK_REMOTE": "101165590",
+            "WORLD_REMOTE": "92000000",
+        }[scope]
         params = [("keywords", keyword), ("geoId", geo),
-                  ("f_TPR", "r604800"), ("sortBy", "DD")]
-        if scope == "R":
+                  ("f_TPR", "r2592000"), ("sortBy", "DD")]
+        if scope != "LOCAL":
             params.append(("f_WT", "2"))
         url = "https://www.linkedin.com/jobs/search/?" + urlencode(params)
         result["linkedin"].append({
@@ -103,7 +117,7 @@ def desired_catalog() -> dict[str, list[dict]]:
         keys = [search_key(x["url"]) for x in entries]
         if len(keys) != len(set(keys)):
             raise ValueError(f"Duplicate desired {portal} criteria")
-    assert len(result["indeed"]) == 17 and len(result["linkedin"]) == 20
+    assert len(result["indeed"]) == 12 and len(result["linkedin"]) == 12
     return result
 
 
@@ -177,14 +191,14 @@ def payload_for(portal, target, existing=None, *, enabled=True):
     if portal == "indeed":
         return {
             "source": "indeed", "label": target["label"],
-            "definition": {"search_url": url, "max_pages": 5},
-            "max_jobs": 30, "enabled": enabled,
-            "notes": "Definitive employability portfolio; verify eligibility and cross-portal duplicates.",
+            "definition": {"search_url": url, "max_pages": 10},
+            "max_jobs": 100, "enabled": enabled,
+            "notes": "Scope controls discovery only; review full descriptions for work-location eligibility and deduplicate across searches.",
         }
     return {
         "label": target["label"], "search_url": url,
-        "enabled": enabled, "max_jobs": 30, "max_pages": 5,
-        "notes": "Definitive bilingual portfolio; verify Spain eligibility and cross-portal duplicates.",
+        "enabled": enabled, "max_jobs": 100, "max_pages": 10,
+        "notes": "Scope controls discovery only; review full descriptions for work-location eligibility and deduplicate across searches.",
     }
 
 
@@ -284,18 +298,18 @@ def sync(api: API, catalog: dict, originals: dict, *, apply: bool, output: Path)
                     api.request(f"/api/linkedin-searches/{old['id']}", body, post=True)
                     print(f"  linkedin retired: {old['label']}")
     final = {p: api.list(p) for p in ("indeed", "linkedin")}
-    for portal, expected in (("indeed", 17), ("linkedin", 20)):
+    for portal, expected in (("indeed", 12), ("linkedin", 12)):
         active = [x for x in final[portal] if x["enabled"]]
         keys = {search_key(row_url(portal, x)) for x in active}
         wanted = {search_key(x["url"]) for x in catalog[portal]}
         if len(active) != expected or keys != wanted:
             raise RuntimeError(f"FINAL VERIFICATION FAILED: {portal}: {len(active)} active")
-    if len(final["indeed"]) != 17:
+    if len(final["indeed"]) != 12:
         raise RuntimeError("Indeed still contains obsolete saved searches")
     (output / "final_result.json").write_text(
         json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8",
     )
-    print("PASS: 17 Indeed + 20 LinkedIn enabled; only 17 total Indeed.")
+    print("PASS: 12 Indeed + 12 LinkedIn enabled; obsolete Indeed searches removed.")
     print("Historical LinkedIn entries are retained disabled.")
 
 
@@ -320,3 +334,4 @@ if __name__ == "__main__":
     except (RuntimeError, ValueError, OSError) as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         sys.exit(1)
+
