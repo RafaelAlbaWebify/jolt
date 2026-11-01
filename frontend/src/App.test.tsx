@@ -546,32 +546,59 @@ describe("App AI review workflow", () => {
     );
   });
 
-  it("prevents a human decision before AI review exists", async () => {
-    vi.spyOn(
-      globalThis,
-      "fetch",
-    ).mockResolvedValue(
-      jsonResponse([awaitingOpportunity]),
-    );
+  it.each([
+    ["Apply", "pursue", "list"],
+    ["Reject", "reject", "list"],
+    ["Apply", "pursue", "preview"],
+    ["Reject", "reject", "preview"],
+    ["Apply", "pursue", "inspector"],
+    ["Reject", "reject", "inspector"],
+  ] as const)("allows %s without AI review from the %s/%s action", async (label, decision, surface) => {
+    let index = [awaitingOpportunity];
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/api/ai-review/opportunity-index")) return jsonResponse(index);
+      if (url.endsWith("/source-description")) return jsonResponse({ description: "Original job description.", location: "" });
+      if (url.endsWith("/source-history")) return jsonResponse({ sources: [], total_observations: 0, confirmed_duplicates: [] });
+      if (url.endsWith("/api/opportunities/posting-2/reviews") && init?.method === "POST") {
+        expect(JSON.parse(String(init.body))).toEqual({ ai_review_id: null, decision });
+        index = [];
+        return jsonResponse({
+          review_id: "human-only-review",
+          posting_id: "posting-2",
+          evaluation_id: null,
+          ai_review_id: null,
+          decision,
+          evaluation_overridden: false,
+        });
+      }
+      throw new Error("Unexpected request: " + url);
+    });
 
     render(<App />);
-
-    expect(
-      await screen.findByText(
-        "Cloud Operations Analyst",
-      ),
-    ).toBeInTheDocument();
-
-    const actions = screen.getByLabelText(
-      "Actions for Cloud Operations Analyst",
+    await screen.findByText("Cloud Operations Analyst");
+    let button: HTMLElement;
+    if (surface === "inspector") {
+      fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+      const dialog = screen.getByRole("dialog", { name: "Cloud Operations Analyst" });
+      button = within(dialog).getByRole("button", { name: label });
+      expect(within(dialog).getByText(/AI review is optional/)).toBeInTheDocument();
+    } else if (surface === "list") {
+      button = within(screen.getByLabelText("Actions for Cloud Operations Analyst")).getByRole("button", { name: label });
+    } else {
+      const buttons = screen.getAllByRole("button", { name: label });
+      button = buttons[buttons.length - 1];
+    }
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/api/opportunities/posting-2/reviews",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      decision === "pursue" ? "ready in Applications" : "rejected",
     );
-
-    expect(
-      within(actions).getByRole("button", { name: "Apply" }),
-    ).toBeDisabled();
-    expect(
-      within(actions).getByRole("button", { name: "Reject" }),
-    ).toBeDisabled();
+    expect(screen.queryByText("Cloud Operations Analyst")).not.toBeInTheDocument();
   });
 
   it("keeps Review Inbox decisions to Apply or Reject and labels AI filters clearly", async () => {
