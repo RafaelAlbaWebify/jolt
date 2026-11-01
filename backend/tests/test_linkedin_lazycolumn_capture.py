@@ -119,7 +119,7 @@ def test_lazycolumn_cards_capture_verified_identities(
         page.set_content(html)
         opened_pages = []
         network_requests = []
-        page.context.on("page", opened_pages.append)
+        page.context.on("page", lambda opened: opened_pages.append(opened))
 
         def block_network(route):
             network_requests.append(route.request.url)
