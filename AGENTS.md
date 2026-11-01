@@ -36,3 +36,7 @@ These rules apply to AI-assisted and human-assisted repository changes. They are
 - Deliver coherent functional milestones in grouped implementations. Minimize user messages and repeated manual tests.
 - Give concise status only on meaningful changes, blockers or verified results.
 - Record unresolved limitations precisely; do not invent an ETA, approval, green CI or runtime success.
+
+## Independent human job decisions
+
+Apply and Reject must remain available for each pending posting from any capture source, including manual intake, before AI review. Persist an explicit human decision without fabricating AI reviews, scores, or verified eligibility. Validate any supplied AI/native evaluation IDs against the posting; absent IDs are allowed. Pursue opens the existing application preparation workflow, without submitting externally. A decision affects only the selected posting; other capture jobs remain pending. AI import must continue to preserve human decisions and its own evidence requirements.

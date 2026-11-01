@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 from sqlalchemy import select
 
 from jolt.database import (
@@ -152,5 +153,25 @@ def test_reject_from_ai_review_does_not_create_application(
         )
 
         assert application is None
+    finally:
+        session.close()
+
+
+@pytest.mark.parametrize("decision", ["pursue", "reject"])
+def test_human_decision_needs_neither_ai_review_nor_evaluation(tmp_path, decision) -> None:
+    session, posting, ai_review = _seed(tmp_path)
+    try:
+        session.delete(ai_review)
+        session.commit()
+        response = record_review(session, posting.id, ReviewRequest(decision=decision))
+        assert response.ai_review_id is None
+        assert response.evaluation_id is None
+        assert response.evaluation_overridden is False
+        assert session.scalar(select(AIReview)) is None
+        saved = session.scalar(select(ReviewDecision))
+        assert saved is not None
+        assert saved.decision == decision
+        assert saved.ai_review_id is None
+        assert saved.evaluation_id is None
     finally:
         session.close()

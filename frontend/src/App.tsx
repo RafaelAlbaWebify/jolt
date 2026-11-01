@@ -575,13 +575,6 @@ export function App({
     opportunity: OpportunityIndex,
     decision: ReviewChoice,
   ) {
-    if (!opportunity.ai_review_id) {
-      setError(
-        "This job is awaiting AI review and cannot be decided yet.",
-      );
-      return;
-    }
-
     setWorkflowNotice("");
 
     try {
@@ -1091,7 +1084,7 @@ export function App({
                         <button
                           type="button"
                           className="review-inbox-apply"
-                          disabled={busy || !opportunity.ai_review_id}
+                          disabled={busy}
                           onClick={() => void reviewOpportunity(opportunity, "pursue")}
                         >
                           Apply
@@ -1099,7 +1092,7 @@ export function App({
                         <button
                           type="button"
                           className="review-inbox-reject"
-                          disabled={busy || !opportunity.ai_review_id}
+                          disabled={busy}
                           onClick={() => void reviewOpportunity(opportunity, "reject")}
                         >
                           Reject
@@ -1288,7 +1281,7 @@ export function App({
                       <button
                         type="button"
                         className="review-preview-apply"
-                        disabled={busy || !previewOpportunity.ai_review_id}
+                        disabled={busy}
                         onClick={() => void reviewOpportunity(previewOpportunity, "pursue")}
                       >
                         Apply
@@ -1296,7 +1289,7 @@ export function App({
                       <button
                         type="button"
                         className="review-preview-reject"
-                        disabled={busy || !previewOpportunity.ai_review_id}
+                        disabled={busy}
                         onClick={() => void reviewOpportunity(previewOpportunity, "reject")}
                       >
                         Reject
@@ -1387,7 +1380,7 @@ export function App({
                 <div>
                   <button
                     type="button"
-                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    disabled={busy}
                     onClick={() => void reviewOpportunity(selectedOpportunity, "pursue")}
                   >
                     Apply
@@ -1395,16 +1388,14 @@ export function App({
                   <button
                     type="button"
                     className="secondary inspector-reject-action"
-                    disabled={busy || !selectedOpportunity.ai_review_id}
+                    disabled={busy}
                     onClick={() => void reviewOpportunity(selectedOpportunity, "reject")}
                   >
                     Reject
                   </button>
                 </div>
                 <small>
-                  {selectedOpportunity.ai_review_id
-                    ? "Leave untouched to keep pending."
-                    : "AI review required before deciding."}
+                  Leave untouched to keep pending. AI review is optional.
                 </small>
               </div>
 
@@ -1575,6 +1566,3 @@ export function App({
     </main>
   );
 }
-
-
-

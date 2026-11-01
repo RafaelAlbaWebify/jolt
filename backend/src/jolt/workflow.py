@@ -363,8 +363,7 @@ def record_review(
         if evaluation is None or evaluation.posting_id != posting_id:
             raise JoltNotFoundError("Posting or evaluation was not found.")
 
-    else:
-        raise ValueError("A review requires ai_review_id or evaluation_id.")
+    # Human decisions may stand alone; supplied evidence IDs are still validated.
 
     evaluation_overridden = bool(
         evaluation is not None and request.decision != evaluation.recommendation
