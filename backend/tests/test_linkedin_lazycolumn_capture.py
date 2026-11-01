@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import pytest
 from playwright.sync_api import sync_playwright
 
 from jolt import multipage_capture
@@ -84,8 +86,25 @@ def _html() -> str:
     """
 
 
+@pytest.mark.parametrize(
+    ("apply_control", "expected_url"),
+    [
+        (
+            '<button class="jobs-apply-button" aria-label="Apply on company website" '
+            "onclick=\"window.open('https://employer.example/apply')\">Apply</button>",
+            "",
+        ),
+        (
+            '<a class="jobs-apply-button" href="https://employer.example/apply" '
+            'aria-label="Apply on company website" target="_blank">Apply on company website</a>',
+            "https://employer.example/apply",
+        ),
+    ],
+)
 def test_lazycolumn_cards_capture_verified_identities(
     tmp_path: Path,
+    apply_control: str,
+    expected_url: str,
 ) -> None:
     evidence = tmp_path / "evidence"
     evidence.mkdir()
@@ -93,7 +112,20 @@ def test_lazycolumn_cards_capture_verified_identities(
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page()
-        page.set_content(_html())
+        html = _html().replace(
+            "\"<section id='recommended-jobs'>\" +",
+            json.dumps(apply_control) + " + \"<section id='recommended-jobs'>\" +",
+        )
+        page.set_content(html)
+        opened_pages = []
+        network_requests = []
+        page.context.on("page", lambda opened: opened_pages.append(opened))
+
+        def block_network(route):
+            network_requests.append(route.request.url)
+            route.abort()
+
+        page.context.route("**/*", block_network)
 
         cards, selector = multipage_capture._wait_for_cards(
             page,
@@ -111,8 +143,13 @@ def test_lazycolumn_cards_capture_verified_identities(
             metrics=RetryMetrics(),
         )
 
+        assert opened_pages == []
+        assert network_requests == []
+        assert len(page.context.pages) == 1
         browser.close()
 
+    assert all(card.application_url == expected_url for card in captured)
+    assert all(card.easy_apply_available is False for card in captured)
     assert [card.source_job_id for card in captured] == [
         "7001",
         "7002",
