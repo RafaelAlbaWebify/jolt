@@ -96,7 +96,7 @@ def _html() -> str:
         ),
         (
             '<a class="jobs-apply-button" href="https://employer.example/apply" '
-            'target="_blank">Apply on company website</a>',
+            'aria-label="Apply on company website" target="_blank">Apply on company website</a>',
             "https://employer.example/apply",
         ),
     ],
