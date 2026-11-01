@@ -339,70 +339,6 @@ def _visible_external_apply_url(page: Page) -> str:
     return ""
 
 
-def _popup_external_apply_url(page: Page, source_url: str) -> str:
-    """Open only the initial external Apply control in an isolated tab.
-
-    Never submit an application or disturb the active search page.
-    """
-    if not source_url.startswith("https://www.linkedin.com/jobs/view/"):
-        return ""
-    probe = None
-    try:
-        probe = page.context.new_page()
-        probe.goto(source_url, wait_until="domcontentloaded", timeout=8_000)
-        buttons = probe.locator(
-            "a[aria-label*='Apply on company website' i], "
-            "a[href*='/safety/go/'], "
-            "button.jobs-apply-button, "
-            "button[data-control-name*='jobdetails_topcard_apply']"
-        )
-        for index in range(min(buttons.count(), 3)):
-            button = buttons.nth(index)
-            if not button.is_visible(timeout=500):
-                continue
-            label = " ".join(
-                ((button.get_attribute("aria-label") or ""), (button.inner_text(timeout=500) or ""))
-            ).casefold()
-            if ("apply" not in label and "solicitar" not in label) or (
-                "easy apply" in label or "solicitud sencilla" in label or "solicitud fácil" in label
-            ):
-                continue
-            try:
-                with probe.context.expect_page(timeout=3_000) as popup_event:
-                    button.click(timeout=3_000)
-                popup = popup_event.value
-                with contextlib.suppress(TimeoutError):
-                    popup.wait_for_load_state("domcontentloaded", timeout=6_000)
-                destination = popup.url.strip()
-                with contextlib.suppress(TimeoutError):
-                    popup.wait_for_load_state("load", timeout=5_000)
-                    destination = popup.url.strip()
-                popup.close()
-                if destination.startswith("https://"):
-                    from urllib.parse import urlsplit
-
-                    host = (urlsplit(destination).hostname or "").lower()
-                    if host != "linkedin.com" and not host.endswith(".linkedin.com"):
-                        return destination[:4000]
-            except TimeoutError:
-                # No popup: the probe may have navigated in-place.
-                destination = probe.url.strip()
-                if destination.startswith("https://"):
-                    from urllib.parse import urlsplit
-
-                    host = (urlsplit(destination).hostname or "").lower()
-                    if host != "linkedin.com" and not host.endswith(".linkedin.com"):
-                        return destination[:4000]
-            break
-    except Exception:
-        return ""
-    finally:
-        if probe is not None:
-            with contextlib.suppress(Exception):
-                probe.close()
-    return ""
-
-
 def _observe_easy_apply(page: Page) -> bool | None:
     """Observe the visible job-specific Apply control; never initiate an application."""
     selectors = (
@@ -667,16 +603,7 @@ def capture_page_cards(
                     promoted=promoted,
                     posted_age_text=posted_age_text,
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
-                    application_url=(
-                        _visible_external_apply_url(page)
-                        or (
-                            _popup_external_apply_url(page, source_url)
-                            if _observe_easy_apply(page) is False
-                            else ""
-                        )
-                    )
-                    if verified
-                    else "",
+                    application_url=_visible_external_apply_url(page) if verified else "",
                 )
             )
             continue
@@ -745,16 +672,7 @@ def capture_page_cards(
                     promoted=promoted,
                     posted_age_text=posted_age_text,
                     easy_apply_available=_observe_easy_apply(page) if verified else None,
-                    application_url=(
-                        _visible_external_apply_url(page)
-                        or (
-                            _popup_external_apply_url(page, source_url)
-                            if _observe_easy_apply(page) is False
-                            else ""
-                        )
-                    )
-                    if verified
-                    else "",
+                    application_url=_visible_external_apply_url(page) if verified else "",
                 )
             )
             continue
@@ -787,16 +705,7 @@ def capture_page_cards(
                 promoted=promoted,
                 posted_age_text=posted_age_text,
                 easy_apply_available=_observe_easy_apply(page) if verified else None,
-                application_url=(
-                    _visible_external_apply_url(page)
-                    or (
-                        _popup_external_apply_url(page, source_url)
-                        if _observe_easy_apply(page) is False
-                        else ""
-                    )
-                )
-                if verified
-                else "",
+                application_url=_visible_external_apply_url(page) if verified else "",
             )
         )
     return captured
