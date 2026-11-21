@@ -109,3 +109,29 @@ def test_frontend_http_error_preserves_status_without_response_body(monkeypatch)
     assert result["status"] == 404
     assert result["error_type"] == "HTTPError"
     assert "private reason" not in str(result)
+
+
+def test_frontend_request_uses_html_accept_header(monkeypatch) -> None:
+    probe = _probe()
+    recorded = []
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, _size):
+            return b"<html>JOLT</html>"
+
+    def open_request(request, timeout):
+        recorded.append(request.get_header("Accept"))
+        return FakeResponse()
+
+    monkeypatch.setattr(probe.urllib.request, "urlopen", open_request)
+    result = probe._request("http://127.0.0.1:5173/", accept="text/html")
+    assert result["ok"]
+    assert recorded == ["text/html"]
