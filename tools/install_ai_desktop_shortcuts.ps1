@@ -64,9 +64,7 @@ function New-LetterIcon {
 }
 
 $Projects = @(
-    @{ Name='JOLT'; RepoNames=@('jolt','JOLT'); Letter='J'; Color='#2563EB'; Shortcut='JOLT - New AI Chat.lnk' },
-    @{ Name='VERIDRA'; RepoNames=@('veridra','VERIDRA'); Letter='V'; Color='#059669'; Shortcut='VERIDRA - New AI Chat.lnk' },
-    @{ Name='FORGE'; RepoNames=@('FORGE','forge'); Letter='F'; Color='#D97706'; Shortcut='FORGE - New AI Chat.lnk' }
+    @{ Name='JOLT'; RepoNames=@('jolt','JOLT'); Letter='J'; Color='#2563EB'; Shortcut='JOLT - New AI Chat.lnk' }
 )
 
 $Shell = New-Object -ComObject WScript.Shell
@@ -109,12 +107,10 @@ foreach ($project in $Projects) {
 
 Write-Host ''
 if ($Failures.Count -eq 0) {
-    Write-Host 'SUCCESS - All three Desktop shortcuts are installed and verified.' -ForegroundColor Green
+    Write-Host 'SUCCESS - The JOLT Desktop shortcut is installed and verified.' -ForegroundColor Green
     Write-Host ''
     Write-Host 'From now on, double-click the project shortcut:' -ForegroundColor White
     Write-Host '  JOLT - New AI Chat'
-    Write-Host '  VERIDRA - New AI Chat'
-    Write-Host '  FORGE - New AI Chat'
     exit 0
 }
 
